@@ -29,7 +29,9 @@ end=$((SECONDS + seconds))
 while (( SECONDS < end )); do
   temp=$(adb shell dumpsys battery | awk '/temperature/ {print $2 / 10; exit}')
   thermal=$(adb shell dumpsys thermalservice | awk -F': ' '/Thermal Status/ {print $2; exit}')
-  pss=$(adb shell dumpsys meminfo "$package" | awk '/TOTAL PSS:/ {print $3 / 1024; exit}')
+  # By pid: on SM-P200 `dumpsys meminfo <package>` sometimes falls back to the system summary.
+  pid=$(adb shell pidof "$package" | tr -d '\r')
+  pss=$(adb shell dumpsys meminfo "${pid:-$package}" | awk '/TOTAL PSS:/ {print $3 / 1024; exit}')
   printf '{"t":%d,"batteryC":%s,"thermal":"%s","pssMB":%s}\n' \
     "$((seconds - (end - SECONDS)))" "${temp:-null}" "${thermal:-unknown}" "${pss:-null}" >> "$device"
   sleep 10

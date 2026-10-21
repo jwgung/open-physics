@@ -115,7 +115,7 @@ func add_sphere(xf: Transform3D, radius: float, rings: int, sides: int, color: C
 ## Ground-hugging soft shadow: an inner rounded rectangle (half extents) at full alpha that fades
 ## to 0 over `fade` metres. half_extents = 0 gives a round blob of radius `fade`.
 ## Normal is +y of xf; use ArtKit.shadow_builder() + ArtKit.shadow_material().
-func add_soft_rect(xf: Transform3D, half_extents: Vector2, fade: float, alpha: float, color := Color.BLACK, corner_steps := 6) -> void:
+func add_soft_rect(xf: Transform3D, half_extents: Vector2, fade: float, alpha: float, color := ArtPalette.SHADOW, corner_steps := 6) -> void:
 	var inner := Color(color.r, color.g, color.b, alpha)
 	var outer := Color(color.r, color.g, color.b, 0.0)
 	# Outline of the inner rect, walked counter-clockwise, with the outward direction per point.
@@ -194,6 +194,8 @@ func _tri(xf: Transform3D, p: Array, n: Array, base_y: float, color: Color, top_
 		n = [n[0], n[2], n[1]]
 		face = -face
 	var flat_n: Vector3 = -face.normalized()
+	# Normals use the inverse transpose so a non-uniformly scaled shape (the rocks) stays lit right.
+	var normal_basis := xf.basis.inverse().transposed()
 	for i in 3:
 		var local: Vector3 = p[i]
 		var c := color
@@ -202,7 +204,7 @@ func _tri(xf: Transform3D, p: Array, n: Array, base_y: float, color: Color, top_
 		var ao := lerpf(ao_min, 1.0, clampf((local.y - base_y) / maxf(ao_height, 0.0001), 0.0, 1.0))
 		c = Color(c.r * ao, c.g * ao, c.b * ao, c.a).srgb_to_linear()
 		_verts.append(xf * local)
-		_normals.append((xf.basis * (flat_n if flat else n[i] as Vector3)).normalized())
+		_normals.append((normal_basis * (flat_n if flat else n[i] as Vector3)).normalized())
 		_colors.append(c)
 
 

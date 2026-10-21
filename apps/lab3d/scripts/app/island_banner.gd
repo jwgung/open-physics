@@ -6,6 +6,8 @@ extends Control
 
 const HEIGHT := 168.0
 
+var _sky := _make_sky()
+
 
 func _init() -> void:
 	custom_minimum_size = Vector2(0, HEIGHT)
@@ -21,11 +23,7 @@ func _notification(what: int) -> void:
 func _draw() -> void:
 	var w := size.x
 	var h := size.y
-	var sky := StyleBoxFlat.new()
-	sky.bg_color = ArtPalette.SKY
-	sky.set_corner_radius_all(18)
-	sky.anti_aliasing = true
-	draw_style_box(sky, Rect2(Vector2.ZERO, size))
+	draw_style_box(_sky, Rect2(Vector2.ZERO, size))
 	# Clouds.
 	for c in [[0.14, 0.3, 1.0], [0.82, 0.22, 1.25], [0.6, 0.62, 0.8]]:
 		_cloud(Vector2(w * c[0], h * c[1]), 16.0 * c[2])
@@ -59,6 +57,14 @@ func _draw() -> void:
 	var corner := low.lerp(high, 0.74)
 	var side := 16.0
 	draw_colored_polygon(PackedVector2Array([corner, corner + along * side, corner + (along + up) * side, corner + up * side]), ArtPalette.RED)
+
+
+func _make_sky() -> StyleBoxFlat:
+	var sky := StyleBoxFlat.new()
+	sky.bg_color = ArtPalette.SKY
+	sky.set_corner_radius_all(18)
+	sky.anti_aliasing = true
+	return sky
 
 
 func _cloud(at: Vector2, k: float) -> void:

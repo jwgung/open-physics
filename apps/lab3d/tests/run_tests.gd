@@ -50,6 +50,7 @@ func _run() -> void:
 	await _check_gestures(definition)
 	await _check_gesture_input_state(definition)
 	await _check_layout(definition)
+	await _check_button_feedback()
 	await _check_launch_args_flag(definition)
 	await _check_graph_redraw(definition)
 	_check_wheel_zoom(definition)
@@ -221,6 +222,47 @@ func _check_stand_clearance() -> void:
 		angle += 2.5
 	_lab.set_angle(20.0)
 	_expect(max_angle >= 45.0 and worst > 0.0, "support post top stays under the incline at every angle", "max angle %.0f, min clearance %.3f m" % [max_angle, worst])
+
+
+## Button look and press feedback: a pressed face moves down as a whole, disabled buttons keep the
+## normal vertical margins (text does not jump), and a release always restores the size.
+func _check_button_feedback() -> void:
+	var theme: Theme = load(UI_THEME).build()
+	for type in ["Button", "PrimaryButton"]:
+		var normal: StyleBoxFlat = theme.get_stylebox("normal", type)
+		var disabled: StyleBoxFlat = theme.get_stylebox("disabled", type)
+		var pressed: StyleBoxFlat = theme.get_stylebox("pressed", type)
+		var lift := normal.content_margin_bottom - pressed.content_margin_bottom
+		_expect(disabled.content_margin_top == normal.content_margin_top and disabled.content_margin_bottom == normal.content_margin_bottom
+			and disabled.border_width_bottom == normal.border_width_bottom,
+			"%s: disabled box has the normal margins and lip" % type, "%.1f/%.1f vs %.1f/%.1f" % [disabled.content_margin_top, disabled.content_margin_bottom, normal.content_margin_top, normal.content_margin_bottom])
+		_expect(lift > 0.0 and pressed.content_margin_top - normal.content_margin_top == lift and -pressed.expand_margin_top == lift
+			and pressed.content_margin_top + pressed.content_margin_bottom == normal.content_margin_top + normal.content_margin_bottom,
+			"%s: pressed face and text move down together by %.0f units, same size" % [type, lift], "")
+	var host := Control.new()
+	root.add_child(host)
+	var button := Ui.button("x")
+	host.add_child(button)
+	await process_frame
+	var press := InputEventMouseButton.new()
+	press.button_index = MOUSE_BUTTON_LEFT
+	press.pressed = true
+	button.gui_input.emit(press)
+	await create_timer(0.2).timeout
+	var shrunk := button.scale.x < 1.0
+	button.disabled = true
+	var release := InputEventMouseButton.new()
+	release.button_index = MOUSE_BUTTON_LEFT
+	release.pressed = false
+	button.gui_input.emit(release)
+	await create_timer(0.6).timeout
+	var restored := is_equal_approx(button.scale.x, 1.0)
+	button.scale = Vector2.ONE
+	button.gui_input.emit(press)
+	await create_timer(0.2).timeout
+	var ignored := button.scale == Vector2.ONE
+	host.queue_free()
+	_expect(shrunk and restored and ignored, "press shrinks an enabled button, release restores it even when disabled meanwhile, a disabled button ignores the press", "shrunk %s, restored %s, ignored %s" % [shrunk, restored, ignored])
 
 
 func _has_material(id: String) -> bool:

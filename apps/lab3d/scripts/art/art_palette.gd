@@ -43,4 +43,3 @@ const PAPER := Color("eaf6ff")        # app clear colour: a very light sky
 const GREEN_TEXT := Color("23753a")
 const GREEN_SOFT := Color("e6f7e1")
 const YELLOW_DARK := Color("e0a400")
-const BLUE_SOFT := Color("e4efff")

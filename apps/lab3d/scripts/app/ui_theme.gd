@@ -8,7 +8,6 @@ class_name UiTheme
 extends RefCounted
 
 const INK := ArtPalette.INK
-const INK_STRONG := ArtPalette.INK
 const MUTED := ArtPalette.MUTED
 const SUBTLE := ArtPalette.INK_SOFT
 const LINE := ArtPalette.LINE
@@ -52,10 +51,10 @@ static func build() -> Theme:
 	theme.set_color("font_color", "Label", INK)
 	_label_variation(theme, "MutedLabel", regular, SIZE_SMALL, MUTED)
 	_label_variation(theme, "EyebrowLabel", bold, 17, ACCENT)
-	_label_variation(theme, "TitleLabel", bold, SIZE_TITLE, INK_STRONG)
-	_label_variation(theme, "HeadingLabel", bold, SIZE_HEADING, INK_STRONG)
+	_label_variation(theme, "TitleLabel", bold, SIZE_TITLE, INK)
+	_label_variation(theme, "HeadingLabel", bold, SIZE_HEADING, INK)
 	_label_variation(theme, "SectionLabel", bold, SIZE_SMALL, SUBTLE)
-	_label_variation(theme, "ValueLabel", bold, 25, INK_STRONG)
+	_label_variation(theme, "ValueLabel", bold, 25, INK)
 	_label_variation(theme, "ObserveLabel", regular, SIZE_SMALL, GREEN_TEXT)
 	_label_variation(theme, "ObserveTitleLabel", bold, 17, GREEN_TEXT)
 	_label_variation(theme, "EquationLabel", bold, 20, CODE_TEXT)
@@ -90,14 +89,14 @@ static func build() -> Theme:
 	theme.set_color("font_focus_color", "Button", INK)
 	theme.set_color("font_disabled_color", "Button", Color(0.11, 0.16, 0.29, 0.4))
 	_button_states(theme, "Button", WHITE, Color("f4f9ff"), Color("eef5ff"), LINE, Color("b9cde2"), 14, 16, 10)
-	theme.set_stylebox("disabled", "Button", _box(Color("f2f6fa"), Color("e1e9f2"), 14, 16, 10, Color.TRANSPARENT, 2))
+	theme.set_stylebox("disabled", "Button", _box(Color("f2f6fa"), Color("e1e9f2"), 14, 16, 10, Color.TRANSPARENT, 2, LIP))
 	theme.set_stylebox("focus", "Button", _box(Color.TRANSPARENT, Color("8fb6ff"), 14, 16, 10, Color.TRANSPARENT, 2))
 
 	theme.set_type_variation("PrimaryButton", "Button")
 	for state in ["font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color", "font_focus_color"]:
 		theme.set_color(state, "PrimaryButton", WHITE)
 	_button_states(theme, "PrimaryButton", ACCENT, Color("3a87ff"), Color("2a72e6"), ACCENT_DARK, ACCENT_DARK, 14, 18, 10)
-	theme.set_stylebox("disabled", "PrimaryButton", _box(Color("a9c6f5"), Color.TRANSPARENT, 14, 18, 10))
+	theme.set_stylebox("disabled", "PrimaryButton", _box(Color("a9c6f5"), Color("8fb0e8"), 14, 18, 10, Color.TRANSPARENT, 2, LIP))
 
 	# Chips: the selected one turns yellow (the style's selection colour).
 	theme.set_type_variation("ChipButton", "Button")
@@ -135,15 +134,17 @@ static func build() -> Theme:
 	return theme
 
 
-## normal / hover / pressed / hover_pressed of a lipped button (border = lip colour). Pressed:
-## the lip shrinks to the border width and the content moves down, so the button looks pushed in.
+## normal / hover / pressed / hover_pressed of a lipped button (border = lip colour). Pressed: the
+## whole face (fill, top edge and content) moves down by the lip it gives up, so the button looks
+## pushed in and its size does not change. The disabled boxes keep the same vertical margins as the
+## normal one (same lip height) so the text does not move when a button is enabled or disabled.
 static func _button_states(theme: Theme, type: String, normal: Color, hover: Color, pressed: Color,
 		line: Color, hover_line: Color, radius: int, margin_x: float, margin_y: float) -> void:
 	theme.set_stylebox("normal", type, _box(normal, line, radius, margin_x, margin_y, Color.TRANSPARENT, 2, LIP))
 	theme.set_stylebox("hover", type, _box(hover, hover_line, radius, margin_x, margin_y, Color.TRANSPARENT, 2, LIP))
 	var down := _box(pressed, hover_line, radius, margin_x, margin_y, Color.TRANSPARENT, 2, 2)
 	down.content_margin_top += LIP - 2
-	down.content_margin_bottom -= LIP - 2
+	down.expand_margin_top = -(LIP - 2)
 	theme.set_stylebox("pressed", type, down)
 	theme.set_stylebox("hover_pressed", type, down)
 

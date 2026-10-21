@@ -167,7 +167,8 @@ func observations() -> Dictionary:
 		"tangential": PhysicsLaws.incline_tangential_gravity(MASS, G, theta),
 		"max_static": PhysicsLaws.max_static_friction(mu_s, normal),
 		"acceleration": formula_acceleration(),
-		"distance": corrector.samples[-1] if released and corrector.samples.size() > 0 else 0.0,
+		# Distance along the incline; after the box runs off the end it stays at the run length.
+		"distance": minf(corrector.samples[-1], START_X + INCLINE_LENGTH * 0.5) if released and corrector.samples.size() > 0 else 0.0,
 	}
 
 

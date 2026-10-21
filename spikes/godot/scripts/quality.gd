@@ -137,6 +137,8 @@ func _ensure_renderer() -> bool:
 	var wanted: String = get_value("renderer")
 	if OS.has_feature("web") or current not in ["mobile", "forward_plus", "gl_compatibility"]:
 		return false  # Web is always Compatibility; headless runs use the dummy renderer.
+	if wanted not in ["mobile", "gl_compatibility"]:
+		return false  # `--q-renderer` comes from an intent; never write an unknown value to the override file.
 	var file := FileAccess.open(RENDERER_OVERRIDE_PATH, FileAccess.WRITE)
 	if file:
 		file.store_string('[rendering]\n\nrenderer/rendering_method="%s"\nrenderer/rendering_method.mobile="%s"\n' % [wanted, wanted])

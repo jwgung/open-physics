@@ -115,8 +115,9 @@ func _emit_perf() -> void:
 	var parts := PackedStringArray([
 		'"t":%d' % int(round(_elapsed)), '"scene":"%s"' % scene_name, '"quality":"%s"' % Quality.label(),
 		'"renderer":"%s"' % RenderingServer.get_current_rendering_method()])
-	# The Compatibility renderer has no GPU timestamps; report null instead of a misleading 0.
-	var has_gpu_time := RenderingServer.get_current_rendering_method() != "gl_compatibility"
+	# The Compatibility renderer (or a driver without timestamp queries) has no GPU time; report null
+	# instead of a misleading 0.
+	var has_gpu_time := RenderingServer.get_current_rendering_method() != "gl_compatibility" and _perf_gpu_max > 0.0
 	for i in PERF_FIELDS.size():
 		var value := _perf_sums[i] / count
 		parts.append('"%s":%s' % [PERF_FIELDS[i], "%.2f" % value if has_gpu_time or PERF_FIELDS[i] != "gpu_ms" else "null"])

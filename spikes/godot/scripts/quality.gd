@@ -14,6 +14,8 @@ const SAVE_PATH := "user://quality.txt"
 ## Loaded at startup through application/config/project_settings_override (project.godot).
 const RENDERER_OVERRIDE_PATH := "user://renderer_override.cfg"
 const RESTART_MARKER_PATH := "user://renderer_restart.txt"
+const RESTART_MARKER_TTL_S := 60  # an older marker is left over from a killed restart
+const RENDERERS := ["mobile", "gl_compatibility"]
 const BASE_SIZE := Vector2i(720, 1280)  # project.godot window/size/viewport_*
 
 ## renderer: "mobile" (Vulkan) or "gl_compatibility" (OpenGL ES 3); applied by restarting the app.
@@ -36,7 +38,7 @@ func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	var requested := cmdline_value("quality")
 	# After a renderer restart the launch args are still there; the saved tier (picked in the app) wins.
-	if TIERS.has(requested) and not FileAccess.file_exists(RESTART_MARKER_PATH):
+	if TIERS.has(requested) and not _restart_pending():
 		tier = requested
 		_save_tier()
 	elif FileAccess.file_exists(SAVE_PATH):
@@ -50,6 +52,9 @@ func _ready() -> void:
 				var text := arg.get_slice("=", 1)
 				if typeof(TIERS[DEFAULT_TIER][key]) == TYPE_INT and not text.is_valid_int():
 					push_warning("Quality: ignoring %s (not an integer)" % arg)
+					continue
+				if key == "renderer" and text not in RENDERERS:
+					push_warning("Quality: ignoring %s (unknown renderer)" % arg)
 					continue
 				_overrides[key] = _parse_like(TIERS[DEFAULT_TIER][key], text)
 	_apply_viewport()
@@ -69,14 +74,26 @@ static func cmdline_value(key: String) -> String:
 ## (comma-separated; the release template ignores Godot's own command_line_params extra):
 ## adb shell am start -n <pkg>/com.godot.game.GodotAppLauncher --es opargs "--scene=S2,--quality=low"
 static func _all_args() -> PackedStringArray:
+	if _args_cache != null:
+		return _args_cache
 	var args := OS.get_cmdline_args()
 	args.append_array(OS.get_cmdline_user_args())
 	if Engine.has_singleton("AndroidRuntime"):
-		var intent: Object = Engine.get_singleton("AndroidRuntime").getActivity().getIntent()
+		var activity: Object = Engine.get_singleton("AndroidRuntime").getActivity()
+		var intent: Object = activity.getIntent() if activity else null
 		var extra = intent.getStringExtra("opargs") if intent else null
 		if extra is String:
 			args.append_array(extra.split(",", false))
+	_args_cache = args
 	return args
+
+
+static var _args_cache = null
+
+
+static func _restart_pending() -> bool:
+	return FileAccess.file_exists(RESTART_MARKER_PATH) \
+		and Time.get_unix_time_from_system() - FileAccess.get_modified_time(RESTART_MARKER_PATH) < RESTART_MARKER_TTL_S
 
 
 static func _parse_like(default_value: Variant, text: String) -> Variant:
@@ -142,7 +159,7 @@ func _ensure_renderer() -> bool:
 	var wanted: String = get_value("renderer")
 	if OS.has_feature("web") or current not in ["mobile", "forward_plus", "gl_compatibility"]:
 		return false  # Web is always Compatibility; headless runs use the dummy renderer.
-	if wanted not in ["mobile", "gl_compatibility"]:
+	if wanted not in RENDERERS:
 		return false  # `--q-renderer` comes from an intent; never write an unknown value to the override file.
 	var file := FileAccess.open(RENDERER_OVERRIDE_PATH, FileAccess.WRITE)
 	if file:
@@ -151,7 +168,7 @@ func _ensure_renderer() -> bool:
 	if current == wanted:
 		DirAccess.remove_absolute(RESTART_MARKER_PATH)
 		return false
-	if FileAccess.file_exists(RESTART_MARKER_PATH):
+	if _restart_pending():
 		push_warning("Quality: renderer %s requested but %s is running; not restarting again" % [wanted, current])
 		DirAccess.remove_absolute(RESTART_MARKER_PATH)
 		return false

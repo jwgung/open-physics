@@ -10,7 +10,13 @@ if (process.argv[2] === "--header") {
   process.exit(0);
 }
 const [file, name, clk] = process.argv.slice(2);
-const lines = readFileSync(file, "utf8").split("\n").filter((l) => l.startsWith("{")).map((l) => JSON.parse(l));
+const lines = readFileSync(file, "utf8").split("\n").filter((l) => l.startsWith("{")).flatMap((l) => {
+  try {
+    return [JSON.parse(l)];
+  } catch {
+    return []; // last line cut off when `timeout` stops logcat
+  }
+});
 const frames = lines.filter((l) => "fps" in l);
 const perf = lines.filter((l) => !("fps" in l));
 const mean = (xs, key) => (xs.length ? xs.reduce((a, x) => a + (x[key] ?? NaN), 0) / xs.length : NaN);

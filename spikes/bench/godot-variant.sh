@@ -24,7 +24,7 @@ adb shell am force-stop "$package"
 adb shell input keyevent KEYCODE_WAKEUP
 extras=()
 (( $# > 0 )) && extras=(--es opargs "$(IFS=,; echo "$*")")  # adb drops an empty value
-adb shell am start -W -n "$package/com.godot.game.GodotAppLauncher" "${extras[@]}" >/dev/null
+adb shell am start -W -n "$package/com.godot.game.GodotAppLauncher" ${extras[@]+"${extras[@]}"} >/dev/null
 sleep "$warmup"
 adb logcat -c
 # Mali clock (kHz) and the AP thermal sensor; both readable without root on SM-P200.

@@ -1,0 +1,81 @@
+{
+  "id": "incline-friction",
+  "version": 1,
+  "title": "빗면을 얼마나 기울이면 미끄러질까?",
+  "category": "움직임과 힘",
+  "icon": "◢",
+  "question": "빗면을 조금씩 기울이면 상자는 어느 각도에서 미끄러지기 시작할까요?",
+  "steps": [
+    "표면 재질을 고르고 빗면 각도를 정해요.",
+    "상자 놓기를 눌러 상자가 버티는지 봐요.",
+    "임계각 근처에서 각도를 조금씩 바꾸어 비교해요."
+  ],
+  "observe": "중력의 빗면 방향 성분이 최대 정지 마찰력보다 커지는 순간 상자가 미끄러지기 시작하는지 보세요.",
+  "terms": [
+    { "name": "정지 마찰력", "description": "닿아 있는 물체가 미끄러지지 않도록 버티는 힘이에요." },
+    { "name": "최대 정지 마찰력", "description": "물체가 움직이기 직전까지 버틸 수 있는 가장 큰 마찰력이에요." },
+    { "name": "운동 마찰력", "description": "미끄러지는 물체의 움직임을 방해하는 마찰력이에요." },
+    { "name": "임계각", "description": "빗면 위 물체가 미끄러지기 시작하는 가장 작은 기울기예요." }
+  ],
+  "law": {
+    "title": "빗면과 마찰",
+    "description": "중력의 빗면 성분이 최대 정지 마찰력보다 크면 상자가 미끄러지고, 미끄러지는 동안에는 운동 마찰이 가속도를 줄입니다.",
+    "equation": "mg sinθ > μs·mg cosθ · a = g(sinθ − μk cosθ)"
+  },
+  "tip": "두 손가락을 함께 끌면 시점이 돌아가고, 벌리거나 오므리며 움직이면 확대·축소와 이동이 돼요.",
+  "scene": "res://experiments/incline_friction/incline_friction.gd",
+  "bench_id": "S3",
+  "camera": {
+    "target": [0.0, 2.2, 0.0],
+    "distance": 11.0,
+    "distance_range": [4.0, 24.0],
+    "yaw_range_deg": [-100.0, 100.0],
+    "pitch_range_deg": [-89.0, -2.0],
+    "pan_radius": 5.0,
+    "default_mode": "three_quarter",
+    "views": {
+      "front": { "yaw_deg": 0.0, "pitch_deg": -6.0 },
+      "three_quarter": { "yaw_deg": 35.0, "pitch_deg": -24.0 },
+      "top": { "yaw_deg": 0.0, "pitch_deg": -89.0 },
+      "side": { "yaw_deg": 90.0, "pitch_deg": -8.0 },
+      "follow": { "yaw_deg": 20.0, "pitch_deg": -18.0, "distance": 6.0 }
+    }
+  },
+  "controls": [
+    {
+      "id": "angle", "type": "slider", "label": "빗면 각도", "unit": "°",
+      "min": 0.0, "max": 45.0, "step": 0.5, "default": 20.0, "digits": 1
+    },
+    {
+      "id": "material", "type": "choice", "label": "표면 재질", "default": "wood",
+      "note": "상자와 빗면이 같은 재질이에요.",
+      "options": [
+        { "id": "steel", "label": "강철", "mu_s": 0.26, "mu_k": 0.08 },
+        { "id": "wood", "label": "나무", "mu_s": 0.40, "mu_k": 0.22 },
+        { "id": "rubber", "label": "고무", "mu_s": 0.60, "mu_k": 0.42 },
+        { "id": "clay", "label": "점토", "mu_s": 0.76, "mu_k": 0.58 }
+      ]
+    }
+  ],
+  "actions": [
+    { "id": "release", "label": "상자 놓기", "style": "primary" },
+    { "id": "reset", "label": "처음으로" }
+  ],
+  "observations": [
+    { "id": "critical_angle", "label": "임계각 θc (tan θc = μs)", "unit": "°", "digits": 1 },
+    { "id": "state", "label": "상자 상태" },
+    { "id": "tangential", "label": "중력의 빗면 성분 mg sinθ", "unit": "N", "digits": 2 },
+    { "id": "max_static", "label": "최대 정지 마찰력 μs·mg cosθ", "unit": "N", "digits": 2 },
+    { "id": "acceleration", "label": "가속도 a", "unit": "m/s²", "digits": 2 },
+    { "id": "distance", "label": "이동 거리 (시뮬레이션)", "unit": "m", "digits": 2 }
+  ],
+  "graph": {
+    "title": "놓은 뒤 이동 거리",
+    "x": { "label": "시간 t", "unit": "s", "max": 3.0 },
+    "y": { "label": "이동 거리 s", "unit": "m", "min_max": 1.0 },
+    "series": [
+      { "id": "formula", "label": "공식 ½at²", "color": "#365eea", "style": "line" },
+      { "id": "measured", "label": "시뮬레이션", "color": "#ef7754", "style": "points" }
+    ]
+  }
+}

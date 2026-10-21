@@ -57,6 +57,8 @@ Mali GPU 클럭(전 구간 5초 표본 238개): 450 MHz 74%, 343 MHz 26%, 545·6
 - 긴 프레임(33 ms 초과)은 수집기의 `dumpsys meminfo`가 만든다. 조회를 빼면 0개다.
 - 그래도 1% low 48.4 fps·p95 19.0 ms로 측정 기준(≥ 50, ≤ 18 ms)에 조금 못 미친다. 멈춤이 아니라 16.7 ms 주변의 프레임 간격 흔들림(초당 p95가 19–20 ms)이다. 기준을 바꿀지, 프레임 페이싱을 Task 2c 이후에 다룰지는 사용자 판단으로 남긴다.
 
+- 리뷰 반영 후 확인(2026-10-21): 코드 리뷰 반영 빌드(`841cdd4`)로 같은 인자·같은 화면 상태에서 low 90초 1회 — 평균 59.8 fps, 1% low 36.8, p95 19.8 ms, PSS 159 MB, 최고 29.4 °C (기준 59.5 이상 충족). 원본: [`review-check/`](./review-check/).
+
 ## 2. 카메라 모드·"정면으로"·제스처
 
 - 두 손가락 제스처는 `apps/lab3d/tools/device_gesture.py`로 재생했다. Android `hid` 명령으로 2점 가상 멀티터치 화면(HID 디지타이저)을 등록해 실제 입력 경로(커널 hid-multitouch → Android InputReader → Godot)로 들어간다. `adb shell input`은 한 손가락만 되고, 실제 터치스크린 노드(`/dev/input/event1`)에 쓰기는 SELinux가 막았다. 손으로 한 확인은 아니다.

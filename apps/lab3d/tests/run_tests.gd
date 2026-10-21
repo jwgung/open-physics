@@ -257,29 +257,36 @@ func _check_juice_rotated_landing() -> void:
 	world.queue_free()
 
 
-## The support post never shows through the incline: at every angle up to the slider's maximum the
-## top of the post is under the incline's underside over the post's whole x range.
+## The hinge: at every angle up to the slider's maximum the post top lies inside the axle's circle
+## (no gap), under the incline's underside (no crossing), and the axle/lugs touch the underside.
 func _check_stand_clearance() -> void:
 	var max_angle := 0.0
 	for control in _lab.definition.controls:
 		if control.id == "angle":
 			max_angle = float(control.max)
-	var stand: MeshInstance3D = _lab.get_node("Stand")
+	var post: MeshInstance3D = _lab.get_node("Stand/Post")
 	var incline_mesh: MeshInstance3D = _lab._pivot.find_children("*", "MeshInstance3D", true, false)[0]
-	var under_local: float = incline_mesh.get_parent().position.y + incline_mesh.mesh.get_aabb().position.y
-	var worst := INF
+	var aabb := incline_mesh.mesh.get_aabb()
+	var axle_low: float = incline_mesh.get_parent().position.y + aabb.position.y
+	var touches: bool = absf(axle_low + InclineProps.AXLE_DEPTH + InclineProps.AXLE_RADIUS) < 0.01 \
+		and InclineProps.AXLE_DEPTH - InclineProps.AXLE_RADIUS < InclineProps.INCLINE_THICKNESS
+	var worst_circle := -INF
+	var worst_under := INF
 	var angle := 0.0
 	while angle <= max_angle + 0.001:
 		_lab.set_angle(angle)
-		var top: float = (stand.global_transform * Vector3(0.0, stand.mesh.get_aabb().end.y, 0.0)).y
-		var a: Vector3 = _lab._pivot.global_transform * Vector3(-4.0, under_local, 0.0)
-		var b: Vector3 = _lab._pivot.global_transform * Vector3(4.0, under_local, 0.0)
-		for x in [-0.25, 0.25]:
-			var under := lerpf(a.y, b.y, (x - a.x) / (b.x - a.x))
-			worst = minf(worst, under - top)
+		var axle: Vector3 = _lab._pivot.global_transform * Vector3(0.0, -InclineProps.AXLE_DEPTH, 0.0)
+		var top_y: float = post.mesh.get_aabb().end.y
+		for cx in [-0.25, 0.25]:
+			var corner: Vector3 = post.global_transform * Vector3(cx, top_y, 0.0)
+			worst_circle = maxf(worst_circle, Vector2(corner.x - axle.x, corner.y - axle.y).length() - InclineProps.AXLE_RADIUS)
+			var local: Vector3 = _lab._pivot.global_transform.affine_inverse() * corner
+			worst_under = minf(worst_under, -InclineProps.INCLINE_THICKNESS - local.y)
 		angle += 2.5
 	_lab.set_angle(20.0)
-	_expect(max_angle >= 45.0 and worst > 0.0, "support post top stays under the incline at every angle", "max angle %.0f, min clearance %.3f m" % [max_angle, worst])
+	_expect(max_angle >= 45.0 and touches and worst_circle < 0.0 and worst_under > 0.0,
+		"post top stays inside the hinge axle and under the incline at every angle",
+		"max angle %.0f, axle touches %s, circle margin %.3f m, underside clearance %.3f m" % [max_angle, touches, -worst_circle, worst_under])
 
 
 ## Button look and press feedback: a pressed face moves down as a whole, disabled buttons keep the

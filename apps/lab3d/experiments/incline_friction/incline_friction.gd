@@ -29,6 +29,7 @@ var corrector := InclineFrictionCorrector.new()
 ## Grass island meshes, shadows and the box reactions (visual only, never the bodies).
 var props := InclineProps.new()
 var _stand: MeshInstance3D
+var _post: MeshInstance3D
 
 var _pivot: Node3D
 var _graph_points := PackedVector2Array()
@@ -245,8 +246,11 @@ func _build_world() -> void:
 	_pivot.add_child(mark)
 
 	# Support post under the pivot (visual only, no collision).
-	_stand = ArtKit.instance(props.stand_mesh(STAND_HEIGHT))
+	_stand = ArtKit.instance(props.foot_mesh())
 	_stand.name = "Stand"
+	_post = ArtKit.instance(props.post_mesh(STAND_HEIGHT))
+	_post.name = "Post"
+	_stand.add_child(_post)
 	_stand.position = Vector3(0.0, 0.0, InclineProps.STAND_Z)
 	add_child(_stand)
 	_fit_stand()
@@ -279,10 +283,12 @@ func _build_world() -> void:
 	props.juice.landed.connect(impact.emit)
 
 
-## The post is shortened as the incline tilts so its top never shows through the incline.
+## The post leans and shortens with the incline so its top stays inside the hinge axle's circle.
 func _fit_stand() -> void:
-	if _stand != null:
-		_stand.scale.y = InclineProps.stand_height(STAND_HEIGHT, PIVOT_HEIGHT, angle_deg) / STAND_HEIGHT
+	if _post != null:
+		var pose := InclineProps.post_pose(PIVOT_HEIGHT, angle_deg)
+		_post.rotation.z = pose.x
+		_post.scale.y = pose.y / STAND_HEIGHT
 
 
 func _add_box_shape(body: CollisionObject3D, size: Vector3) -> void:

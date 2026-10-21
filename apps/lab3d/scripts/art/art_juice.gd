@@ -11,6 +11,7 @@
 ##   puff(s)        small dust puff under the body (0..1)
 ##   automatic      landing on the ground (fast downward speed stopping near ground_y): squash by
 ##                  the fall speed + dust + `landed(strength)`; coming to rest after that: wobble
+## Springs closer to rest than SETTLED_VALUE / SETTLED_SPEED stop updating (set_process(false)).
 class_name ArtJuice
 extends Node3D
 
@@ -199,6 +200,7 @@ func _update_shadow() -> void:
 	var hit := get_world_3d().direct_space_state.intersect_ray(_ray)
 	if hit.is_empty():
 		_shadow.visible = false
+		_normal = Vector3.UP   # nothing below (fell off the island): no stale surface normal for puff/squash
 		return
 	_shadow.visible = true
 	var height := maxf(0.0, from.y - (hit.position as Vector3).y - size * 0.5)

@@ -15,9 +15,9 @@ static var _loaded := false
 
 
 ## All valid definitions in index order (read from disk once; treat as read-only). Invalid ones
-## are skipped with an error. `reload` reads the content again.
-static func load_all(reload := false) -> Array[Dictionary]:
-	if _loaded and not reload:
+## are skipped with an error.
+static func load_all() -> Array[Dictionary]:
+	if _loaded:
 		return _cache
 	var result: Array[Dictionary] = []
 	_cache = result

@@ -12,6 +12,9 @@ const TOP_BAR_HEIGHT := 84.0
 const SIDE_PANEL_WIDTH := 470.0
 const TIP_SECONDS := 8.0
 
+## Launch args (--ctl-*, --camera, ...) apply to the first experiment screen of the app run only.
+static var _launch_args_done := false
+
 var definition: Dictionary
 var experiment: Experiment
 var view: View3D
@@ -31,10 +34,23 @@ var _sections: Dictionary = {}          # section id -> card (for --scroll-to)
 var _refresh_left := 0.0
 var _auto_release_every := 0.0
 var _auto_release_left := 0.0
+var _state: Dictionary = {}             # capture_state() of a screen being rebuilt
+var _updating := false                  # a control/action is running: refresh once afterwards
 
 
-func setup(new_definition: Dictionary) -> void:
+## `state` (optional): capture_state() of a previous screen of the same experiment (conditions
+## and camera are restored instead of the defaults / launch args).
+func setup(new_definition: Dictionary, state := {}) -> void:
 	definition = new_definition
+	_state = state
+
+
+## Conditions (control values) and camera of this screen, for a rebuild with the same experiment.
+func capture_state() -> Dictionary:
+	var controls := {}
+	for control in definition.controls:
+		controls[control.id] = experiment.control_value(control.id)
+	return {"controls": controls, "camera": view.rig.get_state()}
 
 
 func _ready() -> void:
@@ -45,7 +61,7 @@ func _ready() -> void:
 	_build_view_overlays()
 	_build_panel()
 	experiment = ExperimentRegistry.instantiate(definition)
-	experiment.state_changed.connect(_refresh)
+	experiment.state_changed.connect(_on_state_changed)
 	view.set_world(experiment)
 	view.rig.follow_source = experiment
 	view.rig.configure(definition.camera)
@@ -54,9 +70,21 @@ func _ready() -> void:
 	_on_mode_changed(view.rig.mode)
 	resized.connect(_layout)
 	_layout()
-	_apply_launch_args()
+	if not _state.is_empty():
+		_restore_state()
+	elif not _launch_args_done:
+		_apply_launch_args()
+	_launch_args_done = true
 	_refresh()
 	Bench.reset(definition.get("bench_id", definition.id))
+
+
+func _restore_state() -> void:
+	var controls: Dictionary = _state.get("controls", {})
+	for id in controls:
+		_set_control(id, controls[id])
+	view.rig.set_state(_state.get("camera", {}))
+	_on_mode_changed(view.rig.mode)
 
 
 ## Measurement/screenshot hooks from the launch args (Quality.all_args):
@@ -174,13 +202,17 @@ func _build_view_overlays() -> void:
 	view.resized.connect(_fit_overlays)
 
 
+func _scroll_to(section: String) -> void:
+	# Containers sort over the first frames; the card's offset inside the scrolled content
+	# (its parent margin included) is the same measure as scroll_vertical.
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var content: Control = _scroll.get_child(0)
+	_scroll.scroll_vertical = int(_sections[section].global_position.y - content.global_position.y)
+
+
 ## Overlays are placed by hand: the mode bar sits bottom-left at its minimum size, "정면으로"
 ## top-right, the gesture tip top-left in the space left of it.
-func _scroll_to(section: String) -> void:
-	await get_tree().process_frame  # containers sort first
-	_scroll.scroll_vertical = int(_sections[section].position.y)
-
-
 func _fit_overlays() -> void:
 	var margin := 12.0
 	_mode_bar.size = _mode_bar.get_combined_minimum_size()
@@ -278,14 +310,24 @@ func _build_conditions() -> Control:
 
 
 func experiment_action(id: String) -> void:
+	_updating = true
 	experiment.run_action(id)
+	_updating = false
 	_refresh()
 
 
 func _set_control(id: String, value: Variant) -> void:
+	_updating = true
 	experiment.set_control(id, value)
+	_updating = false
 	_sync_control(id)
 	_refresh()
+
+
+## state_changed during our own control/action call is covered by that call's single refresh.
+func _on_state_changed() -> void:
+	if not _updating:
+		_refresh()
 
 
 func _sync_control(id: String) -> void:

@@ -14,6 +14,12 @@ const SETTINGS_PATH := "user://settings.cfg"
 var _definitions: Array[Dictionary] = []
 var _screen: Control
 var _return_to: Dictionary = {}           # experiment to return to from settings ({} = list)
+## The experiment screen is kept (out of the tree) while settings is open, so angle, material,
+## release state and camera survive. A same-renderer quality change rebuilds its 3D view
+## (Quality.changed): then only the conditions and camera are kept (_saved_state). A renderer
+## restart ends the process and returns to the list.
+var _held: ExperimentScreen
+var _saved_state: Dictionary = {}
 var _fps_label: Label
 var _show_fps := false
 
@@ -75,6 +81,7 @@ func _go_back() -> void:
 
 
 func show_list() -> void:
+	_drop_held()
 	var screen := ListScreen.new()
 	screen.definitions = _definitions
 	screen.experiment_chosen.connect(show_experiment)
@@ -84,12 +91,14 @@ func show_list() -> void:
 	_swap(screen, "list")
 
 
-func show_experiment(definition: Dictionary) -> void:
+func show_experiment(definition: Dictionary, state := {}) -> void:
+	_drop_held()
 	var screen := ExperimentScreen.new()
-	screen.setup(definition)
+	screen.setup(definition, state)
 	screen.back_requested.connect(show_list)
 	screen.settings_requested.connect(func() -> void:
 		_return_to = definition
+		_held = screen
 		show_settings())
 	_swap(screen, "")  # the screen resets Bench with the experiment's bench id
 
@@ -110,14 +119,29 @@ func show_settings() -> void:
 func _leave_settings() -> void:
 	if _return_to.is_empty():
 		show_list()
+	elif _held != null:
+		var screen := _held
+		_held = null
+		_swap(screen, "")
+		Bench.reset(screen.definition.get("bench_id", screen.definition.id))
 	else:
-		show_experiment(_return_to)
+		var state := _saved_state
+		_saved_state = {}
+		show_experiment(_return_to, state)
+
+
+func _drop_held() -> void:
+	if _held != null:
+		_held.queue_free()
+		_held = null
+	_saved_state = {}
 
 
 func _swap(screen: Control, bench_scene: String) -> void:
 	if _screen:
 		remove_child(_screen)
-		_screen.queue_free()
+		if _screen != _held:
+			_screen.queue_free()
 	_screen = screen
 	add_child(screen)
 	if bench_scene != "":
@@ -132,9 +156,12 @@ func _find(id: String) -> Dictionary:
 
 
 func _on_quality_changed() -> void:
-	# Same-renderer tier change: rebuild the current screen so lights and the 3D view re-read it.
-	if _screen is ExperimentScreen:
-		show_experiment((_screen as ExperimentScreen).definition)
+	# Same-renderer tier change: the held experiment screen is rebuilt on return so lights and the
+	# 3D view re-read the tier; its conditions and camera carry over.
+	if _held != null:
+		_saved_state = _held.capture_state()
+		_held.queue_free()
+		_held = null
 
 
 func _set_fps(on: bool) -> void:

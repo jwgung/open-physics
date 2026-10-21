@@ -22,7 +22,7 @@ var viewport: SubViewport
 
 var _display: TextureRect
 var _touches: Dictionary = {}      # touch index -> position (local UI units)
-var _gesture := ""                 # "", "pending", "orbit", "pinch"
+var _gesture := ""                 # "", "pending", "orbit", "pinch", "ended" (one finger left)
 var _gesture_start_mid := Vector2.ZERO
 var _gesture_start_span := 0.0
 var _mouse_mode := ""              # "", "orbit", "pan"
@@ -102,11 +102,12 @@ func _on_touch(event: InputEventScreenTouch) -> void:
 		_touches.erase(event.index)
 	match _touches.size():
 		0:
+			if _gesture == "" and not event.pressed:
+				single_pointer.emit("release", event.position)
 			_gesture = ""
-			single_pointer.emit("release" if not event.pressed else "press", event.position)
 		1:
 			if _gesture != "":
-				_gesture = ""  # lifting one of two fingers ends the gesture; never fall back to a drag
+				_gesture = "ended"  # lifting one of two fingers ends the gesture; the other never becomes a drag
 			elif event.pressed:
 				single_pointer.emit("press", event.position)
 		2:

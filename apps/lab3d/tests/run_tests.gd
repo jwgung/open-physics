@@ -278,8 +278,15 @@ func _check_gestures(definition: Dictionary) -> void:
 		_drag(view, 1, Vector2(400 + i * 10, 300))
 	_expect(view.rig.goal_yaw != yaw and view.rig.mode == "orbit" and is_equal_approx(view.rig.goal_distance, distance),
 		"two-finger drag turns the view (제한 회전)", "yaw %.1f -> %.1f deg" % [rad_to_deg(yaw), rad_to_deg(view.rig.goal_yaw)])
+	# Lifting one finger ends the gesture; the remaining finger does not become a drag.
+	pointer_events.clear()
 	_touch(view, 1, Vector2(490, 300), false)
-	_touch(view, 0, Vector2(390, 300), false)
+	var yaw_after: float = view.rig.goal_yaw
+	for i in 5:
+		_drag(view, 0, Vector2(390 + i * 20, 300))
+	_touch(view, 0, Vector2(470, 300), false)
+	_expect(view.rig.goal_yaw == yaw_after and not pointer_events.has("move") and not pointer_events.has("release"),
+		"the finger left after a two-finger gesture is ignored", "events %s" % ",".join(pointer_events))
 	# Two fingers spreading: zoom in (and pan with the midpoint).
 	distance = view.rig.goal_distance
 	_touch(view, 0, Vector2(300, 300), true)

@@ -298,31 +298,16 @@ This makes presets, local persistence, import/export, and potentially shareable 
 
 ## 8. Rendering Dimension
 
-The initial product should be **2D**.
+The product started as **2D** on the web and is moving to a **3D mobile app** (iOS and Android) with a web build of the same content. See [ADR 0001](./adr/0001-3d-app-stack.md).
 
-2D is the preferred starting point because it makes direct manipulation and visualization of physical quantities especially clear:
+- Both viewing and physics are 3D. Guided labs apply planar constraints only where the phenomenon needs them (for example pendulums and pulleys).
+- Each lab defines a default camera view and rotation range: front, three-quarter, top, side, follow, and limited free orbit. A "front view" control is always available so vectors, angles, and graphs stay readable.
+- Placement uses a manipulation plane (floor or surface), snapping, auto-settling, and helper views, with height on a separate handle. This keeps direct manipulation as easy as in 2D.
+- One general-purpose 3D physics engine serves guided labs and the sandbox. In guided labs, core motion and displayed values are corrected to the formula core so that numbers match the textbook model.
+- Explanation panels, observation values, and graphs remain 2D UI.
+- The existing web 2D product is in maintenance only.
 
-- force, velocity, and acceleration vectors;
-- trajectories;
-- electric and magnetic fields;
-- waves and interference;
-- optical rays;
-- particles and thermal motion;
-- graphs and measurements.
-
-The product should not attempt to reproduce every three-dimensional detail when a 2D representation of the intended physical model is clearer.
-
-The architecture should nevertheless avoid unnecessarily coupling the physics model to the renderer so that a 3D renderer can be introduced later if a specific class of phenomena genuinely benefits from it.
-
-Conceptually:
-
-```text
-Physics Core
-      │
-      ├── 2D Renderer
-      │
-      └── Future 3D Renderer (if justified)
-```
+The physics formula core stays independent of the renderer and is the reference for correction tests.
 
 ## 9. Guided Content and Free Exploration
 

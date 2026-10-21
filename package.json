@@ -7,7 +7,8 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:spikes": "vitest run --config /dev/null --root . spikes/godot/tools/s3-vectors.test.ts"
   },
   "devDependencies": {
     "typescript": "^5.8.0",

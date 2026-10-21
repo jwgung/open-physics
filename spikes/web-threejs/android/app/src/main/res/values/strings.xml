@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">OP Spike Web</string>
+    <string name="title_activity_main">OP Spike Web</string>
+    <string name="package_name">dev.openphysics.spike.web</string>
+    <string name="custom_url_scheme">dev.openphysics.spike.web</string>
+</resources>

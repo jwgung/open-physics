@@ -1,0 +1,112 @@
+{
+  "source": "src/physics/laws (SurfaceContactFrictionModifier, constantAccelerationDisplacement)",
+  "g": 9.81,
+  "mu_s": 0.5,
+  "mu_k": 0.4,
+  "mass": 1,
+  "dt": 0.016666666666666666,
+  "critical_angle_deg": 26.56505117707799,
+  "accel_35": 2.412432218813758,
+  "displacement_35": [
+    {
+      "t": 1,
+      "s": 1.206216109406879
+    },
+    {
+      "t": 2,
+      "s": 4.824864437627516
+    }
+  ],
+  "cases": [
+    {
+      "theta_deg": 10,
+      "speed": 0,
+      "tangential_accel": 0
+    },
+    {
+      "theta_deg": 10,
+      "speed": 1,
+      "tangential_accel": -2.160896999907318
+    },
+    {
+      "theta_deg": 20,
+      "speed": 0,
+      "tangential_accel": 0
+    },
+    {
+      "theta_deg": 20,
+      "speed": 1,
+      "tangential_accel": -0.33213623793909486
+    },
+    {
+      "theta_deg": 26,
+      "speed": 0,
+      "tangential_accel": 1.3322676295501878e-15
+    },
+    {
+      "theta_deg": 26,
+      "speed": 1,
+      "tangential_accel": 0.7735531123229182
+    },
+    {
+      "theta_deg": 26.5,
+      "speed": 0,
+      "tangential_accel": -4.440892098500626e-16
+    },
+    {
+      "theta_deg": 26.5,
+      "speed": 1,
+      "tangential_accel": 0.865478111680877
+    },
+    {
+      "theta_deg": 26.6,
+      "speed": 0,
+      "tangential_accel": 0.8838554263406504
+    },
+    {
+      "theta_deg": 26.6,
+      "speed": 1,
+      "tangential_accel": 0.8838554263406504
+    },
+    {
+      "theta_deg": 27,
+      "speed": 0,
+      "tangential_accel": 0.9573372015297976
+    },
+    {
+      "theta_deg": 27,
+      "speed": 1,
+      "tangential_accel": 0.9573372015297976
+    },
+    {
+      "theta_deg": 30,
+      "speed": 0,
+      "tangential_accel": 1.5067163155498609
+    },
+    {
+      "theta_deg": 30,
+      "speed": 1,
+      "tangential_accel": 1.5067163155498609
+    },
+    {
+      "theta_deg": 35,
+      "speed": 0,
+      "tangential_accel": 2.412432218813758
+    },
+    {
+      "theta_deg": 35,
+      "speed": 1,
+      "tangential_accel": 2.412432218813758
+    },
+    {
+      "theta_deg": 40,
+      "speed": 0,
+      "tangential_accel": 3.2997880562260806
+    },
+    {
+      "theta_deg": 40,
+      "speed": 1,
+      "tangential_accel": 3.2997880562260806
+    }
+  ]
+}

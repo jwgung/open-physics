@@ -1,0 +1,15 @@
+{"candidate":"web-threejs","run":1,"totalTimeMs":1237}
+{"candidate":"web-threejs","run":2,"totalTimeMs":758}
+{"candidate":"web-threejs","run":3,"totalTimeMs":760}
+{"candidate":"web-threejs","run":4,"totalTimeMs":759}
+{"candidate":"web-threejs","run":5,"totalTimeMs":738}
+{"candidate":"godot","run":1,"totalTimeMs":369}
+{"candidate":"godot","run":2,"totalTimeMs":382}
+{"candidate":"godot","run":3,"totalTimeMs":360}
+{"candidate":"godot","run":4,"totalTimeMs":375}
+{"candidate":"godot","run":5,"totalTimeMs":391}
+{"candidate":"web-classic","run":1,"totalTimeMs":764}
+{"candidate":"web-classic","run":2,"totalTimeMs":777}
+{"candidate":"web-classic","run":3,"totalTimeMs":741}
+{"candidate":"web-classic","run":4,"totalTimeMs":755}
+{"candidate":"web-classic","run":5,"totalTimeMs":764}

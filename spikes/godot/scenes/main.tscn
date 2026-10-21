@@ -1,0 +1,64 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
+
+[node name="Main" type="Node"]
+script = ExtResource("1_main")
+
+[node name="SceneRoot" type="Node" parent="."]
+
+[node name="Hud" type="CanvasLayer" parent="."]
+layer = 10
+
+[node name="TopBar" type="HBoxContainer" parent="Hud"]
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 16.0
+offset_top = 16.0
+offset_right = -16.0
+offset_bottom = 88.0
+theme_override_constants/separation = 8
+
+[node name="S1" type="Button" parent="Hud/TopBar"]
+custom_minimum_size = Vector2(96, 72)
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+toggle_mode = true
+text = "S1"
+
+[node name="S2" type="Button" parent="Hud/TopBar"]
+custom_minimum_size = Vector2(96, 72)
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+toggle_mode = true
+text = "S2"
+
+[node name="S3" type="Button" parent="Hud/TopBar"]
+custom_minimum_size = Vector2(96, 72)
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+toggle_mode = true
+text = "S3"
+
+[node name="Spacer" type="Control" parent="Hud/TopBar"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="FpsToggle" type="Button" parent="Hud/TopBar"]
+custom_minimum_size = Vector2(120, 72)
+layout_mode = 2
+theme_override_font_sizes/font_size = 28
+toggle_mode = true
+button_pressed = true
+text = "FPS"
+
+[node name="FpsLabel" type="Label" parent="Hud"]
+offset_left = 16.0
+offset_top = 96.0
+offset_right = 704.0
+offset_bottom = 136.0
+theme_override_colors/font_color = Color(0.6, 1, 0.6, 1)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
+theme_override_constants/outline_size = 6
+theme_override_font_sizes/font_size = 24
+text = "-- fps"

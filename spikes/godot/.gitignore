@@ -1,0 +1,12 @@
+# Godot cache and import artifacts
+.godot/
+# Generated procedural textures (tools/bake_textures.gd)
+assets/generated/
+# Export outputs and local binaries
+exports/
+*.apk
+*.aab
+*.pck
+*.wasm
+export_credentials.cfg
+bin/

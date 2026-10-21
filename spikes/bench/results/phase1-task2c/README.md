@@ -95,3 +95,7 @@
 - `before-after.png`: 전후 합본(위 두 줄 3D 시점, 아래 두 줄 목록·폰 세로·태블릿 가로·설정)
 - `juice-sequence.png`, `juice-follow.mp4`: 연출
 - `mockups/`: 1단계 시안(A·B·C)과 짧은 fps 확인. 시안 코드(`--style`)는 확정 단계에서 지웠다
+
+## 6. 리뷰 반영 후 확인
+
+- 리뷰 반영 후 확인: 빌드 커밋 `c40fcc3`, SM-P200 low 90초 1회 평균 59.8 fps. 원본·스크린샷(각도 45°/0° 옆·3/4, 그림자 색)은 `review-check/`.

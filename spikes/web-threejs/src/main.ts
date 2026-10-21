@@ -1,18 +1,17 @@
 /**
  * Open Physics 3D spike A: Three.js WebGPURenderer (WebGL2 fallback) + Rapier + Capacitor.
- * Query params: ?backend=webgl|webgpu|auto  ?scene=S1|S2|S3  ?tex=512|1024|2048
+ * Query params: ?backend=webgl|webgpu|auto|classic  ?scene=S1|S2|S3  ?tex=512|1024|2048
  */
 import RAPIER from "@dimforge/rapier3d-compat";
-import { ACESFilmicToneMapping, WebGPURenderer } from "three/webgpu";
+import { ACESFilmicToneMapping as NodeAces, WebGPURenderer } from "three/webgpu";
+import { ACESFilmicToneMapping, WebGLRenderer } from "three";
 import { emitOpbench } from "./bench/opbench-log";
 import { FrameStats } from "./bench/frame-stats";
 import { OrbitScene } from "./scenes/s1-orbit";
 import { SandboxScene } from "./scenes/s2-sandbox";
 import { InclineScene } from "./scenes/s3-incline";
 import type { BenchScene, SceneContext, SceneId } from "./scenes/types";
-import { createOverlay } from "./ui/overlay";
-
-type BackendChoice = "auto" | "webgl" | "webgpu";
+import { createOverlay, type BackendChoice } from "./ui/overlay";
 
 const SCENE_KEY = "opspike.scene";
 const params = new URLSearchParams(location.search);
@@ -25,8 +24,9 @@ const writeStored = (key: string, value: string): void => {
 };
 
 function backendChoice(): BackendChoice {
-  const value = params.get("backend") ?? readStored("opspike.backend");
-  return value === "webgl" || value === "webgpu" ? value : "auto";
+  // Priority: ?backend= > localStorage > build-time VITE_DEFAULT_BACKEND > auto.
+  const value = params.get("backend") ?? readStored("opspike.backend") ?? (import.meta.env.VITE_DEFAULT_BACKEND as string | undefined);
+  return value === "webgl" || value === "webgpu" || value === "classic" ? value : "auto";
 }
 
 function initialScene(): SceneId {
@@ -41,16 +41,26 @@ async function main(): Promise<void> {
 
   const choice = backendChoice();
   const hasWebGPU = "gpu" in navigator;
-  const renderer = new WebGPURenderer({ canvas, antialias: true, forceWebGL: choice === "webgl" });
-  await renderer.init();
-  const backend = (renderer.backend as { isWebGPUBackend?: boolean }).isWebGPUBackend ? "WebGPU" : "WebGL2";
-  if (choice === "webgpu" && backend !== "WebGPU") console.warn("WebGPU requested but unavailable; using WebGL2.");
+  const classic = choice === "classic";
+  let renderer: WebGPURenderer | WebGLRenderer;
+  let backend: string;
+  if (classic) {
+    renderer = new WebGLRenderer({ canvas, antialias: true });
+    backend = "WebGL(classic)";
+    renderer.toneMapping = ACESFilmicToneMapping;
+  } else {
+    const nodeRenderer = new WebGPURenderer({ canvas, antialias: true, forceWebGL: choice === "webgl" });
+    await nodeRenderer.init();
+    backend = (nodeRenderer.backend as { isWebGPUBackend?: boolean }).isWebGPUBackend ? "WebGPU" : "WebGL2";
+    if (choice === "webgpu" && backend !== "WebGPU") console.warn("WebGPU requested but unavailable; using WebGL2.");
+    nodeRenderer.toneMapping = NodeAces;
+    renderer = nodeRenderer;
+  }
   renderer.setPixelRatio(window.devicePixelRatio);
-  renderer.toneMapping = ACESFilmicToneMapping;
   await RAPIER.init();
 
   const panel = document.createElement("div");
-  const context: SceneContext = { renderer, canvas, panel };
+  const context: SceneContext = { renderer, classic, canvas, panel };
   const stats = new FrameStats(emitOpbench);
   let current: BenchScene | null = null;
 
@@ -96,7 +106,7 @@ async function main(): Promise<void> {
   switchScene(initialScene());
 
   let last = performance.now();
-  await renderer.setAnimationLoop((now) => {
+  await (renderer as WebGPURenderer).setAnimationLoop((now) => {
     if (!current) return;
     stats.frame(now, current.id);
     const dt = Math.min(0.1, (now - last) / 1000);

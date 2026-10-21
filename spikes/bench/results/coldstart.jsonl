@@ -8,3 +8,8 @@
 {"candidate":"godot","run":3,"totalTimeMs":360}
 {"candidate":"godot","run":4,"totalTimeMs":375}
 {"candidate":"godot","run":5,"totalTimeMs":391}
+{"candidate":"web-classic","run":1,"totalTimeMs":764}
+{"candidate":"web-classic","run":2,"totalTimeMs":777}
+{"candidate":"web-classic","run":3,"totalTimeMs":741}
+{"candidate":"web-classic","run":4,"totalTimeMs":755}
+{"candidate":"web-classic","run":5,"totalTimeMs":764}

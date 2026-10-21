@@ -1,12 +1,14 @@
 import type { OpbenchLine } from "../bench/frame-stats";
 import type { SceneId } from "../scenes/types";
 
+export type BackendChoice = "auto" | "webgl" | "webgpu" | "classic";
+
 export interface OverlayOptions {
   backend: string;
-  backendChoice: "auto" | "webgl" | "webgpu";
+  backendChoice: BackendChoice;
   navigatorGpu: boolean;
   onScene(id: SceneId): void;
-  onBackend(choice: "auto" | "webgl" | "webgpu"): void;
+  onBackend(choice: BackendChoice): void;
 }
 
 export interface Overlay {
@@ -22,7 +24,7 @@ export function createOverlay(root: HTMLElement, options: OverlayOptions): Overl
     <nav>${(["S1", "S2", "S3"] as const).map((id) => `<button data-scene="${id}">${id}</button>`).join("")}</nav>
     <button data-fps aria-pressed="true">FPS</button>
     <select data-backend aria-label="렌더 백엔드">
-      <option value="auto">auto</option><option value="webgpu">WebGPU</option><option value="webgl">WebGL2</option>
+      <option value="auto">auto</option><option value="webgpu">WebGPU</option><option value="webgl">WebGL2</option><option value="classic">WebGL(classic)</option>
     </select>`;
   const stats = document.createElement("output");
   stats.className = "fps";
@@ -41,7 +43,7 @@ export function createOverlay(root: HTMLElement, options: OverlayOptions): Overl
   const select = bar.querySelector<HTMLSelectElement>("select[data-backend]");
   if (select) {
     select.value = options.backendChoice;
-    select.addEventListener("change", () => options.onBackend(select.value as OverlayOptions["backendChoice"]));
+    select.addEventListener("change", () => options.onBackend(select.value as BackendChoice));
   }
 
   return {

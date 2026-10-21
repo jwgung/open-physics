@@ -1,9 +1,15 @@
 import type { PerspectiveCamera, Scene, WebGPURenderer } from "three/webgpu";
+import type { WebGLRenderer } from "three";
+
+/** Either the node renderer (WebGPU / forced WebGL2) or the classic WebGLRenderer. */
+export type AnyRenderer = WebGPURenderer | WebGLRenderer;
 
 export type SceneId = "S1" | "S2" | "S3";
 
 export interface SceneContext {
-  renderer: WebGPURenderer;
+  renderer: AnyRenderer;
+  /** True when `renderer` is the classic WebGLRenderer (no TSL / node materials). */
+  classic: boolean;
   canvas: HTMLCanvasElement;
   /** Container for scene-specific UI (S3 panel). */
   panel: HTMLElement;

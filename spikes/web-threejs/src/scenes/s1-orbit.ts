@@ -26,9 +26,15 @@ import {
   Sprite,
   Vector3,
   type Texture,
+  type WebGPURenderer,
 } from "three/webgpu";
 import { instancedBufferAttribute, pass } from "three/tsl";
 import { bloom } from "three/addons/tsl/display/BloomNode.js";
+import { BufferAttribute, HalfFloatType, Points, ShaderMaterial, Vector2, WebGLRenderTarget, type WebGLRenderer } from "three";
+import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
+import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
+import { OutputPass } from "three/examples/jsm/postprocessing/OutputPass.js";
 import { circularOrbitSpeed } from "../../../../src/physics/laws/orbit";
 import { planetAlbedo, ringTexture, surfaceNormal, type SurfaceKind } from "../render/procedural-textures";
 import { seededRandom } from "../random";
@@ -67,7 +73,8 @@ export class OrbitScene implements BenchScene {
   readonly id = "S1" as const;
   readonly scene = new Scene();
   readonly camera = new PerspectiveCamera(CAMERA_FOV, 9 / 16, 0.1, 2000);
-  private readonly pipeline: RenderPipeline;
+  private readonly pipeline: RenderPipeline | null = null;
+  private readonly composer: EffectComposer | null = null;
   private readonly planets: { mesh: Group; omega: number; phase: number; spec: PlanetSpec }[] = [];
   private readonly disposables: { dispose(): void }[] = [];
   private time = 0;
@@ -146,16 +153,28 @@ export class OrbitScene implements BenchScene {
       }))));
     });
 
-    this.scene.add(this.createStars(random));
+    this.scene.add(this.createStars(random, context.classic));
 
-    const scenePass = pass(this.scene, this.camera);
-    const color = scenePass.getTextureNode("output");
-    this.pipeline = new RenderPipeline(context.renderer, color.add(bloom(color, 0.9, 0.4, 0.85)));
-    this.disposables.push(this.pipeline);
+    if (context.classic) {
+      // Classic path: same bloom parameters (strength 0.9, radius 0.4, threshold 0.85).
+      // OutputPass applies the renderer's ACES tone mapping + sRGB after bloom, like the TSL pipeline output.
+      const renderer = context.renderer as WebGLRenderer;
+      const target = new WebGLRenderTarget(1, 1, { type: HalfFloatType, samples: 4 });
+      this.composer = new EffectComposer(renderer, target);
+      this.composer.addPass(new RenderPass(this.scene, this.camera));
+      this.composer.addPass(new UnrealBloomPass(new Vector2(window.innerWidth, window.innerHeight), 0.9, 0.4, 0.85));
+      this.composer.addPass(new OutputPass());
+      this.disposables.push(this.composer);
+    } else {
+      const scenePass = pass(this.scene, this.camera);
+      const color = scenePass.getTextureNode("output");
+      this.pipeline = new RenderPipeline(context.renderer as WebGPURenderer, color.add(bloom(color, 0.9, 0.4, 0.85)));
+      this.disposables.push(this.pipeline);
+    }
     this.update(0);
   }
 
-  private createStars(random: () => number): Sprite {
+  private createStars(random: () => number, classic: boolean): Sprite | Points {
     const count = 5000;
     const positions = new Float32Array(count * 3);
     const colors = new Float32Array(count * 3);
@@ -169,6 +188,21 @@ export class OrbitScene implements BenchScene {
       const tint = 0.6 + random() * 0.4;
       colors.set([tint, tint * (0.85 + random() * 0.15), tint * (0.8 + random() * 0.2)], i * 3);
       sizes[i] = 1 + random() ** 3 * 3;
+    }
+    if (classic) {
+      // Fixed-pixel-size round-less points (sizeAttenuation: false equivalent), per-point size and color.
+      const geometry = this.track(new BufferGeometry());
+      geometry.setAttribute("position", new BufferAttribute(positions, 3));
+      geometry.setAttribute("color", new BufferAttribute(colors, 3));
+      geometry.setAttribute("size", new BufferAttribute(sizes, 1));
+      const points = new Points(geometry, this.track(new ShaderMaterial({
+        uniforms: { pixelRatio: { value: window.devicePixelRatio } },
+        vertexShader: `attribute float size; attribute vec3 color; varying vec3 vColor; uniform float pixelRatio;
+          void main() { vColor = color; gl_PointSize = size * pixelRatio; gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0); }`,
+        fragmentShader: `varying vec3 vColor; void main() { gl_FragColor = vec4(vColor, 1.0); }`,
+      })));
+      points.frustumCulled = false;
+      return points;
     }
     const material = this.track(new PointsNodeMaterial({ sizeAttenuation: false, transparent: false }));
     material.positionNode = instancedBufferAttribute(new InstancedBufferAttribute(positions, 3));
@@ -218,12 +252,14 @@ export class OrbitScene implements BenchScene {
   }
 
   render(): void {
-    this.pipeline.render();
+    if (this.composer) this.composer.render();
+    else this.pipeline?.render();
   }
 
   resize(width: number, height: number): void {
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
+    this.composer?.setSize(width, height);
   }
 
   dispose(): void {

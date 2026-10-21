@@ -31,7 +31,14 @@ JDK 21, Android SDK 36(compile/target), Gradle 8.14.3(wrapper)로 빌드를 확�
 
 | 파라미터 | 값 | 뜻 |
 |---|---|---|
-| `backend` | `auto`(기본) · `webgpu` · `webgl` | 렌더 백엔드. `webgl`은 `forceWebGL`로 WebGL2를 강제한다 |
+| `backend` | `auto`(기본) · `webgpu` · `webgl` · `classic` | 렌더 백엔드. `webgl`은 `WebGPURenderer`의 `forceWebGL`로 WebGL2를 강제한다. `classic`은 `THREE.WebGLRenderer`(오버레이 라벨 `WebGL(classic)`)로 S1–S3를 같은 씬·그림자·`antialias`·pixelRatio로 그린다 |
+
+백엔드 우선순위: `?backend=` > localStorage(`opspike.backend`) > 빌드 시 환경변수 `VITE_DEFAULT_BACKEND`(예: `classic`) > `auto`. `adb shell pm clear` 후 classic으로 시작하는 APK는 `VITE_DEFAULT_BACKEND=classic npm run android:release`로 만든다.
+
+`classic` 경로와 node 경로의 차이(비교 시 유의):
+- S1 bloom: node는 TSL `bloom(0.9, 0.4, 0.85)`를 색에 더한다. classic은 `EffectComposer`(HalfFloat, MSAA 4x 타깃) + `RenderPass` + `UnrealBloomPass(0.9, 0.4, 0.85)` + `OutputPass`(ACES 톤매핑·sRGB)이다. 파라미터는 같지만 블룸 구현(밉 체인 커널)이 달라 번짐 모양은 완전히 같지 않을 수 있다.
+- S1 별: node는 `PointsNodeMaterial` 스프라이트, classic은 `Points` + 작은 `ShaderMaterial`(점별 크기·색, `gl_PointSize = size × pixelRatio`)이다. 점 크기 스케일은 근사값이다.
+- S2/S3 및 재질·조명·그림자(PCF, 맵 크기)는 동일 코드를 쓴다. 환경 IBL만 `PMREMGenerator`를 렌더러 종류에 맞게 고른다.
 | `scene` | `S1` · `S2` · `S3` | 시작 장면 |
 | `tex` | `2048`(기본) · `1024` · `512` | S1 행성 텍스처 크기 |
 

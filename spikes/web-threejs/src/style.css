@@ -1,0 +1,18 @@
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; background: #05070c; color: #f3f5f8; font: 14px/1.4 system-ui, sans-serif; }
+#view { position: fixed; inset: 0; width: 100vw; height: 100dvh; touch-action: none; display: block; }
+#ui { position: fixed; inset: 0; pointer-events: none; padding: env(safe-area-inset-top) 12px env(safe-area-inset-bottom); }
+.bar { pointer-events: auto; display: flex; gap: 8px; align-items: center; padding-top: 8px; flex-wrap: wrap; }
+.bar nav { display: flex; gap: 4px; }
+button, select { font: inherit; min-height: 40px; min-width: 44px; border-radius: 8px; border: 1px solid #ffffff40; background: #10182ccc; color: inherit; padding: 0 10px; }
+button[aria-current="true"], button[aria-pressed="true"] { background: #2f7fd1; }
+.fps { display: inline-block; margin-top: 6px; padding: 4px 8px; border-radius: 6px; background: #000a; font: 12px/1.3 ui-monospace, monospace; }
+.fps[hidden] { display: none; }
+.lab-panel { pointer-events: auto; position: fixed; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom)); padding: 10px 12px; border-radius: 12px; background: #0b1220d9; }
+.lab-panel label { display: flex; gap: 8px; align-items: center; }
+.lab-panel input[type="range"] { flex: 1; }
+.presets { display: flex; gap: 6px; margin: 8px 0; flex-wrap: wrap; }
+.readout { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; margin: 0; font-size: 12px; }
+.readout dt { color: #aab6c8; }
+.readout dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+.fatal { pointer-events: auto; position: fixed; inset: auto 12px 12px; white-space: pre-wrap; background: #400; padding: 8px; }

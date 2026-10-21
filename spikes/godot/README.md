@@ -2,7 +2,7 @@
 
 Phase 0 T4. [측정 기준](../../docs/3d-phase0/benchmark-spec.md)의 S1~S3 장면을 Godot 4.7.2 stable(Jolt 기본, GDScript)로 구현한 비교용 스파이크다. 제품 코드가 아니다.
 
-- Android: Mobile 렌더러(Vulkan), arm64-v8a, release APK(디버그 키스토어 서명)
+- Android: Mobile 렌더러(Vulkan), arm64-v8a, release APK(디버그 키스토어 서명). Phase 1부터 low 품질 단계는 Compatibility 렌더러(OpenGL ES 3)로 재시작한다(3-1절)
 - Web: Compatibility 렌더러(WebGL 2), 단일 스레드 빌드
 - 모든 작업은 헤드리스 CLI(`godot --headless`)로 한다. 에디터 GUI를 쓰지 않는다.
 
@@ -47,8 +47,17 @@ adb shell am start -n org.openphysics.spike.godot/com.godot.game.GodotAppLaunche
 ```
 
 - 앱은 마지막으로 고른 장면을 `user://last_scene.txt`에 저장하고 다음 실행 때 그 장면으로 시작한다. 측정 기준 5절의 "회차 사이 앱 재시작"은 장면을 한 번 고른 뒤 `am force-stop` → `am start`로 하면 된다.
-- 장면 전환·FPS 오버레이 토글은 화면 위쪽 버튼이다. OPBENCH의 `t`는 장면을 열 때마다 0부터 다시 센다.
-- 장면별 수집(30초 워밍업은 장면을 연 뒤 기다린다):
+- 장면 전환·FPS 오버레이 토글은 화면 위쪽 버튼이다. 품질 단계 버튼(`Q high` 등)은 FPS 표시 아래에 있다. OPBENCH의 `t`는 장면을 열 때마다 0부터 다시 센다.
+- 화면을 누르지 않고 장면·품질 단계를 고르려면 launch intent의 문자열 extra `opargs`에 쉼표로 구분한 인자를 넘긴다. Godot 릴리스 템플릿은 자체 `command_line_params` extra를 무시하므로 `scripts/quality.gd`가 `AndroidRuntime`으로 intent를 직접 읽는다.
+
+```bash
+adb shell am start -n org.openphysics.spike.godot/com.godot.game.GodotAppLauncher \
+  --es opargs "--scene=S2,--quality=low"
+# 측정용 단일 항목 덮어쓰기(저장하지 않음): --q-<항목>=<값>, 예: --es opargs "--scene=S2,--quality=high,--q-msaa=0"
+```
+
+- 데스크톱에서는 같은 인자를 `godot --path spikes/godot -- --scene=S2 --quality=low`처럼 넘긴다.
+- 장면별 수집(30초 워밍업은 장면을 연 뒤 기다린다). `OPBENCH_RESULTS_DIR`로 결과 디렉터리를 바꿀 수 있다:
 
 ```bash
 spikes/bench/collect.sh godot S1 1 org.openphysics.spike.godot 60
@@ -68,6 +77,45 @@ spikes/bench/collect.sh godot S2 sustained org.openphysics.spike.godot 600
 ```bash
 adb logcat -v raw -s godot:I | sed -un 's/^OPBENCH //p' > spikes/bench/results/godot-S2-1.jsonl
 ```
+
+### OPPERF 로그 (Phase 1)
+
+병목 조사용으로 `bench.gd`가 OPBENCH와 같은 1초 창마다 logcat 태그 `OPPERF`로 JSON 한 줄을 더 남긴다. OPBENCH 형식(측정 기준 6절)은 바꾸지 않았다. `collect.sh`는 OPPERF 줄이 있으면 `<후보>-<장면>-<회차>.perf.jsonl`로 함께 저장한다.
+
+```json
+{"t":12,"scene":"S2","quality":"low","renderer":"gl_compatibility","process_ms":18.94,"physics_ms":3.55,"render_cpu_ms":4.88,"gpu_ms":null,"draws":41.00,"prims":55584.00,"objects":99.00,"gpu_max_ms":null}
+```
+
+| 필드 | 출처 | 뜻 |
+|---|---|---|
+| `quality` | `Quality.label()` | 품질 단계와 `--q-` 덮어쓰기(예: `high+msaa=0`) |
+| `renderer` | `RenderingServer.get_current_rendering_method()` | `mobile`(Vulkan) 또는 `gl_compatibility` |
+| `process_ms` | `Performance.TIME_PROCESS` | Godot 4.7에서는 한 프레임 전체 시간이다(vsync·GPU 대기 포함). CPU 작업량으로 읽으면 안 된다 |
+| `physics_ms` | `Performance.TIME_PHYSICS_PROCESS` | 그 프레임에서 가장 오래 걸린 물리 스텝 한 번(Jolt 스텝 + `_physics_process`) |
+| `render_cpu_ms` | `viewport_get_measured_render_time_cpu` + `get_frame_setup_time_cpu` | 루트 뷰포트 렌더 명령 기록·프레임 준비 CPU 시간 |
+| `gpu_ms`, `gpu_max_ms` | `viewport_get_measured_render_time_gpu` | 루트 뷰포트 GPU 시간 평균·최대. Compatibility 렌더러는 GPU 타임스탬프가 없어 `null` |
+| `draws`, `prims`, `objects` | `RENDER_TOTAL_DRAW_CALLS/PRIMITIVES/OBJECTS_IN_FRAME` | 프레임당 드로우콜·프리미티브·오브젝트 수 |
+
+값은 `t`, `scene`, `quality`, `renderer`를 빼고 1초 창의 프레임 평균이다(`gpu_max_ms`는 최대). 모니터는 직전 프레임 값을 돌려주므로 한 프레임 밀린 값이다.
+
+## 3-1. 품질 단계
+
+`scripts/quality.gd`(autoload `Quality`)가 모든 장면의 렌더 비용을 정한다. 근거와 SM-P200 측정값은 [Phase 1 Task 1 결과](../bench/results/phase1-task1/README.md)에 있다.
+
+| 항목 | low | medium | high (Phase 0과 같음) |
+|---|---|---|---|
+| 렌더러 | Compatibility (OpenGL ES 3) | Mobile (Vulkan) | Mobile (Vulkan) |
+| 루트 뷰포트 너비 | 540 (2D·3D 모두 540×960 기준으로 그린 뒤 화면에 확대) | 720 | 원본 해상도(1200×1920, `canvas_items` 스트레치) |
+| MSAA | 끔 | 2x | 2x |
+| 방향광 그림자 | 끔 | 직교 1장, 아틀라스 1024 | 장면 원래 모드(S2 2분할, S3 4분할), 아틀라스 2048 |
+| S2 배경·환경광 | 단색 배경 + 단색 환경광 | 단색 | 절차적 하늘 + 하늘 환경광·반사 |
+| S1 glow | 끔 | 켬 | 켬 |
+
+- 단계는 화면의 `Q` 버튼으로 low → medium → high 순서로 바꾸고 `user://quality.txt`에 저장한다. 같은 렌더러 안에서는 장면을 다시 만들어 바로 적용한다.
+- 렌더러는 시작할 때만 정해진다. 렌더러가 다른 단계로 바꾸면 `user://renderer_override.cfg`를 쓰고 앱을 한 번 재시작한다. `project.godot`의 `application/config/project_settings_override`가 이 파일을 읽는다. 재시작 뒤에도 렌더러가 맞지 않으면 경고만 남기고 다시 재시작하지 않는다.
+- 루트 뷰포트 너비를 줄이면 UI 배치 기준도 같이 작아진다(low는 버튼이 화면 대비 1.33배 크다). 위쪽 장면 버튼의 화면 좌표도 단계마다 달라지므로 자동 측정은 `opargs`를 쓴다.
+- Web은 항상 Compatibility 렌더러이고 렌더러 전환을 하지 않는다. 헤드리스 테스트(더미 렌더러)도 전환하지 않는다.
+- low의 강철(metallic 1.0)은 반사할 하늘이 없어 어둡게 보인다.
 
 ### Web 실행
 
@@ -126,7 +174,8 @@ leapfrog 시작 보정을 끄면 s(1s)=1.2263 m(+1.685%)로 실패한다.
 ## 6. 한계와 위험
 
 - 실기기 측정과 `Log.i` 경로는 SM-P200에서 확인했다([실측 결과](../bench/results/README.md)). 터치 조작(두 손가락 회전·드래그 스냅)은 실기기에서 확인하지 않았다.
-- Mobile 렌더러는 Vulkan이 필요하다. Vulkan 드라이버가 불안정한 기기에서는 크래시·폴백 위험이 있다.
+- Mobile 렌더러는 Vulkan이 필요하다. Vulkan 드라이버가 불안정한 기기에서는 크래시·폴백 위험이 있다. low 단계는 Compatibility 렌더러라 Vulkan이 없어도 된다.
+- SM-P200은 SoC(AP) 온도가 오르면 GPU 클럭을 845 → 450 MHz로 묶는다. 짧은 측정은 시작 온도에 따라 결과가 크게 달라진다([Phase 1 Task 1 결과](../bench/results/phase1-task1/README.md)).
 - Web은 Compatibility 렌더러라 그림자·glow 품질과 조명 계산이 Android와 다르고, 텍스처도 1024²로 낮췄다.
 - S2의 마찰은 보정하지 않은 Jolt 단일 계수다. TS `MATERIALS`의 정지 마찰(`friction + 0.18`)·기하평균 조합은 S3 보정 계층에만 있다.
 - S1 텍스처 메모리: 2048² 알베도(ETC2) + 노멀(EAC RG) 16장을 밉맵까지 합치면 GPU 메모리가 약 67 MB다.
@@ -135,6 +184,6 @@ leapfrog 시작 보정을 끄면 s(1s)=1.2263 m(+1.685%)로 실패한다.
 ## 파일
 
 - `project.godot`, `export_presets.cfg`: 렌더러(Android `mobile`, Web `gl_compatibility`), Jolt, 60 Hz 고정 스텝, 세로 화면, export 설정
-- `scenes/*.tscn`, `scripts/*.gd`: 장면 전환(`main`), OPBENCH(`bench`), S1~S3, 궤도 카메라, 공식 포트, 보정 계층
+- `scenes/*.tscn`, `scripts/*.gd`: 장면 전환(`main`), OPBENCH·OPPERF(`bench`), 품질 단계(`quality`), S1~S3, 궤도 카메라, 공식 포트, 보정 계층
 - `tests/run_tests.gd`, `tests/s3_vectors.json`: 헤드리스 S3 테스트와 TS 생성 벡터
 - `tools/`: 에디터 준비, 빌드, 텍스처 생성, 글꼴 서브셋, 벡터 생성(vitest)

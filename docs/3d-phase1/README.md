@@ -20,7 +20,7 @@ Notion Story·Task와 GitHub Issue는 발행하지 않는다. 이 문서가 Phas
 
 | # | Task | 결과·완료 확인 | 선행 | 상태 | 브랜치·PR |
 |---|---|---|---|---|---|
-| 1 | S2 성능 병목 조사와 품질 단계 | S2 병목을 근거와 함께 밝힌다. 저·중·고 품질 단계를 정의·구현하고, SM-P200에서 단계별 S1~S3를 측정한다. 저품질 60 fps 달성 여부와 남은 차이를 보고한다 | — | 진행 중 | `perf/godot-s2-quality-tiers` |
+| 1 | S2 성능 병목 조사와 품질 단계 | S2 병목을 근거와 함께 밝힌다. 저·중·고 품질 단계를 정의·구현하고, SM-P200에서 단계별 S1~S3를 측정한다. 저품질 60 fps 달성 여부와 남은 차이를 보고한다 | — | 완료(검토 대기) — 저품질 S1~S3 59.8 fps, [결과](../../spikes/bench/results/phase1-task1/README.md) | `perf/godot-s2-quality-tiers` |
 | 2 | 3D 앱 셸 | `apps/` 아래 Godot 프로젝트. 카메라 모드(정면·3/4·위·옆·따라가기·제한 회전), 터치 제스처, 조작 평면·스냅, 2D 패널 레이아웃, 품질 단계 설정 | 1 | 대기 | |
 | 3 | 공식 보정 계층과 parity 파이프라인 | 일반 접촉에 쓸 보정 설계(Jolt 접촉 콜백 범위 조사 포함), TS↔GDScript 벡터 테스트, CI(Node + Godot 헤드리스) | 1 | 대기 | |
 | 4 | 역학 안내형 10개 3D 이식 | 실험별로 나눠 진행한다. 실험 콘텐츠는 JSON으로 빼서 웹 2D와 공유한다 | 2, 3 | 대기 | |
@@ -48,3 +48,9 @@ Notion Story·Task와 GitHub Issue는 발행하지 않는다. 이 문서가 Phas
 ## 진행 기록
 
 - 2026-10-21: Phase 1 시작. Story 발행 없이 문서로 관리하기로 했다(사용자 결정). Task 1 착수.
+- 2026-10-21: Task 1 측정 완료. [결과](../../spikes/bench/results/phase1-task1/README.md)
+  - 판정: 저품질에서 SM-P200 S1·S2·S3 모두 59.8 fps(90초 × 3회), S2 10분 지속 59.6–59.8 fps·PSS 149 → 152 MB. 계약에 따라 Task 2로 넘어갈 수 있다.
+  - 병목: GPU. Mobile(Vulkan) 렌더러가 원본 해상도 1200×1920에서 내용과 무관하게 약 20 ms를 쓰고, S2 절차적 하늘 약 27 ms, 그림자 2분할 약 18 ms가 더해진다(GPU 450 MHz). 드로우콜·지오메트리·물리·MSAA는 반증됐다.
+  - 기기 특성: AP 온도가 오르면 GPU가 845 → 450 MHz로 묶인다. Phase 0의 S2 11.6 fps는 이 상태 값이다.
+  - 품질 단계: low = Compatibility 렌더러 + 루트 뷰포트 540 + 그림자·하늘·glow 끔, medium = Mobile + 720 + 직교 그림자 1장, high = Phase 0 그대로. low만 렌더러가 달라 전환 시 앱이 재시작한다.
+  - 남은 차이: medium 38–42 fps, high 11–28 fps. low의 1% low는 수집기(`dumpsys meminfo` 10초 간격) 영향으로 약 36 fps로 나온다. low는 그림자가 없고 540 기준으로 그려 UI가 흐리다 — Task 2에서 UI 해상도 처리를 정해야 한다.

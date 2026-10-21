@@ -75,9 +75,8 @@ apps/lab3d/
 | 3D 뷰 해상도 | 화면 픽셀의 45% (`view_scale` 0.45) | 60% | 100% |
 | UI | 원본 해상도 | 원본 해상도 | 원본 해상도 |
 | MSAA | 끔 | 2x | 2x |
-| 방향광 그림자(설정값) | 끔 | 직교 1장, 1024 | 장면 최대 4분할, 2048 |
 
-- 그림자 설정값은 `Quality.configure_sun()`을 쓰는 장면용으로 남아 있다. 잔디 섬 스타일은 엔진 조명·실시간 그림자를 쓰지 않아 모든 단계에서 블롭 그림자만 보인다(단계 차이는 3D 해상도·MSAA). high에 실시간 그림자를 더하지 않은 근거는 [Task 2c 결과](../../spikes/bench/results/phase1-task2c/README.md).
+- 잔디 섬 스타일은 엔진 조명·실시간 그림자를 쓰지 않아 모든 단계에서 블롭 그림자만 보인다(단계 차이는 3D 해상도·MSAA). high에 실시간 그림자를 더하지 않은 근거는 [Task 2c 결과](../../spikes/bench/results/phase1-task2c/README.md).
 - 기본 단계는 low다. `project.godot`의 기본 렌더러도 Compatibility라 첫 실행에 재시작이 없다.
 - 설정 화면에서 low ↔ medium·high를 바꾸면 렌더러가 달라 앱이 한 번 재시작하고 설정 화면으로 돌아온다(`user://renderer_override.cfg`, 방식은 스파이크와 같다). medium ↔ high는 바로 적용된다.
 - 측정용 단일 항목 덮어쓰기: `--q-<항목>=<값>`(저장하지 않음). 예: `--q-ui_mode=root`(Task 1 방식, UI까지 540), `--q-ui_mode=scale3d`, `--q-view_scale=0.6`.

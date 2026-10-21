@@ -32,6 +32,8 @@ JDK 21, Android SDK 36(compile/target), Gradle 8.14.3(wrapper)로 빌드를 확�
 | 파라미터 | 값 | 뜻 |
 |---|---|---|
 | `backend` | `auto`(기본) · `webgpu` · `webgl` · `classic` | 렌더 백엔드. `webgl`은 `WebGPURenderer`의 `forceWebGL`로 WebGL2를 강제한다. `classic`은 `THREE.WebGLRenderer`(오버레이 라벨 `WebGL(classic)`)로 S1–S3를 같은 씬·그림자·`antialias`·pixelRatio로 그린다 |
+| `scene` | `S1` · `S2` · `S3` | 시작 장면 |
+| `tex` | `2048`(기본) · `1024` · `512` | S1 행성 텍스처 크기 |
 
 백엔드 우선순위: `?backend=` > localStorage(`opspike.backend`) > 빌드 시 환경변수 `VITE_DEFAULT_BACKEND`(예: `classic`) > `auto`. `adb shell pm clear` 후 classic으로 시작하는 APK는 `VITE_DEFAULT_BACKEND=classic npm run android:release`로 만든다.
 
@@ -39,8 +41,6 @@ JDK 21, Android SDK 36(compile/target), Gradle 8.14.3(wrapper)로 빌드를 확�
 - S1 bloom: node는 TSL `bloom(0.9, 0.4, 0.85)`를 색에 더한다. classic은 `EffectComposer`(HalfFloat, MSAA 4x 타깃) + `RenderPass` + `UnrealBloomPass(0.9, 0.4, 0.85)` + `OutputPass`(ACES 톤매핑·sRGB)이다. 파라미터는 같지만 블룸 구현(밉 체인 커널)이 달라 번짐 모양은 완전히 같지 않을 수 있다.
 - S1 별: node는 `PointsNodeMaterial` 스프라이트, classic은 `Points` + 작은 `ShaderMaterial`(점별 크기·색, `gl_PointSize = size × pixelRatio`)이다. 점 크기 스케일은 근사값이다.
 - S2/S3 및 재질·조명·그림자(PCF, 맵 크기)는 동일 코드를 쓴다. 환경 IBL만 `PMREMGenerator`를 렌더러 종류에 맞게 고른다.
-| `scene` | `S1` · `S2` · `S3` | 시작 장면 |
-| `tex` | `2048`(기본) · `1024` · `512` | S1 행성 텍스처 크기 |
 
 상단 막대에 장면 버튼(S1/S2/S3), FPS 오버레이 토글, 백엔드 선택이 있다. 오버레이에는 실제로 잡힌 백엔드(`WebGPU`/`WebGL2`)와 `navigator.gpu` 유무가 함께 보인다. 백엔드를 바꾸면 페이지를 다시 연다. 마지막 장면과 백엔드는 `localStorage`에 남아서, 앱을 재시작해도 같은 장면·백엔드로 열린다(Android에서는 쿼리 파라미터를 줄 수 없어서 이 방식으로 회차를 반복한다).
 
@@ -131,7 +131,7 @@ Rapier는 정지/운동 마찰을 구분하지 않는 단일 Coulomb 계수만 �
 
 ## 알려진 한계
 
-- 실기기 측정은 [실측 결과](../bench/results/README.md)에 있다(SM-P200, backend auto → WebGPU). WebGL2 강제 경로는 아직 측정하지 않았다.
+- 실기기 측정은 [실측 결과](../bench/results/README.md)에 있다(SM-P200, backend auto → WebGPU와 `classic`). `webgl`(WebGPURenderer의 WebGL2 백엔드) 경로는 누수 조사에서 짧게만 측정했다(S2 5~7 fps).
 - 화면 확인은 헤드리스 Chromium의 SwiftShader로만 했다. WebGL2 경로는 세 장면 모두 스크린샷으로 렌더링을 확인했고, WebGPU 경로는 어댑터 획득·백엔드 선택·오류 없음까지만 확인했다(헤드리스 캡처가 WebGPU 캔버스를 비워서 찍음).
 - S1은 시작할 때 2048² 텍스처 11장을 메인 스레드에서 만든다. 중급 기기에서 첫 프레임까지 수 초 걸릴 수 있고, 콜드 스타트 수치에 이 생성 시간이 들어간다.
 - Capacitor 기본 템플릿의 `INTERNET` 권한을 그대로 두었다. 아동 정책 점검은 후속 과제다.

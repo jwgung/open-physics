@@ -49,4 +49,4 @@ node device-probe.mjs "raw:clear" 60 raw-clear
 
 - 다른 기기·GPU(Adreno, 최신 Mali)와 다른 WebView 버전에서도 재현되는지
 - Chromium 이슈 트래커에 같은 보고가 있는지
-- WebGL2 경로가 이 기기에서 5~7 fps로 느린 원인. three.js WebGPURenderer의 WebGL 백엔드 탓인지, 기존 `WebGLRenderer`로 바꾸면 나아지는지
+- WebGL2 경로가 이 기기에서 느린 원인. 기존 `WebGLRenderer`(classic)로 바꿔 측정한 결과는 [실측 결과의 WebGL 대안 절](../results/README.md#webgpu-누수와-webgl-대안)에 있다(S2 대부분 약 8 fps).

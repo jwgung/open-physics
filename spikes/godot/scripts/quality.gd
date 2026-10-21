@@ -35,7 +35,8 @@ var _overrides: Dictionary = {}
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	var requested := cmdline_value("quality")
-	if TIERS.has(requested):
+	# After a renderer restart the launch args are still there; the saved tier (picked in the app) wins.
+	if TIERS.has(requested) and not FileAccess.file_exists(RESTART_MARKER_PATH):
 		tier = requested
 		_save_tier()
 	elif FileAccess.file_exists(SAVE_PATH):
@@ -46,7 +47,11 @@ func _ready() -> void:
 		if arg.begins_with("--q-") and "=" in arg:
 			var key := arg.trim_prefix("--q-").get_slice("=", 0)
 			if TIERS[DEFAULT_TIER].has(key):
-				_overrides[key] = _parse_like(TIERS[DEFAULT_TIER][key], arg.get_slice("=", 1))
+				var text := arg.get_slice("=", 1)
+				if typeof(TIERS[DEFAULT_TIER][key]) == TYPE_INT and not text.is_valid_int():
+					push_warning("Quality: ignoring %s (not an integer)" % arg)
+					continue
+				_overrides[key] = _parse_like(TIERS[DEFAULT_TIER][key], text)
 	_apply_viewport()
 	_ensure_renderer.call_deferred()
 
@@ -153,7 +158,12 @@ func _ensure_renderer() -> bool:
 	var marker := FileAccess.open(RESTART_MARKER_PATH, FileAccess.WRITE)
 	if marker:
 		marker.store_string(wanted)
-	OS.set_restart_on_exit(true, OS.get_cmdline_args())
+	var restart_args := OS.get_cmdline_args()
+	var user_args := OS.get_cmdline_user_args()
+	if not user_args.is_empty():
+		restart_args.append("--")
+		restart_args.append_array(user_args)
+	OS.set_restart_on_exit(true, restart_args)
 	get_tree().quit()
 	return true
 

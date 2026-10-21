@@ -22,10 +22,12 @@ adb start-server >/dev/null 2>&1
 adb wait-for-device
 adb shell am force-stop "$package"
 adb shell input keyevent KEYCODE_WAKEUP
-adb shell am start -W -n "$package/com.godot.game.GodotAppLauncher" --es opargs "$(IFS=,; echo "$*")" >/dev/null
+extras=()
+(( $# > 0 )) && extras=(--es opargs "$(IFS=,; echo "$*")")  # adb drops an empty value
+adb shell am start -W -n "$package/com.godot.game.GodotAppLauncher" "${extras[@]}" >/dev/null
 sleep "$warmup"
 adb logcat -c
-# Mali clock (Hz) and the AP thermal sensor; both readable without root on SM-P200.
+# Mali clock (kHz) and the AP thermal sensor; both readable without root on SM-P200.
 timeout "$capture" adb shell 'while true; do echo $(cat /sys/class/misc/mali0/device/clock) $(dumpsys thermalservice | grep -m1 -o "mValue=[0-9.]*, mType=0" | cut -d= -f2 | cut -d, -f1); sleep 2; done' \
   > "$out_dir/$name.clk" 2>/dev/null &
 timeout "$capture" adb logcat -v raw -s OPBENCH:I OPPERF:I > "$out_dir/$name.log"

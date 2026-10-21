@@ -27,8 +27,8 @@ spikes/godot/tools/build.sh web      # exports/web/index.html
 
 - 행성 텍스처는 저장소에 넣지 않는다. 처음 빌드할 때 `tools/bake_textures.gd`가 `assets/generated/`(2048², Android용)와 `assets/generated/web/`(1024², Web용)를 만든다(약 1분). Godot import가 VRAM 압축(ETC2/EAC, S3TC/BPTC)으로 바꾼다.
 - release APK는 `GODOT_ANDROID_KEYSTORE_RELEASE_*` 환경변수로 디버그 키스토어를 넘겨 서명한다. 배포용이 아니다.
-- 루트 vitest는 `spikes/**`를 제외하므로 `tools/s3-vectors.test.ts`는 루트 `npm test`에 들어가지 않는다. 따로 `npx vitest run --config /dev/null --root . spikes/godot/tools/s3-vectors.test.ts`로 실행한다.
-- 새 worktree에서는 class cache가 없어 `build.sh test`가 실패할 수 있다. 먼저 `godot --headless --path spikes/godot --import`를 한 번 실행한다.
+- 루트 vitest는 `spikes/**`를 제외하므로 `tools/s3-vectors.test.ts`는 루트 `npm test`에 들어가지 않는다. 루트에서 `npm run test:spikes`로 따로 실행한다.
+- `build.sh`는 먼저 import를 실행하므로 새 checkout에서도 동작한다. 테스트 전체 출력은 `exports/test.log`에 남고, 실패 시 끝부분을 출력한다.
 
 ### 결과물 크기 (2026-10-21 빌드)
 
@@ -59,7 +59,7 @@ spikes/bench/collect.sh godot S2 sustained org.openphysics.spike.godot 600
 
 ### OPBENCH 로그 경로
 
-`scripts/bench.gd`(autoload)가 1초마다 측정 기준 6절과 같은 JSON 한 줄을 만든다. 프레임 시간은 `_process` delta다.
+`scripts/bench.gd`(autoload)가 1초마다 측정 기준 6절과 같은 JSON 한 줄을 만든다. 프레임 시간은 `Time.get_ticks_usec()` 간격이다(`delta_smoothing=false`). 씬 전환 뒤 첫 프레임 간격은 버린다.
 
 - Android: `JavaClassWrapper.wrap("android.util.Log")`로 `Log.i("OPBENCH", line)`을 직접 부른다. 플러그인·Gradle 빌드가 필요 없어 `collect.sh`의 `adb logcat -s OPBENCH:I`를 그대로 쓴다. `collect.sh`는 바꾸지 않았다.
 - 모든 플랫폼에서 `print("OPBENCH ", line)`도 남긴다(Android logcat 태그 `godot`, Web 콘솔, 데스크톱 stdout).

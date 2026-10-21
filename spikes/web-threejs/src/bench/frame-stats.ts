@@ -69,6 +69,7 @@ export class FrameStats {
     this.windowStart = null;
     this.measureStart = null;
     this.frameTimes = [];
+    this.latest = null;
   }
 
   frame(now: number, scene: string): void {

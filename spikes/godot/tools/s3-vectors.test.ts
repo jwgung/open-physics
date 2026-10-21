@@ -1,7 +1,8 @@
 // Generates and guards the S3 parity vectors consumed by the GDScript port (tests/run_tests.gd).
 // The TS formula core is the oracle: values come from SurfaceContactFrictionModifier and
 // constantAccelerationDisplacement, not from re-typed formulas.
-// Regenerate: UPDATE_S3_VECTORS=1 npx vitest run spikes/godot/tools/s3-vectors.test.ts
+// Run from the repo root: npm run test:spikes (root vitest excludes spikes/**).
+// Regenerate: UPDATE_S3_VECTORS=1 npm run test:spikes
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";

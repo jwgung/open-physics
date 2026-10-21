@@ -7,6 +7,8 @@
 import { accelerationFromForce, type BodyState } from "../../../../src/physics/core";
 import { KineticFriction } from "../../../../src/physics/laws/basic";
 import { constantAccelerationDisplacement } from "../../../../src/physics/laws/mechanics";
+import { SurfaceContactFrictionModifier } from "../../../../src/physics/laws/world-mechanics";
+import type { Body } from "../../../../src/physics/world";
 
 export interface InclineParams {
   mass: number;
@@ -80,25 +82,42 @@ export const expectedDistance = (acceleration: number, seconds: number): number 
   constantAccelerationDisplacement({ x: 0, y: 0 }, { x: acceleration, y: 0 }, seconds).x;
 
 /**
- * Friction force (signed, along +s downhill) the correction layer must apply this step,
- * following the same static/kinetic rule as the product core.
+ * Friction force (signed, along +s downhill) the correction layer must apply this step.
+ * Delegates to the product core's SurfaceContactFrictionModifier on an equivalent 2D ramp,
+ * so the static/kinetic rule, rest threshold and reversal clamp stay identical to the core.
  */
 export function frictionForceAlongSlope(
   readout: InclineReadout,
-  kineticCoefficient: number,
+  params: Readonly<Omit<InclineParams, "angleRad">>,
   slopeSpeed: number,
-  mass: number,
   dt: number,
 ): number {
-  const tangential = readout.tangentialGravity;
-  if (Math.abs(slopeSpeed) < REST_SPEED && Math.abs(tangential) <= readout.maxStaticFriction) {
-    return -tangential;
-  }
-  const direction = Math.abs(slopeSpeed) >= REST_SPEED ? Math.sign(slopeSpeed) : Math.sign(tangential);
-  let friction = -direction * kineticFrictionMagnitude(readout.normalForce, kineticCoefficient, slopeSpeed);
-  if (Math.abs(slopeSpeed) >= REST_SPEED) {
-    const nextSpeed = slopeSpeed + (tangential + friction) / mass * dt;
-    if (slopeSpeed * nextSpeed <= 0) friction = -mass * slopeSpeed / dt - tangential;
-  }
-  return friction;
+  const { mass, gravity, staticCoefficient, kineticCoefficient } = params;
+  // Core convention: +y points down; tilting the ramp by -θ makes (-cos, -sin) of that angle the downhill direction.
+  const angle = -readout.angleDeg * Math.PI / 180;
+  const downhill = { x: -Math.cos(angle), y: -Math.sin(angle) };
+  const body: Body = {
+    id: "box",
+    radius: 10,
+    staticFriction: staticCoefficient,
+    kineticFriction: kineticCoefficient,
+    state: {
+      position: { x: 50 + Math.sin(angle) * 15, y: 100 - Math.cos(angle) * 15 },
+      velocity: { x: downhill.x * slopeSpeed, y: downhill.y * slopeSpeed },
+      acceleration: { x: 0, y: 0 },
+      mass,
+    },
+  };
+  const ramp: Body = {
+    id: "ramp",
+    collider: { kind: "box", halfWidth: 50, halfHeight: 5, angle },
+    staticFriction: staticCoefficient,
+    kineticFriction: kineticCoefficient,
+    fixed: true,
+    state: { position: { x: 50, y: 100 }, velocity: { x: 0, y: 0 }, acceleration: { x: 0, y: 0 }, mass: 1 },
+  };
+  const modifier = new SurfaceContactFrictionModifier({ floorY: 1e6, normalAcceleration: gravity });
+  const result = modifier.modifyForce(body, [body, ramp], { vector: { x: 0, y: mass * gravity } }, { time: 0, dt });
+  const netAlongSlope = result.vector.x * downhill.x + result.vector.y * downhill.y;
+  return netAlongSlope - readout.tangentialGravity;
 }

@@ -42,6 +42,7 @@ func switch_to(scene_id: String) -> void:
 	if not SCENES.has(scene_id):
 		scene_id = "S1"
 	for child in _scene_root.get_children():
+		_scene_root.remove_child(child)
 		child.queue_free()
 	_scene_root.add_child(load(SCENES[scene_id]).instantiate())
 	_current = scene_id

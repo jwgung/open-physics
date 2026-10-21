@@ -124,14 +124,8 @@ export class InclineRig {
   /** Advances one fixed step with the correction layer. */
   step(): void {
     const speed = dot(this.box.linvel(), this.downhill);
-    const friction = frictionForceAlongSlope(
-      this.readout,
-      S3_PARAMS.kineticCoefficient,
-      speed,
-      S3_PARAMS.mass,
-      FIXED_DT,
-    );
-    const holding = Math.abs(speed) < REST_SPEED && friction === -this.readout.tangentialGravity;
+    const friction = frictionForceAlongSlope(this.readout, S3_PARAMS, speed, FIXED_DT);
+    const holding = Math.abs(speed) < REST_SPEED && Math.abs(friction + this.readout.tangentialGravity) < 1e-9;
     const slopeForce = friction;
     if (!holding && this.phase === "holding") this.slideTime = 0;
     this.phase = holding ? "holding" : "sliding";

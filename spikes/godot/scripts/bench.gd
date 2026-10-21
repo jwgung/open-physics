@@ -11,6 +11,7 @@ const LONG_FRAME_MS := 33.0
 var scene_name := "S1"
 var _elapsed := 0.0
 var _window := 0.0
+var _last_usec := -1   # -1 = next frame only sets the baseline (discarded interval)
 var _frames: PackedFloat32Array = PackedFloat32Array()
 var _android_log: Object = null
 
@@ -25,10 +26,19 @@ func reset(new_scene: String) -> void:
 	scene_name = new_scene
 	_elapsed = 0.0
 	_window = 0.0
+	_last_usec = -1
 	_frames.clear()
 
 
-func _process(delta: float) -> void:
+## Intervals come from Time.get_ticks_usec(), not the _process delta (delta_smoothing is also off in project.godot).
+## The first frame after reset only sets the baseline, so the scene load / shader compile frame is not measured.
+func _process(_delta: float) -> void:
+	var now := Time.get_ticks_usec()
+	if _last_usec < 0:
+		_last_usec = now
+		return
+	var delta := (now - _last_usec) / 1000000.0
+	_last_usec = now
 	_frames.append(delta * 1000.0)
 	_window += delta
 	if _window >= 1.0:

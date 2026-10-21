@@ -36,25 +36,28 @@ const coldStartMedian = (candidate) => {
   return times.length ? median(times) : NaN;
 };
 
-console.log("| 후보 | 장면 | 평균 FPS | 1% low* | p95 ms | 10분 저하 | 최고 온도 °C | PSS MB | 콜드 스타트 ms |");
-console.log("|---|---|---|---|---|---|---|---|---|");
+console.log("| 후보 | 장면 | 평균 FPS | 1% low* | p95 ms | 최고 온도 °C | PSS MB | 10분 저하 | 10분 최고 °C / PSS MB | 콜드 스타트 ms |");
+console.log("|---|---|---|---|---|---|---|---|---|---|");
 for (const { candidate, scene, runs: measured, sustained } of [...runs.values()].sort((a, b) =>
   `${a.candidate}${a.scene}`.localeCompare(`${b.candidate}${b.scene}`),
 )) {
   const frames = measured.flatMap((r) => r.frames);
-  const device = [...measured, ...(sustained ? [sustained] : [])].flatMap((r) => r.device);
+  // Short runs and the 10-minute run are reported separately so one row never mixes conditions.
+  const device = measured.flatMap((r) => r.device);
   const fps = frames.map((f) => f.fps);
   // Per-second p99 frame times approximate the 1% low; see benchmark-spec section 6.
   const onePercentLow = frames.length ? 1000 / mean(frames.map((f) => f.p99ms)) : NaN;
   let drop = "—";
+  let sustainedDevice = "—";
   if (sustained && sustained.frames.length > 120) {
     const s = sustained.frames;
     const first = mean(s.slice(0, 60).map((f) => f.fps));
     const last = mean(s.slice(-60).map((f) => f.fps));
     drop = `${fmt(((first - last) / first) * 100)}%`;
+    sustainedDevice = `${fmt(finiteMax(sustained.device.map((d) => d.batteryC)))} / ${fmt(finiteMax(sustained.device.map((d) => d.pssMB)), 0)}`;
   }
   console.log(
-    `| ${candidate} | ${scene} | ${fmt(mean(fps))} | ${fmt(onePercentLow)} | ${fmt(median(frames.map((f) => f.p95ms)))} | ${drop} | ${fmt(finiteMax(device.map((d) => d.batteryC)))} | ${fmt(finiteMax(device.map((d) => d.pssMB)), 0)} | ${fmt(coldStartMedian(candidate), 0)} |`,
+    `| ${candidate} | ${scene} | ${fmt(mean(fps))} | ${fmt(onePercentLow)} | ${fmt(median(frames.map((f) => f.p95ms)))} | ${fmt(finiteMax(device.map((d) => d.batteryC)))} | ${fmt(finiteMax(device.map((d) => d.pssMB)), 0)} | ${drop} | ${sustainedDevice} | ${fmt(coldStartMedian(candidate), 0)} |`,
   );
 }
 console.log("\n\\* 1% low는 초당 p99 프레임 시간(초당 30~60프레임에서는 사실상 그 초의 최악 프레임) 평균의 역수로 근사해, 전체 프레임의 하위 1%보다 보수적이다.");

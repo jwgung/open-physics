@@ -8,6 +8,7 @@ const MU_K := 0.4
 const MASS := 1.0
 const BOX := 0.4
 const INCLINE_LENGTH := 8.0
+const UI_INTERVAL := 0.1      # seconds between UI text refreshes
 const START_X := 3.5          # release point along the incline (pivot local x), uphill end is +x
 const PIVOT_HEIGHT := 3.2
 
@@ -18,6 +19,7 @@ var box: S3Box
 var corrector := InclineFrictionCorrector.new()
 var headless_ui := false     # tests skip building the UI
 
+var _ui_accum := 0.0         # UI text refresh throttle (10 Hz)
 var _pivot: Node3D
 var _camera: OrbitCamera
 var _info: Label
@@ -61,7 +63,10 @@ func release() -> void:
 func _physics_process(delta: float) -> void:
 	if released:
 		release_time += delta
-	_refresh_ui()
+	_ui_accum += delta
+	if _ui_accum >= UI_INTERVAL:
+		_ui_accum = 0.0
+		_refresh_ui()
 
 
 func _build_world() -> void:

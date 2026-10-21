@@ -20,4 +20,12 @@ describe("OPBENCH line", () => {
     expect(lines.map((line) => line.t)).toEqual([1, 2, 3]);
     expect(lines[0].frames).toBe(60);
   });
+
+  it("forgets the previous scene's line on reset", () => {
+    const stats = new FrameStats(() => {});
+    for (let i = 0; i <= 60; i += 1) stats.frame(i * 1000 / 60, "S1");
+    expect(stats.latest?.scene).toBe("S1");
+    stats.reset();
+    expect(stats.latest).toBeNull();
+  });
 });

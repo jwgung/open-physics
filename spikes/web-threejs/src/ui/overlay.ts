@@ -49,6 +49,7 @@ export function createOverlay(root: HTMLElement, options: OverlayOptions): Overl
       bar.querySelectorAll<HTMLButtonElement>("button[data-scene]").forEach((button) => {
         button.setAttribute("aria-current", String(button.dataset.scene === id));
       });
+      stats.textContent = `${options.backend} · ${id} · 측정 중…`;
     },
     setStats(line) {
       if (stats.hidden) return;

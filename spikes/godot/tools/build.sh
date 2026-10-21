@@ -8,14 +8,22 @@ GODOT=${GODOT:-$HOME/.local/share/godot-spike/godot}
 what=${1:-all}
 mkdir -p exports && touch exports/.gdignore   # keep export output out of the Godot import scan
 
+"$GODOT" --headless --path . --import >/dev/null 2>&1 || true   # fresh checkout: build the class cache first
 if [[ ! -f assets/generated/web/planet_7_normal.png ]]; then
   "$GODOT" --headless --path . -s res://tools/bake_textures.gd
+  "$GODOT" --headless --path . --import >/dev/null 2>&1 || true
 fi
-"$GODOT" --headless --path . --import >/dev/null 2>&1 || true
 
 if [[ $what == test || $what == all ]]; then
-  "$GODOT" --headless --path . --fixed-fps 60 -s res://tests/run_tests.gd | grep -E '^(PASS|FAIL|RESULT|==)'
-  test "${PIPESTATUS[0]}" -eq 0
+  log=exports/test.log
+  status=0
+  "$GODOT" --headless --path . --fixed-fps 60 -s res://tests/run_tests.gd >"$log" 2>&1 || status=$?
+  grep -E '^(PASS|FAIL|RESULT|==)' "$log" || true
+  if [[ $status -ne 0 ]] || grep -q '^FAIL' "$log"; then
+    echo "S3 tests failed (exit $status); tail of $log:" >&2
+    tail -n 40 "$log" >&2
+    exit 1
+  fi
 fi
 if [[ $what == android || $what == all ]]; then
   mkdir -p exports/android

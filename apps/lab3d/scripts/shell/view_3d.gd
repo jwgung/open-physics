@@ -229,11 +229,13 @@ func _on_mouse_button(event: InputEventMouseButton) -> void:
 		MOUSE_BUTTON_MIDDLE:
 			_mouse_mode = "pan" if event.pressed else ""
 		MOUSE_BUTTON_WHEEL_UP:
-			rig.zoom(0.9)
-			gesture_used.emit()
+			if event.pressed:   # the wheel sends press and release
+				rig.zoom(0.9)
+				gesture_used.emit()
 		MOUSE_BUTTON_WHEEL_DOWN:
-			rig.zoom(1.1)
-			gesture_used.emit()
+			if event.pressed:
+				rig.zoom(1.1)
+				gesture_used.emit()
 		MOUSE_BUTTON_LEFT:
 			single_pointer.emit("press" if event.pressed else "release", event.position)
 

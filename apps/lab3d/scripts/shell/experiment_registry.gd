@@ -58,6 +58,10 @@ static func validate(definition: Dictionary) -> PackedStringArray:
 		return problems
 	if not ResourceLoader.exists(definition.scene):
 		problems.append("scene %s not found" % definition.scene)
+	else:
+		var script: Variant = load(definition.scene)
+		if not script is GDScript or not _extends_experiment(script):
+			problems.append("scene %s is not an Experiment script" % definition.scene)
 	var camera: Dictionary = definition.camera
 	for key in ["target", "distance", "distance_range", "yaw_range_deg", "pitch_range_deg", "default_mode", "views"]:
 		if not camera.has(key):
@@ -65,7 +69,7 @@ static func validate(definition: Dictionary) -> PackedStringArray:
 	if camera.has("default_mode") and camera.default_mode not in CAMERA_MODES:
 		problems.append("camera.default_mode %s unknown" % camera.default_mode)
 	if camera.has("views"):
-		for mode in ["front", "three_quarter", "top", "side", "follow"]:
+		for mode in _view_modes():
 			if not camera.views.has(mode):
 				problems.append("camera.views.%s missing" % mode)
 	var ids := {}
@@ -100,6 +104,20 @@ static func instantiate(definition: Dictionary) -> Experiment:
 	var experiment: Experiment = script.new()
 	experiment.definition = definition
 	return experiment
+
+
+## Every preset mode needs a view in the definition; "orbit" is only reached by dragging.
+static func _view_modes() -> Array:
+	return CAMERA_MODES.filter(func(mode: String) -> bool: return mode != "orbit")
+
+
+static func _extends_experiment(script: GDScript) -> bool:
+	var current: Script = script
+	while current != null:
+		if current == Experiment:
+			return true
+		current = current.get_base_script()
+	return false
 
 
 static func _read_json(path: String) -> Variant:

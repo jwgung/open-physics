@@ -202,7 +202,7 @@ func graph_series() -> Dictionary:
 		if s > limit:
 			break
 		formula.append(Vector2(t, s))
-	return {"formula": formula, "measured": _graph_points}
+	return {"formula": formula, "measured": _graph_points.duplicate()}
 
 
 func graph_revision() -> int:

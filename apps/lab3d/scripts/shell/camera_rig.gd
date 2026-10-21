@@ -54,7 +54,6 @@ func configure(camera: Dictionary) -> void:
 	pan_radius = camera.get("pan_radius", 5.0)
 	views = camera.get("views", {})
 	set_mode(camera.get("default_mode", "front"), true)
-	snap()
 
 
 func _ready() -> void:

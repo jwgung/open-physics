@@ -9,7 +9,7 @@
 ## the guided incline of the benchmark spec) or "list" / "settings" outside an experiment.
 extends Node
 
-signal report(line: String, fps: float)
+signal report(line: String, fps: float, scene: String, p95_ms: float)
 
 const LONG_FRAME_MS := 33.0
 ## OPPERF fields averaged per window, in emit order.
@@ -78,14 +78,15 @@ func _emit_window() -> void:
 		if ms > LONG_FRAME_MS:
 			long_frames += 1
 	var fps := count / (total / 1000.0)
-	var line := '{"t":%d,"scene":"%s","fps":%.1f,"p50ms":%.1f,"p95ms":%.1f,"p99ms":%.1f,"frames":%d,"long":%d}' % [
-		int(round(_elapsed)), scene_name, fps,
-		_percentile(sorted, 0.50), _percentile(sorted, 0.95), _percentile(sorted, 0.99),
+	var p95 := _percentile(sorted, 0.95)
+	var line := '{"t":%d,"scene":%s,"fps":%.1f,"p50ms":%.1f,"p95ms":%.1f,"p99ms":%.1f,"frames":%d,"long":%d}' % [
+		int(round(_elapsed)), JSON.stringify(scene_name), fps,
+		_percentile(sorted, 0.50), p95, _percentile(sorted, 0.99),
 		count, long_frames]
 	if _android_log != null:
 		_android_log.call("i", "OPBENCH", line)
 	print("OPBENCH ", line)
-	report.emit(line, fps)
+	report.emit(line, fps, scene_name, p95)
 
 
 ## Monitors describe the previous frame; one sample per measured frame.
@@ -115,7 +116,7 @@ func _emit_perf() -> void:
 	if count == 0:
 		return
 	var parts := PackedStringArray([
-		'"t":%d' % int(round(_elapsed)), '"scene":"%s"' % scene_name, '"quality":"%s"' % Quality.label(),
+		'"t":%d' % int(round(_elapsed)), '"scene":%s' % JSON.stringify(scene_name), '"quality":"%s"' % Quality.label(),
 		'"renderer":"%s"' % RenderingServer.get_current_rendering_method()])
 	# The Compatibility renderer (or a driver without timestamp queries) has no GPU time; report null
 	# instead of a misleading 0.

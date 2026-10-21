@@ -11,6 +11,7 @@ const PAD_BOTTOM := 44.0
 
 var spec: Dictionary = {}
 var series: Dictionary = {}   # id -> PackedVector2Array
+var updates := 0              # set_data calls so far (each one redraws)
 var _bg := _background()
 
 
@@ -19,11 +20,12 @@ func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
-## Redraws only when the data changed (the screen polls at 10 Hz).
+## Always redraws: the caller decides when the data changed (ExperimentScreen compares
+## Experiment.graph_revision() at 10 Hz). Comparing contents here would see an experiment's own
+## growing array as unchanged.
 func set_data(new_series: Dictionary) -> void:
-	if new_series == series:
-		return
 	series = new_series
+	updates += 1
 	queue_redraw()
 
 

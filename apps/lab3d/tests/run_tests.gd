@@ -49,6 +49,10 @@ func _run() -> void:
 	await _check_gesture_input_state(definition)
 	await _check_layout(definition)
 	await _check_launch_args_flag(definition)
+	await _check_graph_redraw(definition)
+	_check_wheel_zoom(definition)
+	_check_settings_marker(definition)
+	_check_bench_report()
 	print("RESULT: %s (%d failure(s))" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -217,6 +221,14 @@ func _check_content() -> Dictionary:
 	duplicate.controls.append(duplicate.controls[0].duplicate(true))
 	_expect(ExperimentRegistry.validate(duplicate).size() == 1 and "duplicate" in ExperimentRegistry.validate(duplicate)[0], "registry rejects a duplicate control id", ", ".join(ExperimentRegistry.validate(duplicate)))
 	_expect(ExperimentRegistry.CAMERA_MODES == CameraRig.MODES, "registry camera modes are the rig's modes", "")
+	var views_missing := definition.duplicate(true)
+	views_missing.camera.views.erase("follow")
+	_expect(ExperimentRegistry.validate(views_missing).size() == 1 and "follow" in ExperimentRegistry.validate(views_missing)[0],
+		"registry requires a view for every preset camera mode", ", ".join(ExperimentRegistry.validate(views_missing)))
+	var not_experiment := definition.duplicate(true)
+	not_experiment.scene = "res://scripts/shell/graph_view.gd"   # exists, but does not extend Experiment
+	_expect(not ExperimentRegistry.validate(not_experiment).is_empty(), "registry rejects a scene script that is not an Experiment",
+		", ".join(ExperimentRegistry.validate(not_experiment)))
 	# Content materials must equal the TS-derived coefficient sets (vitest checks JSON vs TS too).
 	var ok := true
 	for control in definition.controls:
@@ -546,3 +558,94 @@ func _check_launch_args_flag(definition: Dictionary) -> void:
 		"a rebuilt screen keeps conditions and camera", "angle %.1f, camera %s" % [third.experiment.angle_deg, third.view.rig.mode])
 	quality_script.set("_args_cache", saved_args)
 	host.queue_free()
+
+
+## The measured points reach the graph while the box slides, and a new run / reset clears them.
+## The graph must be told to redraw each time the experiment's series grows.
+func _check_graph_redraw(definition: Dictionary) -> void:
+	var host := Control.new()
+	host.theme = load(UI_THEME).build()
+	host.size = Vector2(720, 1560)
+	root.add_child(host)
+	var screen: Control = load(EXPERIMENT_SCREEN).new()
+	screen.setup(definition)
+	host.add_child(screen)
+	await process_frame
+	var graph: GraphView = screen._graph
+	var lab: Experiment = screen.experiment
+	lab.set_control("angle", 40.0)
+	lab.run_action("release")
+	screen._refresh_left = 1000.0   # polled by hand below
+	var sizes: Array[int] = []
+	var redraws: Array[int] = []
+	for i in 4:
+		for j in 20:
+			await physics_frame
+		await process_frame   # a pending redraw is flushed
+		screen._poll()
+		redraws.append(graph.updates)
+		sizes.append(graph.series.measured.size())
+	_expect(sizes[3] > sizes[0] and sizes[0] >= 1 and redraws[3] > redraws[2] and redraws[2] > redraws[1],
+		"graph gets new measured points and redraws while the box slides", "points %s, set_data calls %s" % [sizes, redraws])
+	lab.run_action("reset")
+	screen._poll()
+	_expect(graph.series.measured.size() == 0, "reset clears the measured points on the graph", "%d" % graph.series.measured.size())
+	# The contract of GraphView itself: the same array grown in place still redraws.
+	var points := PackedVector2Array([Vector2.ZERO])
+	graph.set_data({"measured": points})
+	var drawn: int = graph.updates
+	points.append(Vector2(1, 1))
+	graph.set_data({"measured": points})
+	_expect(graph.updates == drawn + 1, "GraphView.set_data redraws for data it already holds", "")
+	host.queue_free()
+
+
+## The wheel sends press and release: one notch zooms once.
+func _check_wheel_zoom(definition: Dictionary) -> void:
+	var view: Control = load(VIEW_3D).new()
+	view.size = Vector2(720, 600)
+	root.add_child(view)
+	view.rig.configure(definition.camera)
+	var before: float = view.rig.goal_distance
+	view._gui_input(_mouse_button(MOUSE_BUTTON_WHEEL_UP, true))
+	view._gui_input(_mouse_button(MOUSE_BUTTON_WHEEL_UP, false))
+	var once: float = view.rig.goal_distance
+	_expect(is_equal_approx(once, clampf(before * 0.9, view.rig.distance_range.x, view.rig.distance_range.y)),
+		"one wheel notch zooms once (press only)", "%.3f -> %.3f" % [before, once])
+	view.queue_free()
+
+
+## The settings screen leaves a resume marker only when the tier change really restarts the app
+## (Quality.needs_restart can say yes while set_tier decides not to restart).
+func _check_settings_marker(_definition: Dictionary) -> void:
+	var path := "user://resume.txt"
+	var script: GDScript = load("res://scripts/app/settings_screen.gd")
+	var outcomes := {}
+	for restarts in [false, true]:
+		DirAccess.remove_absolute(path)
+		var screen: Control = script.new()
+		screen.theme = load(UI_THEME).build()
+		screen.set_tier = func(_tier: String) -> bool: return restarts
+		root.add_child(screen)
+		screen._select("medium" if root.get_node("Quality").tier != "medium" else "low")
+		screen._apply_tier()
+		outcomes[restarts] = FileAccess.file_exists(path)
+		screen.queue_free()
+	DirAccess.remove_absolute(path)
+	_expect(not outcomes[false] and outcomes[true], "resume marker is written only when set_tier restarts the app", str(outcomes))
+
+
+## Bench lines stay valid JSON for any scene name, and the signal carries scene and p95 itself.
+func _check_bench_report() -> void:
+	var bench: Node = root.get_node("Bench")
+	var received := []
+	var on_report := func(line: String, fps: float, scene: String, p95: float) -> void: received.append([line, fps, scene, p95])
+	bench.report.connect(on_report)
+	bench.reset('S3 "quoted"\\x')
+	bench._frames = PackedFloat32Array([16.0, 16.0, 17.0, 40.0])
+	bench._emit_window()
+	bench.report.disconnect(on_report)
+	var parsed: Variant = JSON.parse_string(received[0][0]) if received.size() == 1 else null
+	_expect(parsed is Dictionary and parsed.scene == bench.scene_name and received[0][2] == bench.scene_name and is_equal_approx(received[0][3], parsed.p95ms),
+		"OPBENCH line is valid JSON for a quoted scene name; signal carries scene and p95", received[0][0] if received.size() == 1 else "no report")
+	bench.reset("list")

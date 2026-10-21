@@ -162,8 +162,7 @@ func _set_fps(on: bool) -> void:
 	_fps_label.visible = on
 
 
-func _on_bench_report(line: String, fps: float) -> void:
+func _on_bench_report(_line: String, fps: float, scene: String, p95_ms: float) -> void:
 	if not _show_fps:
 		return
-	var data: Dictionary = JSON.parse_string(line)
-	_fps_label.text = "%s %s  %.1f fps  p95 %.1f ms" % [data.scene, Quality.label(), fps, data.p95ms]
+	_fps_label.text = "%s %s  %.1f fps  p95 %.1f ms" % [scene, Quality.label(), fps, p95_ms]

@@ -13,6 +13,8 @@ const DESCRIPTIONS := {
 }
 
 var show_fps := false
+## Applies a tier; true when the app is restarting. Quality.set_tier unless a test replaces it.
+var set_tier := Callable()
 var _selected := ""
 var _buttons: Dictionary = {}
 var _apply: Button
@@ -22,6 +24,8 @@ var _notice: Label
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_selected = Quality.tier
+	if not set_tier.is_valid():
+		set_tier = Quality.set_tier
 	var layout := Ui.vbox(0)
 	layout.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(layout)
@@ -108,9 +112,10 @@ func _select(tier: String) -> void:
 
 
 func _apply_tier() -> void:
-	if Quality.needs_restart(_selected):
+	if set_tier.call(_selected):
+		# Restarting: the next launch reopens the settings screen. Written only when Quality
+		# really requested the restart, otherwise the marker would outlive this run.
 		var marker := FileAccess.open(App.RESUME_PATH, FileAccess.WRITE)
 		if marker:
 			marker.store_string("settings")
-	Quality.set_tier(_selected)
 	_select(_selected)

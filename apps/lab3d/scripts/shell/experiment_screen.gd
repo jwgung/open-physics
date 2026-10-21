@@ -83,10 +83,11 @@ func _ready() -> void:
 
 func _restore_state() -> void:
 	var controls: Dictionary = _state.get("controls", {})
+	_updating = true
 	for id in controls:
-		_set_control(id, controls[id])
-	view.rig.set_state(_state.get("camera", {}))
-	_on_mode_changed(view.rig.mode)
+		experiment.set_control(id, controls[id])
+	_updating = false
+	view.rig.set_state(_state.get("camera", {}))   # emits mode_changed; setup() refreshes once
 
 
 ## Measurement/screenshot hooks from the launch args (Quality.all_args):

@@ -14,6 +14,7 @@ apps/lab3d/
   scenes/main.tscn                    App(루트 Control)
   scripts/core/                       autoload Quality(품질 단계)·Bench(OPBENCH/OPPERF), PhysicsLaws(TS 공식 포트)
   scripts/app/                        App(화면 전환·fps 표시), 목록·설정 화면, UiTheme(웹 2D 스타일), Ui(위젯 헬퍼)
+  scripts/art/                        Task 2c 스타일 시안(--style): 절차적 메시, 구운 조명 셰이더, 연출
   scripts/shell/                      Experiment(실험 기반 클래스), ExperimentRegistry, ExperimentScreen,
                                       View3D(3D 뷰·제스처), CameraRig(카메라 6모드), GraphView
   experiments/incline_friction/       빗면 마찰 실험(장면·공식 보정 계층)
@@ -108,6 +109,7 @@ adb shell am start -n org.openphysics.lab3d/com.godot.game.GodotAppLauncher \
 | `--scroll-to=<conditions\|observations\|graph\|explanation>` | 패널 스크롤 위치 |
 | `--auto-release=<초>` | 그 간격으로 상자를 다시 놓는다(측정용) |
 | `--q-<항목>=<값>` | 품질 단계 항목 덮어쓰기(측정용) |
+| `--style=<a\|b\|c>` | Task 2c 스타일 시안(빗면만, 보이는 것만 바꾼다). [시안 비교](../../spikes/bench/results/phase1-task2c/mockups/README.md) |
 
 ## 3. 빌드와 테스트
 

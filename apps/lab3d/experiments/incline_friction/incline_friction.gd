@@ -30,6 +30,8 @@ var mu_k := 0.22
 var released := false
 var box: InclineBox
 var corrector := InclineFrictionCorrector.new()
+## Task 2c style mockup (`--style=a|b|c`), null = the Task 2a look. Visual only.
+var style: ToyStyle
 
 var _pivot: Node3D
 var _stand: MeshInstance3D
@@ -73,6 +75,8 @@ func set_angle(degrees: float) -> void:
 	angle_deg = clampf(degrees, 0.0, 45.0)
 	_pivot.rotation = Vector3(0.0, 0.0, deg_to_rad(angle_deg))
 	_update_stand()
+	if style:
+		style.angle_changed(angle_deg)
 	reset_box()
 
 
@@ -235,7 +239,7 @@ func _build_world() -> void:
 
 	var floor_body := StaticBody3D.new()
 	floor_body.physics_material_override = frictionless
-	_add_box_shape(floor_body, Vector3(30.0, 0.4, 12.0), COLOR_FLOOR)
+	var floor_mesh := _add_box_shape(floor_body, Vector3(30.0, 0.4, 12.0), COLOR_FLOOR)
 	floor_body.position = Vector3(0.0, -0.2, 0.0)
 	add_child(floor_body)
 
@@ -244,7 +248,7 @@ func _build_world() -> void:
 	add_child(_pivot)
 	var incline := StaticBody3D.new()
 	incline.physics_material_override = frictionless
-	_add_box_shape(incline, Vector3(INCLINE_LENGTH, 0.3, 2.0), COLOR_INCLINE)
+	var incline_mesh := _add_box_shape(incline, Vector3(INCLINE_LENGTH, 0.3, 2.0), COLOR_INCLINE)
 	incline.position = Vector3(0.0, -0.15, 0.0)
 	_pivot.add_child(incline)
 	# Start line where the box is released (visual only).
@@ -273,7 +277,7 @@ func _build_world() -> void:
 	box.angular_damp = 0.0
 	box.freeze_mode = RigidBody3D.FREEZE_MODE_STATIC
 	box.freeze = true
-	_add_box_shape(box, Vector3.ONE * BOX, COLOR_BOX)
+	var box_mesh := _add_box_shape(box, Vector3.ONE * BOX, COLOR_BOX)
 	add_child(box)
 
 	corrector.incline = _pivot
@@ -284,14 +288,25 @@ func _build_world() -> void:
 	set_coefficients(mu_s, mu_k)
 	box.corrector = corrector
 
+	_update_stand()
+	style = ToyStyle.create(Quality.cmdline_value("style"))
+	if style:
+		style.dress(self, {
+			"environment": environment, "sun": sun, "floor": floor_mesh,
+			"incline": incline_mesh, "incline_size": Vector3(INCLINE_LENGTH, 0.3, 2.0), "mark": mark,
+			"stand": _stand, "stand_height": PIVOT_HEIGHT - 0.15,
+			"box": box_mesh, "box_body": box, "box_size": BOX, "experiment": self,
+		})
+
 
 func _update_stand() -> void:
 	var height := PIVOT_HEIGHT - 0.15
-	(_stand.mesh as BoxMesh).size = Vector3(0.3, height, 0.3)
+	if _stand.mesh is BoxMesh:
+		(_stand.mesh as BoxMesh).size = Vector3(0.3, height, 0.3)
 	_stand.position = Vector3(0.0, height * 0.5, -0.7)
 
 
-func _add_box_shape(body: CollisionObject3D, size: Vector3, color: Color) -> void:
+func _add_box_shape(body: CollisionObject3D, size: Vector3, color: Color) -> MeshInstance3D:
 	var shape := CollisionShape3D.new()
 	var box_shape := BoxShape3D.new()
 	box_shape.size = size
@@ -303,6 +318,7 @@ func _add_box_shape(body: CollisionObject3D, size: Vector3, color: Color) -> voi
 	var instance := MeshInstance3D.new()
 	instance.mesh = mesh
 	body.add_child(instance)
+	return instance
 
 
 func _material(color: Color) -> StandardMaterial3D:

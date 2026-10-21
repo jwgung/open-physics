@@ -12,8 +12,9 @@ const TOP_BAR_HEIGHT := 84.0
 const SIDE_PANEL_WIDTH := 470.0
 const TIP_SECONDS := 8.0
 
-## Launch args (--ctl-*, --camera, ...) apply to the first experiment screen of the app run only.
-static var _launch_args_done := false
+## Set by App for the screen it opens from --experiment: then the launch args (--ctl-*, --camera,
+## ...) apply to this screen only (a rebuilt screen with a saved state restores that state instead).
+var apply_launch_args := false
 
 var definition: Dictionary
 var experiment: Experiment
@@ -36,13 +37,15 @@ var _auto_release_every := 0.0
 var _auto_release_left := 0.0
 var _state: Dictionary = {}             # capture_state() of a screen being rebuilt
 var _updating := false                  # a control/action is running: refresh once afterwards
+var _graph_revision := -2               # Experiment.graph_revision() of the series on the graph
 
 
 ## `state` (optional): capture_state() of a previous screen of the same experiment (conditions
 ## and camera are restored instead of the defaults / launch args).
-func setup(new_definition: Dictionary, state := {}) -> void:
+func setup(new_definition: Dictionary, state := {}, launch_args := false) -> void:
 	definition = new_definition
 	_state = state
+	apply_launch_args = launch_args
 
 
 ## Conditions (control values) and camera of this screen, for a rebuild with the same experiment.
@@ -72,9 +75,8 @@ func _ready() -> void:
 	_layout()
 	if not _state.is_empty():
 		_restore_state()
-	elif not _launch_args_done:
+	elif apply_launch_args:
 		_apply_launch_args()
-	_launch_args_done = true
 	_refresh()
 	Bench.reset(definition.get("bench_id", definition.id))
 
@@ -111,7 +113,7 @@ func _process(delta: float) -> void:
 	_refresh_left -= delta
 	if _refresh_left <= 0.0:
 		_refresh_left = 1.0 / UI_REFRESH_HZ
-		_refresh()
+		_poll()
 	if _tip.visible:
 		_tip_left -= delta
 		if _tip_left <= 0.0:
@@ -152,7 +154,6 @@ func _layout() -> void:
 		view.size = Vector2(w, view_height)
 		_panel.position = Vector2(0, TOP_BAR_HEIGHT + view_height)
 		_panel.size = Vector2(w, body - view_height)
-	view.update_resolution()
 
 
 # --- building -------------------------------------------------------------------------------
@@ -320,8 +321,9 @@ func _set_control(id: String, value: Variant) -> void:
 	_updating = true
 	experiment.set_control(id, value)
 	_updating = false
+	# Only this control's conditions changed: sync it, then redraw the readouts and the series.
 	_sync_control(id)
-	_refresh()
+	_update_readouts(true)
 
 
 ## state_changed during our own control/action call is covered by that call's single refresh.
@@ -428,11 +430,24 @@ func _build_explanation() -> Control:
 
 # --- refresh --------------------------------------------------------------------------------
 
+## Everything: all controls, observations and graph (events, actions, a restored state).
 func _refresh() -> void:
 	if experiment == null or not experiment.is_inside_tree():
 		return
 	for control in definition.controls:
 		_sync_control(control.id)
+	_update_readouts(true)
+
+
+## The 10 Hz poll: controls only change through _set_control / actions, so only the observations
+## follow the running experiment; the graph series is rebuilt when the experiment says it changed.
+func _poll() -> void:
+	if experiment == null or not experiment.is_inside_tree():
+		return
+	_update_readouts(false)
+
+
+func _update_readouts(force_graph: bool) -> void:
 	var values := experiment.observations()
 	for observation in definition.observations:
 		var value: Variant = values.get(observation.id)
@@ -447,7 +462,10 @@ func _refresh() -> void:
 		var label: Label = _observation_labels[observation.id]
 		if label.text != text:
 			label.text = text
-	_graph.set_data(experiment.graph_series())
+	var revision := experiment.graph_revision()
+	if force_graph or revision < 0 or revision != _graph_revision:
+		_graph_revision = revision
+		_graph.set_data(experiment.graph_series())
 
 
 func _on_mode_changed(mode: String) -> void:

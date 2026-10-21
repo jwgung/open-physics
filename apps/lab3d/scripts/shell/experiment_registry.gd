@@ -4,15 +4,24 @@ class_name ExperimentRegistry
 extends RefCounted
 
 const INDEX_PATH := "res://content/experiments/index.json"
-const CAMERA_MODES := ["front", "three_quarter", "top", "side", "follow", "orbit"]
+const CAMERA_MODES := CameraRig.MODES
 const REQUIRED_KEYS := ["id", "title", "category", "question", "steps", "observe", "law", "scene",
 	"camera", "controls", "actions", "observations", "graph"]
 const CONTROL_TYPES := ["slider", "choice"]
 
 
-## All valid definitions in index order. Invalid ones are skipped with an error.
-static func load_all() -> Array[Dictionary]:
+static var _cache: Array[Dictionary] = []
+static var _loaded := false
+
+
+## All valid definitions in index order (read from disk once; treat as read-only). Invalid ones
+## are skipped with an error. `reload` reads the content again.
+static func load_all(reload := false) -> Array[Dictionary]:
+	if _loaded and not reload:
+		return _cache
 	var result: Array[Dictionary] = []
+	_cache = result
+	_loaded = true
 	var index: Variant = _read_json(INDEX_PATH)
 	if not index is Dictionary:
 		push_error("ExperimentRegistry: cannot read %s" % INDEX_PATH)
@@ -31,6 +40,7 @@ static func load_all() -> Array[Dictionary]:
 	return result
 
 
+## The loaded definition with this id ({} if there is none).
 static func find(id: String) -> Dictionary:
 	for definition in load_all():
 		if definition.id == id:
@@ -63,6 +73,8 @@ static func validate(definition: Dictionary) -> PackedStringArray:
 		if not control.has("id") or control.get("type") not in CONTROL_TYPES or not control.has("default"):
 			problems.append("control %s needs id, type (slider|choice) and default" % control.get("id", "?"))
 			continue
+		if ids.has(control.id):
+			problems.append("duplicate control id %s" % control.id)
 		ids[control.id] = true
 		if control.type == "slider":
 			for key in ["min", "max", "step"]:

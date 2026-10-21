@@ -57,11 +57,11 @@ func _ready() -> void:
 	if FileAccess.file_exists(RESUME_PATH):
 		resume = FileAccess.get_file_as_string(RESUME_PATH).strip_edges()
 		DirAccess.remove_absolute(RESUME_PATH)
-	var requested := Quality.cmdline_value("experiment")
+	var requested := ExperimentRegistry.find(Quality.cmdline_value("experiment"))
 	if resume == "settings" or Quality.cmdline_value("screen") == "settings":
 		show_settings()
-	elif requested != "" and not _find(requested).is_empty():
-		show_experiment(_find(requested))
+	elif not requested.is_empty():
+		show_experiment(requested, {}, true)  # the launch args (--ctl-*, --camera) apply to this screen
 	else:
 		show_list()
 
@@ -91,10 +91,10 @@ func show_list() -> void:
 	_swap(screen, "list")
 
 
-func show_experiment(definition: Dictionary, state := {}) -> void:
+func show_experiment(definition: Dictionary, state := {}, launch_args := false) -> void:
 	_drop_held()
 	var screen := ExperimentScreen.new()
-	screen.setup(definition, state)
+	screen.setup(definition, state, launch_args)
 	screen.back_requested.connect(show_list)
 	screen.settings_requested.connect(func() -> void:
 		_return_to = definition
@@ -146,13 +146,6 @@ func _swap(screen: Control, bench_scene: String) -> void:
 	add_child(screen)
 	if bench_scene != "":
 		Bench.reset(bench_scene)
-
-
-func _find(id: String) -> Dictionary:
-	for definition in _definitions:
-		if definition.id == id:
-			return definition
-	return {}
 
 
 func _on_quality_changed() -> void:

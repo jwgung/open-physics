@@ -53,7 +53,7 @@ Open Physics를 3D 모바일 앱으로 출시한다.
 5. **WebGL 대안 확인**:
    - 누수를 피하려고 같은 장면을 기존 `WebGLRenderer`로 측정했다. 사전 판정 기준은 "S2가 Godot 이상이고, 10분 메모리가 평탄할 것"이었다.
    - 메모리는 평탄했지만 S2가 측정 평균 7.9 fps로 Godot의 11.6 fps보다 느렸다. 기준을 넘지 못했다.
-   - 다만 classic S2는 vsync 경계에서 약 8 fps와 약 14.7 fps 두 상태를 오갔다. 10분 중 97%는 8 fps였다. 그래서 이 판정은 경계선이다([결과](../../spikes/bench/results/README.md#webgpu-누수와-webgl-대안)).
+   - 다만 classic S2는 vsync 경계에서 약 8 fps와 약 14.7 fps 상태를 오갔다. 10분 평균은 10.35 fps였고, 시간 비율은 8 fps 57%, 14.7 fps 33%였다. 그래서 이 판정은 경계선이다([결과](../../spikes/bench/results/README.md#webgpu-누수와-webgl-대안)).
    - S1은 5.8 fps였다. 이 측정에는 MSAA가 두 번 걸린 불리한 설정이 섞여 있다.
 
 이 기기에서 웹 스택은 두 경로 모두 쓸 수 없다. WebGPU는 빠르지만 메모리가 새고, WebGL은 메모리는 안정적이지만 느리다. 성능과 안정성이 기기의 WebView·GPU 드라이버 품질에 달려 있고, 우리가 통제할 수 없다. 반면 Godot은 네이티브 Vulkan에서 메모리가 평탄했다. 품질을 최우선으로 하는 제품 목표에서는 이 통제 불가능한 위험이 개발 효율보다 크다.

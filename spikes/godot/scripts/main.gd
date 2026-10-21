@@ -1,4 +1,5 @@
-## Scene switcher + FPS overlay. Persists the last scene so app restarts (spec 5.2) resume it.
+## Scene switcher + quality tier button + FPS overlay. Persists the last scene so app restarts
+## (spec 5.2) resume it. `--scene=S2` (command line or Android intent extra) picks the start scene.
 extends Node
 
 const SCENES := {
@@ -11,6 +12,7 @@ const LAST_SCENE_PATH := "user://last_scene.txt"
 @onready var _scene_root: Node = $SceneRoot
 @onready var _fps_label: Label = $Hud/FpsLabel
 @onready var _fps_toggle: Button = $Hud/TopBar/FpsToggle
+@onready var _quality_button: Button = $Hud/QualityButton
 var _current := ""
 
 
@@ -19,14 +21,16 @@ func _ready() -> void:
 		var button: Button = get_node("Hud/TopBar/%s" % scene_id)
 		button.pressed.connect(switch_to.bind(scene_id))
 	_fps_toggle.toggled.connect(func(on: bool) -> void: _fps_label.visible = on)
+	_quality_button.pressed.connect(func() -> void: Quality.set_tier(Quality.next_tier()))
+	Quality.changed.connect(func() -> void: switch_to(_current))  # scenes read the tier when built
 	Bench.report.connect(_on_bench_report)
 	switch_to(_initial_scene())
 
 
 func _initial_scene() -> String:
-	for arg in OS.get_cmdline_user_args():
-		if arg.begins_with("--scene="):
-			return arg.trim_prefix("--scene=")
+	var requested := Quality.cmdline_value("scene")
+	if SCENES.has(requested):
+		return requested
 	if OS.has_feature("web"):
 		var hash := str(JavaScriptBridge.eval("window.location.hash", true)).trim_prefix("#")
 		if SCENES.has(hash):
@@ -51,9 +55,10 @@ func switch_to(scene_id: String) -> void:
 	var file := FileAccess.open(LAST_SCENE_PATH, FileAccess.WRITE)
 	if file:
 		file.store_string(scene_id)
+	_quality_button.text = "Q " + Quality.tier
 	Bench.reset(scene_id)
 
 
 func _on_bench_report(line: String, fps: float) -> void:
 	var data: Dictionary = JSON.parse_string(line)
-	_fps_label.text = "%s  %.1f fps  p95 %.1f ms  long %d" % [_current, fps, data.p95ms, data.long]
+	_fps_label.text = "%s %s  %.1f fps  p95 %.1f ms  long %d" % [_current, Quality.label(), fps, data.p95ms, data.long]

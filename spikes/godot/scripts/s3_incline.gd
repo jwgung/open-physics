@@ -81,7 +81,7 @@ func _build_world() -> void:
 	add_child(world)
 	var sun := DirectionalLight3D.new()
 	sun.rotation = Vector3(deg_to_rad(-50.0), deg_to_rad(30.0), 0.0)
-	sun.shadow_enabled = true
+	Quality.configure_sun(sun, DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS)
 	add_child(sun)
 
 	var frictionless := PhysicsMaterial.new()

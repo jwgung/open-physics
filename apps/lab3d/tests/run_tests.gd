@@ -290,6 +290,12 @@ func _check_camera(definition: Dictionary) -> void:
 	_expect(is_equal_approx(rig.goal_yaw - rig.cur_yaw, lag_yaw) and is_equal_approx(rig.goal_pitch - rig.cur_pitch, lag_pitch),
 		"orbit during a transition does not jump", "yaw lag %.3f, pitch lag %.3f" % [rig.goal_yaw - rig.cur_yaw, rig.goal_pitch - rig.cur_pitch])
 	_expect(absf(lag_distance) > 0.1 and is_equal_approx(rig.goal_distance - rig.cur_distance, lag_distance), "zoom during a transition does not jump", "%.3f" % (rig.goal_distance - rig.cur_distance))
+	rig.set_mode("front", true)
+	rig.cur_target += Vector3(1, 0, 0)  # a target transition still under way
+	var lag_target := rig._goal_target() - rig.cur_target
+	rig.pan_by(Vector2(5, 5))
+	_expect(lag_target.length() > 0.0 and (rig._goal_target() - rig.cur_target).is_equal_approx(lag_target),
+		"pan during a transition does not jump", str(rig._goal_target() - rig.cur_target))
 	var saved := rig.get_state()
 	rig.set_mode("side", true)
 	rig.set_state(saved)
@@ -412,6 +418,8 @@ func _check_layout(definition: Dictionary) -> void:
 func _check_launch_args_once(definition: Dictionary) -> void:
 	var quality_script: GDScript = load("res://scripts/core/quality.gd")
 	var screen_script: GDScript = load(EXPERIMENT_SCREEN)
+	var saved_args = quality_script.get("_args_cache")
+	var saved_done: bool = screen_script.get("_launch_args_done")
 	quality_script.set("_args_cache", PackedStringArray(["--ctl-angle=33", "--camera=top"]))
 	screen_script.set("_launch_args_done", false)
 	var host := Control.new()
@@ -439,5 +447,6 @@ func _check_launch_args_once(definition: Dictionary) -> void:
 	await process_frame
 	_expect(is_equal_approx(third.experiment.angle_deg, 12.0) and third.view.rig.mode == "side",
 		"a rebuilt screen keeps conditions and camera", "angle %.1f, camera %s" % [third.experiment.angle_deg, third.view.rig.mode])
-	quality_script.set("_args_cache", null)
+	quality_script.set("_args_cache", saved_args)
+	screen_script.set("_launch_args_done", saved_done)
 	host.queue_free()

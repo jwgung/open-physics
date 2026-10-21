@@ -45,6 +45,7 @@ func _run() -> void:
 	await _check_art_is_visual_only()
 	await _check_juice_rotated_landing()
 	_check_stand_clearance()
+	_check_ramp_shadow_scale()
 	_lab.queue_free()
 	print("== shell: camera, gestures, layout ==")
 	await _check_camera(definition)
@@ -327,7 +328,60 @@ func _check_button_feedback() -> void:
 	await create_timer(0.2).timeout
 	var ignored := button.scale == Vector2.ONE
 	host.queue_free()
-	_expect(shrunk and restored and ignored, "press shrinks an enabled button, release restores it even when disabled meanwhile, a disabled button ignores the press", "shrunk %s, restored %s, ignored %s" % [shrunk, restored, ignored])
+	_expect(shrunk and kept and restored and ignored, "press shrinks an enabled button and survives a container layout pass, release restores it even when disabled meanwhile, a disabled button ignores the press", "shrunk %s, kept %s, restored %s, ignored %s" % [shrunk, kept, restored, ignored])
+
+
+## Screen change: a screen that slides in again (the held experiment screen) stops its previous slide.
+func _check_slide_in() -> void:
+	var app: Control = load("res://scripts/app/app.gd").new()
+	var screen := Control.new()
+	root.add_child(screen)
+	app._slide_in(screen)
+	var first: Tween = screen.get_meta("slide_tween")
+	await create_timer(0.1).timeout
+	root.remove_child(screen)   # leaves and comes back, as when settings is opened and closed
+	root.add_child(screen)
+	app._slide_in(screen)
+	var second: Tween = screen.get_meta("slide_tween")
+	var restarted: bool = not first.is_valid() and second != first and second.is_valid() and screen.position.x == app.SLIDE_UNITS
+	await create_timer(0.5).timeout
+	_expect(restarted and screen.position.x == 0.0 and is_equal_approx(screen.modulate.a, 1.0),
+		"re-entering a screen kills its old slide tween and slides once", "restarted %s, x %.2f, alpha %.2f" % [restarted, screen.position.x, screen.modulate.a])
+	screen.queue_free()
+	app.free()
+
+
+## The list banner draws nothing for a collapsed rect (no polygon errors in the log).
+func _check_banner_collapsed() -> void:
+	var banner := IslandBanner.new()
+	banner.custom_minimum_size = Vector2.ZERO
+	root.add_child(banner)
+	banner.size = Vector2.ZERO
+	banner.queue_redraw()
+	await process_frame
+	await process_frame
+	banner.size = Vector2(0.5, 120)
+	await process_frame
+	banner.size = Vector2(300, 0.5)
+	await process_frame
+	banner.size = Vector2(400, 168)
+	await process_frame
+	banner.queue_free()
+	# Headless does not log polygon errors from degenerate draws, so the guard itself is checked.
+	var guard := not IslandBanner.can_draw(Vector2.ZERO) and not IslandBanner.can_draw(Vector2(0.5, 120)) \
+		and not IslandBanner.can_draw(Vector2(300, 0.5)) and IslandBanner.can_draw(Vector2(400, 168))
+	_expect(guard, "island banner skips drawing a collapsed rect and still draws normal ones (no errors in the log)", "")
+
+
+## The incline shadow mesh is built once; the angle only scales it.
+func _check_ramp_shadow_scale() -> void:
+	var shadow: MeshInstance3D = _lab.find_child("InclineShadow", true, false)
+	var mesh := shadow.mesh
+	_lab.set_angle(0.0)
+	var flat := shadow.scale.x
+	_lab.set_angle(40.0)
+	_expect(shadow.mesh == mesh and is_equal_approx(flat, 1.0) and shadow.scale.x < 0.8 and shadow.scale.x > 0.5,
+		"incline shadow keeps its mesh and scales with the angle", "x %.3f -> %.3f" % [flat, shadow.scale.x])
 
 
 func _has_material(id: String) -> bool:

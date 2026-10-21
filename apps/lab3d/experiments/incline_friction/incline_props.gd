@@ -17,7 +17,6 @@ const POST_INSET := 0.1             # the post top sits this far short of the ax
 var juice: ArtJuice
 var _ramp_shadow: MeshInstance3D
 var _incline_length := 8.0
-var _last_status := ""
 
 
 func incline_mesh(size: Vector3) -> Mesh:
@@ -87,7 +86,10 @@ func dress(experiment: Node3D, stand_position: Vector3, box_body: RigidBody3D, b
 	experiment.add_child(ArtKit.make_environment())
 	ArtKit.build_island(experiment, Vector3(-1.5, 0.0, -0.8), func(s: ArtMeshBuilder) -> void:
 		s.add_blob(Transform3D(Basis(), Vector3(stand_position.x, 0.012, stand_position.z)), 0.9, ArtKit.shadow_alpha(0.9)))
-	_ramp_shadow = ArtKit.instance(ArrayMesh.new(), ArtKit.shadow_material())
+	# One mesh at the flat incline's footprint; angle_changed only scales it along x.
+	var s := ArtKit.shadow_builder()
+	s.add_soft_rect(Transform3D(Basis(), Vector3(0.0, 0.01, 0.0)), Vector2(_ramp_shadow_half(0.0), 0.7), 0.7, ArtKit.shadow_alpha(0.45))
+	_ramp_shadow = ArtKit.instance(s.commit(), ArtKit.shadow_material())
 	_ramp_shadow.name = "InclineShadow"
 	experiment.add_child(_ramp_shadow)
 	juice = ArtJuice.new()
@@ -96,22 +98,23 @@ func dress(experiment: Node3D, stand_position: Vector3, box_body: RigidBody3D, b
 	juice.setup(box_body, box_visual, box_size)
 
 
-## The incline casts a soft shadow straight below it (its footprint shrinks as it tilts).
+## Half length of the incline shadow's inner rectangle at this angle.
+func _ramp_shadow_half(angle_deg: float) -> float:
+	return _incline_length * 0.5 * cos(deg_to_rad(angle_deg)) - 0.3
+
+
+## The incline casts a soft shadow straight below it (its footprint shrinks as it tilts): the mesh
+## made in dress() is scaled along x, not rebuilt.
 func angle_changed(angle_deg: float) -> void:
 	if _ramp_shadow == null:
 		return
-	var s := ArtKit.shadow_builder()
-	var half := _incline_length * 0.5 * cos(deg_to_rad(angle_deg))
-	s.add_soft_rect(Transform3D(Basis(), Vector3(0.0, 0.01, 0.0)), Vector2(half - 0.3, 0.7), 0.7, ArtKit.shadow_alpha(0.45))
-	_ramp_shadow.mesh = s.commit()
+	_ramp_shadow.scale.x = _ramp_shadow_half(angle_deg) / _ramp_shadow_half(0.0)
 
 
-## Experiment status -> reactions: placed = pop, let go = stretch, starts sliding = puff.
-func status_changed(status: String) -> void:
-	if juice == null or status == _last_status:
+## Experiment status change -> reactions: placed = pop, let go = stretch, starts sliding = puff.
+func status_changed(previous: String, status: String) -> void:
+	if juice == null:
 		return
-	var previous := _last_status
-	_last_status = status
 	match status:
 		"ready":
 			juice.pop()

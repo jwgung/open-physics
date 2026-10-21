@@ -110,9 +110,7 @@ func reset_box() -> void:
 	corrector.reset(box.global_position)
 	_graph_points.clear()
 	_graph_revision += 1
-	_last_status = status()
-	state_changed.emit()
-	props.status_changed(_last_status)
+	_update_status()
 
 
 func release() -> void:
@@ -125,9 +123,16 @@ func release() -> void:
 	released = true
 	box.freeze = false
 	box.sleeping = false
+	_update_status()
+
+
+## Records the current status, tells the UI and lets the props react to the change.
+func _update_status() -> void:
+	var previous := _last_status
 	_last_status = status()
 	state_changed.emit()
-	props.status_changed(_last_status)
+	if _last_status != previous:
+		props.status_changed(previous, _last_status)
 
 
 func formula_acceleration() -> float:
@@ -153,11 +158,8 @@ func _physics_process(_delta: float) -> void:
 		if t <= max_t + 0.001 and t > _graph_points[-1].x and status() != "left":
 			_graph_points.append(Vector2(t, corrector.samples[steps]))
 			_graph_revision += 1
-	var current := status()
-	if current != _last_status:
-		_last_status = current
-		state_changed.emit()
-		props.status_changed(current)
+	if status() != _last_status:
+		_update_status()
 	_settle_off_incline()
 
 

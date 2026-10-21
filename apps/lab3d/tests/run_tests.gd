@@ -40,11 +40,13 @@ func _run() -> void:
 	await process_frame
 	await _check_spec_table()
 	await _check_materials(definition)
+	await _check_bounded_and_floor()
 	_lab.queue_free()
 	print("== shell: camera, gestures, layout ==")
 	await _check_camera(definition)
 	await _check_gestures(definition)
 	await _check_layout(definition)
+	await _check_launch_args_once(definition)
 	print("RESULT: %s (%d failure(s))" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -121,6 +123,30 @@ func _check_spec_table() -> void:
 	_expect(absf(shown - 2.412) < 0.0005, "spec a(35deg) displayed = formula", "%.4f m/s^2" % shown)
 	c = await _run_steps(20.0, 10 * STEP_HZ)
 	_expect(c.max_offset <= 0.001, "spec 20.0deg drift over 10 s", "%.6f mm" % (c.max_offset * 1000.0))
+
+
+## The corrector keeps a bounded history; the box stops on the floor after leaving the incline.
+func _check_bounded_and_floor() -> void:
+	var c := await _run_steps(40.0, 5 * STEP_HZ)
+	_expect(c.samples.size() == c.history_steps and c.velocities.size() == c.history_steps and c.steps > c.history_steps,
+		"corrector history is capped", "%d samples after %d steps" % [c.samples.size(), c.steps])
+	_expect(_within(_lab.observations().distance, minf(c.last_sample, 7.5), 0.0001) or c.last_sample > 7.5, "distance comes from the latest sample", "%.3f" % c.last_sample)
+	# 45 deg on the lowest-friction material: the box leaves the incline fast. Wait for the run-out.
+	_lab.set_material("ice") if _has_material("ice") else _lab.set_coefficients(0.1, 0.05)
+	c = await _run_steps(45.0, 12 * STEP_HZ)
+	var box: RigidBody3D = _lab.box
+	_expect(_lab.status() == "left" and box.global_position.y > -1.0 and box.global_position.x > -15.0 and box.linear_velocity.length() < 0.5,
+		"a box that left the incline stops on the floor", "pos %s, speed %.2f" % [str(box.global_position), box.linear_velocity.length()])
+	_expect(_within(_lab.observations().distance, 7.5, 0.0001), "distance stays at the incline length", "%.3f" % _lab.observations().distance)
+
+
+func _has_material(id: String) -> bool:
+	for control in _lab.definition.controls:
+		if control.id == "material":
+			for option in control.options:
+				if option.id == id:
+					return true
+	return false
 
 
 ## Each surface material from the content JSON: holds 0.5 deg below its critical angle, slides
@@ -246,6 +272,28 @@ func _check_camera(definition: Dictionary) -> void:
 	target.position = Vector3(3, 1, 0)
 	_step(rig, 1.5)
 	_expect(rig.cur_target.distance_to(Vector3(3, 1, 0)) < 0.01, "follow mode tracks the experiment's follow point", str(rig.cur_target))
+	# set_mode(instant) snaps to the NEW mode's target (follow reads the mode in snap()).
+	target.position = Vector3(7, 1, 0)
+	rig.set_mode("front")
+	rig.set_mode("follow", true)
+	_expect(rig.cur_target.distance_to(Vector3(7, 1, 0)) < 0.01, "instant mode change snaps to the new mode's target", str(rig.cur_target))
+	# A gesture during a transition keeps the remaining transition (no jump to the goal).
+	rig.set_mode("front", true)
+	rig.set_mode("top")
+	_step(rig, 0.1)
+	var lag_yaw := rig.goal_yaw - rig.cur_yaw
+	var lag_pitch := rig.goal_pitch - rig.cur_pitch
+	var lag_distance := rig.goal_distance - rig.cur_distance
+	rig.orbit(Vector2(10, 10))
+	rig.zoom(0.9)
+	_expect(is_equal_approx(rig.goal_yaw - rig.cur_yaw, lag_yaw) and is_equal_approx(rig.goal_pitch - rig.cur_pitch, lag_pitch),
+		"orbit during a transition does not jump", "yaw lag %.3f, pitch lag %.3f" % [rig.goal_yaw - rig.cur_yaw, rig.goal_pitch - rig.cur_pitch])
+	_expect(absf(rig.goal_distance - rig.cur_distance) > 0.0 or lag_distance == 0.0, "zoom during a transition does not jump", "%.3f" % (rig.goal_distance - rig.cur_distance))
+	var saved := rig.get_state()
+	rig.set_mode("side", true)
+	rig.set_state(saved)
+	_expect(rig.mode == saved.mode and is_equal_approx(rig.goal_yaw, saved.yaw) and is_equal_approx(rig.cur_distance, saved.distance),
+		"camera state round-trips", rig.mode)
 	holder.queue_free()
 
 
@@ -306,6 +354,18 @@ func _check_gestures(definition: Dictionary) -> void:
 		_drag(view, 0, Vector2(300, 300 + i * 10))
 		_drag(view, 1, Vector2(360, 300 + i * 10))
 	_expect(view.rig.pan.distance_to(pan_before) > 0.05, "pinch gesture moves (pans) the view", "pan %s" % str(view.rig.pan))
+	_touch(view, 1, Vector2(480, 300), false)
+	_touch(view, 0, Vector2(200, 300), false)
+	# Three fingers: lifting the lowest-index one changes the active pair; the reference follows.
+	_touch(view, 0, Vector2(100, 100), true)
+	_touch(view, 1, Vector2(200, 100), true)
+	_touch(view, 2, Vector2(400, 500), true)
+	_touch(view, 0, Vector2(100, 100), false)
+	var mid: Vector2 = (Vector2(200, 100) + Vector2(400, 500)) * 0.5
+	_expect(view._gesture_start_mid.is_equal_approx(mid) and is_equal_approx(view._gesture_start_span, Vector2(200, 100).distance_to(Vector2(400, 500))),
+		"the gesture reference is re-taken when the active finger pair changes", str(view._gesture_start_mid))
+	_touch(view, 1, Vector2(200, 100), false)
+	_touch(view, 2, Vector2(400, 500), false)
 	view.queue_free()
 
 
@@ -344,4 +404,39 @@ func _check_layout(definition: Dictionary) -> void:
 			acceleration.text)
 		screen.queue_free()
 		await process_frame
+	host.queue_free()
+
+
+## Launch args (--ctl-*, --camera) apply to the first experiment screen only, not to later ones.
+func _check_launch_args_once(definition: Dictionary) -> void:
+	var quality_script: GDScript = load("res://scripts/core/quality.gd")
+	var screen_script: GDScript = load(EXPERIMENT_SCREEN)
+	quality_script.set("_args_cache", PackedStringArray(["--ctl-angle=33", "--camera=top"]))
+	screen_script.set("_launch_args_done", false)
+	var host := Control.new()
+	host.theme = load(UI_THEME).build()
+	host.size = Vector2(720, 1560)
+	root.add_child(host)
+	var first: Control = screen_script.new()
+	first.setup(definition)
+	host.add_child(first)
+	await process_frame
+	var second: Control = screen_script.new()
+	second.setup(definition)
+	host.add_child(second)
+	await process_frame
+	_expect(is_equal_approx(first.experiment.angle_deg, 33.0) and first.view.rig.mode == "top",
+		"launch args apply to the first experiment screen", "angle %.1f, camera %s" % [first.experiment.angle_deg, first.view.rig.mode])
+	_expect(not is_equal_approx(second.experiment.angle_deg, 33.0) and second.view.rig.mode != "top",
+		"launch args do not apply to later experiment screens", "angle %.1f, camera %s" % [second.experiment.angle_deg, second.view.rig.mode])
+	# A rebuilt screen restores conditions and camera.
+	first.experiment.set_control("angle", 12.0)
+	first.view.rig.set_mode("side", true)
+	var third: Control = screen_script.new()
+	third.setup(definition, first.capture_state())
+	host.add_child(third)
+	await process_frame
+	_expect(is_equal_approx(third.experiment.angle_deg, 12.0) and third.view.rig.mode == "side",
+		"a rebuilt screen keeps conditions and camera", "angle %.1f, camera %s" % [third.experiment.angle_deg, third.view.rig.mode])
+	quality_script.set("_args_cache", null)
 	host.queue_free()

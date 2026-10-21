@@ -25,6 +25,7 @@ var _touches: Dictionary = {}      # touch index -> position (local UI units)
 var _gesture := ""                 # "", "pending", "orbit", "pinch", "ended" (one finger left)
 var _gesture_start_mid := Vector2.ZERO
 var _gesture_start_span := 0.0
+var _gesture_pair: Array = []      # touch indices of the two fingers the gesture is measured on
 var _mouse_mode := ""              # "", "orbit", "pan"
 
 
@@ -63,7 +64,7 @@ func set_world(world: Node3D) -> void:
 
 
 func update_resolution() -> void:
-	if size.x < 1.0 or size.y < 1.0:
+	if not is_inside_tree() or size.x < 1.0 or size.y < 1.0:
 		return
 	var pixels := (size * Quality.view_pixels_per_unit()).round()
 	viewport.size = Vector2i(maxi(1, int(pixels.x)), maxi(1, int(pixels.y)))
@@ -114,9 +115,17 @@ func _on_touch(event: InputEventScreenTouch) -> void:
 			if event.pressed:
 				single_pointer.emit("cancel", event.position)
 				_gesture = "pending"
-				var pair := _pair()
-				_gesture_start_mid = (pair[0] + pair[1]) * 0.5
-				_gesture_start_span = pair[0].distance_to(pair[1])
+				_gesture_pair = []
+	# A third finger landing or one of the first two lifting changes which two fingers count:
+	# measure from the new pair so the next drag is not compared with the old one.
+	if _touches.size() >= 2 and _gesture != "" and _gesture != "ended":
+		var keys := _touches.keys()
+		keys.sort()
+		if _gesture_pair != [keys[0], keys[1]]:
+			_gesture_pair = [keys[0], keys[1]]
+			var pair := _pair()
+			_gesture_start_mid = (pair[0] + pair[1]) * 0.5
+			_gesture_start_span = pair[0].distance_to(pair[1])
 
 
 func _on_drag(event: InputEventScreenDrag) -> void:

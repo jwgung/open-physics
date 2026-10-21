@@ -2,7 +2,7 @@
 
 > **Status:** 제안됨 (iOS 확인 전까지 조건부)
 > **Date:** 2026-10-21
-> **Context docs:** [측정 기준](../3d-phase0/benchmark-spec.md) · [후보 조사](../research/3d-stack-candidates.md) · [1차 실측 결과](../../spikes/bench/results/README.md)
+> **Context docs:** [측정 기준](../3d-phase0/benchmark-spec.md) · [후보 조사](../research/3d-stack-candidates.md) · [실측 결과](../../spikes/bench/results/README.md)
 
 ## 맥락
 
@@ -48,7 +48,7 @@ Open Physics를 3D 모바일 앱으로 출시한다. 대상은 iOS와 Android이
 ## 조건과 후속 확인
 
 - **iOS 확인(필수)**: Plan 결정에 따라 웹 스택이 이겼으므로, 이 ADR을 확정하기 전에 iOS를 확인한다. 중급 iPhone 대여, macOS CI 빌드, Apple 개발자 계정이 필요하다. 확인할 항목은 WKWebView에서의 S1~S3 FPS, 메모리 한도로 앱이 종료되는지, WebGPU 사용 가능 여부다. 실패하면 B를 재검토한다.
-- **메모리**: 웹 S2는 10분 동안 PSS가 거의 선형으로 늘어 1.1 GB에 이르렀다. 3 GB 기기에서 위험한 수준이다. 장면은 새 객체를 만들지 않으므로 렌더러(WebGPU) 또는 Rapier wasm 쪽 누수로 의심된다. Phase 1 첫 Task에서 원인을 찾아 없애고, 10분 지속 측정에서 PSS가 평탄하게 600 MB 이하로 유지되는지 확인한다. 해결하지 못하면 이 ADR을 다시 검토한다.
+- **메모리**: 웹 S2는 10분 동안 PSS가 거의 선형으로 늘어 1.1 GB에 이르렀다. 3 GB 기기에서 위험한 수준이다. 재낙하는 새 메시·물리 바디를 만들지 않고 측정 중 입력도 없었으므로, 렌더러(WebGPU) 또는 Rapier wasm 쪽 누수로 의심된다. Phase 1 첫 Task에서 원인을 찾아 없애고, 10분 지속 측정에서 PSS가 평탄하게 600 MB 이하로 유지되는지 확인한다. 해결하지 못하면 이 ADR을 다시 검토한다.
 - **그래픽 단계**: 저·중·고 품질 단계(해상도 배율, 그림자, 블룸, 텍스처 크기)를 Phase 1 셸의 기본 기능으로 둔다. 하한 기기 저품질 60fps와 중급폰 고품질 60fps를 출시 기준으로 다시 측정한다.
 - **렌더러 경로**: 하한 기기에서는 WebGPU가 잡혔지만 S1이 느렸다. WebGL2 경로와 비교 측정해 기본 백엔드를 정한다.
 - **텍스처**: 런타임 생성을 KTX2 압축 텍스처로 바꿔 첫 프레임 지연(약 10초)과 GPU 메모리(약 230 MB)를 줄인다.

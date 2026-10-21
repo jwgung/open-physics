@@ -124,7 +124,7 @@ Rapier는 정지/운동 마찰을 구분하지 않는 단일 Coulomb 계수만 �
 
 ## 알려진 한계
 
-- 실기기 측정은 [1차 실측 결과](../bench/results/README.md)에 있다(SM-P200, backend auto → WebGPU). WebGL2 강제 경로는 아직 측정하지 않았다.
+- 실기기 측정은 [실측 결과](../bench/results/README.md)에 있다(SM-P200, backend auto → WebGPU). WebGL2 강제 경로는 아직 측정하지 않았다.
 - 화면 확인은 헤드리스 Chromium의 SwiftShader로만 했다. WebGL2 경로는 세 장면 모두 스크린샷으로 렌더링을 확인했고, WebGPU 경로는 어댑터 획득·백엔드 선택·오류 없음까지만 확인했다(헤드리스 캡처가 WebGPU 캔버스를 비워서 찍음).
 - S1은 시작할 때 2048² 텍스처 11장을 메인 스레드에서 만든다. 중급 기기에서 첫 프레임까지 수 초 걸릴 수 있고, 콜드 스타트 수치에 이 생성 시간이 들어간다.
 - Capacitor 기본 템플릿의 `INTERNET` 권한을 그대로 두었다. 아동 정책 점검은 후속 과제다.

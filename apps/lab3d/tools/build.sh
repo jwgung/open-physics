@@ -16,8 +16,8 @@ if [[ $what == test || $what == all ]]; then
   status=0
   "$GODOT" --headless --path . --fixed-fps 60 -s res://tests/run_tests.gd >"$log" 2>&1 || status=$?
   grep -E '^(PASS|FAIL|RESULT|==)' "$log" || true
-  # A script that fails to compile can leave checks unrun or vacuous: treat any SCRIPT ERROR as a failure.
-  if [[ $status -ne 0 ]] || grep -q '^FAIL' "$log" || grep -q 'SCRIPT ERROR' "$log" || ! grep -q '^RESULT: PASS' "$log"; then
+  # A script that fails to compile can leave checks unrun or vacuous: treat any SCRIPT ERROR (or engine ERROR line) as a failure.
+  if [[ $status -ne 0 ]] || grep -q '^FAIL' "$log" || grep -q 'SCRIPT ERROR' "$log" || grep -q '^ERROR' "$log" || ! grep -q '^RESULT: PASS' "$log"; then
     echo "lab3d tests failed (exit $status); tail of $log:" >&2
     tail -n 40 "$log" >&2
     exit 1

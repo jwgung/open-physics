@@ -154,9 +154,14 @@ func _swap(screen: Control, bench_scene: String) -> void:
 
 
 func _slide_in(screen: Control) -> void:
+	# A held screen comes back more than once: stop its previous slide so two tweens never fight.
+	var old: Tween = screen.get_meta("slide_tween") if screen.has_meta("slide_tween") else null
+	if old and old.is_valid():
+		old.kill()
 	screen.position.x = SLIDE_UNITS
 	screen.modulate.a = 0.0
 	var tween := screen.create_tween().set_parallel()
+	screen.set_meta("slide_tween", tween)
 	tween.tween_property(screen, "position:x", 0.0, SLIDE_S).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	tween.tween_property(screen, "modulate:a", 1.0, SLIDE_S * 0.7)
 

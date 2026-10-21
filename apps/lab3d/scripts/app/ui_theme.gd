@@ -108,6 +108,7 @@ static func build() -> Theme:
 	var chip_on := _box(SELECT, SELECT_LINE, 12, 12, 8, Color.TRANSPARENT, 2, 4)
 	theme.set_stylebox("pressed", "ChipButton", chip_on)
 	theme.set_stylebox("hover_pressed", "ChipButton", chip_on)
+	theme.set_stylebox("disabled", "ChipButton", _box(Color("f2f6fa"), Color("e1e9f2"), 12, 12, 8, Color.TRANSPARENT, 2, 4))
 
 	theme.set_type_variation("FlatButton", "Button")
 	theme.set_color("font_color", "FlatButton", ACCENT)
@@ -116,6 +117,8 @@ static func build() -> Theme:
 	var flat := _box(Color.TRANSPARENT, Color.TRANSPARENT, 12, 12, 8)
 	for state in ["normal", "hover", "pressed", "hover_pressed"]:
 		theme.set_stylebox(state, "FlatButton", flat)
+	theme.set_stylebox("disabled", "FlatButton", flat)   # same margins as the others; only the font fades
+	theme.set_color("font_disabled_color", "FlatButton", Color(ACCENT, 0.4))
 
 	# Slider: 12-unit blue track, 42-unit yellow grabber with a white ring (touch friendly).
 	theme.set_stylebox("slider", "HSlider", _box(Color("dce8f4"), Color.TRANSPARENT, 6, 0, 6))

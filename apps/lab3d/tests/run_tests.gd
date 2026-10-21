@@ -53,6 +53,8 @@ func _run() -> void:
 	await _check_gesture_input_state(definition)
 	await _check_layout(definition)
 	await _check_button_feedback()
+	await _check_slide_in()
+	await _check_banner_collapsed()
 	await _check_launch_args_flag(definition)
 	await _check_graph_redraw(definition)
 	_check_wheel_zoom(definition)
@@ -305,28 +307,44 @@ func _check_button_feedback() -> void:
 		_expect(lift > 0.0 and pressed.content_margin_top - normal.content_margin_top == lift and -pressed.expand_margin_top == lift
 			and pressed.content_margin_top + pressed.content_margin_bottom == normal.content_margin_top + normal.content_margin_bottom,
 			"%s: pressed face and text move down together by %.0f units, same size" % [type, lift], "")
-	var host := Control.new()
+	for type in ["ChipButton", "FlatButton"]:
+		var normal: StyleBoxFlat = theme.get_stylebox("normal", type)
+		var disabled: StyleBoxFlat = theme.get_stylebox("disabled", type)
+		_expect(disabled != theme.get_stylebox("disabled", "Button") and disabled.content_margin_top == normal.content_margin_top
+			and disabled.content_margin_bottom == normal.content_margin_bottom and disabled.content_margin_left == normal.content_margin_left
+			and disabled.border_width_bottom == normal.border_width_bottom,
+			"%s: own disabled box with the normal margins and lip" % type, "")
+	# Press feedback lives in a Container (as in the real screens): a layout pass must not undo it.
+	var host := VBoxContainer.new()
+	host.theme = theme
 	root.add_child(host)
 	var button := Ui.button("x")
 	host.add_child(button)
+	var other := Ui.button("y")
+	host.add_child(other)
+	await process_frame
 	await process_frame
 	var press := InputEventMouseButton.new()
 	press.button_index = MOUSE_BUTTON_LEFT
 	press.pressed = true
 	button.gui_input.emit(press)
 	await create_timer(0.2).timeout
-	var shrunk := button.scale.x < 1.0
+	var shrunk: bool = Ui.press_amount(button) > 0.99 and button.get_theme_stylebox("normal").expand_margin_left < -1.0
+	other.custom_minimum_size.y += 10.0   # new layout pass over the container's children
+	host.queue_sort()
+	await process_frame
+	await process_frame
+	var kept: bool = Ui.press_amount(button) > 0.99 and button.get_theme_stylebox("normal").expand_margin_left < -1.0 and button.scale == Vector2.ONE
 	button.disabled = true
 	var release := InputEventMouseButton.new()
 	release.button_index = MOUSE_BUTTON_LEFT
 	release.pressed = false
 	button.gui_input.emit(release)
 	await create_timer(0.6).timeout
-	var restored := is_equal_approx(button.scale.x, 1.0)
-	button.scale = Vector2.ONE
+	var restored: bool = absf(Ui.press_amount(button)) < 0.001 and is_equal_approx(button.get_theme_stylebox("disabled").expand_margin_left, 0.0)
 	button.gui_input.emit(press)
 	await create_timer(0.2).timeout
-	var ignored := button.scale == Vector2.ONE
+	var ignored: bool = absf(Ui.press_amount(button)) < 0.001
 	host.queue_free()
 	_expect(shrunk and kept and restored and ignored, "press shrinks an enabled button and survives a container layout pass, release restores it even when disabled meanwhile, a disabled button ignores the press", "shrunk %s, kept %s, restored %s, ignored %s" % [shrunk, kept, restored, ignored])
 

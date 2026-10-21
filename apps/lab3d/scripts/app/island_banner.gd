@@ -20,7 +20,14 @@ func _notification(what: int) -> void:
 		queue_redraw()
 
 
+## False for a rect too small to hold the picture (zero or sub-pixel size).
+static func can_draw(rect_size: Vector2) -> bool:
+	return rect_size.x >= 1.0 and rect_size.y >= 1.0
+
+
 func _draw() -> void:
+	if not can_draw(size):   # collapsed (e.g. a hidden layout pass): the polygons would be degenerate
+		return
 	var w := size.x
 	var h := size.y
 	draw_style_box(_sky, Rect2(Vector2.ZERO, size))

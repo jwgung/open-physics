@@ -79,10 +79,10 @@ func set_mode(new_mode: String, instant := false) -> void:
 		goal_pitch = clampf(deg_to_rad(view.get("pitch_deg", -10.0)), pitch_range.x, pitch_range.y)
 		goal_distance = clampf(view.get("distance", default_distance), distance_range.x, distance_range.y)
 		pan = Vector3.ZERO
+	var changed := new_mode != mode
+	mode = new_mode   # before snap(): follow targets depend on the mode
 	if instant:
 		snap()
-	var changed := new_mode != mode
-	mode = new_mode
 	if changed:
 		mode_changed.emit(mode)
 
@@ -90,10 +90,14 @@ func set_mode(new_mode: String, instant := false) -> void:
 ## Two-finger drag / right-mouse drag (UI units). Turning leaves a preset view for "orbit"
 ## (follow keeps following).
 func orbit(relative: Vector2) -> void:
-	goal_yaw = clampf(goal_yaw - relative.x * ORBIT_RAD_PER_UNIT, yaw_range.x, yaw_range.y)
-	goal_pitch = clampf(goal_pitch - relative.y * ORBIT_RAD_PER_UNIT, pitch_range.x, pitch_range.y)
-	cur_yaw = goal_yaw
-	cur_pitch = goal_pitch
+	# The drawn view moves by the same delta as the goal, so a gesture during a mode transition
+	# neither jumps to the goal nor drops the rest of the transition.
+	var yaw := clampf(goal_yaw - relative.x * ORBIT_RAD_PER_UNIT, yaw_range.x, yaw_range.y)
+	var pitch := clampf(goal_pitch - relative.y * ORBIT_RAD_PER_UNIT, pitch_range.x, pitch_range.y)
+	cur_yaw += yaw - goal_yaw
+	cur_pitch += pitch - goal_pitch
+	goal_yaw = yaw
+	goal_pitch = pitch
 	if mode != "orbit" and mode != "follow":
 		mode = "orbit"
 		mode_changed.emit(mode)
@@ -106,8 +110,9 @@ func twist(radians: float) -> void:
 
 ## factor < 1 zooms in.
 func zoom(factor: float) -> void:
-	goal_distance = clampf(goal_distance * factor, distance_range.x, distance_range.y)
-	cur_distance = goal_distance
+	var distance := clampf(goal_distance * factor, distance_range.x, distance_range.y)
+	cur_distance += distance - goal_distance
+	goal_distance = distance
 
 
 ## Moves the look-at point in the screen plane (UI units), keeping it within pan_radius.
@@ -120,6 +125,26 @@ func pan_by(relative: Vector2) -> void:
 	if pan.length() > pan_radius:
 		pan = pan.normalized() * pan_radius
 	cur_target = _goal_target()
+
+
+## Mode and view, to rebuild the camera later (App keeps it across a 3D view rebuild).
+func get_state() -> Dictionary:
+	return {"mode": mode, "yaw": goal_yaw, "pitch": goal_pitch, "distance": goal_distance, "pan": pan}
+
+
+func set_state(state: Dictionary) -> void:
+	var saved: String = state.get("mode", mode)
+	if saved not in MODES:
+		return
+	goal_yaw = state.get("yaw", goal_yaw)
+	goal_pitch = state.get("pitch", goal_pitch)
+	goal_distance = state.get("distance", goal_distance)
+	pan = state.get("pan", pan)
+	var changed := saved != mode
+	mode = saved
+	snap()
+	if changed:
+		mode_changed.emit(mode)
 
 
 func snap() -> void:

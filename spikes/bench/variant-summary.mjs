@@ -19,10 +19,13 @@ const lines = readFileSync(file, "utf8").split("\n").filter((l) => l.startsWith(
 });
 const frames = lines.filter((l) => "fps" in l);
 const perf = lines.filter((l) => !("fps" in l));
-const mean = (xs, key) => (xs.length ? xs.reduce((a, x) => a + (x[key] ?? NaN), 0) / xs.length : NaN);
+const mean = (xs, key) => {
+  const values = xs.map((x) => x[key]).filter((x) => typeof x === "number"); // null: no GPU time in that window
+  return values.length ? values.reduce((a, x) => a + x, 0) / values.length : NaN;
+};
 const fmt = (x, d = 1) => (Number.isFinite(x) ? x.toFixed(d) : "—");
 const clock = clk && existsSync(clk)
-  ? readFileSync(clk, "utf8").trim().split("\n").map((l) => l.trim().split(/\s+/).map(Number)).filter((c) => c[0] > 0)
+  ? readFileSync(clk, "utf8").trim().split("\n").map((l) => l.trim().split(/\s+/).map(Number)).filter((c) => c.length === 2 && c[0] > 0) // "<kHz> <°C>"; a failed clock read leaves one field
   : [];
 const mhz = clock.length ? clock.reduce((a, c) => a + c[0], 0) / clock.length / 1000 : NaN;
 const gpu = mean(perf, "gpu_ms");

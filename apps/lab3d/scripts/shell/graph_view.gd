@@ -19,7 +19,10 @@ func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 
+## Redraws only when the data changed (the screen polls at 10 Hz).
 func set_data(new_series: Dictionary) -> void:
+	if new_series == series:
+		return
 	series = new_series
 	queue_redraw()
 

@@ -27,7 +27,8 @@ spikes/godot/tools/build.sh web      # exports/web/index.html
 
 - 행성 텍스처는 저장소에 넣지 않는다. 처음 빌드할 때 `tools/bake_textures.gd`가 `assets/generated/`(2048², Android용)와 `assets/generated/web/`(1024², Web용)를 만든다(약 1분). Godot import가 VRAM 압축(ETC2/EAC, S3TC/BPTC)으로 바꾼다.
 - release APK는 `GODOT_ANDROID_KEYSTORE_RELEASE_*` 환경변수로 디버그 키스토어를 넘겨 서명한다. 배포용이 아니다.
-- 루트 `npm test`에는 `tools/s3-vectors.test.ts`가 포함된다(아래 5절).
+- 루트 vitest는 `spikes/**`를 제외하므로 `tools/s3-vectors.test.ts`는 루트 `npm test`에 들어가지 않는다. 따로 `npx vitest run --config /dev/null --root . spikes/godot/tools/s3-vectors.test.ts`로 실행한다.
+- 새 worktree에서는 class cache가 없어 `build.sh test`가 실패할 수 있다. 먼저 `godot --headless --path spikes/godot --import`를 한 번 실행한다.
 
 ### 결과물 크기 (2026-10-21 빌드)
 
@@ -118,7 +119,7 @@ leapfrog 시작 보정을 끄면 s(1s)=1.2263 m(+1.685%)로 실패한다.
 ### 두 언어로 공식을 유지하는 비용
 
 - 이번에 옮긴 것은 GDScript 67줄(`physics_laws.gd`: 원궤도 속력·주기, 등가속도 변위·속도, 빗면 분해, 임계각, 마찰 보정 1D)과 보정 계층 73줄(`incline_friction.gd`)이다. 전체 TS 코어(`src/physics/laws` 15개 파일(테스트 제외))를 옮기면 분량이 수십 배가 되고, 2D TS 코어를 3D로 바꾸는 설계 작업도 따로 생긴다.
-- 일치 검증은 두 단계다. `tools/s3-vectors.test.ts`(루트 vitest)가 TS 코어로 `tests/s3_vectors.json`을 계산해 커밋된 파일과 비교하고, `tests/run_tests.gd`가 같은 JSON으로 GDScript 포트를 검사한다. TS 공식을 바꾸면 vitest가 먼저 깨지고(`UPDATE_S3_VECTORS=1`로 재생성), 그 뒤 Godot 테스트가 GDScript 쪽 불일치를 잡는다. 공식을 추가할 때마다 벡터 생성 코드·JSON·GDScript 포트·Godot 테스트 네 곳을 손대야 한다.
+- 일치 검증은 두 단계다. `tools/s3-vectors.test.ts`(별도 vitest 실행)가 TS 코어로 `tests/s3_vectors.json`을 계산해 커밋된 파일과 비교하고, `tests/run_tests.gd`가 같은 JSON으로 GDScript 포트를 검사한다. TS 공식을 바꾸면 vitest가 먼저 깨지고(`UPDATE_S3_VECTORS=1`로 재생성), 그 뒤 Godot 테스트가 GDScript 쪽 불일치를 잡는다. 공식을 추가할 때마다 벡터 생성 코드·JSON·GDScript 포트·Godot 테스트 네 곳을 손대야 한다.
 - CI에는 Node와 Godot 바이너리(약 150 MB)가 둘 다 필요하다. GDScript에는 정적 타입 검사·테스트 러너 생태계가 약해 테스트 러너를 직접 썼다.
 - 보정은 엔진 동작(콜백 순서, 적분기)에 기대므로 Godot·Jolt를 올릴 때마다 S3 테스트를 다시 돌려야 한다. 위 두 특성은 문서화된 계약이 아니라 이번에 실험으로 확인한 동작이다.
 

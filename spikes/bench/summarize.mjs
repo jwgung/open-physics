@@ -13,6 +13,7 @@ const readJsonl = (path) =>
     : [];
 const mean = (xs) => xs.reduce((a, b) => a + b, 0) / xs.length;
 const median = (xs) => [...xs].sort((a, b) => a - b)[Math.floor(xs.length / 2)];
+const finiteMax = (xs) => Math.max(...xs.filter(Number.isFinite));
 const fmt = (x, d = 1) => (Number.isFinite(x) ? x.toFixed(d) : "—");
 
 const runs = new Map();
@@ -53,7 +54,7 @@ for (const { candidate, scene, runs: measured, sustained } of [...runs.values()]
     drop = `${fmt(((first - last) / first) * 100)}%`;
   }
   console.log(
-    `| ${candidate} | ${scene} | ${fmt(mean(fps))} | ${fmt(onePercentLow)} | ${fmt(median(frames.map((f) => f.p95ms)))} | ${drop} | ${fmt(Math.max(...device.map((d) => d.batteryC ?? NaN)))} | ${fmt(Math.max(...device.map((d) => d.pssMB ?? NaN)), 0)} | ${fmt(coldStartMedian(candidate), 0)} |`,
+    `| ${candidate} | ${scene} | ${fmt(mean(fps))} | ${fmt(onePercentLow)} | ${fmt(median(frames.map((f) => f.p95ms)))} | ${drop} | ${fmt(finiteMax(device.map((d) => d.batteryC)))} | ${fmt(finiteMax(device.map((d) => d.pssMB)), 0)} | ${fmt(coldStartMedian(candidate), 0)} |`,
   );
 }
-console.log("\n\\* 1% low는 초당 p99 프레임 시간 평균의 역수로 근사한다.");
+console.log("\n\\* 1% low는 초당 p99 프레임 시간(초당 30~60프레임에서는 사실상 그 초의 최악 프레임) 평균의 역수로 근사해, 전체 프레임의 하위 1%보다 보수적이다.");

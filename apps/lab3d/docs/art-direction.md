@@ -86,9 +86,10 @@ Phase 1 Task 2c에서 정한 3D 앱의 시각 기준이다. 사용자가 시안 
 
 - `render_mode unshaded`. 엔진 조명·그림자·환경광을 받지 않는다.
 - **색 램프**: 정점 단계에서 `wrap = dot(N, sun_dir) × 0.5 + 0.5`, `t = smoothstep(0.55 − 0.03, 0.55 + 0.03, wrap)`, 빛 = `mix(SHADE, LIGHT, t) + 0.1 × max(N.y, 0)`(위쪽 면 채움). 색 = 정점색(AO 포함) × 빛. `sun_dir = (−0.35, 0.85, 0.45)`(왼쪽 앞 위). 경계가 거의 딱 끊기는 두 단 툰이다.
+- 법선은 `MODEL_NORMAL_MATRIX`(모델 행렬의 역전치)로 월드에 옮긴다. 상자 눌림·기둥 길이처럼 런타임에 비균일 스케일이 걸려도 조명이 깨지지 않는다(Compatibility·Mobile 모두 지원하는 내장).
 - 면마다 법선이 하나라 램프를 정점에서 계산해도 결과가 같다. 조각(fragment) 단계는 색을 복사만 해 low에서 싸다.
 - **sRGB 처리**: 정점색은 `ArtMeshBuilder`가 sRGB → 선형으로 바꿔 저장한다. Mobile 렌더러는 선형 출력을 sRGB로 바꿔 주지만, Compatibility 렌더러는 unshaded `ALBEDO`를 바꾸지 않고 내보낸다(SM-P200에서 색이 짙게 나오는 것으로 확인). 셰이더가 `OUTPUT_IS_SRGB`일 때 직접 선형 → sRGB로 바꾼다. 새 셰이더도 이 처리를 넣어야 low와 high 색이 같다.
-- **블롭 그림자**: `ArtKit.shadow_material()`(unshaded, 알파 블렌드, 깊이 쓰기 없음, 먼저 그림). `add_blob`(둥근 것) / `add_soft_rect`(사각형, 가장자리 페이드). 정적 물체의 그림자는 섬 그림자 메시 하나에 합친다(`build_island`의 `extra_shadows`). 움직이는 물체는 `ArtJuice`가 물리 스텝마다(몸체가 움직이거나 돌았을 때만) 아래로 광선 하나를 쏴 맞은 면에 그림자를 붙이고, 높을수록 작게 한다. 각도가 바뀌는 장치(빗면)는 바뀔 때만 그림자 메시를 다시 만든다.
+- **블롭 그림자**: `ArtKit.shadow_material()`(unshaded, 알파 블렌드, 깊이 쓰기 없음. 투명 패스라 불투명 소품 뒤에 그려지고 깊이 검사로 가려진다. `render_priority`는 다른 투명 메시끼리의 순서일 뿐). `add_blob`(둥근 것) / `add_soft_rect`(사각형, 가장자리 페이드). 정적 물체의 그림자는 섬 그림자 메시 하나에 합친다(`build_island`의 `extra_shadows`). 움직이는 물체는 `ArtJuice`가 물리 스텝마다(몸체가 움직이거나 돌았을 때만) 아래로 광선 하나를 쏴 맞은 면에 그림자를 붙이고, 높을수록 작게 한다. 각도가 바뀌는 장치(빗면)의 그림자는 메시를 한 번만 만들고 각도가 바뀔 때 `scale.x`만 맞춘다.
 - **high 단계 실시간 그림자**: 넣지 않는다. 근거는 [Task 2c 결과 4절](../../../spikes/bench/results/phase1-task2c/README.md#4-high-실시간-그림자-판단).
 
 ## 5. 환경

@@ -31,7 +31,9 @@ static func lit_material() -> ShaderMaterial:
 	return _lit
 
 
-## Unshaded alpha-blended vertex colour, drawn before the props (blob shadows on the ground).
+## Unshaded alpha-blended vertex colour (blob shadows on the ground). It is in the transparent
+## pass, so it is drawn after the opaque props and depth-tested against them (no depth write);
+## render_priority only orders it among other transparent meshes.
 static func shadow_material() -> StandardMaterial3D:
 	if _shadow == null:
 		_shadow = StandardMaterial3D.new()

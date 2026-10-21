@@ -18,7 +18,8 @@ uniform float sky_fill = 0.1;      // upward faces get a little extra light
 varying vec3 shaded;
 
 void vertex() {
-	vec3 n = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
+	// MODEL_NORMAL_MATRIX = inverse transpose: stays correct under non-uniform scale (box squash, post length).
+	vec3 n = normalize(MODEL_NORMAL_MATRIX * NORMAL);
 	float wrap = dot(n, normalize(sun_dir)) * 0.5 + 0.5;
 	float t = smoothstep(threshold - softness, threshold + softness, wrap);
 	vec3 light = mix(shade_color.rgb, lit_color.rgb, t) + sky_fill * max(n.y, 0.0);

@@ -56,7 +56,7 @@ static func add_press_bounce(node: Control) -> void:
 	node.resized.connect(func() -> void: node.pivot_offset = node.size * 0.5)
 	node.gui_input.connect(func(event: InputEvent) -> void:
 		var pressed: bool = (event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT) or event is InputEventScreenTouch
-		if pressed:
+		if pressed and not (node is BaseButton and node.disabled):
 			_bounce(node, PRESS_SCALE if event.pressed else 1.0, PRESS_IN_S if event.pressed else PRESS_OUT_S))
 	node.mouse_exited.connect(func() -> void: if node.scale != Vector2.ONE: _bounce(node, 1.0, PRESS_OUT_S))
 

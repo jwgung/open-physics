@@ -23,7 +23,7 @@ Notion Story·Task와 GitHub Issue는 발행하지 않는다. 이 문서가 Phas
 | 1 | S2 성능 병목 조사와 품질 단계 | S2 병목을 근거와 함께 밝힌다. 저·중·고 품질 단계를 정의·구현하고, SM-P200에서 단계별 S1~S3를 측정한다. 저품질 60 fps 달성 여부와 남은 차이를 보고한다 | — | 완료 — 저품질 S1~S3 59.8 fps, [결과](../../spikes/bench/results/phase1-task1/README.md) | `perf/godot-s2-quality-tiers`, [#4](https://github.com/jwgung/open-physics/pull/4) |
 | 2a | 3D 앱 셸 뼈대 | `apps/lab3d/` Godot 프로젝트. 실험 등록·로딩, 카메라 모드(정면·3/4·위·옆·따라가기·제한 회전)와 "정면으로", 터치 제스처, 2D 패널 레이아웃(폰 세로·태블릿 가로), 품질 단계 설정, low에서도 선명한 UI. 빗면 마찰 1개로 검증 | 1 | 완료 | `feat/app-shell-skeleton`, [#5](https://github.com/jwgung/open-physics/pull/5) |
 | 2b | 3D 앱 셸 조작 | 조작 평면(바닥·면 위 드래그), 스냅, 자동 안착, 보조 시점, 높이 손잡이 | 2a | 대기 | |
-| 2c | 아트 디렉션·연출 | 장난감·로우폴리 스타일(둥글고 두툼한 물체, 밝은 색, 구운 조명·발밑 그림자, 통통 튀는 연출)을 정하고 빗면 실험에 적용한다. SM-P200 low 60 fps 유지. 이후 실험은 이 스타일로 만든다 | 2a | 완료(검토 대기) — 잔디 섬 확정, low 59.8 fps, [결과](../../spikes/bench/results/phase1-task2c/README.md), [스타일 가이드](../../apps/lab3d/docs/art-direction.md) | `feat/art-direction` |
+| 2c | 아트 디렉션·연출 | 장난감·로우폴리 스타일(시안 중 B 잔디 섬으로 확정: 선명한 원색, 각진 로우폴리, 구운 조명·발밑 그림자, 통통 튀는 연출)을 정하고 빗면 실험에 적용한다. SM-P200 low 60 fps 유지. 이후 실험은 이 스타일로 만든다 | 2a | 완료(검토 대기) — 잔디 섬 확정, low 59.8 fps, [결과](../../spikes/bench/results/phase1-task2c/README.md), [스타일 가이드](../../apps/lab3d/docs/art-direction.md) | `feat/art-direction` |
 | 3 | 공식 보정 계층과 parity 파이프라인 | 일반 접촉에 쓸 보정 설계(Jolt 접촉 콜백 범위 조사 포함), TS↔GDScript 벡터 테스트, CI(Node + Godot 헤드리스) | 1 | 대기 | |
 | 4 | 역학 안내형 10개 3D 이식 | 실험별로 나눠 진행한다. 실험 콘텐츠는 JSON으로 빼서 웹 2D와 공유한다. 빗면 마찰은 2a에서 먼저 옮긴다 | 2a, 2b, 2c, 3 | 대기 | |
 | 5 | 역학 빈 실험실 3D | 고정 블록·줄·용수철·지렛대·도르래·힘·중력원·물 | 2a, 2b, 2c, 3 | 대기 | |

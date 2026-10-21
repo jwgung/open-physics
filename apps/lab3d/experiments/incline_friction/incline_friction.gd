@@ -13,6 +13,7 @@ const BOX := 0.4
 const INCLINE_LENGTH := 8.0
 const START_X := 3.5          # release point along the incline (pivot local x), uphill end is +x
 const PIVOT_HEIGHT := 3.2
+const STAND_HEIGHT := PIVOT_HEIGHT - 0.15   # full height of the support post mesh
 const GRAPH_EVERY_STEPS := 6  # graph sample every 6 fixed steps (10 Hz)
 const FLOOR_DAMP := 4.0       # 1/s braking of a box lying on the floor after leaving the incline
 const FALL_LIMIT_Y := -3.0    # below this the box is stopped (it left the floor)
@@ -27,6 +28,7 @@ var box: InclineBox
 var corrector := InclineFrictionCorrector.new()
 ## Grass island meshes, shadows and the box reactions (visual only, never the bodies).
 var props := InclineProps.new()
+var _stand: MeshInstance3D
 
 var _pivot: Node3D
 var _graph_points := PackedVector2Array()
@@ -69,6 +71,7 @@ func set_angle(degrees: float) -> void:
 	angle_deg = clampf(degrees, 0.0, 45.0)
 	_pivot.rotation = Vector3(0.0, 0.0, deg_to_rad(angle_deg))
 	props.angle_changed(angle_deg)
+	_fit_stand()
 	reset_box()
 
 
@@ -242,9 +245,11 @@ func _build_world() -> void:
 	_pivot.add_child(mark)
 
 	# Support post under the pivot (visual only, no collision).
-	var stand := ArtKit.instance(props.stand_mesh(PIVOT_HEIGHT - 0.15))
-	stand.position = Vector3(0.0, 0.0, InclineProps.STAND_Z)
-	add_child(stand)
+	_stand = ArtKit.instance(props.stand_mesh(STAND_HEIGHT))
+	_stand.name = "Stand"
+	_stand.position = Vector3(0.0, 0.0, InclineProps.STAND_Z)
+	add_child(_stand)
+	_fit_stand()
 
 	box = InclineBox.new()
 	box.mass = MASS
@@ -270,8 +275,14 @@ func _build_world() -> void:
 	set_coefficients(mu_s, mu_k)
 	box.corrector = corrector
 
-	props.dress(self, stand.position, box, box_visual, BOX)
+	props.dress(self, _stand.position, box, box_visual, BOX)
 	props.juice.landed.connect(impact.emit)
+
+
+## The post is shortened as the incline tilts so its top never shows through the incline.
+func _fit_stand() -> void:
+	if _stand != null:
+		_stand.scale.y = InclineProps.stand_height(STAND_HEIGHT, PIVOT_HEIGHT, angle_deg) / STAND_HEIGHT
 
 
 func _add_box_shape(body: CollisionObject3D, size: Vector3) -> void:

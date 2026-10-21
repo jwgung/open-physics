@@ -43,6 +43,7 @@ func _run() -> void:
 	await _check_bounded_and_floor()
 	await _check_left_status()
 	await _check_art_is_visual_only()
+	_check_stand_clearance()
 	_lab.queue_free()
 	print("== shell: camera, gestures, layout ==")
 	await _check_camera(definition)
@@ -195,6 +196,31 @@ func _check_art_is_visual_only() -> void:
 	_expect(runs[0].samples == runs[1].samples and runs[0].pos == runs[1].pos and runs[0].graph == runs[1].graph,
 		"same motion with and without the box reactions", "s(3s) %.6f / %.6f m" % [runs[0].samples[-1], runs[1].samples[-1]])
 	_expect(str(runs[0].obs) == str(runs[1].obs), "same displayed values with and without the box reactions", str(runs[0].obs))
+
+
+## The support post never shows through the incline: at every angle up to the slider's maximum the
+## top of the post is under the incline's underside over the post's whole x range.
+func _check_stand_clearance() -> void:
+	var max_angle := 0.0
+	for control in _lab.definition.controls:
+		if control.id == "angle":
+			max_angle = float(control.max)
+	var stand: MeshInstance3D = _lab.get_node("Stand")
+	var incline_mesh: MeshInstance3D = _lab._pivot.find_children("*", "MeshInstance3D", true, false)[0]
+	var under_local: float = incline_mesh.get_parent().position.y + incline_mesh.mesh.get_aabb().position.y
+	var worst := INF
+	var angle := 0.0
+	while angle <= max_angle + 0.001:
+		_lab.set_angle(angle)
+		var top: float = (stand.global_transform * Vector3(0.0, stand.mesh.get_aabb().end.y, 0.0)).y
+		var a: Vector3 = _lab._pivot.global_transform * Vector3(-4.0, under_local, 0.0)
+		var b: Vector3 = _lab._pivot.global_transform * Vector3(4.0, under_local, 0.0)
+		for x in [-0.25, 0.25]:
+			var under := lerpf(a.y, b.y, (x - a.x) / (b.x - a.x))
+			worst = minf(worst, under - top)
+		angle += 2.5
+	_lab.set_angle(20.0)
+	_expect(max_angle >= 45.0 and worst > 0.0, "support post top stays under the incline at every angle", "max angle %.0f, min clearance %.3f m" % [max_angle, worst])
 
 
 func _has_material(id: String) -> bool:

@@ -9,6 +9,7 @@ extends RefCounted
 const INCLINE_THICKNESS := 0.5      # visual thickness (the collision box is 0.3 m)
 const STAND_WIDTH := 0.5
 const STAND_Z := -0.7
+const STAND_GAP := 0.04             # clearance between the post top and the incline's underside (m)
 
 var juice: ArtJuice
 var _ramp_shadow: MeshInstance3D
@@ -39,6 +40,15 @@ func stand_mesh(height: float) -> Mesh:
 	b.ao_height = 0.12
 	b.add_cylinder(Transform3D.IDENTITY, 0.75, 0.62, 0.16, 8, ArtPalette.BLUE_DARK)
 	return b.commit()
+
+
+## Height the post may have at this incline angle so that its top (a post of STAND_WIDTH around the
+## pivot's x) stays under the incline's underside: the underside, INCLINE_THICKNESS below the top
+## face, is lowest at the post's uphill-down edge. Never taller than `full_height`.
+static func stand_height(full_height: float, pivot_height: float, angle_deg: float) -> float:
+	var t := deg_to_rad(angle_deg)
+	var under := pivot_height - STAND_WIDTH * 0.5 * tan(t) - INCLINE_THICKNESS / cos(t)
+	return clampf(under - STAND_GAP, 0.1, full_height)
 
 
 func box_mesh(size: float) -> Mesh:

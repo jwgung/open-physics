@@ -1,4 +1,5 @@
-## OPBENCH frame-time reporter (autoload "Bench"), ported unchanged from spikes/godot/scripts/bench.gd.
+## OPBENCH frame-time reporter (autoload "Bench"), ported from spikes/godot/scripts/bench.gd
+## (this copy is the reference from now on; the spike stays frozen).
 ## Emits one JSON line per second in the exact format of docs/3d-phase0/benchmark-spec.md section 6.
 ## Android: android.util.Log.i("OPBENCH", line) through JavaClassWrapper, so `adb logcat -s OPBENCH:I` sees it.
 ## Everywhere: also print("OPBENCH " + line) (logcat tag "godot", stdout on desktop/web console).

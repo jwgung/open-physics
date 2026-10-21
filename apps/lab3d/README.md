@@ -145,11 +145,11 @@ python3 -I apps/lab3d/tools/device_gesture.py orbit  # orbit | pinch | pan | one
 
 ## 5. 실험 추가
 
-1. `content/experiments/<id>.json`을 만든다. 필드는 `incline-friction.json`을 따른다.
-   - 문구: `title`, `category`, `icon`, `question`, `steps`(3개), `observe`, `terms`, `law`(`title`·`description`·`equation`), `tip`
+1. `content/experiments/<id>.json`을 만든다. 필드는 `incline-friction.json`을 따른다. `ExperimentRegistry.validate()`가 검사하는 필수 필드는 `id`, `title`, `category`, `question`, `steps`, `observe`, `law`, `scene`, `camera`, `controls`, `actions`, `observations`, `graph`다. 나머지(`icon`, `terms`, `tip`)는 선택이다.
+   - 문구: `title`, `category`, `icon`, `question`, `steps`(웹 2D처럼 3개 권장), `observe`, `terms`, `law`(`title`·`description`·`equation`), `tip`
    - `scene`: 실험 스크립트 경로, `bench_id`: OPBENCH 장면 이름
    - `camera`: `target`, `distance`, `distance_range`, `yaw_range_deg`, `pitch_range_deg`, `pan_radius`, `default_mode`, `views`(front·three_quarter·top·side·follow의 `yaw_deg`·`pitch_deg`, 선택 `distance`)
-   - `controls`: `slider`(`min`·`max`·`step`·`default`·`unit`·`digits`) 또는 `choice`(`options`·`default`)
+   - `controls`: `slider`(`min`·`max`·`step`·`default`·`unit`·`digits`) 또는 `choice`(`options`·`default`). `options` 항목은 `id`·`label`이고, 재질 선택처럼 실험이 쓰는 계수(`mu_s`·`mu_k`)를 함께 둘 수 있다
    - `actions`: 버튼(`id`·`label`, `style: "primary"`)
    - `observations`: `id`·`label`·`unit`·`digits`(문자열 값이면 단위 없음)
    - `graph`: `title`, `x`(`label`·`unit`·`max`), `y`(`label`·`unit`·`min_max`), `series`(`id`·`label`·`color`·`style: line|points`)

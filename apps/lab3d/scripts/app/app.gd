@@ -8,7 +8,7 @@
 class_name App
 extends Control
 
-const RESUME_PATH := "user://resume.txt"   # written before a renderer restart from settings
+const RESUME_PATH := "user://resume.txt"   # written by settings right after Quality.set_tier() requested a renderer restart
 const SETTINGS_PATH := "user://settings.cfg"
 
 var _definitions: Array[Dictionary] = []

@@ -2,7 +2,7 @@
 
 - 기기: SM-P200 (Galaxy Tab A 8.0 2019, Exynos 7904 / Mali-G71 MP2, Vulkan 1.1, Android 11, 1200×1920, 60 Hz) — 하한 기기
 - 일시: 2026-10-21. 병목 조사 15:00–16:30, 단계별 측정 1차 16:35–18:10, 2차 18:11–19:45(표는 2차)
-- 빌드: Godot 4.7.2 + Jolt, release APK. 단계 측정은 커밋 `b207857`의 스파이크
+- 빌드: Godot 4.7.2 + Jolt, release APK. 단계 측정의 앱은 커밋 `b207857`의 스파이크, 수집기는 `698a04a`의 `collect.sh`(PSS를 pid로 조회)
 - 계약: [Phase 1 README의 Task 1 상세](../../../../docs/3d-phase1/README.md#task-1-상세)
 
 ## 요약

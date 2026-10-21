@@ -1,13 +1,13 @@
-## Procedural low-poly "toy" geometry (Phase 1 Task 2c style mockups). Everything is generated in
-## code, no external assets. Shapes are appended into one ArrayMesh with per-vertex colors, so a
+## Procedural low-poly geometry for the grass island style (Phase 1 Task 2c,
+## apps/lab3d/docs/art-direction.md). Everything is generated in code, no external assets. Shapes are appended into one ArrayMesh with per-vertex colors, so a
 ## whole static set (ground + props) is a single draw call with the shared toy material.
 ## Per-vertex "AO": each shape darkens towards its own base (contact darkening without shadows).
 ## Soft blob shadows (alpha in the vertex color) are built with add_soft_rect / add_blob.
-class_name ToyMeshBuilder
+class_name ArtMeshBuilder
 extends RefCounted
 
-## true = faceted (one normal per triangle), false = smooth normals.
-var flat := false
+## true = faceted (one normal per triangle, the style's rule), false = smooth normals.
+var flat := true
 ## Vertex AO: the base of each shape is multiplied by ao_min, fading to 1 over ao_height (m).
 var ao_min := 0.72
 var ao_height := 0.35
@@ -114,7 +114,7 @@ func add_sphere(xf: Transform3D, radius: float, rings: int, sides: int, color: C
 
 ## Ground-hugging soft shadow: an inner rounded rectangle (half extents) at full alpha that fades
 ## to 0 over `fade` metres. half_extents = 0 gives a round blob of radius `fade`.
-## Normal is +y of xf; use a separate builder + ToyStyle.shadow_material().
+## Normal is +y of xf; use ArtKit.shadow_builder() + ArtKit.shadow_material().
 func add_soft_rect(xf: Transform3D, half_extents: Vector2, fade: float, alpha: float, color := Color.BLACK, corner_steps := 6) -> void:
 	var inner := Color(color.r, color.g, color.b, alpha)
 	var outer := Color(color.r, color.g, color.b, 0.0)
@@ -147,28 +147,6 @@ func add_soft_rect(xf: Transform3D, half_extents: Vector2, fade: float, alpha: f
 func add_blob(xf: Transform3D, radius: float, alpha: float) -> void:
 	add_soft_rect(xf, Vector2(radius * 0.35, radius * 0.35), radius * 0.65, alpha)
 
-
-## Extruded profile along x: `profile` is a list of Vector2(z, y) points (an open polyline, e.g. a
-## studio backdrop curving up from the floor), `length` along x centred on xf.origin.
-## colors (optional) gives one colour per profile point.
-func add_sweep(xf: Transform3D, profile: PackedVector2Array, length: float, colors: PackedColorArray) -> void:
-	var hx := length * 0.5
-	for i in profile.size() - 1:
-		var a := profile[i]
-		var b := profile[i + 1]
-		var tangent := (b - a).normalized()
-		var n := Vector3(0.0, tangent.x, -tangent.y)   # rotate the (z, y) tangent by 90 deg
-		if n.dot(Vector3(0.0, 1.0, 1.0)) < 0.0:
-			n = -n
-		var ca := colors[i]
-		var cb := colors[i + 1]
-		var p := [Vector3(-hx, a.y, a.x), Vector3(hx, a.y, a.x), Vector3(hx, b.y, b.x), Vector3(-hx, b.y, b.x)]
-		var world: Array = []
-		for v in p:
-			world.append(xf * v)
-		var wn := (xf.basis * n).normalized()
-		_raw_tri([world[0], world[1], world[2]], wn, [ca, ca, cb])
-		_raw_tri([world[0], world[2], world[3]], wn, [ca, cb, cb])
 
 
 # --- internals ---------------------------------------------------------------------------------

@@ -42,6 +42,7 @@ func _run() -> void:
 	await _check_materials(definition)
 	await _check_bounded_and_floor()
 	await _check_left_status()
+	await _check_art_is_visual_only()
 	_lab.queue_free()
 	print("== shell: camera, gestures, layout ==")
 	await _check_camera(definition)
@@ -157,6 +158,43 @@ func _check_left_status() -> void:
 	_expect(_lab.status() == "sliding" and not c.past_end, "a brief loss of contact is not 'left'", "%s, past_end %s" % [_lab.status(), str(c.past_end)])
 	c = await _run_steps(35.0, 6 * STEP_HZ)
 	_expect(_lab.status() == "left" and c.past_end, "passing the end of the incline is 'left'", "%s, x %.2f" % [_lab.status(), _lab._pivot.to_local(box.global_position).x])
+
+
+## The art layer (InclineProps / ArtJuice / ArtKit) only changes what is drawn: the collision
+## shapes keep their size and transform, the only collision objects are the floor, the incline
+## and the box, and a run with the box reactions switched off gives the same motion and numbers.
+func _check_art_is_visual_only() -> void:
+	var bodies: Array[String] = []
+	for node in _lab.find_children("*", "CollisionObject3D", true, false):
+		bodies.append(node.get_class())
+	bodies.sort()
+	_expect(bodies == ["RigidBody3D", "StaticBody3D", "StaticBody3D"],
+		"art adds no collision objects (floor, incline, box only)", ", ".join(bodies))
+	var juice: ArtJuice = _lab.props.juice
+	var box: RigidBody3D = _lab.box
+	var shape: CollisionShape3D = box.find_children("*", "CollisionShape3D", false, false)[0]
+	_expect(juice != null and juice.mesh.get_parent() == box and juice.mesh != shape, "box reactions act on the box's mesh child only", "")
+	_lab.set_coefficients(0.5, 0.4)
+	var runs: Array = []
+	var deformed := 0.0
+	var shape_ok := true
+	for with_juice in [true, false]:
+		juice.process_mode = Node.PROCESS_MODE_INHERIT if with_juice else Node.PROCESS_MODE_DISABLED
+		_lab.set_angle(35.0)
+		await physics_frame
+		_lab.release()
+		while _lab.corrector.steps <= 3 * STEP_HZ:
+			await physics_frame
+			if with_juice:
+				deformed = maxf(deformed, (juice.mesh_scale() - Vector3.ONE).abs()[(juice.mesh_scale() - Vector3.ONE).abs().max_axis_index()])
+			shape_ok = shape_ok and shape.transform == Transform3D.IDENTITY and (shape.shape as BoxShape3D).size == Vector3.ONE * _lab.BOX
+		runs.append({"samples": _lab.corrector.samples.duplicate(), "obs": _lab.observations(), "pos": box.global_position, "graph": _lab.graph_series().measured})
+	juice.process_mode = Node.PROCESS_MODE_INHERIT
+	_expect(deformed > 0.05, "box reactions deform the box mesh (pop/stretch/squash)", "max |scale - 1| %.3f" % deformed)
+	_expect(shape_ok, "collision shape keeps its transform and size while the mesh is animated", "")
+	_expect(runs[0].samples == runs[1].samples and runs[0].pos == runs[1].pos and runs[0].graph == runs[1].graph,
+		"same motion with and without the box reactions", "s(3s) %.6f / %.6f m" % [runs[0].samples[-1], runs[1].samples[-1]])
+	_expect(str(runs[0].obs) == str(runs[1].obs), "same displayed values with and without the box reactions", str(runs[0].obs))
 
 
 func _has_material(id: String) -> bool:
@@ -298,7 +336,8 @@ func _check_camera(definition: Dictionary) -> void:
 	rig.pan_by(Vector2(100000, 0))
 	_expect(rig.pan.length() <= definition.camera.pan_radius + 1e-4, "pan stays inside pan_radius", "%.2f" % rig.pan.length())
 	rig.set_mode("front")
-	_expect(rig.pan == Vector3.ZERO and is_equal_approx(rig.goal_distance, definition.camera.distance), "정면으로 resets pan and zoom", "")
+	var front_distance: float = definition.camera.views.front.get("distance", definition.camera.distance)
+	_expect(rig.pan == Vector3.ZERO and is_equal_approx(rig.goal_distance, front_distance), "정면으로 resets pan and zoom", "%.2f" % rig.goal_distance)
 	rig.set_mode("follow")
 	target.position = Vector3(3, 1, 0)
 	_step(rig, 1.5)
@@ -332,6 +371,17 @@ func _check_camera(definition: Dictionary) -> void:
 	rig.set_state(saved)
 	_expect(rig.mode == saved.mode and is_equal_approx(rig.goal_yaw, saved.yaw) and is_equal_approx(rig.cur_distance, saved.distance),
 		"camera state round-trips", rig.mode)
+	# Landing dip: moves only the drawn view, then settles back.
+	rig.set_mode("three_quarter", true)
+	var before := rig.get_state()
+	var eye := rig.global_position
+	rig.nudge(1.0)
+	_step(rig, 0.05)
+	var dipped := rig.global_position.y - eye.y
+	var same_goal := rig.get_state() == before
+	_step(rig, 1.0)
+	_expect(dipped < -0.01 and dipped > -0.1 and same_goal and rig.shake == 0.0 and rig.global_position.is_equal_approx(eye),
+		"landing nudge dips the view a few cm and settles without changing the mode or goal", "dip %.3f m" % dipped)
 	holder.queue_free()
 
 

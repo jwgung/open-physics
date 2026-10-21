@@ -1,0 +1,146 @@
+## Shared art kit of the grass island style (Phase 1 Task 2c, apps/lab3d/docs/art-direction.md):
+## the lit material, blob shadow material, mesh builders, the 3D environment and the floating
+## grass island every experiment stands on. Experiments build their own props with builder() and
+## put them under their physics bodies as plain MeshInstance3D nodes (visual only).
+## No engine light and no realtime shadow on any tier: lighting is "baked" in art_lit.gdshader,
+## contact comes from vertex AO and blob shadows (ArtMeshBuilder.add_blob / add_soft_rect).
+class_name ArtKit
+extends RefCounted
+
+const SHADER := preload("res://scripts/art/art_lit.gdshader")
+const SUN_DIR := Vector3(-0.35, 0.85, 0.45)   # world direction towards the (baked) light
+const LIGHT_THRESHOLD := 0.55
+const LIGHT_SOFTNESS := 0.03
+const SKY_FILL := 0.1
+
+static var _lit: ShaderMaterial
+static var _shadow: StandardMaterial3D
+
+
+## The one material of every solid prop (vertex colours + baked light ramp).
+static func lit_material() -> ShaderMaterial:
+	if _lit == null:
+		_lit = ShaderMaterial.new()
+		_lit.shader = SHADER
+		_lit.set_shader_parameter("sun_dir", SUN_DIR)
+		_lit.set_shader_parameter("lit_color", ArtPalette.LIGHT)
+		_lit.set_shader_parameter("shade_color", ArtPalette.SHADE)
+		_lit.set_shader_parameter("threshold", LIGHT_THRESHOLD)
+		_lit.set_shader_parameter("softness", LIGHT_SOFTNESS)
+		_lit.set_shader_parameter("sky_fill", SKY_FILL)
+	return _lit
+
+
+## Unshaded alpha-blended vertex colour, drawn before the props (blob shadows on the ground).
+static func shadow_material() -> StandardMaterial3D:
+	if _shadow == null:
+		_shadow = StandardMaterial3D.new()
+		_shadow.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+		_shadow.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+		_shadow.vertex_color_use_as_albedo = true
+		_shadow.depth_draw_mode = BaseMaterial3D.DEPTH_DRAW_DISABLED
+		_shadow.render_priority = -1
+	return _shadow
+
+
+## Faceted builder for solid props (use with lit_material()).
+static func builder() -> ArtMeshBuilder:
+	return ArtMeshBuilder.new()
+
+
+## Builder for blob shadows (use with shadow_material()).
+static func shadow_builder() -> ArtMeshBuilder:
+	var b := ArtMeshBuilder.new()
+	b.flat = false
+	return b
+
+
+## Blob shadow alpha; `scale` > 1 for objects that need a darker contact (the moving body).
+static func shadow_alpha(scale := 1.0) -> float:
+	return ArtPalette.SHADOW_ALPHA * scale
+
+
+static func instance(mesh: Mesh, material: Material = null) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	mi.mesh = mesh
+	mi.material_override = material if material != null else lit_material()
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	return mi
+
+
+## Sky-coloured background, no ambient/sky lighting (the shaders are unshaded).
+static func make_environment() -> WorldEnvironment:
+	var environment := Environment.new()
+	environment.background_mode = Environment.BG_COLOR
+	environment.background_color = ArtPalette.SKY
+	environment.ambient_light_source = Environment.AMBIENT_SOURCE_DISABLED
+	var world := WorldEnvironment.new()
+	world.environment = environment
+	return world
+
+
+static func _at(x: float, y: float, z: float, yaw_deg := 0.0) -> Transform3D:
+	return Transform3D(Basis(Vector3.UP, deg_to_rad(yaw_deg)), Vector3(x, y, z))
+
+
+## Adds the floating grass island (top surface at y = 0) with trees, rocks, flowers and clouds
+## around `center` (x/z), as ONE prop mesh + ONE shadow mesh (2 draw calls). The decoration
+## leaves a strip of about 8 x 6 m around the centre free for the apparatus.
+## `extra_shadows` lets an experiment add its static blob shadows to the same shadow mesh.
+static func build_island(parent: Node3D, center := Vector3(-1.5, 0.0, -0.8), extra_shadows: Callable = Callable()) -> void:
+	var b := builder()
+	var s := shadow_builder()
+	var cx := center.x
+	var cz := center.z
+	b.ao_min = 0.95
+	b.ao_height = 0.3
+	b.add_cylinder(_at(cx, -0.5, cz), 11.0, 11.0, 0.5, 14, ArtPalette.GRASS, true, ArtPalette.GRASS_TOP)
+	b.ao_min = 0.7
+	b.ao_height = 4.0
+	b.add_cylinder(_at(cx, -4.2, cz), 4.0, 11.0, 3.7, 14, ArtPalette.SOIL, false)
+	b.add_cylinder(_at(cx, -6.5, cz), 1.2, 4.0, 2.3, 9, ArtPalette.SOIL_DEEP, false)
+	# Trees: trunk + two cones. Positions are relative to the island centre (x, z, size).
+	for t in [[-5.5, -4.0, 1.0], [7.0, -3.8, 1.2], [-8.1, 2.2, 0.8], [8.9, -0.4, 0.9], [2.5, -5.8, 1.1]]:
+		var x: float = cx + t[0]
+		var z: float = cz + t[1]
+		var k: float = t[2]
+		b.ao_min = 0.8
+		b.ao_height = 0.4 * k
+		b.add_cylinder(_at(x, 0.0, z), 0.2 * k, 0.16 * k, 0.8 * k, 6, ArtPalette.TRUNK)
+		b.ao_min = 0.85
+		b.add_cylinder(_at(x, 0.7 * k, z, 15.0), 1.1 * k, 0.0, 1.5 * k, 7, ArtPalette.LEAF)
+		b.add_cylinder(_at(x, 1.5 * k, z, 40.0), 0.8 * k, 0.0, 1.2 * k, 7, ArtPalette.LEAF_LIGHT)
+		s.add_blob(_at(x, 0.012, z), 1.3 * k, shadow_alpha())
+	# Rocks.
+	b.ao_min = 0.75
+	b.ao_height = 0.3
+	for r in [[4.7, 4.4, 0.45], [-4.5, 5.0, 0.35], [8.1, 3.2, 0.3]]:
+		var x: float = cx + r[0]
+		var z: float = cz + r[1]
+		var radius: float = r[2]
+		var xf := Transform3D(Basis().scaled(Vector3(1.3, 0.75, 1.0)), Vector3(x, radius * 0.5, z))
+		b.add_sphere(xf, radius, 4, 6, ArtPalette.ROCK)
+		s.add_blob(_at(x, 0.012, z), radius * 1.8, shadow_alpha())
+	# Flowers.
+	var spots := [[-2.5, 3.8], [-1.9, 4.3], [3.3, 5.2], [6.5, 4.8], [-6.9, -0.8], [4.1, -2.8], [-0.1, -4.4]]
+	b.ao_min = 1.0
+	for i in spots.size():
+		var f: Array = spots[i]
+		var x: float = cx + f[0]
+		var z: float = cz + f[1]
+		b.add_cylinder(_at(x, 0.0, z), 0.03, 0.03, 0.3, 4, ArtPalette.STEM, false)
+		b.add_sphere(_at(x, 0.34, z), 0.13, 3, 5, ArtPalette.FLOWERS[i % ArtPalette.FLOWERS.size()])
+	# Clouds far behind the island, low enough to show in the front view and high enough to stay
+	# out of the top edge of a view looking down at the island.
+	for c in [[-8.5, 5.0, -17.2, 1.6], [4.5, 6.5, -19.2, 2.0], [13.5, 4.5, -15.2, 1.4]]:
+		var k: float = c[3]
+		for puff in [[0.0, 0.0, 1.0], [1.1, -0.2, 0.75], [-1.1, -0.25, 0.7], [0.4, 0.5, 0.65]]:
+			b.add_sphere(_at(cx + c[0] + puff[0] * k, c[1] + puff[1] * k, cz + c[2]), puff[2] * k, 4, 7, ArtPalette.CLOUD)
+	if extra_shadows.is_valid():
+		extra_shadows.call(s)
+	var island := instance(b.commit())
+	island.name = "Island"
+	parent.add_child(island)
+	var shadows := instance(s.commit(), shadow_material())
+	shadows.name = "IslandShadows"
+	parent.add_child(shadows)

@@ -65,6 +65,7 @@ func _ready() -> void:
 	_build_panel()
 	experiment = ExperimentRegistry.instantiate(definition)
 	experiment.state_changed.connect(_on_state_changed)
+	experiment.impact.connect(view.rig.nudge)
 	view.set_world(experiment)
 	view.rig.follow_source = experiment
 	view.rig.configure(definition.camera)

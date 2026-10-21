@@ -23,7 +23,7 @@ Notion Story·Task와 GitHub Issue는 발행하지 않는다. 이 문서가 Phas
 | 1 | S2 성능 병목 조사와 품질 단계 | S2 병목을 근거와 함께 밝힌다. 저·중·고 품질 단계를 정의·구현하고, SM-P200에서 단계별 S1~S3를 측정한다. 저품질 60 fps 달성 여부와 남은 차이를 보고한다 | — | 완료 — 저품질 S1~S3 59.8 fps, [결과](../../spikes/bench/results/phase1-task1/README.md) | `perf/godot-s2-quality-tiers`, [#4](https://github.com/jwgung/open-physics/pull/4) |
 | 2a | 3D 앱 셸 뼈대 | `apps/lab3d/` Godot 프로젝트. 실험 등록·로딩, 카메라 모드(정면·3/4·위·옆·따라가기·제한 회전)와 "정면으로", 터치 제스처, 2D 패널 레이아웃(폰 세로·태블릿 가로), 품질 단계 설정, low에서도 선명한 UI. 빗면 마찰 1개로 검증 | 1 | 완료 | `feat/app-shell-skeleton`, [#5](https://github.com/jwgung/open-physics/pull/5) |
 | 2b | 3D 앱 셸 조작 | 조작 평면(바닥·면 위 드래그), 스냅, 자동 안착, 보조 시점, 높이 손잡이 | 2a | 대기 | |
-| 2c | 아트 디렉션·연출 | 장난감·로우폴리 스타일(둥글고 두툼한 물체, 밝은 색, 구운 조명·발밑 그림자, 통통 튀는 연출)을 정하고 빗면 실험에 적용한다. SM-P200 low 60 fps 유지. 이후 실험은 이 스타일로 만든다 | 2a | 진행 중 | `feat/art-direction` |
+| 2c | 아트 디렉션·연출 | 장난감·로우폴리 스타일(둥글고 두툼한 물체, 밝은 색, 구운 조명·발밑 그림자, 통통 튀는 연출)을 정하고 빗면 실험에 적용한다. SM-P200 low 60 fps 유지. 이후 실험은 이 스타일로 만든다 | 2a | 완료(검토 대기) — 잔디 섬 확정, low 59.8 fps, [결과](../../spikes/bench/results/phase1-task2c/README.md), [스타일 가이드](../../apps/lab3d/docs/art-direction.md) | `feat/art-direction` |
 | 3 | 공식 보정 계층과 parity 파이프라인 | 일반 접촉에 쓸 보정 설계(Jolt 접촉 콜백 범위 조사 포함), TS↔GDScript 벡터 테스트, CI(Node + Godot 헤드리스) | 1 | 대기 | |
 | 4 | 역학 안내형 10개 3D 이식 | 실험별로 나눠 진행한다. 실험 콘텐츠는 JSON으로 빼서 웹 2D와 공유한다. 빗면 마찰은 2a에서 먼저 옮긴다 | 2a, 2b, 2c, 3 | 대기 | |
 | 5 | 역학 빈 실험실 3D | 고정 블록·줄·용수철·지렛대·도르래·힘·중력원·물 | 2a, 2b, 2c, 3 | 대기 | |
@@ -116,3 +116,4 @@ Notion Story·Task와 GitHub Issue는 발행하지 않는다. 이 문서가 Phas
   - 이월: 릴리스 빌드에서도 측정용 실행 인자(`opargs`)를 받는다 — Task 6(출시 준비)에서 디버그 빌드·플래그로 제한. `apps/lab3d` 헤드리스 테스트의 CI 연결은 Task 3. 실제 손가락으로 핀치·이동 확인은 사용자 확인 대기.
 - 2026-10-22: Task 2a PR #5 머지(코드 리뷰 3회 반영). 다음은 Task 2c부터(사용자 결정). 2c 착수.
 - 2026-10-22: Task 2c 시안 3종(모두 SM-P200 low 60 fps 짧은 확인) 중 B 잔디 섬 선택, 기본 카메라를 가깝게(사용자 결정). 확정 단계 착수.
+- 2026-10-22: Task 2c 확정 단계 완료(검토 대기). 시안 분기를 지우고 셸 공용 아트(`apps/lab3d/scripts/art/`: 팔레트·로우폴리 메시·구운 조명 셰이더·떠 있는 섬·연출)와 실험별 소품(`InclineProps`)으로 나눴다. 기본 카메라 11 → 8.5 m, 2D 패널 섬 스타일, 버튼·화면 전환 애니메이션. SM-P200 low 90초 × 3회 평균 59.8 fps·10분 저하 0.0%(Task 2a와 같고 p95 19.5 → 18.3 ms, GPU 평균 클럭 424 → 502 MHz). high 실시간 그림자는 fps −18%에 모습이 단계마다 달라져 넣지 않았다. 아트가 물리·표시 값을 바꾸지 않음을 헤드리스 테스트로 확인. [결과](../../spikes/bench/results/phase1-task2c/README.md), [스타일 가이드](../../apps/lab3d/docs/art-direction.md)

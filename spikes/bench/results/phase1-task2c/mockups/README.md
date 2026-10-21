@@ -2,7 +2,7 @@
 
 - 일시: 2026-10-22, 기기 SM-P200(1200×1920, Mali-G71 MP2), release APK, 세로, 카메라 3/4, 빗면 30°·나무
 - 계약: [Phase 1 Task 2c](../../../../../docs/3d-phase1/README.md#task-2c-상세). 이 단계는 고르기 위한 시안까지다. 확정·스타일 가이드·정식 측정은 사용자 선택 뒤에 한다.
-- 실행: `--style=a|b|c` (없으면 Task 2a 모습). 예: `adb shell am start -n org.openphysics.lab3d/com.godot.game.GodotAppLauncher --es opargs "--experiment=incline-friction,--quality=low,--style=b"`
+- 실행(시안 당시 커밋 `4985e91`에서만): `--style=a|b|c` (없으면 Task 2a 모습). 확정 단계에서 B를 기본으로 하고 이 인자와 A·C 코드는 지웠다([확정 결과](../README.md)). 예: `adb shell am start -n org.openphysics.lab3d/com.godot.game.GodotAppLauncher --es opargs "--experiment=incline-friction,--quality=low,--style=b"`
 - 코드: `apps/lab3d/scripts/art/` (`toy_style.gd` 시안 정의·장면 꾸미기, `toy_mesh_builder.gd` 절차적 메시, `toy.gdshader` 구운 조명, `toy_juice.gd` 연출·블롭 그림자)
 
 ![비교 시트](compare.png)

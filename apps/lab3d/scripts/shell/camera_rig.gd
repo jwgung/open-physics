@@ -18,8 +18,8 @@ const EASE_RATE := 8.0          # 1/s; ~95% of a transition in 0.37 s
 const ORBIT_RAD_PER_UNIT := 0.006
 const PAN_PER_UNIT := 0.0016    # world units per UI unit per metre of distance
 ## Landing dip (nudge): a damped spring on a vertical offset of the drawn view only, so it never
-## changes the mode, the goal or the limits. Full strength dips ~5 cm and settles in ~0.3 s.
-const NUDGE_SPEED := 1.1        # m/s downward kick at strength 1
+## changes the mode, the goal or the limits. Full strength dips ~5 cm and settles in ~0.2 s.
+const NUDGE_SPEED := 2.4        # m/s downward kick at strength 1
 const NUDGE_K := 300.0
 const NUDGE_DAMP := 20.0
 

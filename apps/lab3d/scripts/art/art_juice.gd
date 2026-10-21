@@ -1,5 +1,5 @@
 ## Visual-only reactions of one moving body (grass island style, apps/lab3d/docs/art-direction.md
-## section 5). It only ever writes its own nodes and the `mesh` it was given (a MeshInstance3D child
+## section 6). It only ever writes its own nodes and the `mesh` it was given (a MeshInstance3D child
 ## of the body): scale/position of that mesh, a dust puff, and a blob shadow. The body, its
 ## collision shape and its velocity are only read (one ray per physics step for the shadow).
 ## Squash/stretch keeps the volume roughly constant and the mesh's bottom on the contact surface.
@@ -17,12 +17,13 @@ signal landed(strength: float)
 ## Spring of the squash and pop (k in 1/s^2, damping in 1/s): ~0.4 s period, settles in ~0.4 s.
 const SPRING_K := 260.0
 const SPRING_DAMP := 11.0
-## Kick speeds of the squash spring (1/s; peak deformation = kick / 25 for this spring).
-const STRETCH_KICK := 3.5       # release: +14 % taller
-const LAND_KICK := 9.0          # landing: -9 % (gentle) to -36 % (full strength)
-const REST_KICK := 2.0          # coming to rest: -8 % wobble
+## Kick speeds of the squash spring (1/s; at 60 fps the peak deformation is about kick / 30,
+## reached after ~0.07 s, back within 10 % after ~0.33 s).
+const STRETCH_KICK := 3.5       # release: +12 % taller
+const LAND_KICK := 9.0          # landing: -8 % (strength 0.25) to -30 % (strength 1)
+const REST_KICK := 2.0          # coming to rest: -7 % wobble
 const SQUASH_LIMIT := 0.38
-const POP_START := 0.5          # reset: starts at half size
+const POP_START := 0.5          # reset: starts at half size, overshoots to +16 %, settles in ~0.45 s
 const LAND_SPEED := 1.2         # m/s downward speed that counts as a landing
 const LAND_FULL_SPEED := 6.0    # m/s for a full-strength landing
 const REST_SPEED := 0.15        # m/s

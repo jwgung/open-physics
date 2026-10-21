@@ -1,5 +1,5 @@
 ## Godot Theme for the grass island style (Phase 1 Task 2c, apps/lab3d/docs/art-direction.md
-## section 6): the web 2D app's layout and widget set (src/app/style.css: cards, chips, tiles, primary
+## section 7): the web 2D app's layout and widget set (src/app/style.css: cards, chips, tiles, primary
 ## button) in the island palette (ArtPalette): navy ink, sky-tinted paper, blue primary buttons with
 ## a darker bottom lip (a chunky toy button), yellow selection, rounder corners (14-18 units).
 ## Sizes are UI units: the shorter screen side is 720 units (project.godot), so 22 units on a

@@ -1,4 +1,4 @@
-## Grass island props of the incline experiment (apps/lab3d/docs/art-direction.md, section 7).
+## Grass island props of the incline experiment (apps/lab3d/docs/art-direction.md, section 9).
 ## Meshes only: the collision boxes of the incline, floor and box are built by incline_friction.gd
 ## and are not changed here. Yellow incline (thicker than its collision box, growing downwards so
 ## the top face stays on the collision surface), blue stand, red box, white start line, the island

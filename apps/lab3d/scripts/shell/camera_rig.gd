@@ -121,10 +121,11 @@ func pan_by(relative: Vector2) -> void:
 	var right := basis_now.x
 	var up := basis_now.y
 	var step := PAN_PER_UNIT * cur_distance
+	var before := pan
 	pan += (-right * relative.x + up * relative.y) * step
 	if pan.length() > pan_radius:
 		pan = pan.normalized() * pan_radius
-	cur_target = _goal_target()
+	cur_target += pan - before  # same delta as the goal, like orbit()
 
 
 ## Mode and view, to rebuild the camera later (App keeps it across a 3D view rebuild).

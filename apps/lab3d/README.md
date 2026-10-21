@@ -136,7 +136,7 @@ apps/lab3d/tools/bench_device.sh low 3 90 60        # 90초 × 3회(회차 사�
 node spikes/bench/summarize.mjs spikes/bench/results/phase1-task2a
 OPBENCH_PACKAGE=org.openphysics.lab3d OPBENCH_VARIANT_DIR=<dir> \
   spikes/bench/godot-variant.sh <이름> 20 40 --experiment=incline-friction --quality=low --q-ui_mode=root
-python3 -I apps/lab3d/tools/device_gesture.py orbit  # orbit | pinch | pan | one-finger
+python3 -I apps/lab3d/tools/device_gesture.py orbit  # orbit | pinch | pinch-fixed | pan | one-finger
 ```
 
 - `bench_device.sh`는 패널을 관찰값·그래프 위치로 스크롤하고(`--scroll-to=observations`), 각도 30°에서 4초마다 상자를 다시 놓아 물리·관찰값·그래프가 계속 바뀌는 상태로 잰다. OPBENCH 장면 이름은 `S3`(측정 기준의 안내형 빗면)다.

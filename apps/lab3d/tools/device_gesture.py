@@ -6,7 +6,7 @@ touchscreen node, so this registers a 2-contact HID digitizer with Android's `hi
 reports through it.
 
 Usage (device in portrait, app in front):
-  python3 -I apps/lab3d/tools/device_gesture.py orbit|pinch|pan|one-finger
+  python3 -I apps/lab3d/tools/device_gesture.py orbit|pinch|pinch-fixed|pan|one-finger
 Coordinates are screen pixels in the device's natural (portrait) orientation (SM-P200 1200x1920).
 """
 import argparse
@@ -24,6 +24,7 @@ FRAME_MS = 16
 GESTURES = {
     "orbit": [[(450, 560), (750, 560)], [(750, 560), (1050, 560)]],                   # move together
     "pinch": [[(520, 560), (220, 560)], [(680, 560), (980, 560)]],                    # spread -> zoom in
+    "pinch-fixed": [[(520, 560), (220, 560)], [(680, 560), (680, 560)]],              # finger 1 held still, only 0 moves -> zoom in
     "pan": [[(560, 480), (520, 480), (520, 760)], [(640, 480), (680, 480), (680, 760)]],  # small spread, then move
     "one-finger": [[(400, 600), (900, 600)]],                                          # empty-view drag
 }

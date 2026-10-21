@@ -8,9 +8,11 @@ config/description="Phase 0 spike B: Godot 4.7 + Jolt benchmark scenes S1-S3"
 run/main_scene="res://scenes/main.tscn"
 run/delta_smoothing=false
 config/features=PackedStringArray("4.7", "Mobile")
+config/project_settings_override="user://renderer_override.cfg"
 
 [autoload]
 
+Quality="*res://scripts/quality.gd"
 Bench="*res://scripts/bench.gd"
 
 [display]

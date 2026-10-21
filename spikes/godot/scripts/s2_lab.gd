@@ -2,6 +2,7 @@
 ## in rubber / wood / steel (MATERIALS in src/app/physics-playground.ts), one shadowed directional
 ## light. Fixed-seed drop from 3-6 m, 10 bodies re-dropped every 20 s. Single pointer drags a body
 ## on the surface plane under it with 0.25 m snapping; two fingers orbit / pinch-zoom the camera.
+## Quality (autoload) decides the shadow mode and procedural sky vs flat background.
 extends Node3D
 
 const BODY_COUNT := 50
@@ -87,10 +88,20 @@ func _build_environment() -> void:
 	var sky := Sky.new()
 	sky.sky_material = sky_material
 	var environment := Environment.new()
-	environment.background_mode = Environment.BG_SKY
-	environment.sky = sky
-	environment.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
-	environment.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
+	if Quality.get_value("sky"):
+		environment.background_mode = Environment.BG_SKY
+		environment.sky = sky
+		environment.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
+		environment.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
+	else:
+		# Flat stand-in for the sky: horizon-colored background and ambient; steel reflects the
+		# background color instead of the sky radiance map.
+		environment.background_mode = Environment.BG_COLOR
+		environment.background_color = sky_material.sky_horizon_color
+		environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+		environment.ambient_light_color = Color(0.55, 0.62, 0.72)
+		environment.ambient_light_energy = 0.8
+		environment.reflected_light_source = Environment.REFLECTION_SOURCE_BG
 	environment.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	var world := WorldEnvironment.new()
 	world.environment = environment
@@ -98,9 +109,8 @@ func _build_environment() -> void:
 	var sun := DirectionalLight3D.new()
 	sun.rotation = Vector3(deg_to_rad(-55.0), deg_to_rad(35.0), 0.0)
 	sun.light_energy = 1.2
-	sun.shadow_enabled = true
 	sun.directional_shadow_max_distance = 40.0
-	sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
+	Quality.configure_sun(sun, DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS)
 	add_child(sun)
 
 

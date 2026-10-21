@@ -62,3 +62,11 @@ theme_override_colors/font_outline_color = Color(0, 0, 0, 1)
 theme_override_constants/outline_size = 6
 theme_override_font_sizes/font_size = 24
 text = "-- fps"
+
+[node name="QualityButton" type="Button" parent="Hud"]
+offset_left = 16.0
+offset_top = 144.0
+offset_right = 176.0
+offset_bottom = 216.0
+theme_override_font_sizes/font_size = 28
+text = "Q high"

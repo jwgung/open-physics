@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Collects OPBENCH frame logs plus device temperature, thermal status and memory.
+# OPPERF lines (Godot monitors, if the app emits them) go to <candidate>-<scene>-<run>.perf.jsonl.
 # Usage: spikes/bench/collect.sh <candidate> <scene> <run> <package> <seconds>
+# OPBENCH_RESULTS_DIR overrides the output directory (default: spikes/bench/results).
 set -euo pipefail
 
 if [[ $# -ne 5 ]]; then
@@ -9,15 +11,18 @@ if [[ $# -ne 5 ]]; then
 fi
 
 candidate=$1 scene=$2 run=$3 package=$4 seconds=$5
-out_dir="$(dirname "$0")/results"
+out_dir="${OPBENCH_RESULTS_DIR:-$(dirname "$0")/results}"
 mkdir -p "$out_dir"
 frames="$out_dir/${candidate}-${scene}-${run}.jsonl"
 device="$out_dir/${candidate}-${scene}-${run}.device.jsonl"
+perf="$out_dir/${candidate}-${scene}-${run}.perf.jsonl"
 
 adb logcat -c
 adb logcat -v raw -s OPBENCH:I > "$frames" &
 logcat_pid=$!
-trap 'kill "$logcat_pid" 2>/dev/null || true' EXIT
+adb logcat -v raw -s OPPERF:I > "$perf" &
+perf_pid=$!
+trap 'kill "$logcat_pid" "$perf_pid" 2>/dev/null || true' EXIT
 
 end=$((SECONDS + seconds))
 : > "$device"
@@ -30,4 +35,5 @@ while (( SECONDS < end )); do
   sleep 10
 done
 
+grep -q "^{" "$perf" || rm -f "$perf"   # candidates without OPPERF
 echo "saved $frames and $device"

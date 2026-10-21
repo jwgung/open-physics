@@ -130,7 +130,7 @@ func _check_bounded_and_floor() -> void:
 	var c := await _run_steps(40.0, 5 * STEP_HZ)
 	_expect(c.samples.size() == c.history_steps and c.velocities.size() == c.history_steps and c.steps > c.history_steps,
 		"corrector history is capped", "%d samples after %d steps" % [c.samples.size(), c.steps])
-	_expect(_within(_lab.observations().distance, minf(c.last_sample, 7.5), 0.0001) or c.last_sample > 7.5, "distance comes from the latest sample", "%.3f" % c.last_sample)
+	_expect(_within(_lab.observations().distance, minf(c.last_sample, 7.5), 0.0001), "distance comes from the latest sample (capped at the incline length)", "%.3f" % c.last_sample)
 	# 45 deg on the lowest-friction material: the box leaves the incline fast. Wait for the run-out.
 	_lab.set_material("ice") if _has_material("ice") else _lab.set_coefficients(0.1, 0.05)
 	c = await _run_steps(45.0, 12 * STEP_HZ)
@@ -280,6 +280,7 @@ func _check_camera(definition: Dictionary) -> void:
 	# A gesture during a transition keeps the remaining transition (no jump to the goal).
 	rig.set_mode("front", true)
 	rig.set_mode("top")
+	rig.goal_distance = clampf(rig.cur_distance + 2.0, rig.distance_range.x, rig.distance_range.y)  # a pending distance change too
 	_step(rig, 0.1)
 	var lag_yaw := rig.goal_yaw - rig.cur_yaw
 	var lag_pitch := rig.goal_pitch - rig.cur_pitch
@@ -288,7 +289,7 @@ func _check_camera(definition: Dictionary) -> void:
 	rig.zoom(0.9)
 	_expect(is_equal_approx(rig.goal_yaw - rig.cur_yaw, lag_yaw) and is_equal_approx(rig.goal_pitch - rig.cur_pitch, lag_pitch),
 		"orbit during a transition does not jump", "yaw lag %.3f, pitch lag %.3f" % [rig.goal_yaw - rig.cur_yaw, rig.goal_pitch - rig.cur_pitch])
-	_expect(absf(rig.goal_distance - rig.cur_distance) > 0.0 or lag_distance == 0.0, "zoom during a transition does not jump", "%.3f" % (rig.goal_distance - rig.cur_distance))
+	_expect(absf(lag_distance) > 0.1 and is_equal_approx(rig.goal_distance - rig.cur_distance, lag_distance), "zoom during a transition does not jump", "%.3f" % (rig.goal_distance - rig.cur_distance))
 	var saved := rig.get_state()
 	rig.set_mode("side", true)
 	rig.set_state(saved)

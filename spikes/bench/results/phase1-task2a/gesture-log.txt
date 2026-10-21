@@ -1,0 +1,11 @@
+[DEBUG-GESTURE] touch 0 true at (240.1831, 276.1758); camera three_quarter yaw 35.0 pitch -24.0 dist 11.00 pan (0.0, 0.0, 0.0)
+[DEBUG-GESTURE] touch 0 false at (540.4395, 276.1758); camera three_quarter yaw 35.0 pitch -24.0 dist 11.00 pan (0.0, 0.0, 0.0)
+[DEBUG-GESTURE] touch 0 true at (270.2197, 252.1641); camera three_quarter yaw 35.0 pitch -24.0 dist 11.00 pan (0.0, 0.0, 0.0)
+[DEBUG-GESTURE] two-finger gesture: orbit moved 20.7 spread 0.0 start (360.2856, 252.1641)/180.1 touches { 0: (290.907, 252.1641), 1: (471.0442, 252.1641) }
+[DEBUG-GESTURE] touch 0 false at (453.9632, 252.1641); camera orbit yaw -22.4 pitch -24.0 dist 11.00 pan (0.0, 0.0, 0.0)
+[DEBUG-GESTURE] touch 0 true at (312.2534, 252.1641); camera orbit yaw -22.4 pitch -24.0 dist 11.00 pan (0.0, 0.0, 0.0)
+[DEBUG-GESTURE] two-finger gesture: pinch moved 1.9 spread 18.8 start (360.2856, 252.1641)/96.1 touches { 0: (300.9814, 252.1641), 1: (415.8326, 252.1641) }
+[DEBUG-GESTURE] touch 0 false at (292.0751, 252.1641); camera orbit yaw -22.4 pitch -24.0 dist 8.65 pan (-0.075405, 0.0, -0.031057)
+[DEBUG-GESTURE] touch 0 true at (336.2695, 204.1406); camera orbit yaw -22.4 pitch -24.0 dist 8.65 pan (-0.075405, 0.0, -0.031057)
+[DEBUG-GESTURE] two-finger gesture: pinch moved 9.9 spread 48.0 start (360.2856, 204.1406)/48.0 touches { 0: (312.2534, 214.0408), 1: (408.3179, 214.0408) }
+[DEBUG-GESTURE] touch 0 false at (312.2534, 373.9575); camera orbit yaw -14.6 pitch -24.0 dist 6.55 pan (-0.013297, 1.570217, -0.754733)

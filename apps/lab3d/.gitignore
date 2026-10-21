@@ -1,0 +1,9 @@
+# Godot cache and import artifacts
+.godot/
+# Export outputs
+exports/
+*.apk
+*.aab
+*.pck
+*.wasm
+export_credentials.cfg

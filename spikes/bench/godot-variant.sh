@@ -15,7 +15,7 @@ name=$1 warmup=$2 capture=$3
 shift 3
 here=$(cd "$(dirname "$0")" && pwd)
 out_dir=${OPBENCH_VARIANT_DIR:-$here/results/phase1-task1/bisect}
-package=org.openphysics.spike.godot
+package=${OPBENCH_PACKAGE:-org.openphysics.spike.godot}  # apps/lab3d: org.openphysics.lab3d
 mkdir -p "$out_dir"
 
 adb start-server >/dev/null 2>&1

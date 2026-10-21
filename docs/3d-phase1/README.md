@@ -21,7 +21,7 @@ Notion Story·Task와 GitHub Issue는 발행하지 않는다. 이 문서가 Phas
 | # | Task | 결과·완료 확인 | 선행 | 상태 | 브랜치·PR |
 |---|---|---|---|---|---|
 | 1 | S2 성능 병목 조사와 품질 단계 | S2 병목을 근거와 함께 밝힌다. 저·중·고 품질 단계를 정의·구현하고, SM-P200에서 단계별 S1~S3를 측정한다. 저품질 60 fps 달성 여부와 남은 차이를 보고한다 | — | 완료 — 저품질 S1~S3 59.8 fps, [결과](../../spikes/bench/results/phase1-task1/README.md) | `perf/godot-s2-quality-tiers`, [#4](https://github.com/jwgung/open-physics/pull/4) |
-| 2a | 3D 앱 셸 뼈대 | `apps/lab3d/` Godot 프로젝트. 실험 등록·로딩, 카메라 모드(정면·3/4·위·옆·따라가기·제한 회전)와 "정면으로", 터치 제스처, 2D 패널 레이아웃(폰 세로·태블릿 가로), 품질 단계 설정, low에서도 선명한 UI. 빗면 마찰 1개로 검증 | 1 | 진행 중 | `feat/app-shell-skeleton` |
+| 2a | 3D 앱 셸 뼈대 | `apps/lab3d/` Godot 프로젝트. 실험 등록·로딩, 카메라 모드(정면·3/4·위·옆·따라가기·제한 회전)와 "정면으로", 터치 제스처, 2D 패널 레이아웃(폰 세로·태블릿 가로), 품질 단계 설정, low에서도 선명한 UI. 빗면 마찰 1개로 검증 | 1 | 완료(검토 대기) — low 빗면 59.8 fps, [결과](../../spikes/bench/results/phase1-task2a/README.md) | `feat/app-shell-skeleton` |
 | 2b | 3D 앱 셸 조작 | 조작 평면(바닥·면 위 드래그), 스냅, 자동 안착, 보조 시점, 높이 손잡이 | 2a | 대기 | |
 | 3 | 공식 보정 계층과 parity 파이프라인 | 일반 접촉에 쓸 보정 설계(Jolt 접촉 콜백 범위 조사 포함), TS↔GDScript 벡터 테스트, CI(Node + Godot 헤드리스) | 1 | 대기 | |
 | 4 | 역학 안내형 10개 3D 이식 | 실험별로 나눠 진행한다. 실험 콘텐츠는 JSON으로 빼서 웹 2D와 공유한다. 빗면 마찰은 2a에서 먼저 옮긴다 | 2a, 2b, 3 | 대기 | |
@@ -82,3 +82,7 @@ Notion Story·Task와 GitHub Issue는 발행하지 않는다. 이 문서가 Phas
   - 품질 단계: low = Compatibility 렌더러 + 루트 뷰포트 540 + 그림자·하늘·glow 끔, medium = Mobile + 720 + 직교 그림자 1장, high = Phase 0 그대로. low만 렌더러가 달라 전환 시 앱이 재시작한다.
   - 남은 차이: medium 38–42 fps, high 11–28 fps. low의 1% low는 수집기(`dumpsys meminfo` 10초 간격) 영향으로 약 36 fps로 나온다. low는 그림자가 없고 540 기준으로 그려 UI가 흐리다 — Task 2에서 UI 해상도 처리를 정해야 한다.
 - 2026-10-21: Task 1 PR #4 머지(코드 리뷰 3회 반영). Task 2를 2a(뼈대)·2b(조작)로 나누고 2a 착수(사용자 결정, 위 Task 2a 상세).
+- 2026-10-21: Task 2a 구현·실측 완료(검토 대기). 앱 [`apps/lab3d/`](../../apps/lab3d/README.md), [결과](../../spikes/bench/results/phase1-task2a/README.md)
+  - 판정: SM-P200 low에서 빗면 실험(패널 관찰값·그래프 표시, 4초마다 상자 다시 놓기) 90초 × 3회 평균 59.8 fps, 10분 지속 저하 0.0%·PSS 156 → 160 MB. 카메라 6모드·"정면으로"·두 손가락 회전/확대/이동·한 손가락 무시를 실기기에서 확인했다(가상 HID 멀티터치로 재생, 손 입력 아님). 폰 세로·태블릿 세로·가로 스크린샷. 헤드리스 테스트(parity 5세트, 측정 기준 4절 표, 재질별 임계각·s=½at², 셸) 통과, 루트 `npm test` 통과.
+  - UI 해상도: UI는 원본 해상도, 3D만 SubViewport에서 화면 픽셀의 45%로 그린다. 처음에는 47 fps였고 원인은 원본 해상도의 전체 화면 배경 레이어였다. clear color로 바꿔 60 fps. Task 1 방식(루트 전체 540)도 60 fps지만 UI가 흐리고, 3D 배율(`scaling_3d_scale`) 방식은 46 fps다. [근거](../../apps/lab3d/docs/ui-resolution.md)
+  - 미달·남은 일: 측정 기준 1% low(37.7 fps)·p95(19.5 ms)는 Task 1 low와 같은 수준으로 기준 미달(수집기 영향 추정, 미검증). 마찰 계수는 웹 2D와 같이 재질 선택(강철·나무·고무·점토)으로 조절한다. 기본 품질 단계는 low다.

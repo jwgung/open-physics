@@ -39,13 +39,13 @@
 
 - 중심 천체 1개(발광 재질 + 블룸) + 행성 8개(PBR, 텍스처 2048², 노멀맵), 고리 행성 1개.
 - 궤도선 8개, 별 배경(큐브맵 또는 파티클 5,000개).
-- 운동: 원궤도 해석해(`circularOrbitSpeed`, `/home/capalace/Git/open-physics/src/physics/laws/orbit.ts`)로 위치 갱신. 이 장면은 렌더링 부하 측정용이다.
+- 운동: 원궤도 해석해(`circularOrbitSpeed`, `src/physics/laws/orbit.ts`)로 위치 갱신. 이 장면은 렌더링 부하 측정용이다.
 - 카메라: 30초마다 전체 보기 → 행성 따라가기를 자동 반복(측정 재현성).
 
 ### S2 역학 빈 실험실 (물리·렌더링 혼합 부하)
 
 - 바닥 1개, 30° 빗면 1개, 고정 블록 3개.
-- 움직이는 물체 50개(상자 25, 공 25), 재질 3종(고무·나무·금속 — 기존 `MATERIALS` 반발·마찰값 재사용, `/home/capalace/Git/open-physics/src/app/physics-playground.ts`).
+- 움직이는 물체 50개(상자 25, 공 25), 재질 3종(고무·나무·금속 — 기존 `MATERIALS` 반발·마찰값 재사용, `src/app/physics-playground.ts`).
 - 방향광 실시간 그림자 1개 + 환경광, 물체 PBR.
 - 시작 시 높이 3~6 m에서 무작위 낙하(고정 seed) → 쌓임·굴러감.
 - 조작 확인: 물체를 조작 평면(바닥·면 위)에서 드래그·스냅, 두 손가락 카메라 회전·확대. 측정 실행 중에는 자동 입력 없이 20초마다 물체 10개를 재낙하시켜 부하를 유지한다.
@@ -88,7 +88,7 @@
 - `t`: 측정 시작 후 초, `long`: 33 ms를 넘은 프레임 수.
 - 프레임 시간은 웹은 `requestAnimationFrame` 간격, Godot은 `_process` delta로 잰다.
 
-호스트 수집기 `/home/capalace/Git/open-physics/spikes/bench/collect.sh`가 `OPBENCH` 로그와 10초마다 배터리 온도·thermal status·메모리를 함께 저장한다. 결과는 `spikes/bench/results/<후보>-<장면>-<회차>.jsonl`로 남기고, 결과표는 `spikes/bench/results/README.md`에 정리한다.
+호스트 수집기 `spikes/bench/collect.sh`가 `OPBENCH` 로그와 10초마다 배터리 온도·thermal status·메모리를 함께 저장한다. 결과는 `spikes/bench/results/<후보>-<장면>-<회차>.jsonl`로 남기고, 결과표는 `spikes/bench/results/README.md`에 정리한다.
 
 ## 7. 결과표 양식
 

@@ -53,7 +53,7 @@ adb shell am start -n org.openphysics.spike.godot/com.godot.game.GodotAppLaunche
 spikes/bench/collect.sh godot S1 1 org.openphysics.spike.godot 60
 spikes/bench/collect.sh godot S2 1 org.openphysics.spike.godot 60
 spikes/bench/collect.sh godot S3 1 org.openphysics.spike.godot 60
-spikes/bench/collect.sh godot S2 sustain org.openphysics.spike.godot 600
+spikes/bench/collect.sh godot S2 sustained org.openphysics.spike.godot 600
 ```
 
 ### OPBENCH 로그 경로
@@ -62,7 +62,7 @@ spikes/bench/collect.sh godot S2 sustain org.openphysics.spike.godot 600
 
 - Android: `JavaClassWrapper.wrap("android.util.Log")`로 `Log.i("OPBENCH", line)`을 직접 부른다. 플러그인·Gradle 빌드가 필요 없어 `collect.sh`의 `adb logcat -s OPBENCH:I`를 그대로 쓴다. `collect.sh`는 바꾸지 않았다.
 - 모든 플랫폼에서 `print("OPBENCH ", line)`도 남긴다(Android logcat 태그 `godot`, Web 콘솔, 데스크톱 stdout).
-- **실기기에서 확인하지 않았다.** `OPBENCH` 태그가 비어 있으면 다음처럼 `godot` 태그에서 뽑아 같은 파일 형식으로 저장한다.
+- SM-P200 실기기에서 `OPBENCH` 태그로 수집되는 것을 확인했다. `OPBENCH` 태그가 비어 있는 기기에서는 다음처럼 `godot` 태그에서 뽑아 같은 파일 형식으로 저장한다.
 
 ```bash
 adb logcat -v raw -s godot:I | sed -un 's/^OPBENCH //p' > spikes/bench/results/godot-S2-1.jsonl
@@ -117,14 +117,14 @@ leapfrog 시작 보정을 끄면 s(1s)=1.2263 m(+1.685%)로 실패한다.
 
 ### 두 언어로 공식을 유지하는 비용
 
-- 이번에 옮긴 것은 GDScript 67줄(`physics_laws.gd`: 원궤도 속력·주기, 등가속도 변위·속도, 빗면 분해, 임계각, 마찰 보정 1D)과 보정 계층 73줄(`incline_friction.gd`)이다. 전체 TS 코어(`src/physics/laws` 13개 파일)를 옮기면 분량이 수십 배가 되고, 2D TS 코어를 3D로 바꾸는 설계 작업도 따로 생긴다.
+- 이번에 옮긴 것은 GDScript 67줄(`physics_laws.gd`: 원궤도 속력·주기, 등가속도 변위·속도, 빗면 분해, 임계각, 마찰 보정 1D)과 보정 계층 73줄(`incline_friction.gd`)이다. 전체 TS 코어(`src/physics/laws` 15개 파일(테스트 제외))를 옮기면 분량이 수십 배가 되고, 2D TS 코어를 3D로 바꾸는 설계 작업도 따로 생긴다.
 - 일치 검증은 두 단계다. `tools/s3-vectors.test.ts`(루트 vitest)가 TS 코어로 `tests/s3_vectors.json`을 계산해 커밋된 파일과 비교하고, `tests/run_tests.gd`가 같은 JSON으로 GDScript 포트를 검사한다. TS 공식을 바꾸면 vitest가 먼저 깨지고(`UPDATE_S3_VECTORS=1`로 재생성), 그 뒤 Godot 테스트가 GDScript 쪽 불일치를 잡는다. 공식을 추가할 때마다 벡터 생성 코드·JSON·GDScript 포트·Godot 테스트 네 곳을 손대야 한다.
 - CI에는 Node와 Godot 바이너리(약 150 MB)가 둘 다 필요하다. GDScript에는 정적 타입 검사·테스트 러너 생태계가 약해 테스트 러너를 직접 썼다.
 - 보정은 엔진 동작(콜백 순서, 적분기)에 기대므로 Godot·Jolt를 올릴 때마다 S3 테스트를 다시 돌려야 한다. 위 두 특성은 문서화된 계약이 아니라 이번에 실험으로 확인한 동작이다.
 
 ## 6. 한계와 위험
 
-- 실기기 측정, `Log.i` 경로, 터치 조작(두 손가락 회전·드래그 스냅)은 실기기에서 확인하지 않았다. 데스크톱 헤드리스·헤드리스 Chromium에서만 실행했다.
+- 실기기 측정과 `Log.i` 경로는 SM-P200에서 확인했다([1차 실측 결과](../bench/results/README.md)). 터치 조작(두 손가락 회전·드래그 스냅)은 실기기에서 확인하지 않았다.
 - Mobile 렌더러는 Vulkan이 필요하다. Vulkan 드라이버가 불안정한 기기에서는 크래시·폴백 위험이 있다.
 - Web은 Compatibility 렌더러라 그림자·glow 품질과 조명 계산이 Android와 다르고, 텍스처도 1024²로 낮췄다.
 - S2의 마찰은 보정하지 않은 Jolt 단일 계수다. TS `MATERIALS`의 정지 마찰(`friction + 0.18`)·기하평균 조합은 S3 보정 계층에만 있다.

@@ -41,12 +41,14 @@ func _run() -> void:
 	await _check_spec_table()
 	await _check_materials(definition)
 	await _check_bounded_and_floor()
+	await _check_left_status()
 	_lab.queue_free()
 	print("== shell: camera, gestures, layout ==")
 	await _check_camera(definition)
 	await _check_gestures(definition)
+	await _check_gesture_input_state(definition)
 	await _check_layout(definition)
-	await _check_launch_args_once(definition)
+	await _check_launch_args_flag(definition)
 	print("RESULT: %s (%d failure(s))" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -140,6 +142,19 @@ func _check_bounded_and_floor() -> void:
 	_expect(_within(_lab.observations().distance, 7.5, 0.0001), "distance stays at the incline length", "%.3f" % _lab.observations().distance)
 
 
+## "left" means the box passed the end of the incline; a short loss of contact (a hop) is not it.
+func _check_left_status() -> void:
+	_lab.set_coefficients(0.5, 0.4)
+	var c := await _run_steps(35.0, 30)
+	var box: RigidBody3D = _lab.box
+	box.global_position += _lab._pivot.global_transform.basis.y * 0.08   # 8 cm up: out of contact, still above the incline
+	for i in 3:
+		await physics_frame
+	_expect(_lab.status() == "sliding" and not c.past_end, "a brief loss of contact is not 'left'", "%s, past_end %s" % [_lab.status(), str(c.past_end)])
+	c = await _run_steps(35.0, 6 * STEP_HZ)
+	_expect(_lab.status() == "left" and c.past_end, "passing the end of the incline is 'left'", "%s, x %.2f" % [_lab.status(), _lab._pivot.to_local(box.global_position).x])
+
+
 func _has_material(id: String) -> bool:
 	for control in _lab.definition.controls:
 		if control.id == "material":
@@ -198,6 +213,10 @@ func _check_content() -> Dictionary:
 	broken.camera.default_mode = "sideways"
 	broken.controls[0].erase("default")
 	_expect(ExperimentRegistry.validate(broken).size() >= 2, "registry rejects an invalid definition", ", ".join(ExperimentRegistry.validate(broken)))
+	var duplicate := definition.duplicate(true)
+	duplicate.controls.append(duplicate.controls[0].duplicate(true))
+	_expect(ExperimentRegistry.validate(duplicate).size() == 1 and "duplicate" in ExperimentRegistry.validate(duplicate)[0], "registry rejects a duplicate control id", ", ".join(ExperimentRegistry.validate(duplicate)))
+	_expect(ExperimentRegistry.CAMERA_MODES == CameraRig.MODES, "registry camera modes are the rig's modes", "")
 	# Content materials must equal the TS-derived coefficient sets (vitest checks JSON vs TS too).
 	var ok := true
 	for control in definition.controls:
@@ -376,11 +395,91 @@ func _check_gestures(definition: Dictionary) -> void:
 	view.queue_free()
 
 
-func _touch(view: Control, index: int, position: Vector2, pressed: bool) -> void:
+## One finger held still while the other moves (Android sends no drag for the still one), a
+## twist below the threshold, cancelled touches, and input state lost with the tree.
+func _check_gesture_input_state(definition: Dictionary) -> void:
+	var view: Control = load(VIEW_3D).new()
+	view.size = Vector2(720, 600)
+	root.add_child(view)
+	view.rig.configure(definition.camera)
+	var events: Array[String] = []
+	view.single_pointer.connect(func(kind: String, _p: Vector2) -> void: events.append(kind))
+	var mode_before: String = view.rig.mode
+	var distance: float = view.rig.goal_distance
+	_touch(view, 0, Vector2(300, 300), true)
+	_touch(view, 1, Vector2(400, 300), true)
+	for i in 10:
+		_drag(view, 0, Vector2(300 - i * 10, 300))   # only finger 0 moves
+	_expect(view.rig.goal_distance < distance * 0.8 and view.rig.mode == mode_before,
+		"a pinch with one finger held still zooms", "distance %.2f -> %.2f, mode %s" % [distance, view.rig.goal_distance, view.rig.mode])
+	_touch(view, 1, Vector2(400, 300), false)
+	_touch(view, 0, Vector2(210, 300), false)
+	# Small twist during a pinch keeps the preset view; a clear twist turns it.
+	var mid := Vector2(350, 300)
+	_touch(view, 0, mid - Vector2(50, 0), true)
+	_touch(view, 1, mid + Vector2(50, 0), true)
+	_drag(view, 0, mid - Vector2(65, 0))
+	_drag(view, 1, mid + Vector2(65, 0))
+	_expect(view._gesture == "pinch", "spreading classifies as pinch", view._gesture)
+	for degrees in [1.0, 3.0, 5.0, 6.5]:
+		var offset := Vector2.from_angle(deg_to_rad(degrees)) * 65.0
+		_drag(view, 0, mid - offset)
+		_drag(view, 1, mid + offset)
+	_expect(view.rig.mode == mode_before and mode_before != "orbit", "a pinch with a small twist keeps the preset view", view.rig.mode)
+	var yaw: float = view.rig.goal_yaw
+	for degrees in [10.0, 15.0, 20.0, 30.0]:
+		var offset := Vector2.from_angle(deg_to_rad(degrees)) * 65.0
+		_drag(view, 0, mid - offset)
+		_drag(view, 1, mid + offset)
+	_expect(view.rig.mode == "orbit" and absf(rad_to_deg(view.rig.goal_yaw - yaw)) > 10.0 and absf(rad_to_deg(view.rig.goal_yaw - yaw)) < 30.0,
+		"a twist beyond the threshold turns the view by the excess", "yaw change %.1f deg" % rad_to_deg(view.rig.goal_yaw - yaw))
+	_touch(view, 1, mid, false)
+	_touch(view, 0, mid, false)
+	# Cancelled touch is reported as cancel, not release.
+	events.clear()
+	_touch(view, 0, Vector2(300, 300), true)
+	_touch(view, 0, Vector2(300, 300), false, true)
+	_touch(view, 0, Vector2(300, 300), true)
+	_touch(view, 0, Vector2(300, 300), false)
+	_expect(",".join(events) == "press,cancel,press,release", "a cancelled touch is reported as cancel", ",".join(events))
+	# Leaving the tree (settings) drops finger and mouse state.
+	events.clear()
+	_touch(view, 0, Vector2(300, 300), true)
+	_touch(view, 1, Vector2(400, 300), true)
+	view._gui_input(_mouse_button(MOUSE_BUTTON_RIGHT, true))
+	root.remove_child(view)
+	_expect(view._touches.is_empty() and view._gesture == "" and view._mouse_mode == "", "leaving the tree resets touches, gesture and mouse mode",
+		"%d touches, gesture '%s', mouse '%s'" % [view._touches.size(), view._gesture, view._mouse_mode])
+	root.add_child(view)
+	events.clear()
+	_touch(view, 0, Vector2(300, 300), true)
+	root.remove_child(view)
+	_expect(",".join(events) == "press,cancel", "a single finger on the view is cancelled when it leaves the tree", ",".join(events))
+	root.add_child(view)
+	# Mouse: the right button released elsewhere must not leave the view orbiting.
+	view._gui_input(_mouse_button(MOUSE_BUTTON_RIGHT, true))
+	yaw = view.rig.goal_yaw
+	var motion := InputEventMouseMotion.new()
+	motion.relative = Vector2(40, 0)
+	motion.button_mask = 0
+	view._gui_input(motion)
+	_expect(view.rig.goal_yaw == yaw and view._mouse_mode == "", "mouse motion without the held button does not orbit", "")
+	view.queue_free()
+
+
+func _mouse_button(button: int, pressed: bool) -> InputEventMouseButton:
+	var event := InputEventMouseButton.new()
+	event.button_index = button
+	event.pressed = pressed
+	return event
+
+
+func _touch(view: Control, index: int, position: Vector2, pressed: bool, canceled := false) -> void:
 	var event := InputEventScreenTouch.new()
 	event.index = index
 	event.position = position
 	event.pressed = pressed
+	event.canceled = canceled
 	view._gui_input(event)
 
 
@@ -414,20 +513,18 @@ func _check_layout(definition: Dictionary) -> void:
 	host.queue_free()
 
 
-## Launch args (--ctl-*, --camera) apply to the first experiment screen only, not to later ones.
-func _check_launch_args_once(definition: Dictionary) -> void:
+## Launch args (--ctl-*, --camera) apply only to a screen that App opened with the flag.
+func _check_launch_args_flag(definition: Dictionary) -> void:
 	var quality_script: GDScript = load("res://scripts/core/quality.gd")
 	var screen_script: GDScript = load(EXPERIMENT_SCREEN)
 	var saved_args = quality_script.get("_args_cache")
-	var saved_done: bool = screen_script.get("_launch_args_done")
 	quality_script.set("_args_cache", PackedStringArray(["--ctl-angle=33", "--camera=top"]))
-	screen_script.set("_launch_args_done", false)
 	var host := Control.new()
 	host.theme = load(UI_THEME).build()
 	host.size = Vector2(720, 1560)
 	root.add_child(host)
 	var first: Control = screen_script.new()
-	first.setup(definition)
+	first.setup(definition, {}, true)
 	host.add_child(first)
 	await process_frame
 	var second: Control = screen_script.new()
@@ -435,18 +532,17 @@ func _check_launch_args_once(definition: Dictionary) -> void:
 	host.add_child(second)
 	await process_frame
 	_expect(is_equal_approx(first.experiment.angle_deg, 33.0) and first.view.rig.mode == "top",
-		"launch args apply to the first experiment screen", "angle %.1f, camera %s" % [first.experiment.angle_deg, first.view.rig.mode])
+		"launch args apply to the screen opened with the flag", "angle %.1f, camera %s" % [first.experiment.angle_deg, first.view.rig.mode])
 	_expect(not is_equal_approx(second.experiment.angle_deg, 33.0) and second.view.rig.mode != "top",
-		"launch args do not apply to later experiment screens", "angle %.1f, camera %s" % [second.experiment.angle_deg, second.view.rig.mode])
-	# A rebuilt screen restores conditions and camera.
+		"launch args do not apply to other experiment screens", "angle %.1f, camera %s" % [second.experiment.angle_deg, second.view.rig.mode])
+	# A rebuilt screen restores conditions and camera (even with the flag set).
 	first.experiment.set_control("angle", 12.0)
 	first.view.rig.set_mode("side", true)
 	var third: Control = screen_script.new()
-	third.setup(definition, first.capture_state())
+	third.setup(definition, first.capture_state(), true)
 	host.add_child(third)
 	await process_frame
 	_expect(is_equal_approx(third.experiment.angle_deg, 12.0) and third.view.rig.mode == "side",
 		"a rebuilt screen keeps conditions and camera", "angle %.1f, camera %s" % [third.experiment.angle_deg, third.view.rig.mode])
 	quality_script.set("_args_cache", saved_args)
-	screen_script.set("_launch_args_done", saved_done)
 	host.queue_free()

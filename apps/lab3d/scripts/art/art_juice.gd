@@ -3,6 +3,9 @@
 ## of the body): scale/position of that mesh, a dust puff, and a blob shadow. The body, its
 ## collision shape and its velocity are only read (one ray per physics step for the shadow).
 ## Squash/stretch keeps the volume roughly constant and the mesh's bottom on the contact surface.
+## "Up" is the surface normal under the body (world up on the ground, the incline's normal on the
+## incline), not the body's own y axis, so a body that landed rotated still flattens against the
+## surface and its dust appears under it.
 ##   pop()          the body was (re)placed: grows in from POP_START with an overshoot
 ##   stretch()      the body was let go: short stretch upwards
 ##   puff(s)        small dust puff under the body (0..1)
@@ -27,6 +30,8 @@ const POP_START := 0.5          # reset: starts at half size, overshoots to +16 
 const LAND_SPEED := 1.2         # m/s downward speed that counts as a landing
 const LAND_FULL_SPEED := 6.0    # m/s for a full-strength landing
 const REST_SPEED := 0.15        # m/s
+const SETTLED_VALUE := 0.002    # springs closer than this to rest (and slower than SETTLED_SPEED) stop updating
+const SETTLED_SPEED := 0.05
 
 var body: RigidBody3D
 var mesh: MeshInstance3D
@@ -37,6 +42,9 @@ var _squash := 0.0              # +: taller/thinner, -: flatter/wider
 var _squash_v := 0.0
 var _pop := 1.0
 var _pop_v := 0.0
+var _scale := Vector3.ONE       # current squash scale along (sxz, sy, sxz), sy along `_normal`
+var _normal := Vector3.UP       # surface normal under the body (world)
+var _shadow_xf := Transform3D() # body transform at the last shadow update
 var _prev_vy := 0.0
 var _landed := false
 var _resting := false
@@ -50,6 +58,7 @@ func setup(target_body: RigidBody3D, target_mesh: MeshInstance3D, body_size: flo
 	mesh = target_mesh
 	size = body_size
 	ground_y = ground
+	set_process(false)   # woken by the first kick; a settled body costs no per-frame work
 	var s := ArtKit.shadow_builder()
 	s.add_blob(Transform3D.IDENTITY, 1.0, ArtKit.shadow_alpha(1.35))
 	_shadow = ArtKit.instance(s.commit(), ArtKit.shadow_material())
@@ -99,19 +108,21 @@ func pop() -> void:
 	_squash_v = 0.0
 	_pop = POP_START
 	_pop_v = 0.0
+	set_process(true)
 	if is_inside_tree():
 		_update_shadow()   # the body was moved: do not leave the shadow behind for a frame
 
 
 func stretch() -> void:
 	_squash_v += STRETCH_KICK
+	set_process(true)
 
 
 func puff(strength: float) -> void:
 	if body == null:
 		return
-	var up := body.global_transform.basis.y.normalized()
-	_dust.global_position = body.global_position - up * size * 0.48
+	var up := _normal
+	_dust.global_position = body.global_position - up * _half_extent(up) * 0.96
 	_dust.global_basis = Basis(Quaternion(Vector3.UP, up))
 	_dust.amount = int(lerpf(8.0, 16.0, strength))
 	_dust.initial_velocity_max = lerpf(0.9, 1.8, strength)
@@ -120,7 +131,7 @@ func puff(strength: float) -> void:
 
 ## Current visual scale of the mesh (tests, style guide checks).
 func mesh_scale() -> Vector3:
-	return mesh.scale if mesh else Vector3.ONE
+	return _scale
 
 
 func _physics_process(_delta: float) -> void:
@@ -132,13 +143,17 @@ func _physics_process(_delta: float) -> void:
 		_landed = true
 		var strength := clampf(-_prev_vy / LAND_FULL_SPEED, 0.25, 1.0)
 		_squash_v -= LAND_KICK * strength
+		set_process(true)
 		puff(strength)
 		landed.emit(strength)
 	if _landed and not _resting and body.linear_velocity.length() < REST_SPEED:
 		_resting = true
 		_squash_v -= REST_KICK
+		set_process(true)
 	_prev_vy = vy
-	_update_shadow()
+	# A body that has not moved or turned since the last update keeps its shadow and normal.
+	if body.global_transform != _shadow_xf:
+		_update_shadow()
 
 
 func _process(delta: float) -> void:
@@ -150,16 +165,35 @@ func _process(delta: float) -> void:
 	_squash = clampf(_squash + _squash_v * dt, -SQUASH_LIMIT, SQUASH_LIMIT)
 	_pop_v += (-SPRING_K * 0.7 * (_pop - 1.0) - SPRING_DAMP * 0.8 * _pop_v) * dt
 	_pop += _pop_v * dt
+	if absf(_squash) < SETTLED_VALUE and absf(_squash_v) < SETTLED_SPEED and absf(_pop - 1.0) < SETTLED_VALUE and absf(_pop_v) < SETTLED_SPEED:
+		_squash = 0.0
+		_squash_v = 0.0
+		_pop = 1.0
+		_pop_v = 0.0
+		set_process(false)   # at rest: one last write below, then nothing until the next kick
 	var sy := (1.0 + _squash) * _pop
 	var sxz := (1.0 - _squash * 0.5) * _pop
-	mesh.scale = Vector3(sxz, sy, sxz)
-	# Keep the bottom face on the surface while the mesh squashes (body-local y = surface normal).
-	mesh.position = Vector3(0.0, -size * 0.5 * (1.0 - sy), 0.0)
+	_scale = Vector3(sxz, sy, sxz)
+	# Scale by sy along the surface normal `u` and by sxz across it: M = sxz I + (sy - sxz) u u^T,
+	# in the body's local space (the mesh is the body's child). The bottom face stays on the surface.
+	var u := body.global_basis.inverse() * _normal
+	var m := Basis.IDENTITY * sxz
+	for r in 3:
+		for c in 3:
+			m[c][r] += (sy - sxz) * u[r] * u[c]
+	mesh.transform = Transform3D(m, u * _half_extent(_normal) * (sy - 1.0))
+
+
+## Half extent of the body (a cube of `size`) along the world direction `dir`.
+func _half_extent(dir: Vector3) -> float:
+	var l := body.global_basis.inverse() * dir
+	return size * 0.5 * (absf(l.x) + absf(l.y) + absf(l.z))
 
 
 ## Blob shadow straight below the body, on whatever is there; smaller and lighter when high.
 func _update_shadow() -> void:
 	var from := body.global_position
+	_shadow_xf = body.global_transform
 	_ray.from = from
 	_ray.to = from + Vector3.DOWN * 12.0
 	var hit := get_world_3d().direct_space_state.intersect_ray(_ray)
@@ -170,5 +204,6 @@ func _update_shadow() -> void:
 	var height := maxf(0.0, from.y - (hit.position as Vector3).y - size * 0.5)
 	var radius := size * 0.85 * clampf(1.0 - height * 0.18, 0.45, 1.0)
 	var normal: Vector3 = hit.normal
+	_normal = normal
 	var basis := Basis(Quaternion(Vector3.UP, normal)) * Basis.from_scale(Vector3(radius, 1.0, radius))
 	_shadow.global_transform = Transform3D(basis, (hit.position as Vector3) + normal * 0.015)

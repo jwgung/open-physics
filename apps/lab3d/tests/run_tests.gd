@@ -43,6 +43,7 @@ func _run() -> void:
 	await _check_bounded_and_floor()
 	await _check_left_status()
 	await _check_art_is_visual_only()
+	await _check_juice_rotated_landing()
 	_check_stand_clearance()
 	_lab.queue_free()
 	print("== shell: camera, gestures, layout ==")
@@ -175,12 +176,21 @@ func _check_art_is_visual_only() -> void:
 	var juice: ArtJuice = _lab.props.juice
 	var box: RigidBody3D = _lab.box
 	var shape: CollisionShape3D = box.find_children("*", "CollisionShape3D", false, false)[0]
-	_expect(juice != null and juice.mesh.get_parent() == box and juice.mesh != shape, "box reactions act on the box's mesh child only", "")
+	var box_children: Array[String] = []
+	for child in box.get_children():
+		box_children.append(child.get_class())
+	box_children.sort()
+	_expect(juice != null and juice.mesh is MeshInstance3D and juice.mesh.get_parent() == box and juice.mesh.mesh != null
+		and box_children == ["CollisionShape3D", "MeshInstance3D"] and juice.body == box and not box.is_ancestor_of(juice),
+		"box reactions act on the box's mesh child only (juice nodes live outside the body)", ", ".join(box_children))
 	_lab.set_coefficients(0.5, 0.4)
 	var runs: Array = []
 	var deformed := 0.0
 	var shape_ok := true
 	for with_juice in [true, false]:
+		# Off = the whole reaction path: status-driven pop/stretch/puff (props.juice = null) and the
+		# automatic landing, wobble and shadow ray (the node's processing).
+		_lab.props.juice = juice if with_juice else null
 		juice.process_mode = Node.PROCESS_MODE_INHERIT if with_juice else Node.PROCESS_MODE_DISABLED
 		_lab.set_angle(35.0)
 		await physics_frame
@@ -191,12 +201,60 @@ func _check_art_is_visual_only() -> void:
 				deformed = maxf(deformed, (juice.mesh_scale() - Vector3.ONE).abs()[(juice.mesh_scale() - Vector3.ONE).abs().max_axis_index()])
 			shape_ok = shape_ok and shape.transform == Transform3D.IDENTITY and (shape.shape as BoxShape3D).size == Vector3.ONE * _lab.BOX
 		runs.append({"samples": _lab.corrector.samples.duplicate(), "obs": _lab.observations(), "pos": box.global_position, "graph": _lab.graph_series().measured})
+	_lab.props.juice = juice
 	juice.process_mode = Node.PROCESS_MODE_INHERIT
 	_expect(deformed > 0.05, "box reactions deform the box mesh (pop/stretch/squash)", "max |scale - 1| %.3f" % deformed)
 	_expect(shape_ok, "collision shape keeps its transform and size while the mesh is animated", "")
 	_expect(runs[0].samples == runs[1].samples and runs[0].pos == runs[1].pos and runs[0].graph == runs[1].graph,
 		"same motion with and without the box reactions", "s(3s) %.6f / %.6f m" % [runs[0].samples[-1], runs[1].samples[-1]])
 	_expect(str(runs[0].obs) == str(runs[1].obs), "same displayed values with and without the box reactions", str(runs[0].obs))
+
+
+## A body that lands rotated (rolled 90 deg here) is still flattened along world y and its dust
+## appears below it, not along the body's own y axis.
+func _check_juice_rotated_landing() -> void:
+	var world := Node3D.new()
+	root.add_child(world)
+	var floor_body := StaticBody3D.new()
+	var floor_shape := CollisionShape3D.new()
+	var floor_box := BoxShape3D.new()
+	floor_box.size = Vector3(10.0, 0.4, 10.0)
+	floor_shape.shape = floor_box
+	floor_body.add_child(floor_shape)
+	floor_body.position = Vector3(0.0, -0.2, 0.0)
+	world.add_child(floor_body)
+	var body := RigidBody3D.new()
+	var body_shape := CollisionShape3D.new()
+	var body_box := BoxShape3D.new()
+	body_box.size = Vector3.ONE * 0.4
+	body_shape.shape = body_box
+	body.add_child(body_shape)
+	var visual := ArtKit.instance(InclineProps.new().box_mesh(0.4))
+	body.add_child(visual)
+	world.add_child(body)
+	body.global_transform = Transform3D(Basis(Vector3.BACK, PI * 0.5), Vector3(0.0, 2.5, 0.0))
+	var juice := ArtJuice.new()
+	world.add_child(juice)
+	juice.setup(body, visual, 0.4)
+	var landed := [0.0]
+	juice.landed.connect(func(strength: float) -> void: landed[0] = strength)
+	var dust: CPUParticles3D = juice.get_node("Dust")
+	var flattest := 1.0
+	var dust_below := false
+	var steps := 0
+	while steps < 150:
+		await physics_frame
+		steps += 1
+		if landed[0] > 0.0:
+			var extent := (visual.global_transform * visual.mesh.get_aabb()).size   # world-axis aligned extent
+			flattest = minf(flattest, extent.y / extent.x)
+			dust_below = dust_below or dust.global_position.y < body.global_position.y - 0.1
+	var rest_extent := (visual.global_transform * visual.mesh.get_aabb()).size
+	_expect(landed[0] > 0.0 and flattest < 0.95 and absf(rest_extent.y - rest_extent.x) < 0.005,
+		"a body landed rolled 90 deg squashes along world y and returns to its size", "landed %.2f, min y/x %.3f, rest %s" % [landed[0], flattest, str(rest_extent)])
+	_expect(dust_below, "dust of a rolled body appears below it", "dust y %.2f, body y %.2f" % [dust.global_position.y, body.global_position.y])
+	_expect(not juice.is_processing(), "a settled juice stops its per-frame update", "")
+	world.queue_free()
 
 
 ## The support post never shows through the incline: at every angle up to the slider's maximum the

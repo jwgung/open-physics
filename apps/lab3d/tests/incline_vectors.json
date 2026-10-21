@@ -1,0 +1,508 @@
+{
+  "source": "src/physics/laws (SurfaceContactFrictionModifier, constantAccelerationDisplacement), src/app/physics-playground.ts MATERIALS",
+  "g": 9.81,
+  "mass": 1,
+  "dt": 0.016666666666666666,
+  "sets": [
+    {
+      "id": "spec-s3",
+      "mu_s": 0.5,
+      "mu_k": 0.4,
+      "critical_angle_deg": 26.56505117707799,
+      "accel_35": 2.412432218813758,
+      "accel_40": 3.2997880562260806,
+      "displacement_40": [
+        {
+          "t": 1,
+          "s": 1.6498940281130403
+        },
+        {
+          "t": 2,
+          "s": 6.599576112452161
+        }
+      ],
+      "cases": [
+        {
+          "theta_deg": 10,
+          "speed": 0,
+          "tangential_accel": 0
+        },
+        {
+          "theta_deg": 10,
+          "speed": 1,
+          "tangential_accel": -2.160896999907318
+        },
+        {
+          "theta_deg": 20,
+          "speed": 0,
+          "tangential_accel": 0
+        },
+        {
+          "theta_deg": 20,
+          "speed": 1,
+          "tangential_accel": -0.33213623793909486
+        },
+        {
+          "theta_deg": 26.1,
+          "speed": 0,
+          "tangential_accel": -8.881784197001252e-16
+        },
+        {
+          "theta_deg": 26.1,
+          "speed": 1,
+          "tangential_accel": 0.7919430490018717
+        },
+        {
+          "theta_deg": 27.1,
+          "speed": 0,
+          "tangential_accel": 0.9757004946667274
+        },
+        {
+          "theta_deg": 27.1,
+          "speed": 1,
+          "tangential_accel": 0.9757004946667274
+        },
+        {
+          "theta_deg": 30,
+          "speed": 0,
+          "tangential_accel": 1.5067163155498609
+        },
+        {
+          "theta_deg": 30,
+          "speed": 1,
+          "tangential_accel": 1.5067163155498609
+        },
+        {
+          "theta_deg": 35,
+          "speed": 0,
+          "tangential_accel": 2.412432218813758
+        },
+        {
+          "theta_deg": 35,
+          "speed": 1,
+          "tangential_accel": 2.412432218813758
+        },
+        {
+          "theta_deg": 40,
+          "speed": 0,
+          "tangential_accel": 3.2997880562260806
+        },
+        {
+          "theta_deg": 40,
+          "speed": 1,
+          "tangential_accel": 3.2997880562260806
+        },
+        {
+          "theta_deg": 45,
+          "speed": 0,
+          "tangential_accel": 4.162030514064019
+        },
+        {
+          "theta_deg": 45,
+          "speed": 1,
+          "tangential_accel": 4.162030514064019
+        }
+      ]
+    },
+    {
+      "id": "steel",
+      "mu_s": 0.26,
+      "mu_k": 0.08,
+      "critical_angle_deg": 14.574216198038739,
+      "accel_35": 4.983914316245761,
+      "accel_40": 5.704554772065177,
+      "displacement_40": [
+        {
+          "t": 1,
+          "s": 2.8522773860325885
+        },
+        {
+          "t": 2,
+          "s": 11.409109544130354
+        }
+      ],
+      "cases": [
+        {
+          "theta_deg": 10,
+          "speed": 0,
+          "tangential_accel": 0
+        },
+        {
+          "theta_deg": 10,
+          "speed": 1,
+          "tangential_accel": 0.930611498348606
+        },
+        {
+          "theta_deg": 14.1,
+          "speed": 0,
+          "tangential_accel": 0
+        },
+        {
+          "theta_deg": 14.1,
+          "speed": 1,
+          "tangential_accel": 1.6287077080254115
+        },
+        {
+          "theta_deg": 15.1,
+          "speed": 0,
+          "tangential_accel": 1.7978463090703647
+        },
+        {
+          "theta_deg": 15.1,
+          "speed": 1,
+          "tangential_accel": 1.7978463090703647
+        },
+        {
+          "theta_deg": 20,
+          "speed": 0,
+          "tangential_accel": 2.617746837232029
+        },
+        {
+          "theta_deg": 20,
+          "speed": 1,
+          "tangential_accel": 2.617746837232029
+        },
+        {
+          "theta_deg": 30,
+          "speed": 0,
+          "tangential_accel": 4.225343263109972
+        },
+        {
+          "theta_deg": 30,
+          "speed": 1,
+          "tangential_accel": 4.225343263109972
+        },
+        {
+          "theta_deg": 35,
+          "speed": 0,
+          "tangential_accel": 4.983914316245761
+        },
+        {
+          "theta_deg": 35,
+          "speed": 1,
+          "tangential_accel": 4.983914316245761
+        },
+        {
+          "theta_deg": 40,
+          "speed": 0,
+          "tangential_accel": 5.704554772065177
+        },
+        {
+          "theta_deg": 40,
+          "speed": 1,
+          "tangential_accel": 5.704554772065177
+        },
+        {
+          "theta_deg": 45,
+          "speed": 0,
+          "tangential_accel": 6.381780121564828
+        },
+        {
+          "theta_deg": 45,
+          "speed": 1,
+          "tangential_accel": 6.381780121564828
+        }
+      ]
+    },
+    {
+      "id": "wood",
+      "mu_s": 0.4,
+      "mu_k": 0.22,
+      "critical_angle_deg": 21.80140948635181,
+      "accel_35": 3.8588908986192596,
+      "accel_40": 4.652469333885572,
+      "displacement_40": [
+        {
+          "t": 1,
+          "s": 2.326234666942786
+        },
+        {
+          "t": 2,
+          "s": 9.304938667771143
+        }
+      ],
+      "cases": [
+        {
+          "theta_deg": 10,
+          "speed": 0,
+          "tangential_accel": 0
+        },
+        {
+          "theta_deg": 10,
+          "speed": 1,
+          "tangential_accel": -0.4219234696383607
+        },
+        {
+          "theta_deg": 20,
+          "speed": 0,
+          "tangential_accel": 0
+        },
+        {
+          "theta_deg": 20,
+          "speed": 1,
+          "tangential_accel": 1.3271729918446626
+        },
+        {
+          "theta_deg": 21.3,
+          "speed": 0,
+          "tangential_accel": 0
+        },
+        {
+          "theta_deg": 21.3,
+          "speed": 1,
+          "tangential_accel": 1.5527185635647867
+        },
+        {
+          "theta_deg": 22.3,
+          "speed": 0,
+          "tangential_accel": 1.7256773107593448
+        },
+        {
+          "theta_deg": 22.3,
+          "speed": 1,
+          "tangential_accel": 1.7256773107593448
+        },
+        {
+          "theta_deg": 30,
+          "speed": 0,
+          "tangential_accel": 3.035943973552423
+        },
+        {
+          "theta_deg": 30,
+          "speed": 1,
+          "tangential_accel": 3.035943973552423
+        },
+        {
+          "theta_deg": 35,
+          "speed": 0,
+          "tangential_accel": 3.8588908986192596
+        },
+        {
+          "theta_deg": 35,
+          "speed": 1,
+          "tangential_accel": 3.8588908986192596
+        },
+        {
+          "theta_deg": 40,
+          "speed": 0,
+          "tangential_accel": 4.652469333885572
+        },
+        {
+          "theta_deg": 40,
+          "speed": 1,
+          "tangential_accel": 4.652469333885572
+        },
+        {
+          "theta_deg": 45,
+          "speed": 0,
+          "tangential_accel": 5.410639668283224
+        },
+        {
+          "theta_deg": 45,
+          "speed": 1,
+          "tangential_accel": 5.410639668283224
+        }
+      ]
+    },
+    {
+      "id": "rubber",
+      "mu_s": 0.6,
+      "mu_k": 0.42,
+      "critical_angle_deg": 30.96375653207352,
+      "accel_35": 2.251714587724259,
+      "accel_40": 3.149490136486137,
+      "displacement_40": [
+        {
+          "t": 1,
+          "s": 1.5747450682430686
+        },
+        {
+          "t": 2,
+          "s": 6.298980272972274
+        }
+      ],
+      "cases": [
+        {
+          "theta_deg": 10,
+          "speed": 0,
+          "tangential_accel": 0
+        },
+        {
+          "theta_deg": 10,
+          "speed": 1,
+          "tangential_accel": -2.354116281048313
+        },
+        {
+          "theta_deg": 20,
+          "speed": 0,
+          "tangential_accel": 0
+        },
+        {
+          "theta_deg": 20,
+          "speed": 1,
+          "tangential_accel": -0.51650393013729
+        },
+        {
+          "theta_deg": 30,
+          "speed": 0,
+          "tangential_accel": 4.440892098500626e-16
+        },
+        {
+          "theta_deg": 30,
+          "speed": 1,
+          "tangential_accel": 1.3368021313273548
+        },
+        {
+          "theta_deg": 30.5,
+          "speed": 0,
+          "tangential_accel": -8.881784197001252e-16
+        },
+        {
+          "theta_deg": 30.5,
+          "speed": 1,
+          "tangential_accel": 1.428866873793333
+        },
+        {
+          "theta_deg": 31.5,
+          "speed": 0,
+          "tangential_accel": 1.612662914691727
+        },
+        {
+          "theta_deg": 31.5,
+          "speed": 1,
+          "tangential_accel": 1.612662914691727
+        },
+        {
+          "theta_deg": 35,
+          "speed": 0,
+          "tangential_accel": 2.251714587724259
+        },
+        {
+          "theta_deg": 35,
+          "speed": 1,
+          "tangential_accel": 2.251714587724259
+        },
+        {
+          "theta_deg": 40,
+          "speed": 0,
+          "tangential_accel": 3.149490136486137
+        },
+        {
+          "theta_deg": 40,
+          "speed": 1,
+          "tangential_accel": 3.149490136486137
+        },
+        {
+          "theta_deg": 45,
+          "speed": 0,
+          "tangential_accel": 4.023296163595218
+        },
+        {
+          "theta_deg": 45,
+          "speed": 1,
+          "tangential_accel": 4.023296163595218
+        }
+      ]
+    },
+    {
+      "id": "clay",
+      "mu_s": 0.76,
+      "mu_k": 0.58,
+      "critical_angle_deg": 37.234833981574674,
+      "accel_35": -4.440892098500626e-16,
+      "accel_40": 1.9471067785665905,
+      "displacement_40": [
+        {
+          "t": 1,
+          "s": 0.9735533892832953
+        },
+        {
+          "t": 2,
+          "s": 3.894213557133181
+        }
+      ],
+      "cases": [
+        {
+          "theta_deg": 10,
+          "speed": 0,
+          "tangential_accel": 0
+        },
+        {
+          "theta_deg": 10,
+          "speed": 1,
+          "tangential_accel": -3.8998705301762735
+        },
+        {
+          "theta_deg": 20,
+          "speed": 0,
+          "tangential_accel": 0
+        },
+        {
+          "theta_deg": 20,
+          "speed": 1,
+          "tangential_accel": -1.9914454677228526
+        },
+        {
+          "theta_deg": 30,
+          "speed": 0,
+          "tangential_accel": 4.440892098500626e-16
+        },
+        {
+          "theta_deg": 30,
+          "speed": 1,
+          "tangential_accel": -0.0225113424526997
+        },
+        {
+          "theta_deg": 35,
+          "speed": 0,
+          "tangential_accel": -4.440892098500626e-16
+        },
+        {
+          "theta_deg": 35,
+          "speed": 1,
+          "tangential_accel": 0.9659735390082558
+        },
+        {
+          "theta_deg": 36.7,
+          "speed": 0,
+          "tangential_accel": -4.440892098500626e-16
+        },
+        {
+          "theta_deg": 36.7,
+          "speed": 1,
+          "tangential_accel": 1.300759631211751
+        },
+        {
+          "theta_deg": 37.7,
+          "speed": 0,
+          "tangential_accel": 1.4971766063445804
+        },
+        {
+          "theta_deg": 37.7,
+          "speed": 1,
+          "tangential_accel": 1.4971766063445804
+        },
+        {
+          "theta_deg": 40,
+          "speed": 0,
+          "tangential_accel": 1.9471067785665905
+        },
+        {
+          "theta_deg": 40,
+          "speed": 1,
+          "tangential_accel": 1.9471067785665905
+        },
+        {
+          "theta_deg": 45,
+          "speed": 0,
+          "tangential_accel": 2.913421359844812
+        },
+        {
+          "theta_deg": 45,
+          "speed": 1,
+          "tangential_accel": 2.913421359844812
+        }
+      ]
+    }
+  ]
+}

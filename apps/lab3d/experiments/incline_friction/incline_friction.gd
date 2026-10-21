@@ -35,6 +35,7 @@ var _pivot: Node3D
 var _stand: MeshInstance3D
 var _graph_points := PackedVector2Array()
 var _last_status := ""
+var _graph_revision := 0
 
 
 func _ready() -> void:
@@ -94,6 +95,7 @@ func set_coefficients(static_mu: float, kinetic_mu: float) -> void:
 	mu_k = kinetic_mu
 	corrector.mu_s = mu_s
 	corrector.mu_k = mu_k
+	_graph_revision += 1
 
 
 ## Places the box at rest on the incline (frozen) at START_X.
@@ -107,6 +109,7 @@ func reset_box() -> void:
 	box.global_transform = _pivot.global_transform * local
 	corrector.reset(box.global_position)
 	_graph_points.clear()
+	_graph_revision += 1
 	state_changed.emit()
 
 
@@ -116,15 +119,11 @@ func release() -> void:
 	corrector.reset(box.global_position)
 	_graph_points.clear()
 	_graph_points.append(Vector2.ZERO)
+	_graph_revision += 1
 	released = true
 	box.freeze = false
 	box.sleeping = false
 	state_changed.emit()
-
-
-## Seconds since release, in fixed steps (exact, independent of the frame rate).
-func elapsed() -> float:
-	return corrector.steps / float(Engine.physics_ticks_per_second) if released else 0.0
 
 
 func formula_acceleration() -> float:
@@ -134,7 +133,7 @@ func formula_acceleration() -> float:
 func status() -> String:
 	if not released:
 		return "ready"
-	if not corrector._in_contact(box.global_position) and corrector.steps > 0:
+	if corrector.past_end:
 		return "left"
 	return corrector.status
 
@@ -149,6 +148,7 @@ func _physics_process(_delta: float) -> void:
 		var t := steps / float(Engine.physics_ticks_per_second)
 		if t <= max_t + 0.001 and t > _graph_points[-1].x and status() != "left":
 			_graph_points.append(Vector2(t, corrector.samples[steps]))
+			_graph_revision += 1
 	var current := status()
 	if current != _last_status:
 		_last_status = current
@@ -203,6 +203,10 @@ func graph_series() -> Dictionary:
 			break
 		formula.append(Vector2(t, s))
 	return {"formula": formula, "measured": _graph_points}
+
+
+func graph_revision() -> int:
+	return _graph_revision
 
 
 func follow_point() -> Vector3:

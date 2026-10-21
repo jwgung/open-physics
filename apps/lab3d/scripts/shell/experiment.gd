@@ -43,6 +43,12 @@ func graph_series() -> Dictionary:
 	return {}
 
 
+## Changes whenever graph_series() would return different data (e.g. a point was added). The
+## screen polls this and only rebuilds the series when it changed; -1 = unknown (rebuild each poll).
+func graph_revision() -> int:
+	return -1
+
+
 ## World position the "따라가기" camera mode follows.
 func follow_point() -> Vector3:
 	return global_position

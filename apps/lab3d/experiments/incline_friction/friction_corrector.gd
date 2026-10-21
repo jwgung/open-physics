@@ -20,6 +20,9 @@ var half_extent := 0.2         # box half height along the normal
 var leapfrog_start := true
 
 var status := "holding"
+## The box centre is beyond either end of the incline (its length is half_length * 2): the box has
+## left the incline. Updated once per step in apply(); a brief loss of contact does not set it.
+var past_end := false
 var steps := 0
 var origin := Vector3.ZERO
 ## samples[k] = downhill displacement (m) after k steps since release; velocities likewise.
@@ -35,6 +38,7 @@ var max_offset := 0.0          # largest |displacement| (any direction) seen sin
 
 func reset(release_origin: Vector3) -> void:
 	status = "holding"
+	past_end = false
 	steps = 0
 	origin = release_origin
 	samples.clear()
@@ -63,7 +67,9 @@ func apply(body: RigidBody3D, dt: float) -> void:
 		velocities.append(last_velocity)
 	max_offset = maxf(max_offset, (position - origin).length())
 	steps += 1
-	if not _in_contact(position):
+	var local := incline.global_transform.affine_inverse() * position
+	past_end = absf(local.x) > half_length
+	if not _in_contact(local):
 		return
 	var normal := incline.global_transform.basis.y.normalized()
 	var gravity_force := body.get_gravity() * body.gravity_scale * mass
@@ -79,6 +85,6 @@ func apply(body: RigidBody3D, dt: float) -> void:
 	body.apply_central_force(tangent * (corrected - tangential_force))
 
 
-func _in_contact(position: Vector3) -> bool:
-	var local := incline.global_transform.affine_inverse() * position
+## `local` = the box position in the incline pivot's frame.
+func _in_contact(local: Vector3) -> bool:
 	return absf(local.y - half_extent) <= CONTACT_TOLERANCE and absf(local.x) <= half_length

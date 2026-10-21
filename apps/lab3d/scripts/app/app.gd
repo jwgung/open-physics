@@ -10,6 +10,10 @@ extends Control
 
 const RESUME_PATH := "user://resume.txt"   # written by settings right after Quality.set_tier() requested a renderer restart
 const SETTINGS_PATH := "user://settings.cfg"
+## Screen change (art direction): the new screen slides in from SLIDE_UNITS to the right and fades
+## in over SLIDE_S. Only the screen's own position/modulate are tweened (no overlay layer).
+const SLIDE_UNITS := 48.0
+const SLIDE_S := 0.22
 
 var _definitions: Array[Dictionary] = []
 var _screen: Control
@@ -144,8 +148,17 @@ func _swap(screen: Control, bench_scene: String) -> void:
 			_screen.queue_free()
 	_screen = screen
 	add_child(screen)
+	_slide_in(screen)
 	if bench_scene != "":
 		Bench.reset(bench_scene)
+
+
+func _slide_in(screen: Control) -> void:
+	screen.position.x = SLIDE_UNITS
+	screen.modulate.a = 0.0
+	var tween := screen.create_tween().set_parallel()
+	tween.tween_property(screen, "position:x", 0.0, SLIDE_S).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	tween.tween_property(screen, "modulate:a", 1.0, SLIDE_S * 0.7)
 
 
 func _on_quality_changed() -> void:

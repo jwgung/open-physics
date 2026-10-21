@@ -14,6 +14,8 @@ const INCLINE_LENGTH := 8.0
 const START_X := 3.5          # release point along the incline (pivot local x), uphill end is +x
 const PIVOT_HEIGHT := 3.2
 const GRAPH_EVERY_STEPS := 6  # graph sample every 6 fixed steps (10 Hz)
+const FLOOR_DAMP := 4.0       # 1/s braking of a box lying on the floor after leaving the incline
+const FALL_LIMIT_Y := -3.0    # below this the box is stopped (it left the floor)
 
 const COLOR_FLOOR := Color("c9d3e0")
 const COLOR_INCLINE := Color("c8a27a")
@@ -97,6 +99,7 @@ func set_coefficients(static_mu: float, kinetic_mu: float) -> void:
 ## Places the box at rest on the incline (frozen) at START_X.
 func reset_box() -> void:
 	released = false
+	box.linear_damp = 0.0
 	box.freeze = true
 	box.linear_velocity = Vector3.ZERO
 	box.angular_velocity = Vector3.ZERO
@@ -140,8 +143,8 @@ func _physics_process(_delta: float) -> void:
 	if not released:
 		return
 	# samples[k] is the displacement after k steps; this runs before the box's step (tree order).
-	var steps := corrector.samples.size() - 1
-	if steps > 0 and steps % GRAPH_EVERY_STEPS == 0:
+	var steps := corrector.steps - 1
+	if steps > 0 and steps % GRAPH_EVERY_STEPS == 0 and steps < corrector.samples.size():
 		var max_t: float = definition.get("graph", {}).get("x", {}).get("max", 3.0)
 		var t := steps / float(Engine.physics_ticks_per_second)
 		if t <= max_t + 0.001 and t > _graph_points[-1].x and status() != "left":
@@ -150,6 +153,22 @@ func _physics_process(_delta: float) -> void:
 	if current != _last_status:
 		_last_status = current
 		state_changed.emit()
+	_settle_off_incline()
+
+
+## The floor is frictionless like the incline (so the formula layer owns all friction), but a box
+## that has left the incline must not run off the end of the finite floor: it brakes once it lies
+## on the floor and is stopped if it ever drops far below it. Does not touch the displayed numbers.
+func _settle_off_incline() -> void:
+	if box.freeze:
+		return
+	var y := box.global_position.y
+	if y < FALL_LIMIT_Y:
+		box.linear_velocity = Vector3.ZERO
+		box.angular_velocity = Vector3.ZERO
+		box.freeze = true
+	elif status() == "left" and y < BOX * 0.5 + 0.05:
+		box.linear_damp = FLOOR_DAMP
 
 
 func observations() -> Dictionary:
@@ -168,7 +187,7 @@ func observations() -> Dictionary:
 		"max_static": PhysicsLaws.max_static_friction(mu_s, normal),
 		"acceleration": formula_acceleration(),
 		# Distance along the incline; after the box runs off the end it stays at the run length.
-		"distance": minf(corrector.samples[-1], START_X + INCLINE_LENGTH * 0.5) if released and corrector.samples.size() > 0 else 0.0,
+		"distance": minf(corrector.last_sample, START_X + INCLINE_LENGTH * 0.5) if released else 0.0,
 	}
 
 
@@ -256,6 +275,8 @@ func _build_world() -> void:
 	corrector.incline = _pivot
 	corrector.half_length = INCLINE_LENGTH * 0.5
 	corrector.half_extent = BOX * 0.5
+	# The graph window (+ the sample at its end) is all the app reads from the history.
+	corrector.history_steps = int(definition.get("graph", {}).get("x", {}).get("max", 3.0) * Engine.physics_ticks_per_second) + 2
 	set_coefficients(mu_s, mu_k)
 	box.corrector = corrector
 

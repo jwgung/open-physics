@@ -23,8 +23,13 @@ var status := "holding"
 var steps := 0
 var origin := Vector3.ZERO
 ## samples[k] = downhill displacement (m) after k steps since release; velocities likewise.
+## Only the first `history_steps` entries are kept (the graph window / tests); later steps update
+## last_sample / last_velocity only, so a long run does not grow the arrays.
 var samples: PackedFloat64Array = PackedFloat64Array()
 var velocities: PackedFloat64Array = PackedFloat64Array()
+var history_steps := 600
+var last_sample := 0.0
+var last_velocity := 0.0
 var max_offset := 0.0          # largest |displacement| (any direction) seen since release, m
 
 
@@ -34,6 +39,8 @@ func reset(release_origin: Vector3) -> void:
 	origin = release_origin
 	samples.clear()
 	velocities.clear()
+	last_sample = 0.0
+	last_velocity = 0.0
 	max_offset = 0.0
 
 
@@ -49,8 +56,11 @@ func apply(body: RigidBody3D, dt: float) -> void:
 	var velocity := body.linear_velocity
 	var mass := body.mass
 	var tangent := downhill()
-	samples.append((position - origin).dot(tangent))
-	velocities.append(velocity.dot(tangent))
+	last_sample = (position - origin).dot(tangent)
+	last_velocity = velocity.dot(tangent)
+	if samples.size() < history_steps:
+		samples.append(last_sample)
+		velocities.append(last_velocity)
 	max_offset = maxf(max_offset, (position - origin).length())
 	steps += 1
 	if not _in_contact(position):

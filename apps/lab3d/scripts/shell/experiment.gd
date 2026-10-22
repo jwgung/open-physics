@@ -19,6 +19,9 @@ var definition: Dictionary = {}
 var engine_g: float = ProjectSettings.get_setting("physics/3d/default_gravity", 9.81)
 ## status() as of the last _update_status().
 var _last_status := ""
+## begin_batch() depth: while open, _restart() only marks the run for one restart in end_batch().
+var _batch := 0
+var _batch_dirty := false
 
 
 ## Adds a box collision shape of `size` to a body (floors, blocks, boxes of the experiments).
@@ -100,11 +103,28 @@ func _make_knob(knob_name: String, layer: int, size: float) -> StaticBody3D:
 
 ## The screen restores a saved state (controls, then placements) between begin_batch() and
 ## end_batch(): an experiment whose every change restarts the run restarts it once, in end_batch().
+## Experiments that call _restart() implement reset_run().
 func begin_batch() -> void:
-	pass
+	_batch += 1
 
 
 func end_batch() -> void:
+	_batch = maxi(0, _batch - 1)
+	if _batch == 0 and _batch_dirty:
+		_batch_dirty = false
+		reset_run()
+
+
+## The conditions changed: the run starts over (once, when a batch is open).
+func _restart() -> void:
+	if _batch > 0:
+		_batch_dirty = true
+	else:
+		reset_run()
+
+
+## Starts the run over from its conditions (experiments with a restartable run).
+func reset_run() -> void:
 	pass
 
 

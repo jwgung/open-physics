@@ -58,8 +58,6 @@ var holding := ""
 var hit_reactions := 0
 var reset_count := 0
 var _placed := false
-var _batch := 0                          # begin_batch() depth: changes only mark the run for a restart
-var _batch_dirty := false
 var _floor: StaticBody3D
 var _graph: Array[Vector3] = []          # (t, pA, pB)
 var _graph_revision := 0
@@ -72,25 +70,6 @@ func _ready() -> void:
 	for control in definition.get("controls", []):
 		set_control(control.id, control.default)
 	end_batch()
-
-
-func begin_batch() -> void:
-	_batch += 1
-
-
-func end_batch() -> void:
-	_batch = maxi(0, _batch - 1)
-	if _batch == 0 and _batch_dirty:
-		_batch_dirty = false
-		reset_run()
-
-
-## The conditions changed: the run starts over (once, when a batch is open).
-func _restart() -> void:
-	if _batch > 0:
-		_batch_dirty = true
-	else:
-		reset_run()
 
 
 func set_control(id: String, value: Variant) -> void:

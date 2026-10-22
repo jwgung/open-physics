@@ -41,8 +41,6 @@ var released := false
 var holding := ""
 var reset_count := 0
 var crashes := 0
-var _batch := 0
-var _batch_dirty := false
 var _floor: StaticBody3D
 var _graph: Array[Vector4] = []   # (t, speed, circular speed, escape speed)
 var _graph_revision := 0
@@ -55,24 +53,6 @@ func _ready() -> void:
 	for control in definition.get("controls", []):
 		set_control(control.id, control.default)
 	end_batch()
-
-
-func begin_batch() -> void:
-	_batch += 1
-
-
-func end_batch() -> void:
-	_batch = maxi(0, _batch - 1)
-	if _batch == 0 and _batch_dirty:
-		_batch_dirty = false
-		reset_run()
-
-
-func _restart() -> void:
-	if _batch > 0:
-		_batch_dirty = true
-	else:
-		reset_run()
 
 
 func set_control(id: String, value: Variant) -> void:

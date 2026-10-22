@@ -30,7 +30,9 @@ import {
   postCollisionVelocity1D,
   postCollisionVelocity1DSecond,
   springPotentialEnergy,
+  work,
 } from "../../../src/physics/laws/mechanics";
+import { KineticFriction } from "../../../src/physics/laws/basic";
 import { circularOrbitPeriod, circularOrbitSpeed, escapeSpeed } from "../../../src/physics/laws/orbit";
 import {
   angularFrequency,
@@ -226,7 +228,14 @@ function friction(): Case[] {
       }
       const law = new PushFrictionLaw({ bodyId: "box", surfaceY: 0, staticCoefficient: muS, kineticCoefficient: muK, normalAcceleration: G * PX });
       cases.push({ law: "push_max_static_force", args: [muS, mass, G], expect: law.maximumStaticForce(state(0, 0, 0, 0, mass)) / PX });
+      // Task 4b: the lab's "운동 마찰력" readout (KineticFriction magnitude on a moving box, N = m g).
+      const kinetic = new KineticFriction(mass * G, muK).force(state(0, 0, 1.5, 0, mass), { time: 0, dt: DT }).vector.x;
+      cases.push({ law: "kinetic_friction_force", args: [muK, mass * G], expect: -kinetic });
     }
+  }
+  // Task 4b: friction work turned into heat, one step at a time (mechanics.ts work along x).
+  for (const [force, displacement] of [[-17.2656, 0.0123], [4.12, -0.004], [0, 0.5]]) {
+    cases.push({ law: "work_1d", args: [force, displacement], expect: work({ x: force, y: 0 }, { x: displacement, y: 0 }) });
   }
   return cases;
 }

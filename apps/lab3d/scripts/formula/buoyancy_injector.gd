@@ -3,9 +3,13 @@
 ## such as the box used in 3D; the web ball uses the same linear rule). Up force
 ## m_displaced g f - v_up * drag f m, horizontal drag -v * drag f m. Engine gravity stays on.
 ## The sample is the submerged fraction; the floating fraction shown is the formula
-## rho_object / rho_fluid = m / m_displaced (floating_submerged_fraction).
+## rho_object / rho_fluid = m / m_displaced (floating_submerged_fraction). Its judgement has three
+## states: "floats" below 1, "neutral" within NEUTRAL_TOLERANCE of 1 (stays at any depth), "sinks"
+## above; `sinks` is true only for the last.
 class_name BuoyancyInjector
 extends ForceInjectionCorrector
+
+const NEUTRAL_TOLERANCE := 1e-9   # |rho_object / rho_fluid - 1| that counts as neutral buoyancy
 
 var waterline := 0.0
 var height := 0.4              # body height (m), bottom = centre - height / 2
@@ -35,10 +39,16 @@ func sample(body: RigidBody3D) -> float:
 func formula_values() -> Dictionary:
 	var g := -engine_gravity.y
 	var floating := PhysicsLaws.floating_submerged_fraction(mass, displaced_mass)   # same volume: rho ratio = mass ratio
+	var state := "neutral"
+	if floating < 1.0 - NEUTRAL_TOLERANCE:
+		state = "floats"
+	elif floating > 1.0 + NEUTRAL_TOLERANCE:
+		state = "sinks"
 	return {
 		"floating_fraction": minf(1.0, floating),
 		"floating_depth": minf(1.0, floating) * height,
 		"buoyant_force": PhysicsLaws.buoyancy_region_force(displaced_mass, g, 0.0, last_sample, mass, 0.0),   # rho g V_sub
 		"weight": PhysicsLaws.uniform_gravity_force(mass, g),
-		"sinks": floating >= 1.0,
+		"buoyancy_state": state,
+		"sinks": state == "sinks",
 	}

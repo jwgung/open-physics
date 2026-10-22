@@ -577,6 +577,15 @@ func check_buoyancy() -> void:
 	expect.call(float(heavy.corrector.last_sample) == float(target.heavy.fraction) and absf(heavy.global_position.y - (-3.0 + size * 0.5)) <= 0.03
 		and heavy.corrector.formula_values().sinks, "force injection (buoyancy): heavier than the displaced water sinks to the bottom",
 		"fraction %.3f, y %.3f" % [heavy.corrector.last_sample, heavy.global_position.y])
+	var states := []
+	var judge := BuoyancyInjector.new()
+	judge.displaced_mass = target.displaced_mass
+	for mass in [target.light.mass, target.displaced_mass, target.displaced_mass * (1.0 + 1e-6), target.heavy.mass]:
+		judge.mass = mass
+		var shown := judge.formula_values()
+		states.append("%s/%s" % [shown.buoyancy_state, shown.sinks])
+	expect.call(states == ["floats/false", "neutral/false", "sinks/true", "sinks/true"],
+		"force injection (buoyancy): floats / neutral (rho_obj = rho_fluid) / sinks judgement", str(states))
 	world.queue_free()
 	await tree.process_frame
 

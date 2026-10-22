@@ -87,16 +87,13 @@ func set_angle(degrees: float) -> void:
 
 ## Selects a material option from the "material" control (unknown ids are ignored).
 func set_material(option_id: String) -> void:
-	for control in definition.get("controls", []):
-		if control.id != "material":
-			continue
-		for option in control.options:
-			if option.id == option_id:
-				set_coefficients(float(option.mu_s), float(option.mu_k))
-				material_id = option_id
-				reset_box()
-				return
-	push_warning("incline: unknown material %s" % option_id)
+	var option := _find_option("material", option_id)
+	if option.is_empty():
+		push_warning("incline: unknown material %s" % option_id)
+		return
+	set_coefficients(float(option.mu_s), float(option.mu_k))
+	material_id = option_id
+	reset_box()
 
 
 func set_coefficients(static_mu: float, kinetic_mu: float) -> void:

@@ -78,8 +78,11 @@ func _typed_args(law: String, args: Array) -> Array:
 
 
 ## Relative error (absolute when |expected| < 1) of a value against the JSON expectation; -1 when
-## the shapes or exact values (bool, string) differ.
+## the shapes or exact values (bool, string) differ. "inf" / "-inf" (JSON has no Infinity) expect
+## that float exactly.
 func _error(actual: Variant, expected: Variant) -> float:
+	if expected is String and (expected == "inf" or expected == "-inf"):
+		return 0.0 if actual is float and is_inf(actual) and (actual > 0.0) == (expected == "inf") else -1.0
 	match typeof(expected):
 		TYPE_FLOAT, TYPE_INT:
 			if typeof(actual) != TYPE_FLOAT and typeof(actual) != TYPE_INT:
@@ -277,6 +280,9 @@ func check_uniform_field() -> void:
 	await _check_moon_field()
 	await _check_throw_off_table_edge()
 	await _check_contact_monitor_off(target)
+	await _check_frozen_throw_from_floor(target)
+	await _check_landing_surfaces()
+	await _check_gravity_scale()
 
 
 ## A ball resting on the floor (touching it when released) and thrown up does not land at release:
@@ -374,6 +380,29 @@ func _check_throw_off_table_edge() -> void:
 	await tree.process_frame
 
 
+## A body whose gravity_scale is not 0 or 1 (the Task 4a labs choose the moon / jupiter field this
+## way): get_gravity() already includes the scale, so the formulas and the leapfrog start use
+## 0.165 x 9.81 = 1.62 m/s^2 (Task 3 multiplied by the scale once more).
+func _check_gravity_scale() -> void:
+	var world := _world()
+	var ball := _body(world, 1.0, Vector3(0.0, 10.0, 0.0), 0.25)
+	ball.freeze = true
+	ball.gravity_scale = 1.62 / 9.81
+	var corrector := UniformFieldCorrector.new()
+	corrector.g = 1.62
+	ball.corrector = corrector
+	await _steps(2)
+	corrector.release(ball, Vector3.ZERO)
+	await _steps(STEP_HZ + 1)
+	var drop := corrector.samples[STEP_HZ]
+	var want := PhysicsLaws.constant_acceleration_displacement(0.0, -1.62, 1.0)
+	expect.call(corrector.g == 1.62 and absf(drop - want) <= 1e-4,
+		"uniform field: gravity_scale 0.165 (moon) gives g 1.62 m/s^2 and s(1 s) = g t^2 / 2 (get_gravity() is already scaled)",
+		"g %.6f, s(1 s) %.6f vs %.6f m" % [corrector.g, drop, want])
+	world.queue_free()
+	await tree.process_frame
+
+
 ## release() turns the contact monitor on when it is off: a drop still lands on the floor, and a throw
 ## from the floor (the first contact report seeds the release surfaces) does not land at release.
 func _check_contact_monitor_off(target: Dictionary) -> void:
@@ -399,6 +428,58 @@ func _check_contact_monitor_off(target: Dictionary) -> void:
 		and throw_corrector.landed_step > 0 and absf(landed - flight) <= 2.0 / STEP_HZ,
 		"uniform field: release() turns contact_monitor on (drop lands ±2 steps, throw from the floor not at release)",
 		"monitor %s, drop %.3f s vs %.3f s, throw %.3f s vs %.3f s" % [drop.contact_monitor, dropped, drop_time, landed, flight])
+	world.queue_free()
+	await tree.process_frame
+
+
+## A ball held frozen (FREEZE_MODE_STATIC, as the labs hold it) on the floor and thrown up does not
+## land on the first released step: a frozen body reports no contacts, so the floor is first
+## reported after that step and is a release surface (reading the report at release would miss it).
+func _check_frozen_throw_from_floor(target: Dictionary) -> void:
+	var g: float = target.g
+	var world := _world()
+	_floor(world, 0.0)
+	var ball := _body(world, 1.0, Vector3(0.0, 0.25, 0.0), 0.25)
+	ball.freeze_mode = RigidBody3D.FREEZE_MODE_STATIC
+	ball.freeze = true
+	ball.contact_monitor = true
+	ball.max_contacts_reported = 4
+	var corrector := UniformFieldCorrector.new()
+	corrector.g = g
+	ball.corrector = corrector
+	await _steps(5)
+	var v0 := Vector3(target.v0[0], target.v0[1], 0.0)
+	corrector.release(ball, v0)
+	await _steps(STEP_HZ + 30)
+	var flight := 2.0 * v0.y / g
+	var landed := corrector.landed_step
+	expect.call(landed > 2 and absf(landed / float(STEP_HZ) - flight) <= 2.0 / STEP_HZ,
+		"uniform field: a frozen ball on the floor thrown up lands after 2 v0y / g, not on the first step (±2 steps)",
+		"landed step %d (%.3f s), formula %.3f s" % [landed, landed / float(STEP_HZ), flight])
+	world.queue_free()
+	await tree.process_frame
+
+
+## With `surfaces` set, only those bodies are landed on: a ball dropped onto the side of another
+## ball (not a surface) glances off it and lands on the floor.
+func _check_landing_surfaces() -> void:
+	var world := _world()
+	var floor_body := _floor(world, 0.0)
+	var other := _body(world, 1.0, Vector3(0.3, 0.25, 0.0), 0.25)
+	var ball := _body(world, 1.0, Vector3(0.0, 1.5, 0.0), 0.25)
+	ball.freeze = true
+	var corrector := UniformFieldCorrector.new()
+	corrector.surfaces.assign([floor_body])
+	ball.corrector = corrector
+	await _steps(10)   # the other ball rests on the floor
+	corrector.release(ball, Vector3.ZERO)
+	await _steps(2 * STEP_HZ)
+	var touched := other.global_position.distance_to(Vector3(0.3, 0.25, 0.0)) > 0.01 or absf(ball.global_position.x) > 0.01
+	var landed := corrector.landed_step
+	var drop: float = corrector.offsets[landed].y if landed >= 0 else 0.0
+	expect.call(touched and landed > 0 and drop < -1.1,
+		"uniform field: a contact with a body outside `surfaces` (another ball) is not a landing; the floor is",
+		"balls touched %s, landed step %d, drop %.3f m (floor -1.25, other ball about -0.85)" % [touched, landed, drop])
 	world.queue_free()
 	await tree.process_frame
 

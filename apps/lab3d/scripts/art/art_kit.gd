@@ -85,6 +85,17 @@ static func _at(x: float, y: float, z: float, yaw_deg := 0.0) -> Transform3D:
 	return Transform3D(Basis(Vector3.UP, deg_to_rad(yaw_deg)), Vector3(x, y, z))
 
 
+## The usual stage of an experiment: sky environment plus the grass island around `center`, with
+## an optional blob shadow of radius `blob_radius` under a prop standing at `blob_at` (x, z used).
+static func add_world(parent: Node3D, center: Vector3, blob_at: Variant = null, blob_radius := 0.0) -> void:
+	parent.add_child(make_environment())
+	if blob_at == null:
+		build_island(parent, center)
+		return
+	build_island(parent, center, func(s: ArtMeshBuilder) -> void:
+		s.add_blob(Transform3D(Basis(), Vector3(blob_at.x, 0.012, blob_at.z)), blob_radius, shadow_alpha(0.9)))
+
+
 ## Adds the floating grass island (top surface at y = 0) with trees, rocks, flowers and clouds
 ## around `center` (x/z), as ONE prop mesh + ONE shadow mesh (2 draw calls). The decoration
 ## leaves a strip of about 8 x 6 m around the centre free for the apparatus.

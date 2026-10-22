@@ -29,6 +29,9 @@ const CARD_LIP := 3
 
 const FONT_REGULAR := "res://assets/fonts/NotoSansKR-Lab3dSubset-Regular.otf"
 const FONT_BOLD := "res://assets/fonts/NotoSansKR-Lab3dSubset-Bold.otf"
+## Symbols Noto Sans CJK lacks (x₀, ⚖ …): DejaVu Sans subsets, the fallback of each face (Task 4a).
+const FONT_SYMBOLS_REGULAR := "res://assets/fonts/Lab3dSymbols-Regular.ttf"
+const FONT_SYMBOLS_BOLD := "res://assets/fonts/Lab3dSymbols-Bold.ttf"
 
 const SIZE_BODY := 22
 const SIZE_SMALL := 19
@@ -37,12 +40,24 @@ const SIZE_HEADING := 26
 
 
 static func bold_font() -> Font:
-	return load(FONT_BOLD)
+	return _with_symbols(FONT_BOLD, FONT_SYMBOLS_BOLD)
+
+
+static func regular_font() -> Font:
+	return _with_symbols(FONT_REGULAR, FONT_SYMBOLS_REGULAR)
+
+
+## The Hangul face with the symbol subset as its fallback (set once on the cached resource).
+static func _with_symbols(path: String, symbols: String) -> Font:
+	var font: Font = load(path)
+	if font.fallbacks.is_empty():
+		font.fallbacks = [load(symbols)]
+	return font
 
 
 static func build() -> Theme:
 	var theme := Theme.new()
-	var regular: Font = load(FONT_REGULAR)
+	var regular := regular_font()
 	var bold := bold_font()
 	theme.default_font = regular
 	theme.default_font_size = SIZE_BODY

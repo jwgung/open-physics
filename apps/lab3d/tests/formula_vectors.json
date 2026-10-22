@@ -9,12 +9,16 @@
       "uniform_gravity_force",
       "gravitational_potential_energy",
       "kinetic_energy",
-      "momentum"
+      "momentum",
+      "landing_time"
     ],
     "projectile": [
       "constant_acceleration_displacement",
       "constant_acceleration_velocity",
-      "kinetic_energy"
+      "kinetic_energy",
+      "landing_time",
+      "apex_time",
+      "apex_rise"
     ],
     "collision": [
       "post_collision_velocity_1d",
@@ -266,6 +270,46 @@
     },
     {
       "experiment": "free-fall",
+      "law": "landing_time",
+      "args": [
+        0,
+        -1.62,
+        0.5
+      ],
+      "expect": 0.7856742013183862
+    },
+    {
+      "experiment": "free-fall",
+      "law": "landing_time",
+      "args": [
+        0,
+        -1.62,
+        2.5
+      ],
+      "expect": 1.7568209223157663
+    },
+    {
+      "experiment": "free-fall",
+      "law": "landing_time",
+      "args": [
+        0,
+        -1.62,
+        5
+      ],
+      "expect": 2.484519974999766
+    },
+    {
+      "experiment": "free-fall",
+      "law": "landing_time",
+      "args": [
+        0,
+        -1.62,
+        8
+      ],
+      "expect": 3.1426968052735447
+    },
+    {
+      "experiment": "free-fall",
       "law": "constant_acceleration_displacement",
       "args": [
         0,
@@ -454,6 +498,46 @@
         -12.753000000000002
       ],
       "expect": -38.25900000000001
+    },
+    {
+      "experiment": "free-fall",
+      "law": "landing_time",
+      "args": [
+        0,
+        -9.81,
+        0.5
+      ],
+      "expect": 0.3192754284070505
+    },
+    {
+      "experiment": "free-fall",
+      "law": "landing_time",
+      "args": [
+        0,
+        -9.81,
+        2.5
+      ],
+      "expect": 0.7139215614635321
+    },
+    {
+      "experiment": "free-fall",
+      "law": "landing_time",
+      "args": [
+        0,
+        -9.81,
+        5
+      ],
+      "expect": 1.0096375546923042
+    },
+    {
+      "experiment": "free-fall",
+      "law": "landing_time",
+      "args": [
+        0,
+        -9.81,
+        8
+      ],
+      "expect": 1.277101713628202
     },
     {
       "experiment": "free-fall",
@@ -647,6 +731,46 @@
       "expect": -96.68099999999998
     },
     {
+      "experiment": "free-fall",
+      "law": "landing_time",
+      "args": [
+        0,
+        -24.79,
+        0.5
+      ],
+      "expect": 0.20084532931834775
+    },
+    {
+      "experiment": "free-fall",
+      "law": "landing_time",
+      "args": [
+        0,
+        -24.79,
+        2.5
+      ],
+      "expect": 0.44910380931915705
+    },
+    {
+      "experiment": "free-fall",
+      "law": "landing_time",
+      "args": [
+        0,
+        -24.79,
+        5
+      ],
+      "expect": 0.6351286980525723
+    },
+    {
+      "experiment": "free-fall",
+      "law": "landing_time",
+      "args": [
+        0,
+        -24.79,
+        8
+      ],
+      "expect": 0.803381317273391
+    },
+    {
       "experiment": "projectile",
       "law": "constant_acceleration_displacement",
       "args": [
@@ -801,6 +925,174 @@
         7.462213076561135
       ],
       "expect": 27.842312000000003
+    },
+    {
+      "experiment": "projectile",
+      "law": "landing_time",
+      "args": [
+        6.363961030678928,
+        -1.62,
+        0.5
+      ],
+      "expect": 7.934539090440806
+    },
+    {
+      "experiment": "projectile",
+      "law": "apex_time",
+      "args": [
+        6.363961030678928,
+        -1.62
+      ],
+      "expect": 3.92837100659193
+    },
+    {
+      "experiment": "projectile",
+      "law": "apex_rise",
+      "args": [
+        6.363961030678928,
+        -1.62
+      ],
+      "expect": 12.5
+    },
+    {
+      "experiment": "projectile",
+      "law": "landing_time",
+      "args": [
+        3.4999999999999996,
+        -1.62,
+        0
+      ],
+      "expect": 4.320987654320987
+    },
+    {
+      "experiment": "projectile",
+      "law": "apex_time",
+      "args": [
+        3.4999999999999996,
+        -1.62
+      ],
+      "expect": 2.1604938271604937
+    },
+    {
+      "experiment": "projectile",
+      "law": "apex_rise",
+      "args": [
+        3.4999999999999996,
+        -1.62
+      ],
+      "expect": 3.7808641975308634
+    },
+    {
+      "experiment": "projectile",
+      "law": "landing_time",
+      "args": [
+        7.794228634059947,
+        -1.62,
+        1.5
+      ],
+      "expect": 9.81125224324688
+    },
+    {
+      "experiment": "projectile",
+      "law": "apex_time",
+      "args": [
+        7.794228634059947,
+        -1.62
+      ],
+      "expect": 4.81125224324688
+    },
+    {
+      "experiment": "projectile",
+      "law": "apex_rise",
+      "args": [
+        7.794228634059947,
+        -1.62
+      ],
+      "expect": 18.749999999999996
+    },
+    {
+      "experiment": "projectile",
+      "law": "landing_time",
+      "args": [
+        1.2940952255126037,
+        -1.62,
+        3
+      ],
+      "expect": 2.8825285654908814
+    },
+    {
+      "experiment": "projectile",
+      "law": "apex_time",
+      "args": [
+        1.2940952255126037,
+        -1.62
+      ],
+      "expect": 0.7988242132793848
+    },
+    {
+      "experiment": "projectile",
+      "law": "apex_rise",
+      "args": [
+        1.2940952255126037,
+        -1.62
+      ],
+      "expect": 0.516877300214357
+    },
+    {
+      "experiment": "projectile",
+      "law": "landing_time",
+      "args": [
+        6,
+        -1.62,
+        0.5
+      ],
+      "expect": 7.489823759307567
+    },
+    {
+      "experiment": "projectile",
+      "law": "apex_time",
+      "args": [
+        6,
+        -1.62
+      ],
+      "expect": 3.7037037037037033
+    },
+    {
+      "experiment": "projectile",
+      "law": "apex_rise",
+      "args": [
+        6,
+        -1.62
+      ],
+      "expect": 11.111111111111112
+    },
+    {
+      "experiment": "projectile",
+      "law": "landing_time",
+      "args": [
+        0,
+        -1.62,
+        2
+      ],
+      "expect": 1.5713484026367723
+    },
+    {
+      "experiment": "projectile",
+      "law": "apex_time",
+      "args": [
+        0,
+        -1.62
+      ],
+      "expect": 0
+    },
+    {
+      "experiment": "projectile",
+      "law": "apex_rise",
+      "args": [
+        0,
+        -1.62
+      ],
+      "expect": 0
     },
     {
       "experiment": "projectile",
@@ -960,6 +1252,174 @@
     },
     {
       "experiment": "projectile",
+      "law": "landing_time",
+      "args": [
+        6.363961030678928,
+        -9.81,
+        0.5
+      ],
+      "expect": 1.3717548706626972
+    },
+    {
+      "experiment": "projectile",
+      "law": "apex_time",
+      "args": [
+        6.363961030678928,
+        -9.81
+      ],
+      "expect": 0.648721817602337
+    },
+    {
+      "experiment": "projectile",
+      "law": "apex_rise",
+      "args": [
+        6.363961030678928,
+        -9.81
+      ],
+      "expect": 2.064220183486238
+    },
+    {
+      "experiment": "projectile",
+      "law": "landing_time",
+      "args": [
+        3.4999999999999996,
+        -9.81,
+        0
+      ],
+      "expect": 0.7135575942915391
+    },
+    {
+      "experiment": "projectile",
+      "law": "apex_time",
+      "args": [
+        3.4999999999999996,
+        -9.81
+      ],
+      "expect": 0.35677879714576954
+    },
+    {
+      "experiment": "projectile",
+      "law": "apex_rise",
+      "args": [
+        3.4999999999999996,
+        -9.81
+      ],
+      "expect": 0.6243628950050967
+    },
+    {
+      "experiment": "projectile",
+      "law": "landing_time",
+      "args": [
+        7.794228634059947,
+        -9.81,
+        1.5
+      ],
+      "expect": 1.7625426818416505
+    },
+    {
+      "experiment": "projectile",
+      "law": "apex_time",
+      "args": [
+        7.794228634059947,
+        -9.81
+      ],
+      "expect": 0.7945187190682921
+    },
+    {
+      "experiment": "projectile",
+      "law": "apex_rise",
+      "args": [
+        7.794228634059947,
+        -9.81
+      ],
+      "expect": 3.0963302752293576
+    },
+    {
+      "experiment": "projectile",
+      "law": "landing_time",
+      "args": [
+        1.2940952255126037,
+        -9.81,
+        3
+      ],
+      "expect": 0.9250253793716847
+    },
+    {
+      "experiment": "projectile",
+      "law": "apex_time",
+      "args": [
+        1.2940952255126037,
+        -9.81
+      ],
+      "expect": 0.13191592512870576
+    },
+    {
+      "experiment": "projectile",
+      "law": "apex_rise",
+      "args": [
+        1.2940952255126037,
+        -9.81
+      ],
+      "expect": 0.08535588443906811
+    },
+    {
+      "experiment": "projectile",
+      "law": "landing_time",
+      "args": [
+        6,
+        -9.81,
+        0.5
+      ],
+      "expect": 1.3015604998580108
+    },
+    {
+      "experiment": "projectile",
+      "law": "apex_time",
+      "args": [
+        6,
+        -9.81
+      ],
+      "expect": 0.6116207951070336
+    },
+    {
+      "experiment": "projectile",
+      "law": "apex_rise",
+      "args": [
+        6,
+        -9.81
+      ],
+      "expect": 1.8348623853211008
+    },
+    {
+      "experiment": "projectile",
+      "law": "landing_time",
+      "args": [
+        0,
+        -9.81,
+        2
+      ],
+      "expect": 0.638550856814101
+    },
+    {
+      "experiment": "projectile",
+      "law": "apex_time",
+      "args": [
+        0,
+        -9.81
+      ],
+      "expect": 0
+    },
+    {
+      "experiment": "projectile",
+      "law": "apex_rise",
+      "args": [
+        0,
+        -9.81
+      ],
+      "expect": 0
+    },
+    {
+      "experiment": "projectile",
       "law": "constant_acceleration_displacement",
       "args": [
         5.6,
@@ -1113,6 +1573,314 @@
         28.070269610390273
       ],
       "expect": 393.97001799999987
+    },
+    {
+      "experiment": "projectile",
+      "law": "landing_time",
+      "args": [
+        6.363961030678928,
+        -24.79,
+        0.5
+      ],
+      "expect": 0.5826617103624538
+    },
+    {
+      "experiment": "projectile",
+      "law": "apex_time",
+      "args": [
+        6.363961030678928,
+        -24.79
+      ],
+      "expect": 0.2567148459329942
+    },
+    {
+      "experiment": "projectile",
+      "law": "apex_rise",
+      "args": [
+        6.363961030678928,
+        -24.79
+      ],
+      "expect": 0.8168616377571601
+    },
+    {
+      "experiment": "projectile",
+      "law": "landing_time",
+      "args": [
+        3.4999999999999996,
+        -24.79,
+        0
+      ],
+      "expect": 0.28237192416296886
+    },
+    {
+      "experiment": "projectile",
+      "law": "apex_time",
+      "args": [
+        3.4999999999999996,
+        -24.79
+      ],
+      "expect": 0.14118596208148443
+    },
+    {
+      "experiment": "projectile",
+      "law": "apex_rise",
+      "args": [
+        3.4999999999999996,
+        -24.79
+      ],
+      "expect": 0.24707543364259774
+    },
+    {
+      "experiment": "projectile",
+      "law": "landing_time",
+      "args": [
+        7.794228634059947,
+        -24.79,
+        1.5
+      ],
+      "expect": 0.7833134934827051
+    },
+    {
+      "experiment": "projectile",
+      "law": "apex_time",
+      "args": [
+        7.794228634059947,
+        -24.79
+      ],
+      "expect": 0.31441019096651657
+    },
+    {
+      "experiment": "projectile",
+      "law": "apex_rise",
+      "args": [
+        7.794228634059947,
+        -24.79
+      ],
+      "expect": 1.22529245663574
+    },
+    {
+      "experiment": "projectile",
+      "law": "landing_time",
+      "args": [
+        1.2940952255126037,
+        -24.79,
+        3
+      ],
+      "expect": 0.5469326984797558
+    },
+    {
+      "experiment": "projectile",
+      "law": "apex_time",
+      "args": [
+        1.2940952255126037,
+        -24.79
+      ],
+      "expect": 0.052202308411157874
+    },
+    {
+      "experiment": "projectile",
+      "law": "apex_rise",
+      "args": [
+        1.2940952255126037,
+        -24.79
+      ],
+      "expect": 0.03377737903780792
+    },
+    {
+      "experiment": "projectile",
+      "law": "landing_time",
+      "args": [
+        6,
+        -24.79,
+        0.5
+      ],
+      "expect": 0.556546761315382
+    },
+    {
+      "experiment": "projectile",
+      "law": "apex_time",
+      "args": [
+        6,
+        -24.79
+      ],
+      "expect": 0.24203307785397338
+    },
+    {
+      "experiment": "projectile",
+      "law": "apex_rise",
+      "args": [
+        6,
+        -24.79
+      ],
+      "expect": 0.7260992335619201
+    },
+    {
+      "experiment": "projectile",
+      "law": "landing_time",
+      "args": [
+        0,
+        -24.79,
+        2
+      ],
+      "expect": 0.4016906586366955
+    },
+    {
+      "experiment": "projectile",
+      "law": "apex_time",
+      "args": [
+        0,
+        -24.79
+      ],
+      "expect": 0
+    },
+    {
+      "experiment": "projectile",
+      "law": "apex_rise",
+      "args": [
+        0,
+        -24.79
+      ],
+      "expect": 0
+    },
+    {
+      "experiment": "projectile",
+      "law": "landing_time",
+      "args": [
+        7.2,
+        -9.81,
+        -0.5
+      ],
+      "expect": 0.07308309526072448
+    },
+    {
+      "experiment": "projectile",
+      "law": "landing_time",
+      "args": [
+        1,
+        -9.81,
+        -0.5
+      ],
+      "expect": "inf"
+    },
+    {
+      "experiment": "projectile",
+      "law": "landing_time",
+      "args": [
+        -5,
+        -9.81,
+        -0.5
+      ],
+      "expect": "inf"
+    },
+    {
+      "experiment": "projectile",
+      "law": "landing_time",
+      "args": [
+        0,
+        -9.81,
+        0
+      ],
+      "expect": 0
+    },
+    {
+      "experiment": "projectile",
+      "law": "landing_time",
+      "args": [
+        -1,
+        -9.81,
+        0
+      ],
+      "expect": 0
+    },
+    {
+      "experiment": "projectile",
+      "law": "landing_time",
+      "args": [
+        3,
+        -9.81,
+        0
+      ],
+      "expect": 0.6116207951070336
+    },
+    {
+      "experiment": "projectile",
+      "law": "landing_time",
+      "args": [
+        -3,
+        2,
+        1
+      ],
+      "expect": 0.3819660112501051
+    },
+    {
+      "experiment": "projectile",
+      "law": "landing_time",
+      "args": [
+        -1,
+        2,
+        1
+      ],
+      "expect": "inf"
+    },
+    {
+      "experiment": "projectile",
+      "law": "landing_time",
+      "args": [
+        0,
+        2,
+        -1
+      ],
+      "expect": 1
+    },
+    {
+      "experiment": "projectile",
+      "law": "landing_time",
+      "args": [
+        0,
+        2,
+        0
+      ],
+      "expect": "inf"
+    },
+    {
+      "experiment": "projectile",
+      "law": "landing_time",
+      "args": [
+        -2,
+        0,
+        1
+      ],
+      "expect": 0.5
+    },
+    {
+      "experiment": "projectile",
+      "law": "landing_time",
+      "args": [
+        2,
+        0,
+        1
+      ],
+      "expect": "inf"
+    },
+    {
+      "experiment": "projectile",
+      "law": "landing_time",
+      "args": [
+        2,
+        0,
+        -1
+      ],
+      "expect": 0.5
+    },
+    {
+      "experiment": "projectile",
+      "law": "landing_time",
+      "args": [
+        0,
+        0,
+        0
+      ],
+      "expect": "inf"
     },
     {
       "experiment": "collision",

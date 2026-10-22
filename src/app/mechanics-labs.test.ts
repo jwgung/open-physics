@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
+import sharedContent from "../../apps/lab3d/content/mechanics-labs.json";
 import {
   MECHANICS_LABS,
   mechanicsInteractionTip,
   mechanicsLab,
   mechanicsSettingFeedback,
+  parseMechanicsLabs,
   shouldAutoPlayLab,
 } from "./mechanics-labs";
 
@@ -51,5 +53,34 @@ describe("mechanics labs", () => {
     expect(mechanicsSettingFeedback("mass", "가벼움")).toContain("무게: 가벼움");
     expect(mechanicsSettingFeedback("material", "나무")).toContain("움직임과 그래프");
     expect(mechanicsSettingFeedback("gravity", "달 · 0.17×")).toContain("중력: 달 · 0.17×");
+  });
+
+  it("reads the shared content file without changing a single text (Task 4a)", async () => {
+    // SHA-256 of the labs and interaction tips as they were written in this file before the texts
+    // moved to apps/lab3d/content/mechanics-labs.json (commit 4cb04a4). Any change to a web text,
+    // its order or a control fails here.
+    const payload = JSON.stringify({
+      labs: MECHANICS_LABS,
+      tips: MECHANICS_LABS.map((lab) => [lab.id, mechanicsInteractionTip(lab.id)]),
+    });
+    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(payload));
+    expect([...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join(""))
+      .toBe("9fcf3b93d11e3918584cf22eecdba3748b6aa16adcf82018e16de335bd69f340");
+    expect(sharedContent.labs.map((lab) => lab.id)).toEqual(MECHANICS_LABS.map((lab) => lab.id));
+  });
+
+  it("rejects shared content the web cannot show", () => {
+    const labs = sharedContent.labs;
+    const lab = labs[0];
+    const withFirst = (changed: (typeof labs)[number]) => [changed, ...labs.slice(1)];
+    expect(parseMechanicsLabs(labs)).toEqual(MECHANICS_LABS);
+    expect(() => parseMechanicsLabs(withFirst({ ...lab, id: "sandbox" }))).toThrow(/Unknown mechanics lab: sandbox/);
+    expect(() => parseMechanicsLabs(withFirst({ ...lab, category: "열" }))).toThrow(/Unknown category/);
+    expect(() => parseMechanicsLabs(withFirst({ ...lab, steps: lab.steps.slice(0, 2) }))).toThrow(/three steps/);
+    expect(() => parseMechanicsLabs(withFirst({ ...lab, web: { ...lab.web, controls: ["speed"] } }))).toThrow(/Unknown control/);
+    // Every preset needs its lab and its interaction tip (the web shows both).
+    expect(() => parseMechanicsLabs(labs.slice(1))).toThrow(new RangeError(`Missing mechanics labs: ${lab.id}`));
+    expect(() => parseMechanicsLabs(withFirst({ ...lab, web: { ...lab.web, tip: "" } }))).toThrow(`${lab.id} needs an interaction tip`);
+    expect(() => parseMechanicsLabs([...labs, lab])).toThrow(`Duplicate mechanics lab: ${lab.id}`);
   });
 });

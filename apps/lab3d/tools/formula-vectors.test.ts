@@ -42,6 +42,7 @@ import {
   periodFromAngularFrequency,
 } from "../../../src/physics/laws/oscillation";
 import { torque } from "../../../src/physics/laws/rotation";
+import { tsApexTime, tsLandingTime } from "./ts-oracle";
 import { AnchoredSpringLaw, BuoyancyRegionLaw, PushFrictionLaw } from "../../../src/physics/laws/world-mechanics";
 
 type Value = number | boolean | string | number[] | { [key: string]: Value };
@@ -99,6 +100,10 @@ function freeFall(): Case[] {
       cases.push({ law: "kinetic_energy", args: [m, g * 1.3], expect: kineticEnergy(m, { x: g * 1.3, y: 0 }) });
       cases.push({ law: "momentum", args: [m, -g * 1.3], expect: momentum(m, { x: -g * 1.3, y: 0 }).x });
     }
+    // Task 4a: time to reach the floor from the drop height (sqrt(2h/g) with no closed form in TS).
+    for (const drop of [0.5, 2.5, 5, 8]) {
+      cases.push({ law: "landing_time", args: [0, -g, drop], expect: tsLandingTime(0, -g, drop) });
+    }
   }
   return cases;
 }
@@ -115,8 +120,33 @@ function projectile(): Case[] {
       cases.push({ law: "constant_acceleration_velocity", args: [v0.y, -g, t], expect: v.y });
       cases.push({ law: "kinetic_energy", args: [1, Math.hypot(v.x, v.y)], expect: kineticEnergy(1, v) });
     }
+    // Task 4a: flight time to a landing level `drop` below the launch, apex time and rise.
+    for (const [speed, degrees, drop] of [[9, 45, 0.5], [7, 30, 0], [9, 60, 1.5], [5, 15, 3], [6, 90, 0.5], [8, 0, 2]]) {
+      const angle = degrees * Math.PI / 180;
+      const vy = speed * Math.sin(angle);
+      cases.push({ law: "landing_time", args: [vy, -g, drop], expect: tsLandingTime(vy, -g, drop) });
+      cases.push({ law: "apex_time", args: [vy, -g], expect: vy > 0 ? tsApexTime(vy, -g) : 0 });
+      cases.push({ law: "apex_rise", args: [vy, -g], expect: vy > 0 ? constantAccelerationDisplacement({ x: 0, y: vy }, { x: 0, y: -g }, tsApexTime(vy, -g)).y : 0 });
+    }
+  }
+  // landing_time outside the labs' everyday range (review of PR #9): the first root t > 0 for any
+  // signs, t = 0 for a start on the level moving below it, INF ("inf") when the level is never met.
+  for (const [v0, a, drop] of [
+    [7.2, -G, -0.5], // level above the start, reached on the way up
+    [1, -G, -0.5], // level above the apex: never
+    [-5, -G, -0.5], // level above, moving away: never
+    [0, -G, 0], [-1, -G, 0], [3, -G, 0], // on the level: at once / at once / after the flight
+    [-3, 2, 1], [-1, 2, 1], [0, 2, -1], [0, 2, 0], // field upwards: first root, never, rising, never
+    [-2, 0, 1], [2, 0, 1], [2, 0, -1], [0, 0, 0], // no field: straight line
+  ]) {
+    cases.push({ law: "landing_time", args: [v0, a, drop], expect: finiteOr(tsLandingTime(v0, a, drop)) });
   }
   return cases;
+}
+
+/** JSON has no Infinity: an unbounded expectation is written as the string "inf". */
+function finiteOr(value: number): number | string {
+  return Number.isFinite(value) ? value : value > 0 ? "inf" : "-inf";
 }
 
 function collision(): Case[] {

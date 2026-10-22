@@ -1,11 +1,19 @@
 ## Loads experiment content from content/experiments/index.json and validates each definition
-## against the shell's interface. Content is plain JSON so Task 4 can share it with the web app.
-## index.json `experiments` are listed on the list screen; `hidden` ones (development scenes) are
-## only opened by id (--experiment=<id>).
+## against the shell's interface. index.json `experiments` are listed on the list screen; `hidden`
+## ones (development scenes) are only opened by id (--experiment=<id>).
+## Task 4a: the texts of the guided labs (title, question, steps, observe, terms, law, tip) live in
+## one file shared with the web 2D app, content/mechanics-labs.json. An experiment file names its
+## lab with `"content": "<lab id>"` and keeps only the 3D fields (scene, camera, controls, actions,
+## observations, graph, manipulation); resolve() merges the two. A file without `content` (the
+## development scene) writes its texts itself.
 class_name ExperimentRegistry
 extends RefCounted
 
 const INDEX_PATH := "res://content/experiments/index.json"
+const SHARED_CONTENT_PATH := "res://content/mechanics-labs.json"
+## Text fields an experiment takes from its shared lab (content/mechanics-labs.json); `tip` comes
+## from the lab's `app.tip` (the web has its own interaction tip).
+const SHARED_KEYS := ["title", "category", "icon", "question", "steps", "observe", "terms", "law"]
 const CAMERA_MODES := CameraRig.MODES
 const REQUIRED_KEYS := ["id", "title", "category", "question", "steps", "observe", "law", "scene",
 	"camera", "controls", "actions", "observations", "graph"]
@@ -15,6 +23,8 @@ const CONTROL_TYPES := ["slider", "choice"]
 static var _cache: Array[Dictionary] = []
 static var _hidden: Array[Dictionary] = []
 static var _loaded := false
+static var _shared: Dictionary = {}   # lab id -> shared lab content (labs + app_labs)
+static var _shared_loaded := false    # read once, also when the file is missing (one error, then {})
 
 
 ## All valid definitions in index order (read from disk once; treat as read-only). Invalid ones
@@ -48,15 +58,57 @@ static func find(id: String) -> Dictionary:
 static func _load_files(files: Array, into: Array[Dictionary]) -> void:
 	for file_name in files:
 		var path := INDEX_PATH.get_base_dir().path_join(str(file_name))
-		var definition: Variant = _read_json(path)
-		if not definition is Dictionary:
+		var raw: Variant = _read_json(path)
+		if not raw is Dictionary:
 			push_error("ExperimentRegistry: cannot read %s" % path)
 			continue
-		var problems := validate(definition)
+		var resolved := resolve(raw)
+		var definition: Dictionary = resolved[0]
+		var problems: PackedStringArray = resolved[1]
+		problems.append_array(validate(definition))
 		if not problems.is_empty():
 			push_error("ExperimentRegistry: %s is invalid: %s" % [path, "; ".join(problems)])
 			continue
 		into.append(definition)
+
+
+## The shared lab content by lab id (content/mechanics-labs.json `labs` + `app_labs`; read once:
+## an unreadable file is reported once and then stays {}).
+static func shared_labs() -> Dictionary:
+	if _shared_loaded:
+		return _shared
+	_shared_loaded = true
+	var file: Variant = _read_json(SHARED_CONTENT_PATH)
+	if not file is Dictionary:
+		push_error("ExperimentRegistry: cannot read %s" % SHARED_CONTENT_PATH)
+		return _shared
+	for lab in file.get("labs", []) + file.get("app_labs", []):
+		_shared[lab.id] = lab
+	return _shared
+
+
+## [definition, problems]: an experiment file with `content` gets the texts of that shared lab
+## (SHARED_KEYS, and `tip` from the lab's app.tip); it must not write them itself. Files without
+## `content` are returned as they are.
+static func resolve(raw: Dictionary) -> Array:
+	var problems := PackedStringArray()
+	if not raw.has("content"):
+		return [raw, problems]
+	var lab: Dictionary = shared_labs().get(str(raw.content), {})
+	if lab.is_empty():
+		problems.append("content %s not in %s" % [raw.content, SHARED_CONTENT_PATH])
+		return [raw, problems]
+	var definition := raw.duplicate(true)
+	for key in SHARED_KEYS + ["tip"]:
+		if raw.has(key):
+			problems.append("%s duplicates the shared content (%s)" % [key, raw.content])
+	for key in SHARED_KEYS:
+		if lab.has(key):
+			definition[key] = lab[key].duplicate(true) if lab[key] is Dictionary or lab[key] is Array else lab[key]
+	var tip: String = lab.get("app", {}).get("tip", "")
+	if tip != "":
+		definition["tip"] = tip
+	return [definition, problems]
 
 
 ## Returns a list of problems (empty = valid).

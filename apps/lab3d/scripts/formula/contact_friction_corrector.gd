@@ -70,7 +70,7 @@ func apply(body: RigidBody3D, dt: float) -> void:
 	if not _in_contact(local):
 		return
 	var normal := surface.global_transform.basis.y.normalized()
-	var gravity_force := body.get_gravity() * body.gravity_scale * mass
+	var gravity_force := body.get_gravity() * mass   # get_gravity() already includes gravity_scale
 	var normal_load := maxf(0.0, -gravity_force.dot(normal))
 	var engine_tangential := gravity_force.dot(direction)
 	var tangential_speed := velocity.dot(direction)

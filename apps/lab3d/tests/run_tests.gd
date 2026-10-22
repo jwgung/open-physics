@@ -11,6 +11,8 @@
 ##    height handle/overlap through the real input path, displayed numbers after a new start.
 ## 5. formula correction layer (Task 3, tests/formula_checks.gd): PhysicsLaws parity for the 10
 ##    guided mechanics experiments and one representative Jolt scene per correction method.
+## 6. uniform-field labs (Task 4a, tests/uniform_lab_checks.gd): free fall and projectile displays and
+##    motion against the TS-core vectors (tests/uniform_labs_vectors.json), art, manipulation.
 ## Times are engine fixed steps (60 Hz), independent of rendering FPS.
 extends SceneTree
 
@@ -74,6 +76,11 @@ func _run() -> void:
 	_expect(formula != null and formula.can_instantiate(), "formula checks compile", "")
 	if formula != null and formula.can_instantiate():
 		await formula.new(self, _expect).run()
+	print("== uniform-field labs (Task 4a): free fall, projectile ==")
+	var uniform: GDScript = load("res://tests/uniform_lab_checks.gd")
+	_expect(uniform != null and uniform.can_instantiate(), "uniform lab checks compile", "")
+	if uniform != null and uniform.can_instantiate():
+		await uniform.new(self, _expect).run()
 	print("RESULT: %s (%d failure(s))" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -496,18 +503,56 @@ func _check_content() -> Dictionary:
 				if set.id == option.id:
 					ok = ok and absf(float(set.mu_s) - float(option.mu_s)) < 1e-9 and absf(float(set.mu_k) - float(option.mu_k)) < 1e-9
 	_expect(ok, "content materials = TS MATERIALS", "")
+	_check_shared_content(definition)
 	return definition
+
+
+## Task 4a: lab texts come from content/mechanics-labs.json (shared with the web 2D app); the
+## experiment files keep only the 3D fields.
+func _check_shared_content(incline: Dictionary) -> void:
+	var shared := ExperimentRegistry.shared_labs()
+	var file: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(ExperimentRegistry.SHARED_CONTENT_PATH))
+	_expect(file.labs.size() == 10 and shared.size() == file.labs.size() + file.app_labs.size(),
+		"shared content: 10 web labs + the app-only labs", "%d labs, %d app-only" % [file.labs.size(), file.app_labs.size()])
+	var same := true
+	var raw_texts := false
+	for definition in ExperimentRegistry.load_all():
+		var path := ExperimentRegistry.INDEX_PATH.get_base_dir().path_join("%s.json" % definition.id)
+		var raw: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(path))
+		if not raw.has("content"):
+			continue
+		var lab: Dictionary = shared[raw.content]
+		for key in ExperimentRegistry.SHARED_KEYS:
+			same = same and str(definition[key]) == str(lab[key])
+			raw_texts = raw_texts or raw.has(key)
+		same = same and definition.get("tip", "") == lab.get("app", {}).get("tip", "")
+	_expect(same and not raw_texts, "listed experiments take every text from the shared lab content (none written in the experiment file)", "")
+	# The incline's panel texts are unchanged by the move (values as they were in incline-friction.json).
+	_expect(incline.title == "빗면을 얼마나 기울이면 미끄러질까?" and incline.steps.size() == 3 and incline.terms.size() == 4
+		and incline.law.equation == "mg sinθ > μs·mg cosθ · a = g(sinθ − μk cosθ)" and incline.tip.begins_with("상자를 한 손가락으로 끌어"),
+		"incline texts unchanged after moving to the shared content", incline.title)
+	var raw_incline: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(ExperimentRegistry.INDEX_PATH.get_base_dir().path_join("incline-friction.json")))
+	var duplicated := raw_incline.duplicate(true)
+	duplicated.title = "다른 제목"
+	var unknown := raw_incline.duplicate(true)
+	unknown.content = "no-such-lab"
+	var problems: PackedStringArray = ExperimentRegistry.resolve(duplicated)[1]
+	problems.append_array(ExperimentRegistry.resolve(unknown)[1])
+	_expect(problems.size() == 2 and "duplicates" in problems[0] and "not in" in problems[1],
+		"registry rejects texts written next to `content` and an unknown lab id", ", ".join(problems))
 
 
 func _check_fonts() -> void:
 	var theme_script: Script = load(UI_THEME)
-	var regular: Font = load(theme_script.FONT_REGULAR)
-	var bold: Font = load(theme_script.FONT_BOLD)
+	var regular: Font = theme_script.regular_font()
+	var bold: Font = theme_script.bold_font()
+	var covers := func(font: Font, code: int) -> bool:
+		return font.has_char(code) or font.fallbacks.any(func(f: Font) -> bool: return f.has_char(code))
 	var missing := ""
 	for path in _text_files("res://scripts") + _text_files("res://experiments") + _text_files("res://content"):
 		for c in FileAccess.get_file_as_string(path):
 			var code := c.unicode_at(0)
-			if code > 126 and code != 0xFEFF and (not regular.has_char(code) or not bold.has_char(code)) and c not in missing:
+			if code > 126 and code != 0xFEFF and (not covers.call(regular, code) or not covers.call(bold, code)) and c not in missing:
 				missing += c
 	_expect(missing == "", "UI fonts cover every used character", "missing: %s (run tools/subset_font.sh)" % missing if missing != "" else "")
 

@@ -48,6 +48,9 @@ const SETTLED_SPEED := 0.05
 var body: RigidBody3D
 var mesh: MeshInstance3D
 var size := 0.4                 # body height along its local y (m)
+## Dust grains of a full-strength puff (half of it for the weakest). Experiments with several
+## bodies lower it to stay inside the particle budget (art-direction.md section 8).
+var dust_amount := 16
 var ground_y := 0.0             # world height of the ground the body lands on
 
 var _squash := 0.0              # +: taller/thinner, -: flatter/wider
@@ -70,7 +73,9 @@ var _dust: CPUParticles3D
 var _ray := PhysicsRayQueryParameters3D.new()
 
 
-func setup(target_body: RigidBody3D, target_mesh: MeshInstance3D, body_size: float, ground := 0.0) -> void:
+## `ground_mask`: the layers the shadow ray hits (the ground the body lands on; default the world's
+## layer 1, so handles on other layers, like the projectile arrow knob, are no shadow target).
+func setup(target_body: RigidBody3D, target_mesh: MeshInstance3D, body_size: float, ground := 0.0, ground_mask := 1) -> void:
 	body = target_body
 	mesh = target_mesh
 	size = body_size
@@ -116,6 +121,7 @@ func setup(target_body: RigidBody3D, target_mesh: MeshInstance3D, body_size: flo
 	add_child(_dust)
 	_ray.exclude = [body.get_rid()]
 	_ray.collide_with_areas = false
+	_ray.collision_mask = ground_mask
 
 
 ## The next landing counts as a new one (squash, dust, landed signal), without any animation.
@@ -170,7 +176,7 @@ func puff(strength: float) -> void:
 	var up := _normal
 	_dust.global_position = body.global_position - up * _half_extent(up) * 0.96
 	_dust.global_basis = Basis(Quaternion(Vector3.UP, up))
-	_dust.amount = int(lerpf(8.0, 16.0, strength))
+	_dust.amount = int(lerpf(dust_amount * 0.5, dust_amount, strength))
 	_dust.initial_velocity_max = lerpf(0.9, 1.8, strength)
 	_dust.restart()
 

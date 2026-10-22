@@ -18,7 +18,8 @@ const fmt = (x, d = 1) => (Number.isFinite(x) ? x.toFixed(d) : "—");
 
 const runs = new Map();
 for (const file of readdirSync(dir)) {
-  const match = file.match(/^(.+)-(S\d)-(\w+)\.jsonl$/);
+  // Scene = the benchmark spec's S1-S3 or an app experiment's bench id (FF, PJ: Phase 1 Task 4a).
+  const match = file.match(/^(.+)-(S\d|[A-Z]{2,})-(\w+)\.jsonl$/);
   if (!match) continue;
   const [, candidate, scene, run] = match;
   const frames = readJsonl(join(dir, file)).filter((f) => f.scene === scene && f.t >= WARMUP_SECONDS);

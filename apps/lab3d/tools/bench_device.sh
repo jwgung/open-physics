@@ -3,9 +3,13 @@
 # procedure (docs/3d-phase0/benchmark-spec.md section 5, as used in Phase 1 Task 1):
 # shader-cache run, then <runs> x (app restart, 30 s warm-up, <seconds> s capture), then one
 # 600 s sustained capture. The panel shows the observations and the graph (--scroll-to), and the
-# box is dragged and released every 4 s so the drag, physics, observations and graph keep updating.
+# box is dragged (put down, released 0.4 s later) every 4 s so the drag, physics, observations and
+# graph keep updating. OPBENCH_PLAY=--auto-release=4 re-releases only (the Task 2a/2c measurement:
+# the experiment's own release action, no UI work besides what the experiment emits).
 # Usage: apps/lab3d/tools/bench_device.sh <tier> [runs] [seconds] [rest_s]   e.g. low 3 90 60
-# Output: $OPBENCH_RESULTS_DIR (default spikes/bench/results/phase1-task2a)/lab3d-<tier>-S3-*.jsonl
+# Output: $OPBENCH_RESULTS_DIR/lab3d-<tier>-S3-*.jsonl. The default follows the play mode so a drag
+# measurement never overwrites the 2a baseline: spikes/bench/results/phase1-task2b for --auto-drag,
+# phase1-task2a for --auto-release.
 # plus gpu-clock-<tier>.log ("<unix s> <Mali kHz> <AP °C>" every 5 s). Summarise with
 # node spikes/bench/summarize.mjs <dir>.
 set -uo pipefail
@@ -15,11 +19,15 @@ seconds=${3:-90}
 rest=${4:-60}
 here=$(cd "$(dirname "$0")" && pwd)
 repo=$(cd "$here/../../.." && pwd)
-export OPBENCH_RESULTS_DIR=${OPBENCH_RESULTS_DIR:-$repo/spikes/bench/results/phase1-task2a}
 package=org.openphysics.lab3d
 # Task 2b: every 4 s the box is dragged to a new start through the finger input path (1 s drag,
 # put down) and released 0.4 s later. Task 2a/2c measured OPBENCH_PLAY=--auto-release=4 (re-release only).
 play=${OPBENCH_PLAY:---auto-drag=4}
+case $play in
+  *auto-drag*) default_dir=phase1-task2b ;;
+  *) default_dir=phase1-task2a ;;
+esac
+export OPBENCH_RESULTS_DIR=${OPBENCH_RESULTS_DIR:-$repo/spikes/bench/results/$default_dir}
 args="--experiment=incline-friction,--quality=$tier,--orientation=portrait,--scroll-to=observations,$play,--ctl-angle=30"
 mkdir -p "$OPBENCH_RESULTS_DIR"
 

@@ -24,6 +24,7 @@ static var _cache: Array[Dictionary] = []
 static var _hidden: Array[Dictionary] = []
 static var _loaded := false
 static var _shared: Dictionary = {}   # lab id -> shared lab content (labs + app_labs)
+static var _shared_loaded := false    # read once, also when the file is missing (one error, then {})
 
 
 ## All valid definitions in index order (read from disk once; treat as read-only). Invalid ones
@@ -71,15 +72,18 @@ static func _load_files(files: Array, into: Array[Dictionary]) -> void:
 		into.append(definition)
 
 
-## The shared lab content by lab id (content/mechanics-labs.json `labs` + `app_labs`; read once).
+## The shared lab content by lab id (content/mechanics-labs.json `labs` + `app_labs`; read once:
+## an unreadable file is reported once and then stays {}).
 static func shared_labs() -> Dictionary:
-	if _shared.is_empty():
-		var file: Variant = _read_json(SHARED_CONTENT_PATH)
-		if not file is Dictionary:
-			push_error("ExperimentRegistry: cannot read %s" % SHARED_CONTENT_PATH)
-			return _shared
-		for lab in file.get("labs", []) + file.get("app_labs", []):
-			_shared[lab.id] = lab
+	if _shared_loaded:
+		return _shared
+	_shared_loaded = true
+	var file: Variant = _read_json(SHARED_CONTENT_PATH)
+	if not file is Dictionary:
+		push_error("ExperimentRegistry: cannot read %s" % SHARED_CONTENT_PATH)
+		return _shared
+	for lab in file.get("labs", []) + file.get("app_labs", []):
+		_shared[lab.id] = lab
 	return _shared
 
 

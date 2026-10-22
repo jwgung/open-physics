@@ -265,6 +265,10 @@ static func damped_angular_frequency(omega0: float, gamma: float) -> float:
 
 # --- lever (mechanics-challenges.ts LeverChallenge, rotation.ts) ---------------------------------
 
+## physics-playground.ts LEVER_LIFT_ANGLE (rad): the angle the web's lever turns to when it lifts
+## (the single source of the lever labs' and LeverModelDriver's lift angle).
+const LEVER_LIFT_ANGLE := 0.18
+
 ## LeverChallenge.requiredForce: F = m g r_load / r_effort
 static func lever_required_force(load_mass: float, g: float, load_arm: float, effort_arm: float) -> float:
 	return load_mass * g * load_arm / effort_arm

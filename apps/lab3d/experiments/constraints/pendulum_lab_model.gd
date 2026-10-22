@@ -86,9 +86,9 @@ func _rk4(h: float) -> void:
 
 ## Position and velocity of the bob for the angle now (PendulumModel.pose: offset L (sin, cos)).
 func _place() -> void:
-	var offset := PhysicsLaws.pendulum_offset(length, angle)
-	x = anchor_x + offset[0]
-	y = anchor_y - offset[1]
+	# The same two products as PhysicsLaws.pendulum_offset, without its array (called every step).
+	x = anchor_x + length * sin(angle)
+	y = anchor_y - length * cos(angle)
 	z = anchor_z
 	vx = length * cos(angle) * omega
 	vy = length * sin(angle) * omega

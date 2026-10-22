@@ -45,6 +45,7 @@
     { "id": "effort_arm", "label": "받침점–힘점 거리 r₁", "unit": "m", "digits": 2 },
     { "id": "required", "label": "들어 올리는 데 필요한 힘 F₂r₂/r₁", "unit": "N", "digits": 1 },
     { "id": "applied", "label": "내가 누르는 힘 F₁", "unit": "N", "digits": 1 },
+    { "id": "force_step", "label": "손잡이 2 cm당 힘 (모자라면 자동으로 커져요)", "unit": "N", "digits": 0 },
     { "id": "advantage", "label": "역학적 이득 r₁/r₂", "unit": "배", "digits": 2 },
     { "id": "load_torque", "label": "짐 쪽 토크 F₂r₂ (반시계)", "unit": "N·m", "digits": 1 },
     { "id": "effort_torque", "label": "내 쪽 토크 F₁r₁ (시계)", "unit": "N·m", "digits": 1 },

@@ -2,8 +2,13 @@
 ## runs only while a handle is held, like the web's graph time). add() keeps the samples of the last
 ## `window` seconds; series() gives them shifted so the window starts at x = 0 (GraphView's fixed x
 ## range). `revision` changes with every add() / clear() (Experiment.graph_revision()).
+## While the clock stands still (nothing held) repeated add()s at the same time keep at most two
+## samples there - the value before and after the change, a vertical step - and overwrite the last
+## one after that; MAX_SAMPLES caps the memory whatever the times.
 class_name RollingGraph
 extends RefCounted
+
+const MAX_SAMPLES := 512
 
 var window := 10.0
 var revision := 0
@@ -32,10 +37,16 @@ func size() -> int:
 
 ## Appends one sample at time `t` (s): `values` in the order of the series ids.
 func add(t: float, values: Array) -> void:
-	_t.append(t)
-	for i in _values.size():
-		_values[i].append(float(values[i]))
-	var drop := 0
+	var n := _t.size()
+	if n >= 2 and _t[n - 1] >= t - 1e-9 and _t[n - 2] >= t - 1e-9:
+		for i in _values.size():
+			_values[i][n - 1] = float(values[i])
+		_t[n - 1] = t
+	else:
+		_t.append(t)
+		for i in _values.size():
+			_values[i].append(float(values[i]))
+	var drop := maxi(0, _t.size() - MAX_SAMPLES)
 	while drop < _t.size() and _t[drop] < t - window - 1e-6:
 		drop += 1
 	if drop > 0:

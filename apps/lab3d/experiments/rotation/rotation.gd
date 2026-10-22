@@ -1,7 +1,8 @@
 ## Guided lever lab (Phase 1 Task 4e; web preset "rotation", "지렛대로 무거운 짐을 들 수 있을까?"): a
 ## 6 m beam on a fulcrum with an orange load (the web's 20 kg) on its left side. The red handle above
 ## the chosen effort point (the web's three points 가까이 / 중간 / 멀리) is pressed down by one finger:
-## a spring scale, FORCE_STEP newtons per 2 cm. When the force reaches F = m g r_load / r_effort the
+## a spring scale, force_step newtons per 2 cm (5 N; the scale steps up to 10 / 20 / 50 N when the
+## full press of REACH would not lift the load, so every condition can be lifted). When the force reaches F = m g r_load / r_effort the
 ## beam turns to the web's lift angle (load side up); letting go puts it back level. The fulcrum and
 ## the load can be dragged along the beam (0.25 m grid; the web's lever has them fixed). Conditions:
 ## the load mass (the web's mass input, 1-20 kg) and the effort point.
@@ -10,7 +11,7 @@
 ## (method "kinematic_model"). See docs/formula-correction.md (Task 4e).
 ## The graph is the web's "지렛대에 필요한 힘": the force on the beam and the required force over the
 ## last 10 s of pressing (the clock runs while the handle is held; a changed condition adds a point).
-extends Experiment
+extends PressHandleLab
 
 const BEAM_HALF := 3.0
 const BEAM_THICK := 0.22
@@ -26,28 +27,22 @@ const DEFAULT_LOAD := -2.5
 const REST_X := -2.75              # the rest block under the beam's left end
 const HANDLE_SIZE := Vector3(0.6, 0.3, 0.5)
 const HANDLE_REST := 1.6           # m above the beam's axis (the grip's centre, not pressed)
-const REACH := 1.0                 # m of press: 50 cells, 250 N
-const HANDLE_LAYER := 2            # pickable handle and stand (mask 0)
-const LOAD_LAYER := 3
-const GRAPH_EVERY_STEPS := 6       # 10 Hz graph samples
+const REACH := 1.0                 # m of press: 50 cells (REACH / the handle's 2 cm grid)
+const MAX_CELLS := 50
+const LOAD_LAYER := 3              # the pickable load (the handle and the stand are on HANDLE_LAYER)
 const IDS: Array[String] = ["handle", "load", "fulcrum"]
 
 var model := LeverLabModel.new()
 var driver := LeverLabDriver.new()
 var props := RotationProps.new()
-var graph := RollingGraph.new(["applied", "required"] as Array[String], 10.0)
 var effort_id := "mid"
+## false = the scale stays where a test set it (model.force_step).
+var auto_force_step := true
 var beam: RigidBody3D
-var load_body: RigidBody3D
 var stand: StaticBody3D
-var handle: StaticBody3D
 ## The finger holds this object ("" = none).
 var holding := ""
-## Fixed steps with the handle held (the graph's clock).
-var clock_steps := 0
 var _floor: StaticBody3D
-var _press: PressLineSurface      # the held handle's line (origin = its rest point when picked up)
-var _press_step := 0.02           # its grid step (m per cell)
 var _placed := {}                 # ids put down by hand (kept across a screen rebuild)
 
 
@@ -89,8 +84,7 @@ func run_action(id: String) -> void:
 		model.load_x = DEFAULT_LOAD
 		model.cells = 0
 		_placed.clear()
-		clock_steps = 0
-		graph.clear()
+		_restart_clock()
 		props.reset()
 		_changed()
 
@@ -99,23 +93,32 @@ func run_action(id: String) -> void:
 func _changed() -> void:
 	if beam == null:
 		return
-	driver.pose()
+	if auto_force_step:
+		model.fit_force_step(MAX_CELLS)
+	driver.pose(true)
 	_place_stand()
-	graph.add(clock_time(), [model.applied(), model.required()])
+	_add_graph_point()
 	_show_markers()
 	_show()
 	_update_status(true)
 
 
-func clock_time() -> float:
-	return clock_steps / float(Engine.physics_ticks_per_second)
+# --- PressHandleLab ---------------------------------------------------------------------------
+
+func _handle_held() -> bool:
+	return holding == "handle"
 
 
-## Handle grid cells below its rest point (0..REACH) while held.
-func handle_cells() -> int:
-	if holding != "handle" or _press == null:
-		return 0
-	return roundi(clampf(_press.depth_of(handle.global_position), 0.0, REACH) / _press_step)
+func _handle_rest() -> Vector3:
+	return handle_rest()
+
+
+func _handle_reach() -> float:
+	return REACH
+
+
+func _graph_values() -> Array:
+	return [model.applied(), model.required()]
 
 
 ## Pressed cells without the handle (tests): the force of `cells` grid steps.
@@ -133,9 +136,7 @@ func set_layout(pivot: float, load_at: float) -> void:
 func _physics_process(_delta: float) -> void:
 	if holding == "handle":
 		model.cells = handle_cells()
-		clock_steps += 1
-		if clock_steps % GRAPH_EVERY_STEPS == 0:
-			graph.add(clock_time(), [model.applied(), model.required()])
+		_tick_clock()
 	driver.step(1.0 / float(Engine.physics_ticks_per_second))
 	if status() != _last_status:
 		_update_status()
@@ -196,23 +197,12 @@ func observations() -> Dictionary:
 		"effort_arm": model.effort_arm(),
 		"required": model.required(),
 		"applied": model.applied(),
+		"force_step": model.force_step,
 		"advantage": model.advantage(),
 		"load_torque": absf(model.load_torque()),
 		"effort_torque": absf(model.effort_torque()),
 		"net_torque": model.load_torque() + model.effort_torque(),
 	}
-
-
-func graph_series() -> Dictionary:
-	return graph.series()
-
-
-func graph_revision() -> int:
-	return graph.revision
-
-
-func follow_point() -> Vector3:
-	return load_body.global_position if load_body else global_position
 
 
 # --- world --------------------------------------------------------------------------------------
@@ -256,16 +246,6 @@ func stand_height() -> float:
 	return PIVOT_Y - BEAM_THICK * 0.5 - 0.01
 
 
-func _static_pickable(body_name: String, size: Vector3) -> StaticBody3D:
-	var body := StaticBody3D.new()
-	body.name = body_name
-	body.collision_layer = 1 << (HANDLE_LAYER - 1)
-	body.collision_mask = 0
-	_add_box_shape(body, size)
-	add_child(body)
-	return body
-
-
 func _place_stand() -> void:
 	if holding != "fulcrum":
 		stand.global_position = Vector3(model.pivot_x, stand_height() * 0.5, 0.0)
@@ -274,12 +254,6 @@ func _place_stand() -> void:
 ## The grip's rest point: HANDLE_REST above the effort point of the level beam.
 func handle_rest() -> Vector3:
 	return Vector3(model.effort_x(), PIVOT_Y + HANDLE_REST, 0.0)
-
-
-func _place_handle() -> void:
-	var rest := handle_rest()
-	if handle.global_position != rest:
-		handle.global_position = rest
 
 
 # --- manipulation -------------------------------------------------------------------------------
@@ -329,8 +303,7 @@ func manipulation_started(id: String) -> void:
 	holding = id
 	model.cells = 0
 	if id == "handle":
-		_press = manipulation_surface("press") as PressLineSurface
-		_press_step = _grid_step("handle")
+		_begin_press(manipulation_surface("press"))
 	_update_status(true)
 
 
@@ -338,7 +311,7 @@ func manipulation_started(id: String) -> void:
 ## new place (a condition change).
 func manipulation_placed(id: String, transform: Transform3D) -> void:
 	holding = ""
-	_press = null
+	_end_press()
 	model.cells = 0
 	match id:
 		"load":
@@ -352,7 +325,7 @@ func manipulation_placed(id: String, transform: Transform3D) -> void:
 
 func manipulation_cancelled(_id: String) -> void:
 	holding = ""
-	_press = null
+	_end_press()
 	model.cells = 0
 	_changed()
 

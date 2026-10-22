@@ -17,6 +17,9 @@
 ##    required force, the graph's clock runs while it is held, letting go puts it back level;
 ##    dragging the load and the fulcrum (0.25 m grid, the load stays left of the fulcrum).
 ## 9. the measurement demo (--auto-drag) presses the handle and lets go.
+## 10. review fixes: every condition can be lifted (the handle's scale fits the required force), the
+##    rolling graph stays bounded with a stopped clock, a NaN / infinite mass is refused, the markers
+##    follow every point, the engine bodies are only moved when the pose changes.
 extends RefCounted
 
 const VECTORS_PATH := "res://tests/rotation_lab_vectors.json"
@@ -46,6 +49,10 @@ func run() -> void:
 	await check_art()
 	await check_input_path()
 	await check_demo()
+	check_liftable_everywhere()
+	await check_liftable_on_the_lab()
+	check_rolling_graph()
+	await check_review_fixes()
 
 
 # --- helpers ----------------------------------------------------------------------------------
@@ -165,8 +172,9 @@ func check_definition() -> void:
 		and float(consts.BEAM_HALF) == float(vectors.beam_half) and float(consts.PIVOT_Y) == float(vectors.pivot_y)
 		and is_equal_approx(float(consts.BEAM_THICK) * 0.5 + float(consts.LOAD_SIZE) * 0.5, float(vectors.load_up))
 		and LeverLabModel.LIFT_ANGLE == float(vectors.lift_angle) and LeverLabModel.FORCE_STEP == float(vectors.force_step) and snap == 0.02
-		and int(roundf(float(consts.REACH) / snap)) == 50,
-		"rotation: the start = the TS start case (20 kg, the middle of the web's 3 points); lift angle 0.18 rad = the web's; the handle = 5 N per 2 cm up to 250 N", "")
+		and int(roundf(float(consts.REACH) / snap)) == 50 and int(consts.MAX_CELLS) == 50
+		and LeverLabModel.LIFT_ANGLE == PhysicsLaws.LEVER_LIFT_ANGLE and LeverModelDriver.LIFT_ANGLE == PhysicsLaws.LEVER_LIFT_ANGLE,
+		"rotation: the start = the TS start case (20 kg, the middle of the web's 3 points); lift angle 0.18 rad = the web's (one source); the handle = 5 N per 2 cm to start with", "")
 
 
 # --- 2. model = TS ----------------------------------------------------------------------------
@@ -196,6 +204,8 @@ func check_model_cases() -> void:
 
 func check_engine_cases() -> void:
 	var lab: Experiment = await _lab()
+	lab.auto_force_step = false   # the TS vectors press with the web-like 5 N per cell
+	lab.model.force_step = LeverLabModel.FORCE_STEP
 	var worst_pose := 0.0
 	var worst_angle := 0.0
 	var worst_shown := 0.0
@@ -247,18 +257,23 @@ func check_engine_cases() -> void:
 
 func check_conditions() -> void:
 	var lab: Experiment = await _lab()
+	lab.clock_steps = 60   # the clock is running: the changes below are new points
+	lab._add_graph_point()
 	var points: int = lab.graph.size()
 	lab.set_control("mass", 10.0)
 	var lighter := absf(float(lab.observations().required) - 10.0 * 9.81 * 2.0 / 2.1) < 1e-9
 	lab.set_control("effort", "far")
 	var far := absf(float(lab.observations().effort_arm) - 3.15) < 1e-12 and absf(float(lab.observations().required) - 10.0 * 9.81 * 2.0 / 3.15) < 1e-9
 	var series: Dictionary = lab.graph_series()
-	var stepped: bool = lab.graph.size() == points + 2 and series.required.size() == points + 2 and series.required[-1].x == series.required[-2].x
+	# Two changes at one time keep the value before and after (a vertical step), the second overwrites the first.
+	var stepped: bool = lab.graph.size() == points + 1 and series.required.size() == points + 1 and series.required[-1].x == series.required[-2].x \
+		and absf(series.required[-1].y - 10.0 * 9.81 * 2.0 / 3.15) < 1e-3
 	lab.set_control("effort", "elbow")
 	lab.set_control("mass", 99.0)
 	lab.set_control("nope", 1.0)
 	expect.call(lighter and far and stepped and lab.effort_id == "far" and lab.model.mass == 20.0,
-		"rotation: mass and the effort point change the required force at once and add a graph point at the same time (a step); unknown ids are ignored, the mass stays within 1-20 kg", "")
+		"rotation: mass and the effort point change the required force at once and add a graph point at the same time (a step); unknown ids are ignored, the mass stays within 1-20 kg",
+		"%s %s %s %s (%d, %d)" % [lighter, far, stepped, lab.model.mass, lab.graph.size(), points])
 	var labels_ok := true
 	var ids := []
 	var shown: Dictionary = lab.observations()
@@ -392,3 +407,146 @@ func check_demo() -> void:
 	screen.manipulator.start_demo(0.0)
 	expect.call(lifts >= 1 and forces.size() >= 10, "rotation: the measurement demo (--auto-drag) presses the handle (lifting at full press) and lets go", "%d lifts, %d forces" % [lifts, forces.size()])
 	await _close(screen)
+
+
+# --- 10. review fixes ---------------------------------------------------------------------------
+
+## Every mass, effort point, fulcrum and load place the lab offers: the full press (50 cells) of the
+## fitted scale reaches the required force, so the beam can always be lifted - and the scale is the
+## smallest one that does.
+func check_liftable_everywhere() -> void:
+	var count := 0
+	var unliftable := 0
+	var not_smallest := 0
+	var worst_required := 0.0
+	var steps_used := {}
+	var fractions := [0.35, 0.6, 0.9]
+	var pivot := -1.5
+	while pivot <= 1.5 + 1e-9:
+		var load_x := -2.75
+		while load_x <= pivot - 0.5 + 1e-9:
+			for fraction in fractions:
+				for mass in range(1, 21):
+					var m := LeverLabModel.new()
+					m.pivot_x = pivot
+					m.load_x = load_x
+					m.fraction = fraction
+					m.mass = float(mass)
+					m.fit_force_step(50)
+					m.cells = 50
+					count += 1
+					worst_required = maxf(worst_required, m.required())
+					steps_used[m.force_step] = true
+					if not m.lifting() or m.max_hand_force(50) < m.required():
+						unliftable += 1
+					var index := LeverLabModel.FORCE_STEPS.find(m.force_step)
+					if index > 0 and 50 * LeverLabModel.FORCE_STEPS[index - 1] >= m.required():
+						not_smallest += 1
+			load_x += 0.25
+		pivot += 0.25
+	expect.call(unliftable == 0 and not_smallest == 0 and count > 5000 and worst_required > 1500.0 and steps_used.size() == LeverLabModel.FORCE_STEPS.size(),
+		"rotation: in every condition (mass 1-20 kg, 3 effort points, every fulcrum and load place) the full press lifts the load, on the smallest scale that can (5 / 10 / 20 / 50 N per 2 cm)",
+		"%d conditions, %d unliftable, %d not smallest, max required %.0f N, scales %s" % [count, unliftable, not_smallest, worst_required, str(steps_used.keys())])
+
+
+## The hardest condition on the real lab: 20 kg close to the fulcrum, the fulcrum far right, the load
+## far left (1588 N): the press all the way down lifts the beam, the panel shows the scale and the
+## force = the required force; an easy condition stays on the 5 N scale.
+func check_liftable_on_the_lab() -> void:
+	var screen: Control = await _open()
+	var lab: Experiment = screen.experiment
+	lab.set_control("mass", 20.0)
+	lab.set_control("effort", "near")
+	lab.set_layout(1.5, -2.75)
+	var hard: Dictionary = lab.observations()
+	# The handle is pressed all the way down (the press line's full 1.0 m) through the lab's own
+	# manipulation calls: this far-right handle is outside the test screen's view.
+	var rest: Vector3 = lab.handle.global_position
+	lab.manipulation_started("handle")
+	lab.handle.global_position = rest + Vector3(0.0, -lab.REACH, 0.0)
+	for i in 3:
+		await tree.physics_frame
+	var shown: Dictionary = lab.observations()
+	var lifted: bool = lab.status() == "lifted" and absf(lab.driver.engine_angle() + LeverLabModel.LIFT_ANGLE) < 1e-6 and lab.model.cells == 50
+	var equal: bool = absf(float(shown.applied) - float(shown.required)) < 1e-9 and float(shown.required) > 1500.0
+	lab.manipulation_placed("handle", lab.handle.global_transform)
+	await tree.physics_frame
+	lab.set_control("effort", "far")
+	lab.set_control("mass", 5.0)
+	lab.set_layout(-0.5, -2.5)
+	var easy: Dictionary = lab.observations()
+	expect.call(lifted and equal and float(hard.force_step) == 50.0 and float(easy.force_step) == 5.0 and lab.model.max_hand_force(50) >= lab.model.required(),
+		"rotation: the hardest condition (20 kg, close, fulcrum 1.5 m, load -2.75 m: %.0f N) is lifted by pressing the handle all the way (50 N per 2 cm shown); an easy one stays on 5 N" % float(shown.required),
+		"scale %s, easy %s, status %s" % [str(hard.force_step), str(easy.force_step), lab.status()])
+	await _close(screen)
+
+
+## RollingGraph with a stopped clock: repeated adds at one time keep two samples (before / after)
+## and overwrite after that; the cap holds for any times; the window still slides.
+func check_rolling_graph() -> void:
+	var g := RollingGraph.new(["a", "b"] as Array[String], 10.0)
+	g.add(0.0, [1.0, 2.0])
+	for i in 5000:
+		g.add(0.0, [float(i), 2.0 * i])
+	var same_time: int = g.size()
+	var last: Dictionary = g.series()
+	var first_kept: bool = last.a[0].y == 1.0 and last.a[-1].y == 4999.0 and last.b[-1].y == 9998.0
+	g.add(0.5, [7.0, 8.0])
+	for i in 100:
+		g.add(0.5, [9.0, 9.0])
+	var then: int = g.size()
+	var wide := RollingGraph.new(["a"] as Array[String], 1e9)
+	for i in 5000:
+		wide.add(i * 0.1, [float(i)])
+	var slid := RollingGraph.new(["a"] as Array[String], 10.0)
+	for i in 400:
+		slid.add(i * 0.1, [float(i)])
+	var series: Dictionary = slid.series()
+	expect.call(same_time == 2 and first_kept and then == 4 and wide.size() == RollingGraph.MAX_SAMPLES and slid.size() == 101 and absf(series.a[-1].x - 10.0) < 1e-9 and series.a[0].x >= -1e-9,
+		"rolling graph: a stopped clock keeps two samples per time (not 5000), the sample count is capped (%d), the window still slides" % RollingGraph.MAX_SAMPLES,
+		"same time %d, then %d, capped %d, window %d" % [same_time, then, wide.size(), slid.size()])
+
+
+func check_review_fixes() -> void:
+	var lab: Experiment = await _lab()
+	# A bad number changes nothing: NaN and infinity are refused, a big finite one is clamped.
+	lab.set_control("mass", 10.0)
+	lab.set_control("mass", NAN)
+	var after_nan: float = lab.model.mass
+	lab.set_control("mass", INF)
+	var after_inf: float = lab.model.mass
+	lab.set_control("mass", -INF)
+	var after_minus_inf: float = lab.model.mass
+	lab.set_control("mass", 1e30)
+	var clamped: float = lab.model.mass
+	expect.call(after_nan == 10.0 and after_inf == 10.0 and after_minus_inf == 10.0 and clamped == 20.0 and is_finite(float(lab.observations().required)),
+		"rotation: a NaN or infinite mass is refused (the mass stays), a huge finite one is clamped to 20 kg", "%s %s %s %s" % [after_nan, after_inf, after_minus_inf, clamped])
+	# The marker mesh is rebuilt when any of the three points (also the middle one) changes.
+	var props: RotationProps = lab.props
+	props.show_markers([-1.0, 0.0, 1.0] as Array[float], 0, 0.22, 0.6)
+	var first_mesh: Mesh = props.markers.mesh
+	props.show_markers([-1.0, 0.0, 1.0] as Array[float], 0, 0.22, 0.6)
+	var same_mesh: bool = props.markers.mesh == first_mesh
+	props.show_markers([-1.0, 0.5, 1.0] as Array[float], 0, 0.22, 0.6)
+	var middle_mesh: bool = props.markers.mesh != first_mesh
+	expect.call(same_mesh and middle_mesh, "rotation: the effort markers are rebuilt when only the middle point moved, kept when nothing changed", "")
+	# The bodies are only moved when the pose changes.
+	lab.set_cells(0)
+	await tree.physics_frame
+	var writes: int = lab.driver.pose_writes
+	for i in 30:
+		await tree.physics_frame
+	var idle: bool = lab.driver.pose_writes == writes
+	lab.set_cells(50)   # lifts: the angle changes once
+	await tree.physics_frame
+	await tree.physics_frame
+	var lift_write: bool = lab.driver.pose_writes == writes + 1
+	for i in 30:
+		await tree.physics_frame
+	var held: bool = lab.driver.pose_writes == writes + 1 and absf(lab.driver.engine_angle() + LeverLabModel.LIFT_ANGLE) < 1e-6
+	lab.set_layout(-0.5, -2.0)   # a condition change poses again (forced)
+	var moved: bool = lab.driver.pose_writes == writes + 2 and absf(lab.load_body.global_position.x - lab.model.beam_x(-2.0, lab.model.load_up)) < 1e-4
+	expect.call(idle and lift_write and held and moved,
+		"rotation: the driver moves the beam and the load only when the pose changes (none in 30 idle steps, one at the lift, none while held, one on a new condition)",
+		"writes %d -> %d; idle %s lift %s held %s moved %s" % [writes, lab.driver.pose_writes, idle, lift_write, held, moved])
+	await _free(lab)

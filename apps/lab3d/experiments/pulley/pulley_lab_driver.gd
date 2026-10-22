@@ -10,6 +10,8 @@ var load_body: RigidBody3D
 var base := Vector3.ZERO           # load centre on the ground (lift 0)
 var worst_position := 0.0
 var _posed := 0.0                  # model lift the load was posed on (64-bit)
+var pose_writes := 0               # times the bodies were moved (poses that changed, and forced ones)
+var _has_pose := false
 
 
 func _init() -> void:
@@ -28,7 +30,7 @@ func attach(target_model: PulleyLabModel, target: RigidBody3D, ground: Vector3) 
 func reset() -> void:
 	reset_history()
 	worst_position = 0.0
-	pose()
+	pose(true)
 
 
 ## The engine load's lift above its ground place (m).
@@ -45,6 +47,13 @@ func step(_dt: float) -> void:
 	pose()
 
 
-func pose() -> void:
-	_posed = model.lift()
+## The load at the model's lift; only moved when the lift changed (a held load costs the engine
+## nothing), or with `force` (a start).
+func pose(force := false) -> void:
+	var lift := model.lift()
+	if not force and _has_pose and lift == _posed:
+		return
+	_has_pose = true
+	pose_writes += 1
+	_posed = lift
 	load_body.global_transform = Transform3D(Basis(), Vector3(base.x, base.y + _posed, base.z))

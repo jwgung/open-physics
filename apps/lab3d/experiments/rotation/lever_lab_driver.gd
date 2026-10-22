@@ -15,6 +15,8 @@ var worst_position := 0.0
 var _posed_angle := 0.0
 var _posed_load := PackedFloat64Array([0.0, 0.0])
 var _posed_beam := PackedFloat64Array([0.0, 0.0])
+var pose_writes := 0               # times the bodies were moved (poses that changed, and forced ones)
+var _has_pose := false
 
 
 func _init() -> void:
@@ -36,7 +38,7 @@ func reset() -> void:
 	reset_history()
 	worst_angle = 0.0
 	worst_position = 0.0
-	pose()
+	pose(true)
 
 
 ## The engine beam's angle about +z (rad), from its basis.
@@ -58,13 +60,25 @@ func step(_dt: float) -> void:
 	pose()
 
 
-## Beam and load on the model's state (the beam's centre is x = 0 on the level beam).
-func pose() -> void:
-	_posed_angle = model.angle()
-	var turn := Basis(Vector3.BACK, _posed_angle)
-	_posed_beam[0] = model.beam_x(0.0, 0.0)
-	_posed_beam[1] = model.beam_y(0.0, 0.0)
-	_posed_load[0] = model.beam_x(model.load_x, model.load_up)
-	_posed_load[1] = model.beam_y(model.load_x, model.load_up)
-	beam.global_transform = Transform3D(turn, Vector3(_posed_beam[0], _posed_beam[1], 0.0))
-	load_body.global_transform = Transform3D(turn, Vector3(_posed_load[0], _posed_load[1], 0.0))
+## Beam and load on the model's state (the beam's centre is x = 0 on the level beam). The bodies are
+## only moved when the pose changed (a held beam costs the engine nothing); `force` poses them
+## anyway (a start, or the load was dragged by hand and must go back to the model's place).
+func pose(force := false) -> void:
+	var angle := model.angle()
+	var beam_at_x := model.beam_x(0.0, 0.0)
+	var beam_at_y := model.beam_y(0.0, 0.0)
+	var load_at_x := model.beam_x(model.load_x, model.load_up)
+	var load_at_y := model.beam_y(model.load_x, model.load_up)
+	if not force and _has_pose and angle == _posed_angle and beam_at_x == _posed_beam[0] and beam_at_y == _posed_beam[1] \
+			and load_at_x == _posed_load[0] and load_at_y == _posed_load[1]:
+		return
+	_has_pose = true
+	pose_writes += 1
+	_posed_angle = angle
+	_posed_beam[0] = beam_at_x
+	_posed_beam[1] = beam_at_y
+	_posed_load[0] = load_at_x
+	_posed_load[1] = load_at_y
+	var turn := Basis(Vector3.BACK, angle)
+	beam.global_transform = Transform3D(turn, Vector3(beam_at_x, beam_at_y, 0.0))
+	load_body.global_transform = Transform3D(turn, Vector3(load_at_x, load_at_y, 0.0))

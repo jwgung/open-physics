@@ -9,7 +9,7 @@
 ## it every step (method "kinematic_model"). See docs/formula-correction.md (Task 4e).
 ## The graph is the web's "줄 수에 따른 필요한 힘": the hand's pull and the required force over the
 ## last 10 s with the grip held (a changed condition adds a point).
-extends Experiment
+extends PressHandleLab
 
 const LOAD_X := -1.0
 const LOAD_SIZE := 0.8
@@ -21,22 +21,13 @@ const GUIDE := Vector3(1.2, 4.6, 0.0)   # the guide wheel over the pull side
 const HANDLE_SIZE := Vector3(0.5, 0.3, 0.4)
 const HANDLE_TOP := 3.4            # the grip's centre at the start of a stroke
 const STROKE := 2.6                # m: the longest stroke (down to 0.8 m)
-const HANDLE_LAYER := 2
-const GRAPH_EVERY_STEPS := 6
 
 var model := PulleyLabModel.new()
 var driver := PulleyLabDriver.new()
 var props := PulleyProps.new()
-var graph := RollingGraph.new(["applied", "required"] as Array[String], 10.0)
 var strands_id := "one"
-var load_body: RigidBody3D
-var handle: StaticBody3D
 ## The finger holds the grip.
 var holding := false
-## Fixed steps with the grip held (the graph's clock).
-var clock_steps := 0
-var _press: PressLineSurface
-var _press_step := 0.05
 
 
 func _ready() -> void:
@@ -56,8 +47,7 @@ func set_control(id: String, value: Variant) -> void:
 				return
 			strands_id = str(value)
 			model.strands = int(option.n)
-			model.reset()          # the web starts the pull again when the strands change
-			props.reset()
+			_restart()             # the web starts the pull again when the strands change
 		"mass":
 			model.mass = _clamp_to_control(id, float(value))
 		_:
@@ -76,11 +66,22 @@ func control_value(id: String) -> Variant:
 
 func run_action(id: String) -> void:
 	if id == "reset":
-		model.reset()
-		clock_steps = 0
-		graph.clear()
-		props.reset()
+		_restart()
 		_changed()
+
+
+## A new pull: the rope, the clock and the graph start again, the props too. A grip the finger still
+## holds is let go first (its stroke does not count): the load must not jump to the old stroke under
+## the new strand count, and the clock must not go on with the old run.
+func _restart() -> void:
+	if holding:
+		holding = false
+		_end_press()
+		_place_handle()
+	model.reset()
+	model.holding = false
+	_restart_clock()
+	props.reset()
 
 
 func _changed() -> void:
@@ -88,20 +89,32 @@ func _changed() -> void:
 		return
 	driver.pose()
 	props.show_strands(model.strands)
-	graph.add(clock_time(), [model.applied(), model.required()])
+	_add_graph_point()
 	_show()
 	_update_status(true)
 
 
-func clock_time() -> float:
-	return clock_steps / float(Engine.physics_ticks_per_second)
+# --- PressHandleLab ---------------------------------------------------------------------------
+
+func _handle_held() -> bool:
+	return holding
 
 
-## Grid cells the grip is below the top of its stroke (0..the stroke's limit) while held.
-func handle_cells() -> int:
-	if not holding or _press == null:
-		return 0
-	return mini(model.stroke_limit(), roundi(clampf(_press.depth_of(handle.global_position), 0.0, STROKE) / _press_step))
+func _handle_rest() -> Vector3:
+	return handle_top()
+
+
+func _handle_reach() -> float:
+	return STROKE
+
+
+## The rest of the rope up to the top.
+func _handle_cell_limit() -> int:
+	return model.stroke_limit()
+
+
+func _graph_values() -> Array:
+	return [model.applied(), model.required()]
 
 
 ## A stroke of `cells` without the grip (tests); `held` = the hand holds it.
@@ -118,9 +131,7 @@ func let_go() -> void:
 func _physics_process(_delta: float) -> void:
 	if holding:
 		model.stroke_cells = handle_cells()
-		clock_steps += 1
-		if clock_steps % GRAPH_EVERY_STEPS == 0:
-			graph.add(clock_time(), [model.applied(), model.required()])
+		_tick_clock()
 	driver.step(1.0 / float(Engine.physics_ticks_per_second))
 	if status() != _last_status:
 		_update_status()
@@ -175,18 +186,6 @@ func observations() -> Dictionary:
 	}
 
 
-func graph_series() -> Dictionary:
-	return graph.series()
-
-
-func graph_revision() -> int:
-	return graph.revision
-
-
-func follow_point() -> Vector3:
-	return load_body.global_position if load_body else global_position
-
-
 # --- world --------------------------------------------------------------------------------------
 
 func _build_world() -> void:
@@ -195,18 +194,13 @@ func _build_world() -> void:
 	load_body.name = "Load"
 	_setup_free_body(load_body)
 	load_body.gravity_scale = 0.0
-	load_body.collision_layer = 1 << 2   # layer 3: nothing picks or stands on it
+	load_body.collision_layer = 0        # nothing picks, hits or stands on it (the juice's shadow ray excludes it)
 	load_body.collision_mask = 0
 	_add_box_shape(load_body, Vector3.ONE * LOAD_SIZE)
 	add_child(load_body)
 	driver.history_steps = 600
 	driver.attach(model, load_body, Vector3(LOAD_X, LOAD_SIZE * 0.5, 0.0))
-	handle = StaticBody3D.new()
-	handle.name = "Handle"
-	handle.collision_layer = 1 << (HANDLE_LAYER - 1)
-	handle.collision_mask = 0
-	_add_box_shape(handle, HANDLE_SIZE)
-	add_child(handle)
+	handle = _static_pickable("Handle", HANDLE_SIZE)
 	_place_handle()
 	props.dress(self, load_body, handle, {
 		"left": LOAD_X - 1.4, "right": GUIDE.x + 1.0, "beam_y": BEAM_Y, "guide": GUIDE, "load_x": LOAD_X,
@@ -217,12 +211,6 @@ func _build_world() -> void:
 ## The grip's place at the start of a stroke: under the guide wheel's right side.
 func handle_top() -> Vector3:
 	return Vector3(GUIDE.x + PulleyProps.WHEEL_RADIUS, HANDLE_TOP, 0.0)
-
-
-func _place_handle() -> void:
-	var rest := handle_top()
-	if handle.global_position != rest:
-		handle.global_position = rest
 
 
 # --- manipulation -------------------------------------------------------------------------------
@@ -244,8 +232,7 @@ func manipulation_surface(surface_id: String) -> ManipSurface:
 func manipulation_started(_id: String) -> void:
 	holding = true
 	model.holding = true
-	_press = manipulation_surface("pull") as PressLineSurface
-	_press_step = _grid_step("handle")
+	_begin_press(manipulation_surface("pull"))
 	_update_status(true)
 
 
@@ -265,7 +252,7 @@ func manipulation_cancelled(_id: String) -> void:
 
 func _let_go() -> void:
 	holding = false
-	_press = null
+	_end_press()
 	model.let_go()
 	_place_handle()
 	_changed()

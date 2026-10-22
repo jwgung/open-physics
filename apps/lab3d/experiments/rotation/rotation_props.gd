@@ -24,7 +24,7 @@ var markers: MeshInstance3D
 var rod: MeshInstance3D
 var force_arrow: VelocityArrow
 var weight_arrow: VelocityArrow
-var _marker_key := Vector3(INF, INF, INF)
+var _marker_key := Vector4(INF, INF, INF, INF)   # the three points and the chosen one
 
 
 ## Base board and the rest block under the beam's left end (top at `rest_top`).
@@ -140,7 +140,7 @@ func dress(experiment: Node3D, parts: Dictionary, sizes: Dictionary) -> void:
 
 ## The effort pegs for beam-local points `points` (rebuilt only when they or the choice changed).
 func show_markers(points: Array[float], chosen: int, thick: float, depth: float) -> void:
-	var key := Vector3(points[0], points[2], chosen)
+	var key := Vector4(points[0], points[1], points[2], chosen)
 	if key == _marker_key:
 		return
 	_marker_key = key

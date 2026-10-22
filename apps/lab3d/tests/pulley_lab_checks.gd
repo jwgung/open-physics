@@ -16,6 +16,8 @@
 ## 6. art: visual only, draw-node budget, the strands reach from the fixed block to the hook.
 ## 7-8. the real input path on a fresh screen: hand-over-hand strokes, the ratchet, a cancelled pull.
 ## 9. the measurement demo (--auto-drag) pulls the grip and starts again.
+## 10. review fixes: changing the strands while the grip is held starts the run again (load down, no
+##    jump, clock and graph restarted), the engine load is only moved when the lift changes.
 extends RefCounted
 
 const VECTORS_PATH := "res://tests/pulley_lab_vectors.json"
@@ -45,6 +47,7 @@ func run() -> void:
 	await check_art()
 	await check_input_path()
 	await check_demo()
+	await check_restart_while_held()
 
 
 # --- helpers ----------------------------------------------------------------------------------
@@ -389,3 +392,47 @@ func check_demo() -> void:
 	screen.manipulator.start_demo(0.0)
 	expect.call(strokes >= 2 and lifts.size() >= 10, "pulley: the measurement demo (--auto-drag) pulls the grip and starts again", "%d strokes, %d lifts" % [strokes, lifts.size()])
 	await _close(screen)
+
+
+# --- 10. review fixes ---------------------------------------------------------------------------
+
+## The strands change while the grip is still held (no cancel from the screen): the same restart as
+## the reset button - the grip lets go (its stroke does not count), the load goes down and stays
+## there (no jump to the old stroke), the clock and the graph start again. Idle steps do not move the
+## engine load.
+func check_restart_while_held() -> void:
+	var lab: Experiment = await _lab()
+	var top: Vector3 = lab.handle.global_position
+	lab.manipulation_started("handle")
+	lab.handle.global_position = top + Vector3(0.0, -1.0, 0.0)
+	for i in 90:
+		await tree.physics_frame
+	var running: bool = lab.holding and lab.clock_steps >= 90 and lab.graph.size() > 5 and absf(lab.driver.engine_lift() - 1.0) < 1e-5
+	lab.set_control("strands", "two")
+	var worst_lift := 0.0
+	for i in 20:
+		await tree.physics_frame
+		worst_lift = maxf(worst_lift, absf(lab.driver.engine_lift()))
+	var restarted: bool = not lab.holding and not lab.model.holding and lab.clock_steps == 0 and lab.graph.size() == 1 and lab.model.pulled() == 0.0 \
+		and worst_lift <= 1e-6 and lab.handle.global_position.is_equal_approx(lab.handle_top()) and lab.status() == "ground"
+	lab.manipulation_cancelled("handle")   # the screen's cancel arrives later: harmless
+	await tree.physics_frame
+	var after: bool = lab.clock_steps == 0 and lab.graph.size() <= 2 and lab.model.pulled() == 0.0 and absf(lab.driver.engine_lift()) < 1e-6
+	# The reset button does the same from a pull that is no longer held.
+	lab.set_stroke(30)
+	lab.let_go()
+	await tree.physics_frame
+	lab.run_action("reset")
+	var reset: bool = lab.clock_steps == 0 and lab.graph.size() == 1 and absf(lab.driver.engine_lift()) < 1e-6
+	var writes: int = lab.driver.pose_writes
+	for i in 30:
+		await tree.physics_frame
+	var idle: bool = lab.driver.pose_writes == writes
+	lab.set_stroke(10)
+	await tree.physics_frame
+	await tree.physics_frame
+	var one_write: bool = lab.driver.pose_writes == writes + 1
+	expect.call(running and restarted and after and reset and idle and one_write,
+		"pulley: changing the strands while the grip is held restarts the run like the reset button (grip let go, load down without a jump, clock and graph start again); the engine load is only moved when the lift changes",
+		"running %s, restarted %s, after %s, reset %s, idle %s, one write %s (worst lift %s)" % [running, restarted, after, reset, idle, one_write, str(worst_lift)])
+	await _free(lab)

@@ -16,13 +16,17 @@ const LEAF_LIGHT := Color("29c457")
 const STEM := Color("2a9a3e")
 const ROCK := Color("aab3c4")
 const CLOUD := Color("ffffff")
-const FLOWERS := [Color("ffd400"), Color("ff4fa3"), Color("ffffff"), Color("ff7a1a")]
+const FLOWERS := [Color("ffd400"), PINK, WHITE, ORANGE]
 
 # Apparatus primaries (one colour per part; the lighter variant is its top face)
 const YELLOW := Color("ffc61a")
 const YELLOW_TOP := Color("ffd84a")
 const RED := Color("ff3b3b")
 const RED_TOP := Color("ff5a4f")
+const PINK := Color("ff4fa3")         # second / third hero (free fall, boxes); also a flower
+const PINK_TOP := Color("ff6fb5")
+const ORANGE := Color("ff7a1a")
+const ORANGE_TOP := Color("ff9440")
 const BLUE := Color("2d7cf6")
 const BLUE_DARK := Color("1f62d6")
 const WHITE := Color("ffffff")

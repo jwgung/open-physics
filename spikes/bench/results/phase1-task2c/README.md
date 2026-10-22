@@ -99,3 +99,4 @@
 ## 6. 리뷰 반영 후 확인
 
 - 리뷰 반영 후 확인(받침 축 구조 반영 빌드): SM-P200 low 90초 1회 평균 59.8 fps(1% low 38.9, 최고 29.0 °C). 원본·스크린샷은 `review-check/`(`hinge-*.png`: 0°·20°·45° 3/4, 옆, 정면).
+- 2차 리뷰 반영 후 확인(`MODEL_NORMAL_MATRIX`·버튼 눌림·그림자 scale 반영 빌드): SM-P200 low 90초 1회 평균 59.8 fps(1% low 37.6, p95 18.6 ms, 최고 29.2 °C). 착지·눌림 연출 중 상자 조명이 깨지지 않는 것을 연속 화면(`landing-sequence.png` 6 fps 55장, `landing.mp4`)으로 확인. 원본은 `review-check2/`.

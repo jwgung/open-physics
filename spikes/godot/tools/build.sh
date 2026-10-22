@@ -2,6 +2,7 @@
 # Headless pipeline: bake textures -> import -> S3 tests -> Android release APK + Web export.
 # Usage: spikes/godot/tools/build.sh [test|android|web|all]   (default: all)
 # Release APK is signed with the Android debug keystore (spike only, not for distribution).
+# GODOT_TEST_TIMEOUT (s, default 900) stops a hung test run (same checks as apps/lab3d/tools/build.sh).
 set -euo pipefail
 cd "$(dirname "$0")/.."
 GODOT=${GODOT:-$HOME/.local/share/godot-spike/godot}
@@ -17,9 +18,11 @@ fi
 if [[ $what == test || $what == all ]]; then
   log=exports/test.log
   status=0
-  "$GODOT" --headless --path . --fixed-fps 60 -s res://tests/run_tests.gd >"$log" 2>&1 || status=$?
+  # A script error inside a coroutine can leave the SceneTree running: the timeout turns that into a failure.
+  timeout "${GODOT_TEST_TIMEOUT:-900}" "$GODOT" --headless --path . --fixed-fps 60 -s res://tests/run_tests.gd >"$log" 2>&1 || status=$?
   grep -E '^(PASS|FAIL|RESULT|==)' "$log" || true
-  if [[ $status -ne 0 ]] || grep -q '^FAIL' "$log"; then
+  # A script that fails to compile can leave checks unrun or vacuous: treat any SCRIPT ERROR (or engine ERROR line) as a failure.
+  if [[ $status -ne 0 ]] || grep -q '^FAIL' "$log" || grep -q 'SCRIPT ERROR' "$log" || grep -q '^ERROR' "$log" || ! grep -q '^RESULT: PASS' "$log"; then
     echo "S3 tests failed (exit $status); tail of $log:" >&2
     tail -n 40 "$log" >&2
     exit 1

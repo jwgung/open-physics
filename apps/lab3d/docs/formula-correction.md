@@ -64,7 +64,7 @@
 | 균일장 출발 보정 (`uniform_field`) | `UniformFieldCorrector` | 엔진 중력으로 적분, 첫 스텝 −mg/2(도약 출발). 표시 공식은 놓을 때의 엔진 장(크기·방향). 출발 면이 아닌 첫 접촉까지 자유 비행 기록 |
 | 충돌 결과 보정 (`collision`) | `CollisionCorrector` | 엔진이 바디 재질 그대로 접촉을 감지·해결. A–B 접촉 보고가 시작된 스텝 직전 속도를 접촉이 끝날 때까지 보관하고, 끝나면 속도 = 보관 속도 + 접촉 스텝의 외력 Δv(마지막 비접촉 스텝의 실제 속도 변화) + 법선 방향 `world_collision_velocities` 결과(엔진 법선·마찰 충격량만 버림). 제3 바디 동시 접촉·지속 접촉은 엔진 결과 |
 | 공식 힘 주입 (`force_injection`) | `ForceInjectionCorrector` → `SpringInjector`, `BuoyancyInjector`, `PointGravityInjector` | 엔진에 없는(또는 다른) 힘을 매 스텝 공식으로 계산해 주입, 도약 출발. 대표 장면·빈 실험실(Task 5)용이고 안내형 용수철·부력·궤도는 아래 공식 모델 구동 |
-| 해석 모델 구동 (`kinematic_model`) | `KinematicModelCorrector` → `PendulumModelDriver`, `LeverModelDriver`, `PulleyModelDriver`; 안내형 용수철·부력·궤도의 `BodyModelDriver`(Task 4d); 충돌 실험의 `CollisionRailDriver`(두 공, Task 4c) | TS 모델을 고정 스텝으로 진행하고 바디를 키네마틱으로 그 자세에 놓음(엔진은 충돌만. 충돌 실험은 두 공끼리의 접촉도 공식) |
+| 해석 모델 구동 (`kinematic_model`) | `KinematicModelCorrector` → `PendulumModelDriver`, `LeverModelDriver`, `PulleyModelDriver`(대표 장면); 안내형 용수철·부력·궤도의 `BodyModelDriver`(Task 4d), 진자 두 추의 `BodyModelGroupDriver`(`BodyModelDriver` 여럿, Task 4e); 충돌 실험의 `CollisionRailDriver`(두 공, Task 4c); 지렛대의 `LeverLabDriver`·도르래의 `PulleyLabDriver`(Task 4e) | TS 모델을 고정 스텝으로 진행하고 바디를 키네마틱으로 그 자세에 놓음(엔진은 충돌만. 충돌 실험은 두 공끼리의 접촉도 공식) |
 
 ## 4. 실험별 보정 방식
 
@@ -78,9 +78,9 @@
 | 용수철 (`spring`) | 공식 힘 주입(대표 장면). 안내형 실험은 공식 모델 구동(Task 4d, 아래) | `AnchoredSpringLaw`(F = −kx − bv), `springPotentialEnergy`, `angularFrequency`, `periodFromAngularFrequency`, `harmonicDisplacement/Velocity/Energy`, `kineticEnergy` | 늘어난 길이(측정), 탄성·운동 에너지(TS 정의: 탄성 ½kx², 운동 ½mv². 감쇠·중력이 없으면 전체 = 놓을 때 상태의 ½kA² + ½mv₀², 운동 = 나머지. 있으면 현재 상태의 ½mv²(스텝 동기 속력) + ½kx²), 고유 주기 T₀ = 2π√(m/k)와 실제 주기 T = 2π/ω_d(웹 TS에는 용수철 주기 표시가 없고 `periodFromAngularFrequency`만 있어, 감쇠 시 TS 모델이 쓰는 ω_d = √(ω₀² − γ²)로 별도 행에 표시. 감쇠 없으면 T = T₀) | 주기 = 2π√(m/k) ±0.1%, 엔진 에너지(스텝 동기 속도) = ½kA² ±0.5%(10초), 감쇠 0.45에서 표시 에너지 = 현재 상태 K + U이고 줄기만 함, 정지 길이에서 2 m/s로 출발하면 전체 = ½mv₀² | 6DOF 스프링은 에너지 비보존(0.118–0.624 J). 주입 + 도약 출발은 3.5e-4 |
 | 마찰 (`friction`) | 접촉 힘 보정 (`push`) | `PushFrictionLaw`(정지·운동, 역주행 방지), `maximumStaticForce` | 미는 힘, 최대 정지 마찰력 μₛmg, 지금 마찰력, 운동 마찰력 μₖmg(`KineticFriction`), 속력, 열에너지(`work`), 상태(버팀/움직임. 정지 임계 0.01 px/s = 0.01/48 m/s) | μₛmg 아래 2초 정지(≤ 1 mm), 위에서 s = ½at², a = (F − μₖmg)/m(상대 ≤ 1e-4) | Jolt 마찰은 계수 하나. 빗면(Task 2a)과 같은 방식 |
 | 빗면 마찰 (Task 2a, 마찰 실험의 3D 첫 사례) | 접촉 힘 보정 (`surface`) | `SurfaceContactFrictionModifier`, 임계각 atan μₛ | 기존 그대로 | 기존 테스트(측정 기준 4절, 재질별 임계각, s = ½at² ±1%) 그대로 통과, 기록 해시 리팩터 전과 같음 | S3 |
-| 지렛대 (`rotation`) | 해석 모델 구동 | `LeverChallenge`(F = m g r_load / r_effort, 역학적 이득, lifting), `torque` | 필요한 힘, 역학적 이득, 양쪽 토크, 들림 여부 | 필요한 힘 미만이면 수평, 이상이면 들림 각 0.18 rad(≤ 1e-5 rad), 표시 힘 = TS | 웹도 운동이 아니라 평형 판정(0 / 0.18 rad). 힌지 동역학은 필요 없음 |
-| 줄·막대 (`constraints`, 진자) | 해석 모델 구동 | `PendulumModel.step`(반암시적 오일러, 감쇠), `pose`, `pendulumPeriod`, `pendulumAngularFrequency` | 각도, 주기 2π√(L/g), 길이 | 추 각도 = TS 모델(≤ 1e-5 rad, 감쇠 0과 TS 기본 감쇠 0.08 둘 다), 길이 = L(≤ 1e-5 m), 주기 ±0.5%(0.1 rad), 추가 다른 바디를 민다 | PinJoint3D는 솔버 감쇠로 진폭이 줄고(30초 −1.3%) 웹 감쇠·각도 곡선을 재현 못 함 |
-| 도르래 (`pulley`) | 해석 모델 구동 | `PulleyAdvantageChallenge`(F = mg/n, d_pull = n d_lift) | 필요한 힘, 줄 수, 들린 높이, 당긴 줄 길이 | 1 m 당기면 1/n 올라감(≤ 1e-5 m), 힘 = TS(1·2·4줄) | 웹도 이상적 도르래 관계만 보여 줌. 줄·바퀴 동역학 없음 |
+| 지렛대 (`rotation`) | 해석 모델 구동(대표 장면 `LeverModelDriver`, 안내형 실험은 `LeverLabDriver`, Task 4e 아래) | `LeverChallenge`(F = m g r_load / r_effort, 역학적 이득, lifting), `torque` | 필요한 힘, 역학적 이득, 양쪽 토크, 들림 여부 | 필요한 힘 미만이면 수평, 이상이면 들림 각 0.18 rad(≤ 1e-5 rad), 표시 힘 = TS | 웹도 운동이 아니라 평형 판정(0 / 0.18 rad). 힌지 동역학은 필요 없음 |
+| 줄·막대 (`constraints`, 진자) | 해석 모델 구동(대표 장면 `PendulumModelDriver`, 안내형 실험은 `PendulumLabModel` RK4 + `BodyModelGroupDriver`, Task 4e 아래) | `PendulumModel.step`(반암시적 오일러, 감쇠), `pose`, `pendulumPeriod`, `pendulumAngularFrequency` | 각도, 주기 2π√(L/g), 길이 | 추 각도 = TS 모델(≤ 1e-5 rad, 감쇠 0과 TS 기본 감쇠 0.08 둘 다), 길이 = L(≤ 1e-5 m), 주기 ±0.5%(0.1 rad), 추가 다른 바디를 민다 | PinJoint3D는 솔버 감쇠로 진폭이 줄고(30초 −1.3%) 웹 감쇠·각도 곡선을 재현 못 함 |
+| 도르래 (`pulley`) | 해석 모델 구동(대표 장면 `PulleyModelDriver`, 안내형 실험은 `PulleyLabDriver`, Task 4e 아래) | `PulleyAdvantageChallenge`(F = mg/n, d_pull = n d_lift) | 필요한 힘, 줄 수, 들린 높이, 당긴 줄 길이 | 1 m 당기면 1/n 올라감(≤ 1e-5 m), 힘 = TS(1·2·4줄) | 웹도 이상적 도르래 관계만 보여 줌. 줄·바퀴 동역학 없음 |
 | 궤도 (`orbit`) | 공식 힘 주입(대표 장면). 안내형 실험은 공식 모델 구동(Task 4d, 아래) | `PointGravity`(a = GM/r²), `circularOrbitSpeed/Period`, `escapeSpeed`, `OrbitChallenge.analyze`(충돌·공전·이탈 예측) | 궤도 반지름, 원 궤도 속력·주기, 탈출 속력, 예측 결과 | 원 궤도 한 바퀴 시간 = 2π√(r³/GM) ±0.1%, 반지름 ±0.1% | Area3D 점 중력 대신 주입: 법칙·G·M을 TS와 같게. 도약 출발 없이는 반지름이 0.7% 흔들림 |
 | 부력 (`buoyancy`) | 공식 힘 주입(대표 장면). 안내형 실험은 공식 모델 구동(Task 4d, 아래) | `BuoyancyRegionLaw`(잠긴 비율 선형, 끌림), `buoyantForce`, `floatingSubmergedFraction`, `buoyancyNetForce` | 잠긴 깊이(측정), 부력 ρgV_sub, 무게, 뜨는 비율 ρ물체/ρ유체, 판정 뜸/중성/가라앉음(비율이 1에서 1e-9 이내면 중성) | 상자가 비율 m/m_displaced에 뜸 ±0.5%, 더 무거우면 바닥까지 가라앉음, 같으면 중성(가라앉음 아님) | Jolt에 유체 없음 |
 
@@ -144,6 +144,30 @@
 - 구조: 세 실험(과 충돌)의 공통 부분(run 상태·그래프 장부·`release()` 본문·자유 바디 구성)은 `experiments/model_driven/model_driven_lab.gd`(`ModelDrivenLab`), 배치 복원(`begin_batch`/`end_batch`/`_restart`)은 `Experiment`에 있다. 시계는 `BodyModel.dt`/`time()` 하나다. 궤도의 GM·충돌·이탈 반지름·평면 높이는 `OrbitModel`의 상수 한 곳이고, 서브스텝마다 부르는 `PhysicsLaws.point_gravity_field_acceleration`은 `out` 인자에 써서 할당이 없다(수치 불변).
 - 리뷰 반영(4d 검증): 시계 방향 발사의 첫 바퀴 시간은 `|swept| ≥ 2π`로 센다(TS 오라클도 같게 고쳐 벡터의 "clockwise" 경우가 −1 대신 8.69 s). 부력 상태는 밀도 판정이 먼저라 같은 밀도(중성) 통이 바닥에 닿아도 `staying`이고 `sunk`는 더 무거운 통만이다. 돌연변이: `swept >= TAU`로 되돌림(시계 방향 첫 바퀴 검사 실패), 바닥 접촉을 먼저 `sunk`로 봄(중성 바닥 검사 실패) — 모두 실패했다.
 - 그래프 y축: 용수철의 에너지 비율은 고정 0–100 %축(`graph.y.max`, `GraphView.y_top`), 나머지는 데이터에 맞춘 자동 축.
+
+### 실험 구현 (Task 4e: 진자·지렛대·도르래)
+
+세 실험(`experiments/{constraints,rotation,pulley}/`)도 4c·4d처럼 표시값과 **화면 속 물체의 움직임**을 TS 공식과 스텝 단위로 맞춘다. 공식 모델이 64비트로 상태를 정하고, 드라이버가 매 고정 스텝 물리 서버 전에 엔진 바디(얼린 키네마틱 `RigidBody3D`, 충돌 마스크 0)의 위치를 기록한 뒤 바디를 모델 자세에 둔다. 엔진 바디가 공식 자세에 놓이므로 패널에 "시뮬레이션" 관찰값은 없다.
+
+| 실험 | 공식 모델 · 드라이버 | 웹과 같은 것 | 웹과 다르게 정한 것(이유) |
+|---|---|---|---|
+| 줄·막대 진자 | `PendulumLabModel`: 웹 `PendulumModel`의 운동 방정식 α = −(g/L) sin θ − bω(`PhysicsLaws.pendulum_angular_acceleration`, TS에서는 `PendulumModel.step(0, g)`로 같은 값을 읽음)을 고전 RK4로 고정 스텝당 4번 나눠 적분, 추 = 고정점 + L(sin θ, −cos θ). 두 추를 `BodyModelGroupDriver`(추마다 `BodyModelDriver`)가 구동. 장력 = mg cos θ + `centripetalForce`(m, `tangentialSpeed`(L, ω), L). 왕복 시간은 모델의 같은 방향 영점 통과 사이 시간(스텝 안 선형 보간) | 두 진자(줄 0.62 rad·감쇠 0.06/s, 막대 −0.5 rad·0.03/s, 추 1 kg), 같은 길이, 중력 4종 | 웹 60 Hz 반암시적 오일러는 출발부터 위상이 반 스텝 어긋나 2 m 진자가 20초에 2.3 cm(감쇠 없음 2.5 cm) 벗어남 → RK4 x4(60초 1e-7 rad 이내). 길이는 1–3.5 m 조건(웹은 화면 크기에 따라 약 4.4 m) |
+| 지렛대 | `LeverLabModel`: 웹 `LeverChallenge`(F = mg·r₂/r₁, 이득 r₁/r₂, `applyForce` 들림), 막대에 주는 힘 = min(필요한 힘, 손잡이 힘)(웹 `Math.min(requiredForce, …)`), 들림이면 웹 `LEVER_LIFT_ANGLE` 0.18 rad, 토크 `rotation.ts torque`, 무게 `UniformGravity`. `LeverLabDriver`가 막대(받침점 둘레 회전)와 짐(막대와 함께 도는 강체)을 포즈 | 20 kg 짐, 세 힘점(받침점–오른쪽 끝의 35·60·90 %), 힘 상한·들림 각 | 손잡이 = 2 cm에 5 N 용수철 저울(최대 250 N). 받침점(−1.5…1.5 m)·짐(왼쪽 끝…받침점 −0.5 m)을 0.25 m 눈금으로 끌어 옮김(웹은 고정). 손을 떼면 막대가 수평으로 돌아옴(웹은 들린 채 남음) |
+| 도르래 | `PulleyLabModel`: 웹 `PulleyAdvantageChallenge`(F = mg/n, 상승 = 당김/n, 1 m에 n m), 일 `work`(F, d당김) = `gravitationalPotentialEnergy`(m, g, d상승). 당긴 줄은 5 cm 칸 수(정수)로 세어 TS와 같은 수를 더함. `PulleyLabDriver`가 짐을 포즈 | 1·2·4줄, 20 kg, 줄 수를 바꾸면 다시 시작, 그래프(당기는 힘·필요한 힘) | 손잡이 이동 = 당긴 줄(웹의 드래그 반응 배율 n/4를 두지 않음: 줄 끝은 손과 같이 움직임). 손 바꿔 당기기(놓으면 멈추개가 짐을 잡고 손잡이는 위로), 최고 2.4 m |
+
+- TS 오라클(`tools/{constraints,rotation,pulley}-lab-vectors.test.ts` → `tests/*_lab_vectors.json`): 진자 7가지(웹 시작, 감쇠 없음, 달, 목성 1 m, 작은 각도 5°, 75°·3.5 m 60초, 무중력)의 6–30스텝마다 각도·각속도·추 위치·장력·잰 왕복 시간, 지렛대 6가지 × 누름 51단계(0–250 N)의 힘·들림·각도·짐/막대 자세·토크, 도르래 5가지 × 당김(1·2·4줄, 20·7 kg)의 당긴 줄·높이·칸 한도·일·에너지. 감시: 진자 RK4 x4 = RK4 x100(60초 1e-6 rad), 감쇠 없으면 에너지 보존·있으면 감소, 장력 > 0(줄이 팽팽), 75°·40°의 잰 왕복 시간 = 대진폭 주기 2π√(L/g)/AGM(1, cos(θ₀/2))(1e-4), 웹 오일러 오차 > 1 cm; 지렛대 F₁r₁ = F₂r₂, 필요한 힘부터 들림, 짐–받침점 거리 일정; 도르래 F·n = mg, 당김 = n × 상승, 일 = 위치 에너지.
+- 결과(헤드리스, `tests/{constraints,rotation,pulley}_lab_checks.gd`):
+
+| 항목 | 진자 | 지렛대 | 도르래 |
+|---|---|---|---|
+| 모델 = TS (상대 오차) | 7.0e-14 | 2.0e-16 | 1.5e-16 |
+| 엔진 바디 위치 오차 | 2.4e-7 m(60초 실행 포함) | 5.9e-8 m, 막대 각도 1.1e-7 rad | 1.0e-7 m |
+| 엔진 스텝 속도 오차 | 2.9e-5 m/s | — (자세만 바뀜) | — |
+| 패널 = TS (상대 오차) | 1.5e-13 | 1.8e-14 | 1.5e-16 |
+| 법칙 확인(엔진 바디에서) | 고정점–추 거리 = L(2.4e-7 m, 1·2·3.5 m, 70°·−45°, 30초), 4° 진폭 영점 주기 = 2π√(L/g) + 약 0.03 %(진폭 보정 θ²/16 = 3e-4 만큼, 4가지 길이·중력), 75°·40° 주기 = 대진폭 주기 6e-9, 엔진 위치로 잰 에너지 보존 6.2e-4(30초), 감쇠 에너지 e^(−bt)(37초: 줄 0.1093/0.1086, 막대 0.3305/0.3296) | 엔진 막대가 기우는 첫 누름 = F₁r₁ ≥ F₂r₂가 되는 첫 5 N 칸(6가지, 가까운 힘점 320 N은 안 들림), 들렸을 때 토크 합 0, 짐–받침점 거리 일정 2.4e-7 m | 손잡이를 두 번(1.0 + 0.6 m) 당기면 엔진 짐 0.8 m(2줄), 줄 길이(n줄 + 당김 줄 + 감긴 줄) 일정 5.4e-7 m, F·d = mgh(엔진 짐 높이), 취소된 당김은 세지 않음 |
+
+- 진자 줄은 75° 안에서 놓으므로 장력이 늘 양수라 줄과 막대가 같은 원을 그린다(웹과 같음). 무중력이면 놓아도 그 자리에 있고 주기는 표시하지 않는다.
+- 돌연변이(되돌림 확인): 진자 RK4 나눔 1번·오일러 각도·장력 원심 항 없음·길이 0.1 % 늘림·끌 때 원 밖·감쇠 줄/막대 바꿈·반주기, 지렛대 들림 방향·힘 상한 없음·힘점 거리 식·받침점이 짐 0.5 m 안으로·짐이 막대와 함께 돌지 않음, 도르래 상승 식·이득 없음·멈추개 없음·칸 한도·취소 셈 — 모두 해당 검사가 실패했다.
 
 ## 5. 테스트 파이프라인
 

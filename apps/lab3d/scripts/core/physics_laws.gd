@@ -66,3 +66,24 @@ static func corrected_tangential_force(
 		if tangential_speed * next_speed <= 0.0:
 			next_force = -mass * tangential_speed / dt
 	return next_force
+
+## world-mechanics.ts PushFrictionLaw.maximumStaticForce: mu_s m a_n (a_n = normal acceleration, g on a level floor).
+static func push_max_static_force(mu_s: float, mass: float, normal_acceleration: float) -> float:
+	return mu_s * mass * normal_acceleration
+
+## world-mechanics.ts PushFrictionLaw.status == "holding": nearly stopped and |F| <= mu_s m a_n.
+static func push_friction_holding(applied_force: float, speed: float, mass: float, mu_s: float, normal_acceleration: float) -> bool:
+	return absf(speed) < 0.01 and absf(applied_force) <= push_max_static_force(mu_s, mass, normal_acceleration)
+
+## world-mechanics.ts PushFrictionLaw.force (1D): net horizontal force = applied - kinetic friction,
+## 0 while holding, clamped so one step cannot reverse the motion.
+static func push_friction_force(applied_force: float, speed: float, mass: float, mu_s: float, mu_k: float,
+		normal_acceleration: float, dt: float) -> float:
+	if push_friction_holding(applied_force, speed, mass, mu_s, normal_acceleration):
+		return 0.0
+	var direction := signf(speed) if absf(speed) >= 0.01 else signf(applied_force)
+	var kinetic := mu_k * mass * normal_acceleration
+	var net := applied_force - direction * kinetic
+	if speed * net < 0.0 and absf(net) * dt / mass >= absf(speed):
+		net = -mass * speed / dt
+	return net

@@ -27,41 +27,33 @@ var knob: StaticBody3D
 var start := Vector3(START_X, START_HEIGHT, 0.0)
 var angle_deg := 45.0
 var speed := 9.0
-var released := false
 var out_of_bounds := false
-var props := ProjectileProps.new()
-var _placed := false
+var _path := PackedVector3Array()   # reused by _fill_path (the drag preview runs every frame)
 var _out_steps := 0                 # fixed steps counted after the ball was stopped out of bounds
-var _measured := PackedVector2Array()
-var _graph_revision := 0
-var _last_status := ""
 var _ball_visual: MeshInstance3D
 var _knob_visual: MeshInstance3D
 var _shown_start := Vector3.INF     # ball centre the arrow / knob were placed for
 var _shown_knob := Vector3.INF      # knob position the arrow preview was made for
 
 
-func _ready() -> void:
-	_build_world()
-	for control in definition.get("controls", []):
-		set_control(control.id, control.default)
+func _init() -> void:
+	props = ProjectileProps.new()
 
 
 func set_control(id: String, value: Variant) -> void:
 	match id:
-		"gravity":
-			set_gravity(str(value))
 		"angle":
 			angle_deg = clampf(float(value), ArrowSurface.ANGLE_MIN, ArrowSurface.ANGLE_MAX)
+			reset_run()
 		"speed":
 			speed = clampf(float(value), ArrowSurface.SPEED_MIN, ArrowSurface.SPEED_MAX)
-	reset_ball()
+			reset_run()
+		_:
+			super(id, value)
 
 
 func control_value(id: String) -> Variant:
 	match id:
-		"gravity":
-			return gravity_id
 		"angle":
 			return angle_deg
 		"speed":
@@ -69,21 +61,21 @@ func control_value(id: String) -> Variant:
 	return super(id)
 
 
-func run_action(id: String) -> void:
-	match id:
-		"release":
-			release()
-		"reset":
-			reset_ball()
-
-
 ## Launch velocity components (m/s, 64-bit: a Vector3 would round them to 32 bits).
 func launch_vx() -> float:
-	return speed * cos(deg_to_rad(angle_deg))
+	return vx_of(angle_deg, speed)
 
 
 func launch_vy() -> float:
-	return speed * sin(deg_to_rad(angle_deg))
+	return vy_of(angle_deg, speed)
+
+
+static func vx_of(angle: float, launch_speed: float) -> float:
+	return launch_speed * cos(deg_to_rad(angle))
+
+
+static func vy_of(angle: float, launch_speed: float) -> float:
+	return launch_speed * sin(deg_to_rad(angle))
 
 
 ## Launch velocity for the engine (world, m/s).
@@ -95,32 +87,27 @@ func ball_center() -> Vector3:
 	return start + Vector3.UP * BALL_RADIUS
 
 
-func reset_ball() -> void:
+func reset_run() -> void:
 	hold_ball(ball, ball_center())
 	apply_field(ball)
 	_ball_visual.visible = true
-	released = false
 	out_of_bounds = false
 	_out_steps = 0
-	_measured.clear()
-	_graph_revision += 1
 	_show_launch()
-	props.reset()
-	_update_status(true)
+	_mark_reset()
 
 
 func release() -> void:
 	if released:
-		reset_ball()
+		reset_run()
 	apply_field(ball)
 	(ball.corrector as UniformFieldCorrector).release(ball, launch_velocity())
-	released = true
-	_measured.clear()
-	_measured.append(Vector2(0.0, start.y))
-	_graph_revision += 1
-	props.released()
 	_knob_visual.visible = false
-	_update_status(true)
+	_mark_released(PackedVector2Array([Vector2(0.0, start.y)]))
+
+
+func projectile_props() -> ProjectileProps:
+	return props as ProjectileProps
 
 
 func corrector() -> UniformFieldCorrector:
@@ -131,7 +118,12 @@ func corrector() -> UniformFieldCorrector:
 
 ## Flight time to the floor level (INF when it never comes down: no field).
 func flight_time() -> float:
-	return PhysicsLaws.landing_time(launch_vy(), -g, launch_height())
+	return flight_time_for(launch_vy(), launch_height())
+
+
+## The same for a launch with vertical speed `vy` from `height` (no state read: the preview).
+func flight_time_for(vy: float, height: float) -> float:
+	return PhysicsLaws.landing_time(vy, -g, height)
 
 
 ## Horizontal distance to the landing (INF without a landing).
@@ -176,7 +168,11 @@ func formula_y(t: float) -> float:
 
 ## Launch height (ball bottom above the floor, m), kept on the 1 mm grid of the handle's steps.
 func launch_height() -> float:
-	return snappedf(start.y, 0.001)
+	return snapped_height(start.y)
+
+
+static func snapped_height(bottom_y: float) -> float:
+	return snappedf(bottom_y, 0.001)
 
 
 func status() -> String:
@@ -189,29 +185,14 @@ func status() -> String:
 	return "floating" if g <= 0.0 else "flying"
 
 
-func _update_status(quiet := false) -> void:
-	_last_status = status()
-	if not quiet:
-		state_changed.emit()
-
-
-func _physics_process(_delta: float) -> void:
-	if not released:
-		return
+func _released_step() -> void:
 	if out_of_bounds:
 		_out_steps += 1
-	else:
-		var steps := corrector().steps - 1
-		var c := corrector()
-		var landed_before := c.landed_step >= 0 and c.landed_step < steps
-		if steps > 0 and steps % GRAPH_EVERY_STEPS == 0 and steps < c.samples.size() and not landed_before:
-			var t := steps * step_dt()
-			if t <= graph_x_max() + 0.001:
-				_measured.append(Vector2(t, maxf(0.0, start.y + c.samples[steps])))
-				_graph_revision += 1
-		_check_bounds()
-	if status() != _last_status:
-		_update_status()
+		return
+	var steps := corrector().steps - 1
+	if _graph_sample_time(steps) >= 0.0 and _append_sample(corrector(), steps, start.y):
+		_graph_revision += 1
+	_check_bounds()
 
 
 ## Beyond the island the ball is stopped and hidden (the formula values keep their meaning).
@@ -273,29 +254,32 @@ func graph_series() -> Dictionary:
 	return {"formula": line, "measured": _measured.duplicate()}
 
 
-func graph_revision() -> int:
-	return _graph_revision
-
-
 func follow_point() -> Vector3:
 	return ball.global_position if ball else global_position
 
 
-## Formula path dots from the launch to the landing (or up to PATH_MAX_S / the island's edge) and
-## the landing ring.
+## Formula path dots from the launch to the landing (or up to PATH_MAX_S / the island's edge).
 func formula_path() -> PackedVector3Array:
-	var points := PackedVector3Array()
-	var landing := flight_time()
+	var vy := launch_vy()
+	var height := launch_height()
+	return _fill_path(ball_center(), launch_vx(), vy, height, flight_time_for(vy, height))
+
+
+## Fills (and returns) the reused path buffer: PATH_DOTS points of the flight from the ball centre
+## `c`, launched with (vx, vy) from `height`, until `landing`. A copy already handed out keeps its
+## points (copy on write), so the buffer only allocates when the dot count grows.
+func _fill_path(c: Vector3, vx: float, vy: float, height: float, landing: float) -> PackedVector3Array:
+	_path.clear()
 	var end := minf(landing, PATH_MAX_S)
-	var c := ball_center()
 	for i in range(1, ProjectileProps.PATH_DOTS + 1):
 		var t := end * i / float(ProjectileProps.PATH_DOTS)
-		var q := formula_point(t)
-		var point := Vector3(c.x + q.x, q.y + BALL_RADIUS, c.z)
+		var q_x := PhysicsLaws.constant_acceleration_displacement(vx, 0.0, t)
+		var q_y := maxf(0.0, height + PhysicsLaws.constant_acceleration_displacement(vy, -g, t))
+		var point := Vector3(c.x + q_x, q_y + BALL_RADIUS, c.z)
 		if point.x > BOUNDS_X.y or point.y > BOUNDS_Y.y:
 			break
-		points.append(point)
-	return points
+		_path.append(point)
+	return _path
 
 
 ## Arrow, knob, stand and path for the current start and launch velocity (while waiting).
@@ -304,31 +288,28 @@ func _show_launch() -> void:
 
 
 ## Shows a launch from `bottom` with (angle, speed): arrow, stand, formula path and landing ring;
-## the knob is put on the arrow tip when `place_knob` (not while a finger holds it).
+## the knob is put on the arrow tip when `place_knob` (not while a finger holds it). Reads only
+## its arguments (the lab's start / angle / speed stay as they are).
 func _show_preview(bottom: Vector3, angle: float, launch_speed: float, place_knob: bool) -> void:
-	var saved := [start, angle_deg, speed]
-	start = bottom
-	angle_deg = angle
-	speed = launch_speed
-	var center := ball_center()
-	var tip := ArrowSurface.tip(angle_deg, speed)
+	var center := bottom + Vector3.UP * BALL_RADIUS
+	var tip := ArrowSurface.tip(angle, launch_speed)
 	if place_knob:
 		knob.global_position = center + Vector3(tip.x, -tip.y, 0.0)
 		_knob_visual.visible = true
 	_shown_start = center
 	_shown_knob = knob.global_position
-	props.set_arrow(center, angle_deg, speed, tip.length(), KNOB_SIZE * 0.5)
-	props.place_stand(start)
-	var landing := flight_time()
+	projectile_props().set_arrow(center, angle, launch_speed, tip.length(), KNOB_SIZE * 0.5)
+	projectile_props().place_stand(bottom)
+	var vx := vx_of(angle, launch_speed)
+	var vy := vy_of(angle, launch_speed)
+	var height := snapped_height(bottom.y)
+	var landing := flight_time_for(vy, height)
 	var ring: Variant = null
 	if is_finite(landing):
-		var x := center.x + flight_range()
+		var x := center.x + PhysicsLaws.constant_acceleration_displacement(vx, 0.0, landing)
 		if x <= BOUNDS_X.y:
 			ring = Vector3(x, 0.0, center.z)
-	props.set_path(formula_path(), ring)
-	start = saved[0]
-	angle_deg = saved[1]
-	speed = saved[2]
+	projectile_props().set_path(_fill_path(center, vx, vy, height, landing), ring)
 
 
 ## While a finger holds the ball or the knob, the launch preview follows it: a dragged ball takes
@@ -359,12 +340,12 @@ func _build_world() -> void:
 	knob.collision_layer = 1 << (KNOB_LAYER - 1)
 	knob.collision_mask = 0
 	_add_box_shape(knob, Vector3.ONE * KNOB_SIZE)
-	_knob_visual = ArtKit.instance(props.knob_mesh(KNOB_SIZE))
+	_knob_visual = ArtKit.instance(projectile_props().knob_mesh(KNOB_SIZE))
 	_knob_visual.name = "Visual"
 	knob.add_child(_knob_visual)
 	add_child(knob)
-	props.dress(self, ball, _ball_visual, BALL_RADIUS * 2.0)
-	props.juice.landed.connect(impact.emit)
+	projectile_props().dress(self, ball, _ball_visual, BALL_RADIUS * 2.0)
+	projectile_props().juice.landed.connect(impact.emit)
 
 
 # --- manipulation -----------------------------------------------------------------------------
@@ -392,15 +373,15 @@ func manipulation_surface(surface_id: String) -> ManipSurface:
 
 
 func manipulation_juice(id: String) -> ArtJuice:
-	return props.juice if id == "ball" else null
+	return projectile_props().juice if id == "ball" else null
 
 
 ## Picked up (the ball, also while flying or after landing, or the arrow knob): the throw stops
 ## and the ball waits at its launch point.
 func manipulation_started(_id: String) -> void:
 	if released:
-		reset_ball()
-	props.juice.rearm()
+		reset_run()
+	projectile_props().juice.rearm()
 
 
 func manipulation_placed(id: String, transform: Transform3D) -> void:
@@ -412,11 +393,7 @@ func manipulation_placed(id: String, transform: Transform3D) -> void:
 		var q := ArrowSurface.snap_polar(surface.to_plane(transform.origin))
 		angle_deg = clampf(q.x, ArrowSurface.ANGLE_MIN, ArrowSurface.ANGLE_MAX)
 		speed = q.y
-	reset_ball()
-
-
-func manipulation_cancelled(_id: String) -> void:
-	reset_ball()
+	reset_run()
 
 
 ## Launch point and arrow tip once one was moved (kept across a screen rebuild; the angle and speed

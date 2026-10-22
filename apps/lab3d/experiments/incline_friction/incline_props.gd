@@ -110,9 +110,7 @@ func box_mesh(size: float) -> Mesh:
 
 ## Island, static shadows, the incline's moving shadow and the box reactions.
 func dress(experiment: Node3D, stand_position: Vector3, box_body: RigidBody3D, box_visual: MeshInstance3D, box_size: float) -> void:
-	experiment.add_child(ArtKit.make_environment())
-	ArtKit.build_island(experiment, Vector3(-1.5, 0.0, -0.8), func(s: ArtMeshBuilder) -> void:
-		s.add_blob(Transform3D(Basis(), Vector3(stand_position.x, 0.012, stand_position.z)), 0.9, ArtKit.shadow_alpha(0.9)))
+	ArtKit.add_world(experiment, Vector3(-1.5, 0.0, -0.8), stand_position, 0.9)
 	# One mesh at the flat incline's footprint; angle_changed only scales it along x.
 	var s := ArtKit.shadow_builder()
 	s.add_soft_rect(Transform3D(Basis(), Vector3(0.0, 0.01, 0.0)), Vector2(_ramp_shadow_half(0.0), 0.7), 0.7, ArtKit.shadow_alpha(0.45))

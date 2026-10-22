@@ -40,6 +40,18 @@ func control_value(id: String) -> Variant:
 	return null
 
 
+## The option `option_id` of the choice control `control_id` in definition.controls ({} when the
+## control or the option does not exist).
+func _find_option(control_id: String, option_id: String) -> Dictionary:
+	for control in definition.get("controls", []):
+		if control.id != control_id:
+			continue
+		for option in control.get("options", []):
+			if option.id == option_id:
+				return option
+	return {}
+
+
 ## Runs an action declared in definition.actions (buttons).
 func run_action(_id: String) -> void:
 	pass

@@ -5,6 +5,9 @@
 ## first released step gets the leapfrog half force, and the engine contact report ends the free
 ## flight. Every displayed number comes from PhysicsLaws; engine positions are only the graph's
 ## "시뮬레이션" points and the measured landing values.
+## The base also owns what both labs do the same way: the run state (released), the graph's
+## "시뮬레이션" points and revision, the status change hint, the controls' defaults, and the
+## release / reset actions. A lab fills in _build_world, release, reset_run, status, _released_step.
 ## The field is the project gravity (physics/3d/default_gravity) times each ball's gravity_scale, so
 ## the corrector reads it from the engine on release; its 64-bit g is set to the chosen value first.
 class_name UniformFieldLab
@@ -19,18 +22,136 @@ var gravity_id := "earth"
 ## The project's engine gravity; gravity_scale = g / engine_g.
 var engine_g: float = ProjectSettings.get_setting("physics/3d/default_gravity", 9.81)
 var floor_body: StaticBody3D
+## True from the release until the next reset (the balls are in the field, not held).
+var released := false
+## Island / pad / reaction props; the lab assigns its own PadProps subclass in _init.
+var props: PadProps
+## Set once the user moved something (placements() then keeps it across a screen rebuild).
+var _placed := false
+## Engine samples for the graph: (time, height of the ball's bottom above the floor).
+var _measured := PackedVector2Array()
+var _graph_revision := 0
+var _last_status := ""
+
+
+func _ready() -> void:
+	_build_world()
+	for control in definition.get("controls", []):
+		set_control(control.id, control.default)
+
+
+## Builds the lab's bodies and props (once, before the controls' defaults are applied).
+func _build_world() -> void:
+	pass
+
+
+## The gravity control; the lab's own controls call super for the others.
+func set_control(id: String, value: Variant) -> void:
+	if id == "gravity":
+		set_gravity(str(value))
+		reset_run()
+
+
+func control_value(id: String) -> Variant:
+	if id == "gravity":
+		return gravity_id
+	return super(id)
+
+
+func run_action(id: String) -> void:
+	match id:
+		"release":
+			release()
+		"reset":
+			reset_run()
+
+
+## Lets the balls go (a run in progress is reset first).
+func release() -> void:
+	pass
+
+
+## Every ball back at its start, frozen, in the current field; graph points cleared.
+func reset_run() -> void:
+	pass
+
+
+## "ready" / ... : the state that decides the panels' texts; a change emits state_changed.
+func status() -> String:
+	return "ready"
+
+
+## Per fixed step while released (before the balls' own step: tree order).
+func _released_step() -> void:
+	pass
+
+
+func _physics_process(_delta: float) -> void:
+	if not released:
+		return
+	_released_step()
+	if status() != _last_status:
+		_update_status()
+
+
+func _update_status(quiet := false) -> void:
+	_last_status = status()
+	if not quiet:
+		state_changed.emit()
+
+
+func graph_revision() -> int:
+	return _graph_revision
+
+
+func manipulation_cancelled(_id: String) -> void:
+	reset_run()
+
+
+## The run starts: `first_points` are the graph's first measured points (the release height).
+func _mark_released(first_points: PackedVector2Array) -> void:
+	released = true
+	_measured = first_points
+	_graph_revision += 1
+	props.released()
+	_update_status(true)
+
+
+## The balls are back at their start.
+func _mark_reset() -> void:
+	released = false
+	_measured.clear()
+	_graph_revision += 1
+	props.reset()
+	_update_status(true)
+
+
+## Time (s) of this fixed step when it is a graph sample step inside the graph window, else -1.
+## `steps` = fixed steps since the release (the corrector's samples index).
+func _graph_sample_time(steps: int) -> float:
+	if steps <= 0 or steps % GRAPH_EVERY_STEPS != 0:
+		return -1.0
+	var t := steps * step_dt()
+	return t if t <= graph_x_max() + 0.001 else -1.0
+
+
+## Appends the engine's height of one ball at `steps` to the graph points, unless it landed
+## earlier (true when a point was added).
+func _append_sample(c: UniformFieldCorrector, steps: int, start_y: float) -> bool:
+	var landed_before := c.landed_step >= 0 and c.landed_step < steps
+	if steps >= c.samples.size() or landed_before:
+		return false
+	_measured.append(Vector2(steps * step_dt(), maxf(0.0, start_y + c.samples[steps])))
+	return true
 
 
 ## Selects a gravity option ({id, g} in the "gravity" control). False for an unknown id.
 func set_gravity(option_id: String) -> bool:
-	for control in definition.get("controls", []):
-		if control.id != "gravity":
-			continue
-		for option in control.options:
-			if option.id == option_id:
-				g = float(option.g)
-				gravity_id = option_id
-				return true
+	var option := _find_option("gravity", option_id)
+	if not option.is_empty():
+		g = float(option.g)
+		gravity_id = option_id
+		return true
 	push_warning("%s: unknown gravity %s" % [definition.get("id", "?"), option_id])
 	return false
 

@@ -10,11 +10,10 @@
 ## - white distance ticks on the floor every metre (every 5 m longer), the island and the ball's
 ##   ArtJuice.
 class_name ProjectileProps
-extends RefCounted
+extends PadProps
 
 const POST_BACK := 0.45          # m behind the ball (-x) the post stands
 const PAD_SIZE := Vector3(0.5, 0.06, 0.5)
-const PAD_FLIP_S := 0.18
 const PATH_DOTS := 28
 const DOT_RADIUS := 0.05
 const TICKS_FROM := -8
@@ -29,7 +28,6 @@ var pad: MeshInstance3D
 var arrow: MeshInstance3D
 var path: MultiMeshInstance3D
 var ring: MeshInstance3D
-var _pad_tween: Tween
 ## (angle, speed) the arrow mesh was built for.
 var _arrow_key := Vector2(-1.0, -1.0)
 
@@ -40,7 +38,8 @@ func ticks_mesh() -> Mesh:
 	for x in range(TICKS_FROM, TICKS_TO + 1):
 		var long := x % 5 == 0
 		var depth := 0.4 if long else 0.22
-		b.add_rounded_box(Transform3D(Basis(), Vector3(x, 0.006, TICKS_Z + depth * 0.5)), Vector3(0.06, 0.02, depth), 0.0, 1, ArtPalette.WHITE)
+		b.add_rounded_box(Transform3D(Basis(), Vector3(x, 0.006, TICKS_Z + depth * 0.5)),
+			Vector3(0.06, 0.02, depth), 0.0, 1, ArtPalette.WHITE)
 	return b.commit()
 
 
@@ -57,8 +56,9 @@ func post_mesh() -> Mesh:
 func pad_mesh() -> Mesh:
 	var b := ArtKit.builder()
 	b.ao_min = 0.85
-	b.add_rounded_box(Transform3D(Basis(), Vector3(POST_BACK, -PAD_SIZE.y * 0.5, 0.0)), PAD_SIZE, 0.02, 1, ArtPalette.YELLOW, ArtPalette.YELLOW_TOP)
-	b.add_rounded_box(Transform3D(Basis(), Vector3(POST_BACK * 0.5 - 0.06, -PAD_SIZE.y * 0.5, 0.0)), Vector3(POST_BACK - 0.1, 0.05, 0.12), 0.0, 1, ArtPalette.BLUE_DARK)
+	add_pad_slab(b, Vector3(POST_BACK, -PAD_SIZE.y * 0.5, 0.0), PAD_SIZE)
+	b.add_rounded_box(Transform3D(Basis(), Vector3(POST_BACK * 0.5 - 0.06, -PAD_SIZE.y * 0.5, 0.0)),
+		Vector3(POST_BACK - 0.1, 0.05, 0.12), 0.0, 1, ArtPalette.BLUE_DARK)
 	return b.commit()
 
 
@@ -78,8 +78,7 @@ func ring_mesh() -> Mesh:
 
 
 func dress(experiment: Node3D, ball: RigidBody3D, ball_visual: MeshInstance3D, ball_size: float) -> void:
-	experiment.add_child(ArtKit.make_environment())
-	ArtKit.build_island(experiment, Vector3(0.5, 0.0, -0.8))
+	ArtKit.add_world(experiment, Vector3(0.5, 0.0, -0.8))
 	var ticks := ArtKit.instance(ticks_mesh())
 	ticks.name = "DistanceTicks"
 	experiment.add_child(ticks)
@@ -120,8 +119,8 @@ func dress(experiment: Node3D, ball: RigidBody3D, ball_visual: MeshInstance3D, b
 
 ## The stand under a waiting ball whose bottom is at `bottom` (no stand for a ball on the floor).
 func place_stand(bottom: Vector3) -> void:
-	_stop_pad()
-	var up := bottom.y > 0.05
+	stop_flip("pad")
+	var up := bottom.y > PAD_MIN_HEIGHT
 	post.visible = up
 	pad.visible = up
 	post.position = bottom + Vector3(-POST_BACK, -bottom.y, 0.0)
@@ -144,8 +143,10 @@ func set_arrow(center: Vector3, angle_deg: float, speed: float, tip_length: floa
 	var shaft := length - HEAD_LENGTH
 	# Built along +x (cylinders grow along +y from their base: turn them by -90 deg about z).
 	var along := Basis(Vector3.BACK, -PI * 0.5)
-	b.add_cylinder(Transform3D(along, Vector3.ZERO), ARROW_RADIUS, ARROW_RADIUS, shaft, 6, ArtPalette.PURPLE, true, ArtPalette.PURPLE_TOP)
-	b.add_cylinder(Transform3D(along, Vector3(shaft, 0.0, 0.0)), ARROW_RADIUS * 2.6, 0.0, HEAD_LENGTH, 6, ArtPalette.PURPLE, true, ArtPalette.PURPLE_TOP)
+	b.add_cylinder(Transform3D(along, Vector3.ZERO), ARROW_RADIUS, ARROW_RADIUS, shaft, 6,
+		ArtPalette.PURPLE, true, ArtPalette.PURPLE_TOP)
+	b.add_cylinder(Transform3D(along, Vector3(shaft, 0.0, 0.0)), ARROW_RADIUS * 2.6, 0.0, HEAD_LENGTH, 6,
+		ArtPalette.PURPLE, true, ArtPalette.PURPLE_TOP)
 	arrow.mesh = b.commit()
 
 
@@ -169,10 +170,7 @@ func set_path(points: PackedVector3Array, landing: Variant) -> void:
 func released() -> void:
 	show_arrow(false)
 	if pad.visible:
-		_stop_pad()
-		_pad_tween = pad.create_tween()
-		_pad_tween.tween_property(pad, "rotation:z", -PI * 0.5, PAD_FLIP_S).set_trans(Tween.TRANS_QUAD).set_ease(Tween.EASE_IN)
-		_pad_tween.tween_callback(pad.hide)
+		flip_pad("pad", pad, "rotation:z", -PI * 0.5)
 	juice.stretch()
 
 
@@ -180,8 +178,3 @@ func reset() -> void:
 	show_arrow(true)
 	juice.pop()
 
-
-func _stop_pad() -> void:
-	if _pad_tween != null and _pad_tween.is_valid():
-		_pad_tween.kill()
-	_pad_tween = null

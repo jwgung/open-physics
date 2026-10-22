@@ -4,15 +4,15 @@
 ## Conditions: gravity (the web's buttons), the drop height of all three (slider) and the red ball's
 ## mass. Each ball can be dragged sideways along the floor line under it and raised with its height
 ## handle (web step 1: "세 공의 높이를 맞춰요"). A line, not the floor plane: a ball held 5 m up is
-## level with the camera, where a horizontal drag plane at its height would be seen edge-on. Motion: Jolt + UniformFieldCorrector (uniform_field_lab.gd). Displayed
-## numbers: PhysicsLaws at the formula time (the landing at landing_time(0, -g, h0)); the engine is
+## level with the camera, where a horizontal drag plane at its height would be seen edge-on.
+## Motion: Jolt + UniformFieldCorrector (uniform_field_lab.gd). Displayed numbers: PhysicsLaws at the formula time (the landing at landing_time(0, -g, h0)); the engine is
 ## only the graph's "시뮬레이션" points and the measured landing times.
 extends UniformFieldLab
 
 ## Left to right. mass: kg (the red one follows the "mass" control).
 const BALLS := {
-	"pink": {"x": -1.5, "mass": 0.5, "color": Color("ff4fa3"), "name": "분홍"},
-	"orange": {"x": 0.0, "mass": 1.0, "color": Color("ff7a1a"), "name": "주황"},
+	"pink": {"x": -1.5, "mass": 0.5, "color": ArtPalette.PINK, "name": "분홍"},
+	"orange": {"x": 0.0, "mass": 1.0, "color": ArtPalette.ORANGE, "name": "주황"},
 	"red": {"x": 1.5, "mass": 3.0, "color": ArtPalette.RED, "name": "빨강"},
 }
 const ORDER := ["pink", "orange", "red"]
@@ -22,38 +22,27 @@ const BOUNCE := 0.5               # the web's wood balls (restitution 0.5)
 var balls: Dictionary = {}        # id -> FormulaBody
 ## id -> start point of the ball's bottom (x, height above the floor, z).
 var starts: Dictionary = {}
-var released := false
 ## The "height" control (all three balls); a height handle changes one ball only.
 var height := 5.0
 var mass_id := "heavy"
-var props := FreeFallProps.new()
-var _placed := false
-var _measured := PackedVector2Array()
-var _graph_revision := 0
-var _last_status := ""
 
 
-func _ready() -> void:
-	_build_world()
-	for control in definition.get("controls", []):
-		set_control(control.id, control.default)
+func _init() -> void:
+	props = FreeFallProps.new()
 
 
 func set_control(id: String, value: Variant) -> void:
 	match id:
-		"gravity":
-			set_gravity(str(value))
-			reset_balls()
 		"height":
 			set_height(float(value))
 		"mass":
 			set_red_mass(str(value))
+		_:
+			super(id, value)
 
 
 func control_value(id: String) -> Variant:
 	match id:
-		"gravity":
-			return gravity_id
 		"height":
 			return height
 		"mass":
@@ -61,67 +50,52 @@ func control_value(id: String) -> Variant:
 	return super(id)
 
 
-func run_action(id: String) -> void:
-	match id:
-		"release":
-			release()
-		"reset":
-			reset_balls()
-
-
 ## All three balls start `h` metres above the floor (their bottoms), where they stand on the floor.
 func set_height(h: float) -> void:
 	height = h
 	for id in ORDER:
 		starts[id].y = h
-	reset_balls()
+	reset_run()
 
 
 func set_red_mass(option_id: String) -> void:
-	for control in definition.get("controls", []):
-		if control.id != "mass":
-			continue
-		for option in control.options:
-			if option.id == option_id:
-				balls.red.mass = float(option.kg)
-				mass_id = option_id
-				reset_balls()
-				return
-	push_warning("free-fall: unknown mass %s" % option_id)
+	var option := _find_option("mass", option_id)
+	if option.is_empty():
+		push_warning("free-fall: unknown mass %s" % option_id)
+		return
+	balls.red.mass = float(option.kg)
+	mass_id = option_id
+	reset_run()
+
+
+func fall_props() -> FreeFallProps:
+	return props as FreeFallProps
 
 
 func mass_of(id: String) -> float:
 	return balls[id].mass
 
 
-## Every ball back at its start, frozen, in the current field; graph points cleared.
-func reset_balls() -> void:
+func reset_run() -> void:
 	for id in ORDER:
 		var ball: FormulaBody = balls[id]
 		hold_ball(ball, starts[id] + Vector3.UP * BALL_RADIUS)
 		apply_field(ball)
-		props.place_pad(id, starts[id])
-	released = false
-	_measured.clear()
-	_graph_revision += 1
-	props.reset()
-	_update_status(true)
+		fall_props().place_pad(id, starts[id])
+	_mark_reset()
 
 
 func release() -> void:
 	if released:
-		reset_balls()
+		reset_run()
 	for id in ORDER:
 		var ball: FormulaBody = balls[id]
 		apply_field(ball)
 		(ball.corrector as UniformFieldCorrector).release(ball, Vector3.ZERO)
-	released = true
-	_measured.clear()
+	var first := PackedVector2Array()
 	for id in ORDER:
-		_measured.append(Vector2(0.0, starts[id].y))
-	_graph_revision += 1
-	props.released()
-	_update_status(true)
+		first.append(Vector2(0.0, starts[id].y))
+	_mark_released(first)
 
 
 func corrector_of(id: String) -> UniformFieldCorrector:
@@ -180,28 +154,15 @@ func status() -> String:
 	return "landed"
 
 
-func _update_status(quiet := false) -> void:
-	_last_status = status()
-	if not quiet:
-		state_changed.emit()
-
-
-func _physics_process(_delta: float) -> void:
-	if not released:
-		return
+func _released_step() -> void:
 	# samples[k] is the drop after k steps; this runs before the balls' own step (tree order).
 	var steps := corrector_of("red").steps - 1
-	if steps > 0 and steps % GRAPH_EVERY_STEPS == 0:
-		var t := steps * step_dt()
-		if t <= graph_x_max() + 0.001:
-			for id in ORDER:
-				var c := corrector_of(id)
-				var landed_before := c.landed_step >= 0 and c.landed_step < steps
-				if steps < c.samples.size() and not landed_before and starts[id].y > 1e-6:
-					_measured.append(Vector2(t, maxf(0.0, starts[id].y + c.samples[steps])))
-			_graph_revision += 1
-	if status() != _last_status:
-		_update_status()
+	if _graph_sample_time(steps) < 0.0:
+		return
+	for id in ORDER:
+		if starts[id].y > 1e-6:
+			_append_sample(corrector_of(id), steps, starts[id].y)
+	_graph_revision += 1
 
 
 func observations() -> Dictionary:
@@ -259,10 +220,6 @@ func graph_series() -> Dictionary:
 	return series
 
 
-func graph_revision() -> int:
-	return _graph_revision
-
-
 func follow_point() -> Vector3:
 	return balls.red.global_position if balls.has("red") else global_position
 
@@ -280,8 +237,8 @@ func _build_world() -> void:
 		balls[id] = ball
 		visuals[id] = [ball, visual]
 		starts[id] = Vector3(spec.x, height, 0.0)
-	props.dress(self, visuals, BALL_RADIUS * 2.0)
-	for juice: ArtJuice in props.juices.values():
+	fall_props().dress(self, visuals, BALL_RADIUS * 2.0)
+	for juice: ArtJuice in fall_props().juices.values():
 		juice.landed.connect(impact.emit)
 
 
@@ -301,15 +258,15 @@ func manipulation_surface(surface_id: String) -> ManipSurface:
 
 
 func manipulation_juice(id: String) -> ArtJuice:
-	return props.juices.get(id)
+	return fall_props().juices.get(id)
 
 
 ## Picked up (also a falling or landed ball): the run stops and every ball waits at its start, so
 ## the picked one is lifted from its start height (the handle keeps that height).
 func manipulation_started(id: String) -> void:
 	if released:
-		reset_balls()
-	props.juices[id].rearm()
+		reset_run()
+	fall_props().juices[id].rearm()
 
 
 func manipulation_placed(id: String, transform: Transform3D) -> void:
@@ -318,13 +275,9 @@ func manipulation_placed(id: String, transform: Transform3D) -> void:
 	var ball: FormulaBody = balls[id]
 	hold_ball(ball, transform.origin)
 	apply_field(ball)
-	props.place_pad(id, starts[id])
+	fall_props().place_pad(id, starts[id])
 	_graph_revision += 1
 	_update_status(true)
-
-
-func manipulation_cancelled(_id: String) -> void:
-	reset_balls()
 
 
 ## Every ball's start once one was moved (kept across a screen rebuild).

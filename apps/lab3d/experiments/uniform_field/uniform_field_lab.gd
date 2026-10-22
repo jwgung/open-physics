@@ -1,10 +1,11 @@
 ## Shared base of the uniform-field guided labs (Phase 1 Task 4a: free fall and projectile). Both
 ## drop or throw balls in the field chosen by the "gravity" control (the web's gravity buttons:
 ## 0, moon 1.62, earth 9.81, jupiter 24.79 m/s^2) and use the uniform-field formula correction
-## (UniformFieldCorrector, docs/formula-correction.md section 4): Jolt integrates the field, the
-## first released step gets the leapfrog half force, and the engine contact report ends the free
-## flight. Every displayed number comes from PhysicsLaws; engine positions are only the graph's
-## "시뮬레이션" points and the measured landing values.
+## (UniformFieldCorrector, docs/formula-correction.md section 4): Jolt integrates the field and the
+## first released step gets the leapfrog half force. Every displayed number comes from PhysicsLaws,
+## and so does "landed" (has_landed_by: the formula clock reached the formula landing time, or the
+## engine reported a landing earlier); engine positions are only the graph's "시뮬레이션" points (up
+## to the formula landing time) and the measured landing values (measured_landing_step).
 ## The base also owns what both labs do the same way: the run state (released), the graph's
 ## "시뮬레이션" points and revision, the status change hint, the controls' defaults, and the
 ## release / reset actions. A lab fills in _build_world, release, reset_run, status, _released_step.
@@ -19,6 +20,8 @@ const GRAPH_EVERY_STEPS := 6  # graph sample every 6 fixed steps (10 Hz), like t
 ## other (each falls as its own formula says; a neighbour's contact also delayed the engine's floor
 ## report by a step). Picking and the free-place query still see them (all layers).
 const BALL_LAYER := 3
+## Seconds the fixed-step clock may be short of a formula landing time and still count as there.
+const LANDING_SLACK := 1e-9
 
 ## Field the balls feel (m/s^2, downwards) and the selected gravity option id.
 var g := 9.81
@@ -140,11 +143,10 @@ func _graph_sample_time(steps: int) -> float:
 
 
 ## Appends the engine's height of one ball at `steps` to the graph points and moves the graph
-## revision on, unless the ball landed earlier or at the release (formula `landing` 0; true when a
-## point was added).
+## revision on, unless `steps` is past the formula `landing` time (the free flight the formula line
+## describes; a ball let go on the floor, landing 0, adds none; true when a point was added).
 func _append_sample(c: UniformFieldCorrector, steps: int, start_y: float, landing: float) -> bool:
-	var landed_before := c.landed_step >= 0 and c.landed_step < steps
-	if landing <= 0.0 or steps >= c.samples.size() or landed_before:
+	if steps * step_dt() > landing or steps >= c.samples.size():
 		return false
 	_measured.append(Vector2(steps * step_dt(), maxf(0.0, start_y + c.samples[steps])))
 	_graph_revision += 1
@@ -165,13 +167,28 @@ func _formula_line(height: Callable, landing: float) -> PackedVector2Array:
 	return line
 
 
-## A ball has landed: the engine reported its landing, or its formula landing time is 0 (let go on
-## the floor in a field and not thrown upwards: nothing to fall). Without a field a ball on the
-## floor never lands (landing INF).
-## A landing within the first step (a release a few mm above the floor) touches the floor inside the
-## step that seeds the start contacts, so the engine never reports it: the formula time decides.
-static func has_landed_by(c: UniformFieldCorrector, landing: float) -> bool:
-	return c.landed_step >= 0 or landing <= c.dt
+## A ball has landed (the panels' "landed"; the formula owns it): the formula `clock` reached the
+## formula `landing` time (LANDING_SLACK absorbs the rounding of step counts times dt), or the engine
+## reported a landing before that (its report is within 2 steps). The formula alone covers what the
+## engine cannot report: a release on the floor (landing 0) or a few mm above it, or a short hop
+## from the floor whose floor contact never ends (all touch the floor within the step that seeds
+## the release contacts). Without a field a ball on the floor never lands (landing INF).
+## (No whole-step slack: until the clock reaches the landing the panel shows the clock's values,
+## which the TS vectors check step by step.)
+static func has_landed_by(c: UniformFieldCorrector, landing: float, clock: float) -> bool:
+	return c.landed_step >= 0 or clock >= landing - LANDING_SLACK
+
+
+## Fixed step of the measured ("시뮬레이션") landing: the engine's landing report, or, when the
+## engine reported none by the formula landing (see has_landed_by), the recorded step nearest to the
+## formula `landing` time (where the engine ball was then); -1 while neither is there yet.
+static func measured_landing_step(c: UniformFieldCorrector, landing: float, clock: float) -> int:
+	if c.landed_step >= 0:
+		return c.landed_step
+	if not has_landed_by(c, landing, clock):
+		return -1
+	var step := roundi(landing / c.dt)
+	return step if step <= c.steps - 1 and step < c.offsets.size() else -1
 
 
 ## Start height (ball bottom above the floor, m) kept on the 1 mm grid of the handles' steps, so the

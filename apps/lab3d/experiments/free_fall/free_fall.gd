@@ -114,14 +114,16 @@ func clock() -> float:
 	return maxi(0, corrector_of("red").steps - 1) * step_dt()
 
 
-## The engine reported the ball's landing, or it was let go on the floor in a field (has_landed_by).
+## The ball has landed: the clock reached its formula landing time, or the engine reported it
+## (has_landed_by).
 func has_landed(id: String) -> bool:
-	return has_landed_by(corrector_of(id), landing_time(id))
+	return has_landed_by(corrector_of(id), landing_time(id), clock())
 
 
-## Formula time of one ball: the clock, but never past its landing.
+## Formula time of one ball: the clock, but never past its landing (the landing once it landed).
 func ball_time(id: String) -> float:
-	return minf(clock(), landing_time(id))
+	var landing := landing_time(id)
+	return landing if has_landed(id) else minf(clock(), landing)
 
 
 ## Formula height of a ball's bottom above the floor at time t (0 from the landing on).
@@ -192,13 +194,14 @@ func observations() -> Dictionary:
 	}
 
 
-## Engine landing times of the three balls (the "시뮬레이션" readout): "분홍 1.02 · 주황 … s".
+## Engine landing times of the three balls (the "시뮬레이션" readout): "분홍 1.02 · 주황 … s"; a
+## ball shows "—" until it has a measured landing step (measured_landing_step).
 func measured_landings() -> String:
 	if not released:
 		return "—"
 	var parts := PackedStringArray()
 	for id in ORDER:
-		var step := corrector_of(id).landed_step
+		var step := measured_landing_step(corrector_of(id), landing_time(id), clock())
 		parts.append("%s %s" % [BALLS[id].name, "%.2f" % (step * step_dt()) if step >= 0 else "—"])
 	return " · ".join(parts) + " s"
 

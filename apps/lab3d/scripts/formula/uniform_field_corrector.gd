@@ -27,6 +27,8 @@ var initial_velocity := Vector3.ZERO
 var g := 9.81
 var field_direction := Vector3.DOWN
 var mass := 1.0
+## Fixed-step length (s): set on release from Engine.physics_ticks_per_second (so a reading between
+## the release and the first step already uses the real step), then from each step's delta.
 var dt := 1.0 / 60.0
 ## True from release until the body lands (see the header).
 var in_flight := false
@@ -62,6 +64,7 @@ func release(body: RigidBody3D, velocity: Vector3) -> void:
 		if not direction.is_equal_approx(field_direction):
 			field_direction = direction
 	mass = body.mass
+	dt = 1.0 / float(Engine.physics_ticks_per_second)
 	in_flight = true
 	landed_step = -1
 	_start_contacts.clear()   # seeded from the first released step's report (_check_landing)

@@ -152,10 +152,10 @@ func shown_time() -> float:
 	return landing if has_landed() else minf(clock(), landing)
 
 
-## The engine reported the landing, or the ball was let go on the floor in a field without rising
-## (flight time 0, e.g. a level throw from the floor: it slides, it does not fly).
+## The clock reached the formula flight time, or the engine reported the landing (has_landed_by;
+## a level throw from the floor has flight time 0: it slides, it does not fly).
 func has_landed() -> bool:
-	return has_landed_by(corrector(), flight_time())
+	return has_landed_by(corrector(), flight_time(), clock())
 
 
 ## Formula offset (x, height of the bottom above the floor) at time t.
@@ -239,12 +239,14 @@ func observations() -> Dictionary:
 	}
 
 
-## Engine landing distance from the launch point (the "시뮬레이션" readout), or "—".
+## Engine landing distance from the launch point (the "시뮬레이션" readout): the engine x at the
+## measured landing step (measured_landing_step), or "—" before it.
 func measured_range() -> Variant:
 	var c := corrector()
-	if not released or c.landed_step < 0 or c.landed_step >= c.offsets.size():
+	var step := measured_landing_step(c, flight_time(), clock()) if released else -1
+	if step < 0 or step >= c.offsets.size():
 		return "—"
-	return c.offsets[c.landed_step].x
+	return c.offsets[step].x
 
 
 func graph_series() -> Dictionary:

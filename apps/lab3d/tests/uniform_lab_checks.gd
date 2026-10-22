@@ -11,7 +11,10 @@
 ## 5. landing rules (review of PR #9): the release contacts come from the first released step (a
 ##    fresh lab's first throw / drop from the floor), landings on the floor only, a ball let go on
 ##    the floor in a field has landed (no field: it has not, the time runs), one drop line per ball,
-##    one launch height for the engine, the graph and the formulas.
+##    one launch height for the engine, the graph and the formulas; "landed" is the formula's (clock
+##    at the formula landing time, or an engine report): a short hop from the floor and a drop from a
+##    few mm land, get a measured value and add no graph point after the formula landing, and at
+##    120 Hz the state does not flicker after the release.
 ## 4. manipulation through the real input path: free fall ball drag + height handle, projectile ball
 ##    on its launch line + height, the arrow knob's polar snap (15 deg, 0.5 m/s), blocked directions.
 extends RefCounted
@@ -51,6 +54,9 @@ func run() -> void:
 	await check_free_fall_zero_g_on_floor()
 	await check_free_fall_drop_lines()
 	await check_projectile_level_from_floor()
+	await check_short_hop_from_floor()
+	await check_drop_from_mm()
+	await check_release_at_120_hz()
 	await check_projectile_height_grid()
 	await check_projectile_art()
 	check_arrow_surface()
@@ -79,6 +85,11 @@ func _until_step(corrector: UniformFieldCorrector, k: int) -> void:
 	while corrector.steps - 1 < k and guard < 2000:
 		await tree.physics_frame
 		guard += 1
+
+
+## Every free-fall ball has its engine landing report (the formula "landed" can come first).
+func _engine_landed(lab: Experiment) -> bool:
+	return lab.ORDER.all(func(id: String) -> bool: return lab.corrector_of(id).landed_step >= 0)
 
 
 ## Relative error (absolute below 1).
@@ -176,9 +187,9 @@ func check_free_fall_cases() -> void:
 				var c: UniformFieldCorrector = lab.corrector_of(id)
 				worst_motion = maxf(worst_motion, absf(c.samples[k] - want))
 				worst_spread = maxf(worst_spread, absf(c.samples[k] - red.samples[k]))
-		# Until every ball reported its landing (4 s at most).
+		# Until every ball has landed and the engine reported each landing (4 s at most).
 		for i in 4 * STEP_HZ:
-			if lab.status() == "landed":
+			if lab.status() == "landed" and _engine_landed(lab):
 				break
 			await tree.physics_frame
 		var landing := float(case.landing_time)
@@ -477,13 +488,14 @@ func check_first_release_from_floor() -> void:
 		"landing: a fresh free-fall lab with a ball on the floor reports no engine landing for it; the dropped ones land at their formula time",
 		"red %d, orange %d (formula %d)" % [lab.corrector_of("red").landed_step, orange.landed_step, want])
 	await _free(lab)
-	# 1 mm up: the floor is touched inside the first (seeding) step, so the formula time decides.
+	# 1 mm up: the floor is touched inside the first (seeding) step, so the engine reports nothing and
+	# the formula clock decides.
 	lab = await _lab("free-fall")
 	lab.manipulation_placed("red", Transform3D(Basis(), Vector3(1.5, lab.BALL_RADIUS + 0.001, 0.0)))
 	lab.release()
 	for i in 10:
 		await tree.physics_frame
-	expect.call(lab.has_landed("red"), "landing: a ball let go 1 mm above the floor counts as landed (formula time within the first step)", "")
+	expect.call(lab.has_landed("red"), "landing: a ball let go 1 mm above the floor counts as landed (the formula clock passes its landing time)", "")
 	await _free(lab)
 
 
@@ -497,7 +509,7 @@ func check_free_fall_neighbours() -> void:
 	lab.release()
 	var ball_contacts := 0   # balls are on their own layer, out of each other's mask
 	for i in 3 * STEP_HZ:
-		if lab.status() == "landed":
+		if lab.status() == "landed" and _engine_landed(lab):
 			break
 		await tree.physics_frame
 		for id in lab.ORDER:
@@ -582,6 +594,83 @@ func check_projectile_level_from_floor() -> void:
 		and lab.graph_series().measured.size() == 1,
 		"landing: a level throw from the floor has landed at the release (time 0), not '날아가는 중'", str(shown))
 	await _free(lab)
+
+
+## A short hop from the floor (15 deg, 1 m/s: about 3 steps of flight) lands at its formula flight
+## time whether or not the engine reports it (the floor contact may never end), the state goes
+## "flying" -> "landed" once, the measured distance is the engine x at the landing and the graph
+## gets no point after the formula landing.
+func check_short_hop_from_floor() -> void:
+	var lab: Experiment = await _lab("projectile")
+	lab.set_control("angle", 15.0)
+	lab.set_control("speed", 1.0)
+	_place_launch(lab, 0.0)
+	var flight: float = lab.flight_time()
+	var landing_step := ceili(flight * STEP_HZ)   # the first step whose clock reaches T
+	lab.release()
+	var c: UniformFieldCorrector = lab.corrector()
+	var states := [lab.status()]
+	while c.steps - 1 < 4 * lab.GRAPH_EVERY_STEPS:
+		await tree.physics_frame
+		if states[-1] != lab.status():
+			states.append(lab.status())
+	var landed_at := -1
+	lab.release()
+	while c.steps - 1 < landing_step + 1:
+		if landed_at < 0 and lab.status() == "landed":
+			landed_at = c.steps - 1
+		await tree.physics_frame
+	await _until_step(c, 4 * lab.GRAPH_EVERY_STEPS)
+	var shown: Dictionary = lab.observations()
+	var dx := 1.0 * cos(deg_to_rad(15.0))
+	var measured: Variant = shown.landing
+	expect.call(states == ["flying", "landed"] and landed_at == landing_step and shown.state == "바닥에 닿음" and float(shown.time) == flight
+		and measured is float and absf(measured - lab.flight_range()) <= 2.0 * dx / STEP_HZ + 1e-3 and lab.graph_series().measured.size() == 1,
+		"landing: a short hop from the floor (15 deg, 1 m/s) lands at its formula time, once, with a measured distance and no graph point after it",
+		"states %s, landed at step %d (want %d, T %.4f s), engine step %d, measured %s (formula %.4f), %d graph points" % [str(states), landed_at, landing_step,
+			flight, c.landed_step, str(measured), lab.flight_range(), lab.graph_series().measured.size()])
+	await _free(lab)
+
+
+## A drop from 5 mm (under 2 steps) lands by the formula, shows a measured landing time and adds no
+## graph point after its formula landing (the two balls at 5 m add theirs).
+func check_drop_from_mm() -> void:
+	var lab: Experiment = await _lab("free-fall")
+	lab.manipulation_placed("red", Transform3D(Basis(), Vector3(1.5, lab.BALL_RADIUS + 0.005, 0.0)))
+	var landing: float = lab.landing_time("red")
+	lab.release()
+	var red: UniformFieldCorrector = lab.corrector_of("red")
+	await _until_step(red, ceili(landing * STEP_HZ))
+	var landed: bool = lab.has_landed("red")
+	await _until_step(red, 5 * lab.GRAPH_EVERY_STEPS + 3)
+	var text: String = lab.observations().landing
+	var want := "%s %.2f" % [lab.BALLS.red.name, roundi(landing * STEP_HZ) / float(STEP_HZ)] if red.landed_step < 0 else "%s %.2f" % [lab.BALLS.red.name, red.landed_step / float(STEP_HZ)]
+	var points: int = lab.graph_series().measured.size()
+	expect.call(landed and text.contains(want) and points == 3 + 2 * 5,
+		"landing: a drop from 5 mm lands by the formula, has a measured landing time and no graph point after the formula landing",
+		"T %.4f s, engine step %d, readout %s (want %s), %d graph points (want 13)" % [landing, red.landed_step, text, want, points])
+	await _free(lab)
+
+
+## At 120 Hz a ball let go 1 mm above the floor (formula landing between one and two 120 Hz steps)
+## goes from "not landed" to "landed" once, and the corrector's step length is the real one from the
+## release on (not the 60 Hz default before its first step).
+func check_release_at_120_hz() -> void:
+	var ticks := Engine.physics_ticks_per_second
+	Engine.physics_ticks_per_second = 120
+	var lab: Experiment = await _lab("free-fall")
+	lab.manipulation_placed("red", Transform3D(Basis(), Vector3(1.5, lab.BALL_RADIUS + 0.001, 0.0)))
+	lab.release()
+	var dt: float = lab.corrector_of("red").dt   # before the first step
+	var seen := [lab.has_landed("red")]
+	for i in 12:
+		await tree.physics_frame
+		if seen[-1] != lab.has_landed("red"):
+			seen.append(lab.has_landed("red"))
+	await _free(lab)
+	Engine.physics_ticks_per_second = ticks
+	expect.call(seen == [false, true] and dt == 1.0 / 120.0,
+		"landing: at 120 Hz a ball let go 1 mm up turns 'landed' once after the release (no flicker)", "landed sequence %s, corrector dt %s" % [str(seen), str(dt)])
 
 
 ## A launch height off the 1 mm grid is snapped where it is set: the engine start, the graph's
@@ -674,7 +763,7 @@ func check_free_fall_manipulation() -> void:
 	# Drop: the red ball lands first, at the TS landing time of its own height (±2 steps).
 	screen.experiment_action("release")
 	for i in 3 * STEP_HZ:
-		if lab.status() == "landed":
+		if lab.status() == "landed" and _engine_landed(lab):
 			break
 		await tree.physics_frame
 	var red_land: int = lab.corrector_of("red").landed_step

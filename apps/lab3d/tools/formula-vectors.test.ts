@@ -42,6 +42,7 @@ import {
   periodFromAngularFrequency,
 } from "../../../src/physics/laws/oscillation";
 import { torque } from "../../../src/physics/laws/rotation";
+import { tsApexTime, tsLandingTime } from "./ts-oracle";
 import { AnchoredSpringLaw, BuoyancyRegionLaw, PushFrictionLaw } from "../../../src/physics/laws/world-mechanics";
 
 type Value = number | boolean | string | number[] | { [key: string]: Value };
@@ -99,6 +100,10 @@ function freeFall(): Case[] {
       cases.push({ law: "kinetic_energy", args: [m, g * 1.3], expect: kineticEnergy(m, { x: g * 1.3, y: 0 }) });
       cases.push({ law: "momentum", args: [m, -g * 1.3], expect: momentum(m, { x: -g * 1.3, y: 0 }).x });
     }
+    // Task 4a: time to reach the floor from the drop height (sqrt(2h/g) with no closed form in TS).
+    for (const drop of [0.5, 2.5, 5, 8]) {
+      cases.push({ law: "landing_time", args: [0, -g, drop], expect: tsLandingTime(0, -g, drop) });
+    }
   }
   return cases;
 }
@@ -114,6 +119,14 @@ function projectile(): Case[] {
       cases.push({ law: "constant_acceleration_displacement", args: [v0.y, -g, t], expect: s.y });
       cases.push({ law: "constant_acceleration_velocity", args: [v0.y, -g, t], expect: v.y });
       cases.push({ law: "kinetic_energy", args: [1, Math.hypot(v.x, v.y)], expect: kineticEnergy(1, v) });
+    }
+    // Task 4a: flight time to a landing level `drop` below the launch, apex time and rise.
+    for (const [speed, degrees, drop] of [[9, 45, 0.5], [7, 30, 0], [9, 60, 1.5], [5, 15, 3], [6, 90, 0.5], [8, 0, 2]]) {
+      const angle = degrees * Math.PI / 180;
+      const vy = speed * Math.sin(angle);
+      cases.push({ law: "landing_time", args: [vy, -g, drop], expect: tsLandingTime(vy, -g, drop) });
+      cases.push({ law: "apex_time", args: [vy, -g], expect: vy > 0 ? tsApexTime(vy, -g) : 0 });
+      cases.push({ law: "apex_rise", args: [vy, -g], expect: vy > 0 ? constantAccelerationDisplacement({ x: 0, y: vy }, { x: 0, y: -g }, tsApexTime(vy, -g)).y : 0 });
     }
   }
   return cases;

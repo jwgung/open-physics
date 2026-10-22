@@ -115,6 +115,33 @@ static func momentum(mass: float, velocity: float) -> float:
 static func gravitational_potential_energy(mass: float, g: float, height: float) -> float:
 	return mass * g * height
 
+## Landing time in a uniform field (Task 4a: free fall, projectile): the first t > 0 at which
+## constantAccelerationDisplacement(v0, a, t) = -drop along one axis (v0 and a along +up, a <= 0,
+## drop >= 0: how far below the start the landing level is). No closed form in the TS core: the
+## vectors (tools/formula-vectors.test.ts) find this root of the TS function by bisection.
+## INF when the body never comes down to that level (a = 0 and v0 >= 0, or drop < 0 out of reach).
+static func landing_time(v0: float, a: float, drop: float) -> float:
+	if a >= 0.0:
+		return drop / -v0 if v0 < 0.0 and drop >= 0.0 else INF
+	var disc := v0 * v0 - 2.0 * a * drop
+	if disc < 0.0:
+		return INF
+	return (v0 + sqrt(disc)) / -a
+
+## Apex of a throw in a uniform field (Task 4a: projectile): time at which
+## constantAccelerationVelocity(v0, a, t) = 0 (0 when the body does not rise: v0 <= 0 or a >= 0 with
+## v0 <= 0; INF for a rising body without a field) and the rise to it,
+## constantAccelerationDisplacement(v0, a, t_apex). TS vectors: root of the TS velocity by bisection.
+static func apex_time(v0: float, a: float) -> float:
+	if v0 <= 0.0:
+		return 0.0
+	return v0 / -a if a < 0.0 else INF
+
+static func apex_rise(v0: float, a: float) -> float:
+	if v0 <= 0.0:
+		return 0.0
+	return v0 * v0 / (-2.0 * a) if a < 0.0 else INF
+
 # --- collision (mechanics.ts, collision.ts, world.ts) --------------------------------------------
 
 ## mechanics.ts postCollisionVelocity1D: first body after a 1D collision with restitution e.

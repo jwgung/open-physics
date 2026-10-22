@@ -364,9 +364,16 @@ function scenes() {
   const pendulumLength = 2;
   const pendulumModel = new PendulumModel({ x: 0, y: 0 }, pendulumLength, 0.1, 0);
   const pendulumAngles: number[] = [];
+  // Default path: the web scene's constructor default damping (no argument).
+  const defaultPendulum = new PendulumModel({ x: 0, y: 0 }, pendulumLength, 0.1);
+  const defaultAngles: number[] = [];
   for (let step = 1; step <= 120; step += 1) {
     pendulumModel.step(DT, G);
-    if (step % 30 === 0) pendulumAngles.push(pendulumModel.angle);
+    defaultPendulum.step(DT, G);
+    if (step % 30 === 0) {
+      pendulumAngles.push(pendulumModel.angle);
+      defaultAngles.push(defaultPendulum.angle);
+    }
   }
   const buoyancyVolume = 0.4 ** 3; // 0.4 m cube (an upright prism: the linear fraction is exact)
   const fluidDensity = DISPLACED_MASS / buoyancyVolume;
@@ -423,6 +430,8 @@ function scenes() {
         angle: 0.1,
         period: pendulumPeriod(pendulumLength, G),
         angles: pendulumAngles,
+        default_damping: defaultPendulum.damping,
+        default_angles: defaultAngles,
       },
       pulley: [1, 2, 4].map((strands) => {
         const challenge = new PulleyAdvantageChallenge({ loadMass: 20, gravity: G, supportStrands: strands as SupportStrands });

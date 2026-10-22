@@ -613,8 +613,16 @@ func check_kinematic_models() -> void:
 	pendulum.anchor = Vector3(0.0, 5.0, 0.0)
 	pendulum.length = target.pendulum.length
 	pendulum.angle = target.pendulum.angle
+	pendulum.damping = 0.0   # the undamped TS run (period check)
 	pendulum.history_steps = 10 * STEP_HZ + 1
 	pendulum.attach(bob)
+	# Default path: no damping set, so the driver's default must be the TS PendulumModel default.
+	var default_bob := _body(world, 1.0, Vector3(-4.0, 0.0, 0.0), 0.15, 0.0, false)
+	var default_pendulum := PendulumModelDriver.new()
+	default_pendulum.anchor = Vector3(-4.0, 5.0, 0.0)
+	default_pendulum.length = target.pendulum.length
+	default_pendulum.angle = target.pendulum.angle
+	default_pendulum.attach(default_bob)
 	var ball := _body(world, 0.5, Vector3(-0.42, 3.0, 0.0), 0.15, 0.0, false)
 	ball.gravity_scale = 0.0
 	var load := _body(world, 20.0, Vector3(4.0, 0.5, 0.0), 0.0, 0.6, false)
@@ -630,7 +638,7 @@ func check_kinematic_models() -> void:
 	lever.effort_arm = target.lever.effort_arm
 	lever.attach(beam)
 	var driver := FormulaDriver.new()
-	driver.correctors.assign([pendulum, pulley, lever])
+	driver.correctors.assign([pendulum, default_pendulum, pulley, lever])
 	world.add_child(driver)
 	await tree.physics_frame
 	driver.running = true
@@ -641,6 +649,14 @@ func check_kinematic_models() -> void:
 		worst_angle = maxf(worst_angle, absf(pendulum.samples[k] - float(expected)))
 		k += 30
 	expect.call(worst_angle <= 1e-5, "kinematic model (pendulum): bob angle = TS PendulumModel at 0.5/1/1.5/2 s", "max |diff| %s rad" % String.num_scientific(worst_angle))
+	var worst_default := 0.0
+	k = 30
+	for expected in target.pendulum.default_angles:
+		worst_default = maxf(worst_default, absf(default_pendulum.samples[k] - float(expected)))
+		k += 30
+	expect.call(default_pendulum.damping == float(target.pendulum.default_damping) and worst_default <= 1e-5,
+		"kinematic model (pendulum): default damping = TS PendulumModel default, same angles",
+		"damping %s vs %s, max |diff| %s rad" % [default_pendulum.damping, target.pendulum.default_damping, String.num_scientific(worst_default)])
 	var crossings := _crossings(pendulum.samples, 0.0, false)
 	var period := (crossings[-1] - crossings[0]) / (crossings.size() - 1) if crossings.size() >= 2 else 0.0
 	expect.call(_rel(period, target.pendulum.period) <= 5e-3, "kinematic model (pendulum): period = 2 pi sqrt(L / g) ±0.5% (0.1 rad swing)",

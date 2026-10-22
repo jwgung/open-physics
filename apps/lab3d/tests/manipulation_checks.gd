@@ -201,7 +201,7 @@ func check_incline_drag(definition: Dictionary) -> void:
 	# Below the shortest run (and past the lower end): blocked, shakes, puts the box back.
 	_swipe(screen, _at(screen, box.global_position), _run_point(screen, 0.6), 8)
 	var blocked_marker: bool = markers[1].visible and not markers[0].visible
-	var wobbling: bool = absf(lab.props.juice._wobble_v) > 0.0 or absf(lab.props.juice._wobble) > 0.0
+	var wobbling: bool = lab.props.juice.is_animating() and (absf(lab.props.juice._wobble_v) > 0.0 or absf(lab.props.juice._wobble) > 0.0)
 	var held_inside: float = lab._pivot.to_local(box.global_position).x
 	expect.call(not m.valid and blocked_marker and wobbling and held_inside >= -3.0 - m.SOFT_MARGIN - 1e-4,
 		"a place off the allowed part of the incline shows the dark footprint and wobbles; the box stays near it", "x %.2f" % held_inside)
@@ -236,6 +236,36 @@ func check_incline_drag(definition: Dictionary) -> void:
 	screen.view._gui_input(motion)
 	screen.view._gui_input(_mouse(MOUSE_BUTTON_LEFT, false, mouse_to))
 	expect.call(is_equal_approx(lab.run_length(), 3.0), "left mouse drag moves the box like a finger", "run %.2f" % lab.run_length())
+	# Mouse held while the view is left (settings opened / tree exit): same as a system cancel.
+	var held_from := _at(screen, box.global_position)
+	var held_run: float = lab.run_length()
+	var held_xf := box.global_transform
+	screen.view._gui_input(_mouse(MOUSE_BUTTON_LEFT, true, held_from))
+	var held_motion := InputEventMouseMotion.new()
+	held_motion.position = _run_point(screen, 1.5)
+	held_motion.button_mask = MOUSE_BUTTON_MASK_LEFT
+	screen.view._gui_input(held_motion)
+	var held_by_mouse: bool = m.mode == "drag" and box.freeze and not box.global_transform.is_equal_approx(held_xf)
+	screen.view.reset_input()
+	expect.call(held_by_mouse and m.mode == "" and box.global_transform.is_equal_approx(held_xf)
+		and is_equal_approx(lab.run_length(), held_run) and not screen.view.rig.is_assisting(),
+		"leaving the view while the mouse holds the box puts it back (back at its start, assist off)", "held %s, mode %s, run %.2f" % [held_by_mouse, m.mode, lab.run_length()])
+	screen.view._gui_input(_mouse(MOUSE_BUTTON_LEFT, false, held_motion.position))
+	expect.call(is_equal_approx(lab.run_length(), held_run), "the mouse release after that does not place the box", "run %.2f" % lab.run_length())
+	# A camera mode button pressed while holding: the new mode wins over the assist's old view.
+	var rig: CameraRig = screen.view.rig
+	rig.set_mode("front", true)
+	rig.orbit(Vector2(0.0, -40000.0))   # as flat as the limits allow
+	var flat_pitch := rig.goal_pitch
+	_swipe(screen, _at(screen, box.global_position), _run_point(screen, 2.0), 4)
+	var turned: bool = rig.is_assisting() and not is_equal_approx(rig.goal_pitch, flat_pitch)
+	rig.set_mode("top")
+	var top_pitch := rig.goal_pitch
+	_touch(screen, 0, _run_point(screen, 2.0), false)
+	expect.call(turned and rig.mode == "top" and is_equal_approx(rig.goal_pitch, top_pitch) and not is_equal_approx(top_pitch, flat_pitch),
+		"switching the camera mode while holding keeps the new view after the drop", "pitch %.3f -> %.3f" % [top_pitch, rig.goal_pitch])
+	_swipe(screen, _at(screen, box.global_position), _run_point(screen, held_run), 2)
+	_touch(screen, 0, _run_point(screen, held_run), false)
 	# A sliding box can be picked up: the run stops, it waits at rest.
 	lab.set_control("angle", 40.0)
 	screen.experiment_action("release")

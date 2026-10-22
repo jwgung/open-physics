@@ -260,6 +260,35 @@ func check_uniform_field() -> void:
 		"uniform field: displayed height comes from the formula", "t %.3f s, y %.4f m" % [shown.time, shown.y])
 	world.queue_free()
 	await tree.process_frame
+	await _check_throw_from_floor(target)
+
+
+## A ball resting on the floor (touching it when released) and thrown up does not land at release:
+## the flight lasts 2 v0y / g and the formula time keeps running until then.
+func _check_throw_from_floor(target: Dictionary) -> void:
+	var g: float = target.g
+	var world := _world()
+	_floor(world, 0.0)
+	var ball := _body(world, 1.0, Vector3(0.0, 0.25, 0.0), 0.25)
+	ball.contact_monitor = true
+	ball.max_contacts_reported = 4
+	await _steps(10)   # settle on the floor, in contact
+	var resting := ball.get_contact_count()
+	var corrector := UniformFieldCorrector.new()
+	corrector.g = g
+	ball.corrector = corrector
+	var v0 := Vector3(target.v0[0], target.v0[1], 0.0)
+	corrector.release(ball, v0)
+	await _steps(30)
+	var midair := corrector.time()
+	await _steps(STEP_HZ)
+	var flight := 2.0 * v0.y / g
+	var landed := corrector.landed_step
+	expect.call(resting > 0 and midair > 0.4 and landed > 0 and absf(landed / float(STEP_HZ) - flight) <= 2.0 / STEP_HZ,
+		"uniform field: a throw from the floor lands after 2 v0y / g, not at release (±2 steps)",
+		"contacts at release %d, time at 0.5 s %.3f s, landed step %d (%.3f s), formula %.3f s" % [resting, midair, landed, landed / float(STEP_HZ), flight])
+	world.queue_free()
+	await tree.process_frame
 
 
 ## contact_force (floor push, PushFrictionLaw): below the maximum static friction the box holds;

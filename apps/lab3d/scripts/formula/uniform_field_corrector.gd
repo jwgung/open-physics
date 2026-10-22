@@ -4,7 +4,9 @@
 ## correction is the leapfrog start: on the first released step a force of -m g / 2 cancels half of
 ## the engine gravity, after which the step positions equal constantAccelerationDisplacement
 ## exactly (to float32 position precision). Jolt keeps owning contacts (the floor, other bodies);
-## the free-flight samples end at the first contact (needs contact_monitor on the body).
+## the free-flight samples end at the first landing (needs contact_monitor on the body): a contact
+## after the body was out of contact once since release, or a contact while it moves along the
+## field. A body thrown from the floor therefore does not "land" on the surface it starts on.
 ## Displayed numbers (formula_values) come from PhysicsLaws at the sample time (until the contact).
 class_name UniformFieldCorrector
 extends FormulaCorrector
@@ -17,13 +19,14 @@ var g := 9.81
 var field_direction := Vector3.DOWN
 var mass := 1.0
 var dt := 1.0 / 60.0
-## True from release until the body first touches anything.
+## True from release until the body lands (see the header).
 var in_flight := false
-## Step index of the first contact (-1 = none yet).
+## Step index of the landing (-1 = none yet).
 var landed_step := -1
 ## offsets[k] = body position - origin after k steps (bounded like samples; samples hold y).
 var offsets: PackedVector3Array = PackedVector3Array()
 var _engine_field := Vector3.ZERO
+var _airborne := false   # out of contact at least once since release
 
 
 func _init() -> void:
@@ -41,6 +44,7 @@ func release(body: RigidBody3D, velocity: Vector3) -> void:
 	mass = body.mass
 	in_flight = true
 	landed_step = -1
+	_airborne = false
 	body.freeze = false
 	body.sleeping = false
 	body.linear_velocity = velocity
@@ -52,17 +56,20 @@ func apply(body: RigidBody3D, step_dt: float) -> void:
 	record(offset.y)
 	if offsets.size() < history_steps:
 		offsets.append(offset)
-	if in_flight and body.contact_monitor and body.get_contact_count() > 0:
-		in_flight = false
-		landed_step = steps
+	if in_flight and body.contact_monitor:
+		if body.get_contact_count() == 0:
+			_airborne = true
+		elif _airborne or body.linear_velocity.dot(field_direction) > 0.0:
+			in_flight = false
+			landed_step = steps
 	var factor := start_factor(steps == 0)
 	if factor != 1.0:
 		body.apply_central_force((factor - 1.0) * mass * _engine_field)   # net force m g / 2 on the first step
 	steps += 1
 
 
-## Time (s) of the last recorded sample, or of the first contact (the formulas describe the free
-## flight only).
+## Time (s) of the last recorded sample, or of the landing (the formulas describe the free flight
+## only).
 func time() -> float:
 	return (landed_step if landed_step >= 0 else maxi(0, steps - 1)) * dt
 

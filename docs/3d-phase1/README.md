@@ -25,7 +25,7 @@ Notion Story·Task와 GitHub Issue는 발행하지 않는다. 이 문서가 Phas
 | 2b | 3D 앱 셸 조작 | 조작 평면(바닥·면 위 드래그), 스냅, 자동 안착, 보조 시점, 높이 손잡이 | 2a | 완료 | `feat/manipulation-plane`, [#7](https://github.com/jwgung/open-physics/pull/7) |
 | 2c | 아트 디렉션·연출 | 장난감·로우폴리 스타일(시안 중 B 잔디 섬으로 확정: 선명한 원색, 각진 로우폴리, 구운 조명·발밑 그림자, 통통 튀는 연출)을 정하고 빗면 실험에 적용한다. SM-P200 low 60 fps 유지. 이후 실험은 이 스타일로 만든다 | 2a | 완료 | `feat/art-direction`, [#6](https://github.com/jwgung/open-physics/pull/6) |
 | 3 | 공식 보정 계층과 parity 파이프라인 | 일반 접촉에 쓸 보정 설계(Jolt 접촉 콜백 범위 조사 포함), TS↔GDScript 벡터 테스트, CI(Node + Godot 헤드리스) | 1 | 완료 | `feat/formula-correction-layer`, [#8](https://github.com/jwgung/open-physics/pull/8) |
-| 4 | 역학 안내형 10개 3D 이식 | 실험별로 나눠 진행한다. 실험 콘텐츠는 JSON으로 빼서 웹 2D와 공유한다. 빗면 마찰은 2a에서 먼저 옮긴다 | 2a, 2b, 2c, 3 | 진행 중 (4a·4b·4c 완료, 4d 완료(검토 대기)) | 4a [#9](https://github.com/jwgung/open-physics/pull/9), 4b [#10](https://github.com/jwgung/open-physics/pull/10), 4c [#11](https://github.com/jwgung/open-physics/pull/11), 4d `feat/labs-force-injection` |
+| 4 | 역학 안내형 10개 3D 이식 | 실험별로 나눠 진행한다. 실험 콘텐츠는 JSON으로 빼서 웹 2D와 공유한다. 빗면 마찰은 2a에서 먼저 옮긴다 | 2a, 2b, 2c, 3 | 진행 중 (4a~4d 완료, 4e 진행) | 4a [#9](https://github.com/jwgung/open-physics/pull/9), 4b [#10](https://github.com/jwgung/open-physics/pull/10), 4c [#11](https://github.com/jwgung/open-physics/pull/11), 4d [#12](https://github.com/jwgung/open-physics/pull/12), 4e `feat/labs-kinematic-model` |
 | 5 | 역학 빈 실험실 3D | 고정 블록·줄·용수철·지렛대·도르래·힘·중력원·물 | 2a, 2b, 2c, 3 | 대기 | |
 | 6 | 출시 준비 | 서명, 스토어 자료, 개인정보처리방침(수집 없음), Kids/Families 정책, 모바일 CI, iOS 실기기 확인 | 4, 5 | 대기 | |
 
@@ -214,3 +214,4 @@ Notion Story·Task와 GitHub Issue는 발행하지 않는다. 이 문서가 Phas
   - 웹과 다르게 정한 점: 웹 명시적 오일러를 따르지 않고 정확한 해(용수철)·반암시적 오일러 4번 나눔(부력)·속도 Verlet 8번 나눔(궤도)을 쓴다(웹은 용수철 에너지 10초 +52 %, 부력 깊이 0.72 m 오차, 궤도 반지름 3 → 3.83 m로 어긋남). 용수철 그래프는 에너지 비율 0–100 % 고정 축. 부력은 선형 잠김 비율이 정확한 세운 통, 통을 끌어 놓으면 그 높이에서 정지 출발(0.05 m 눈금), 부피 100 L·50 L. 궤도는 별 표면 + 행성 반지름(1.2 m)에서 충돌·12 m에서 이탈, 출발 반지름 2–5 m(0.5 m)·발사 속력·방향을 화살표 손잡이(0.1 m/s·5° 눈금)로, 발사 전 `OrbitChallenge` 예측 점선 미리보기.
   - "시뮬레이션" 관찰값은 4c처럼 뺐다: 엔진 물체가 공식 위치에 놓여 독립 측정이 아니기 때문이다.
   - 후속(미완): 사람 손으로 손잡이 집기 확인 없음. 궤도는 33 ms 넘는 프레임이 회차당 23–26개(다른 실험 8개)로 1% low 33.7이다(원인 미확인).
+- 2026-10-23: Task 4d PR #12 머지(코드 리뷰 2회 반영 — ModelDrivenLab 공용 베이스, 용수철 T₀·T 분리). 4e 해석 모델(진자·지렛대·도르래) 착수.

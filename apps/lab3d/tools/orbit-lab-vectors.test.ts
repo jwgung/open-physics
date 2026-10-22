@@ -214,6 +214,8 @@ describe("orbit lab vectors", () => {
       writeFileSync(vectorsPath, `${JSON.stringify(vectors, null, 2)}\n`);
     }
     const committed = JSON.parse(readFileSync(vectorsPath, "utf8"));
+    // Tolerance only here: the atan2/sqrt sweep differs in the last bits between Node 22 and 24 (checked with toEqual);
+    // every other *-vectors test is exact (toEqual) on both.
     expect(vectorMismatch(committed, JSON.parse(JSON.stringify(vectors)))).toBeNull();
   });
 

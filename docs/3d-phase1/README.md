@@ -24,10 +24,30 @@ Notion Story·Task와 GitHub Issue는 발행하지 않는다. 이 문서가 Phas
 | 2a | 3D 앱 셸 뼈대 | `apps/lab3d/` Godot 프로젝트. 실험 등록·로딩, 카메라 모드(정면·3/4·위·옆·따라가기·제한 회전)와 "정면으로", 터치 제스처, 2D 패널 레이아웃(폰 세로·태블릿 가로), 품질 단계 설정, low에서도 선명한 UI. 빗면 마찰 1개로 검증 | 1 | 완료 | `feat/app-shell-skeleton`, [#5](https://github.com/jwgung/open-physics/pull/5) |
 | 2b | 3D 앱 셸 조작 | 조작 평면(바닥·면 위 드래그), 스냅, 자동 안착, 보조 시점, 높이 손잡이 | 2a | 완료 | `feat/manipulation-plane`, [#7](https://github.com/jwgung/open-physics/pull/7) |
 | 2c | 아트 디렉션·연출 | 장난감·로우폴리 스타일(시안 중 B 잔디 섬으로 확정: 선명한 원색, 각진 로우폴리, 구운 조명·발밑 그림자, 통통 튀는 연출)을 정하고 빗면 실험에 적용한다. SM-P200 low 60 fps 유지. 이후 실험은 이 스타일로 만든다 | 2a | 완료 | `feat/art-direction`, [#6](https://github.com/jwgung/open-physics/pull/6) |
+| 2d | 화면 레이아웃 개편 | 기본 화면은 3D 전체 + 핵심 관찰값 2~3개·조작 버튼, 질문·설명·조건·전체 관찰값·그래프는 오른쪽 사이드바(열고 닫기). 기본 카메라 정면, '정면으로' 버튼 제거. 역학 10개 실험 모두 적용 | 4 | 진행 중 | `feat/lab-layout-drawer` |
 | 3 | 공식 보정 계층과 parity 파이프라인 | 일반 접촉에 쓸 보정 설계(Jolt 접촉 콜백 범위 조사 포함), TS↔GDScript 벡터 테스트, CI(Node + Godot 헤드리스) | 1 | 완료 | `feat/formula-correction-layer`, [#8](https://github.com/jwgung/open-physics/pull/8) |
-| 4 | 역학 안내형 10개 3D 이식 | 실험별로 나눠 진행한다. 실험 콘텐츠는 JSON으로 빼서 웹 2D와 공유한다. 빗면 마찰은 2a에서 먼저 옮긴다 | 2a, 2b, 2c, 3 | 진행 중 (4a~4d 완료, 4e 완료(검토 대기)) | 4a [#9](https://github.com/jwgung/open-physics/pull/9), 4b [#10](https://github.com/jwgung/open-physics/pull/10), 4c [#11](https://github.com/jwgung/open-physics/pull/11), 4d [#12](https://github.com/jwgung/open-physics/pull/12), 4e `feat/labs-kinematic-model` |
+| 4 | 역학 안내형 10개 3D 이식 | 실험별로 나눠 진행한다. 실험 콘텐츠는 JSON으로 빼서 웹 2D와 공유한다. 빗면 마찰은 2a에서 먼저 옮긴다 | 2a, 2b, 2c, 3 | 완료 | 4a [#9](https://github.com/jwgung/open-physics/pull/9), 4b [#10](https://github.com/jwgung/open-physics/pull/10), 4c [#11](https://github.com/jwgung/open-physics/pull/11), 4d [#12](https://github.com/jwgung/open-physics/pull/12), 4e [#13](https://github.com/jwgung/open-physics/pull/13) |
 | 5 | 역학 빈 실험실 3D | 고정 블록·줄·용수철·지렛대·도르래·힘·중력원·물 | 2a, 2b, 2c, 3 | 대기 | |
 | 6 | 출시 준비 | 서명, 스토어 자료, 개인정보처리방침(수집 없음), Kids/Families 정책, 모바일 CI, iOS 실기기 확인 | 4, 5 | 대기 | |
+
+## Task 2d 상세
+
+**의도**: 사용자 요청(2026-10-23) "설명 칸이 너무 많다. 기본 화면을 3D로 두고 설명·설정은 사이드바·드로어로." 학생이 실험 장면을 크게 보고 만지며, 필요할 때만 설명과 조건을 연다.
+
+**결정사항** (2026-10-23, 사용자)
+- 기본 카메라는 정면(모든 실험). '정면으로' 버튼은 없앤다(Phase 0 결정 "정면으로 버튼 상시"를 이 결정으로 대체).
+- 실험 중 항상 보이는 것: 3D 전체 화면 + 핵심 관찰값 2~3개 작은 카드 + 조작 버튼(놓기·처음으로 등).
+- 질문·단계·설명·법칙·용어·조건 바꾸기·전체 관찰값·그래프는 오른쪽 사이드바(열고 닫기). 폰 세로에서도 오른쪽 사이드바.
+- 카메라 모드 칩(정면·3/4·위·옆·따라가기·제한 회전)은 유지 여부를 구현 중 판단(3D 위 작은 칩 또는 사이드바).
+
+**범위**
+- 포함: 셸 레이아웃(experiment_screen) 개편, 실험 정의 JSON에 핵심 관찰값(2~3개) 지정, 10개 실험 기본 카메라 정면, '정면으로' 제거, 사이드바 열고 닫기 애니메이션(전체 화면 반투명 레이어 금지), 폰 세로·태블릿 가로, low 60 fps 유지.
+- 제외: 실험 물리·표시 수치 변경, 목록·설정 화면 개편(필요하면 최소 조정).
+
+**판정**
+- 10개 실험 모두 기본 화면이 3D 전체 + 핵심 값 + 조작 버튼이고 사이드바로 나머지 접근.
+- 기존 물리·패널 테스트 통과(값 불변), 레이아웃 테스트(사이드바 열고 닫기, 폰·태블릿).
+- SM-P200 low 60 fps(대표 실험 몇 개), 폰 세로·태블릿 가로 스크린샷.
 
 ## Task 4 상세
 
@@ -220,3 +240,4 @@ Notion Story·Task와 GitHub Issue는 발행하지 않는다. 이 문서가 Phas
   - 공용으로 뺀 것: `Experiment._grid_step`/`_snap_to_grid`/`_find_control`, `ArtKit.link_mesh`/`stretch_link`, `PressLineSurface`, `RollingGraph`, `BodyModelGroupDriver`, `PressHandleLab`(지렛대·도르래의 손잡이·시계·그래프).
   - 사용자 판단 필요: 위 "웹과 다르게 정한 점" 중 도르래 드래그 반응 배율 제거·손 바꿔 당기기, 지렛대 받침점 끌기·놓으면 내려옴, 진자 두 추 동시 재출발. 사람 손가락 확인 없음. 진자 1% low 36.6(33 ms 넘는 프레임 회차당 10–14개, 원인 미확인).
 - 2026-10-23: Task 4e 검증 지적 반영과 사용자 결정. 결정 A: 도르래는 3D 동작(손잡이 이동 = 당긴 줄, 짐 1/n)을 유지하고, 웹 배율 n/4를 전제한 단계 3·관찰을 앱 전용 문구(`app.steps`·`app.observe`, `ExperimentRegistry.resolve`가 지원, 웹 문구·SHA 불변)로 물리대로 바꿈("당긴 줄 길이와 짐이 올라간 높이를 비교해요", "필요한 힘이 적을수록 같은 높이에 더 긴 줄이 필요한지 보세요."). 결정 B: 지렛대·진자 동작 유지, 지렛대 관찰에 "손잡이를 누르고 있는 동안"을 앱 전용 문구로 보완. 반영: (1) 지렛대 손잡이 눈금 자동(5/10/20/50 N, 모든 조건 7800개에서 끝까지 누르면 들림), (2) 도르래 줄 수를 잡은 채 바꾸면 처음으로와 같은 재시작, (3) `RollingGraph` 같은 시각 두 점·512개 상한, (4) 막대·짐 자세 변화 때만 이동·도르래 짐 충돌 레이어 제거·진자 `_place` 할당 제거, (5) `PressHandleLab` 공용 베이스·`PhysicsLaws.LEVER_LIFT_ANGLE`, (6) 마커 키, (7) `_clamp_to_control` NaN·Inf 거부, (8) 결과 README 빌드 SHA. 다른 실험 테스트 값은 로그 비교로 불변. 돌연변이 6종 실패 확인. SM-P200 지렛대 low 90초 1회는 [4e 결과 4절](../../spikes/bench/results/phase1-task4e/README.md).
+- 2026-10-23: Task 4e PR #13 머지 — 역학 안내형 10개 3D 완료(Task 4 완료). 사용자 요청으로 Task 2d(화면 레이아웃 개편: 3D 기본·오른쪽 사이드바·정면 기본 카메라·'정면으로' 제거) 착수. 공 회전·구름 후속은 2d 다음.

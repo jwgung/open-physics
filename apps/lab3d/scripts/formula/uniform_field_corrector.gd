@@ -8,6 +8,11 @@
 ## not touching at release, or with a release surface after it has left it once (engine contact
 ## reports, get_colliding_bodies(): release() turns contact_monitor on when it is off). A body
 ## thrown from the floor or off a table edge therefore does not "land" on the surface it starts on.
+## The release contacts are the report of the first released step: before it the body was frozen
+## (a static body reports nothing) or the report is the previous run's, so neither is read. A
+## surface first touched within that step therefore counts as a release surface too. With
+## `surfaces` set, only those bodies (the ground: floor, the lab's surfaces) can be landed on;
+## another ball touched in the air is not a landing.
 ## Displayed numbers (formula_values) come from PhysicsLaws at the sample time (until the contact),
 ## with the field the engine applies to the body (strength and direction, read on release).
 class_name UniformFieldCorrector
@@ -30,10 +35,11 @@ var landed_step := -1
 ## offsets[k] = body position - origin after k steps (bounded like samples; samples hold y).
 var offsets: PackedVector3Array = PackedVector3Array()
 var _engine_field := Vector3.ZERO
-## Bodies touching the released body at release (or, when the contact monitor was just turned on,
-## after the first step); one leaves the set once the body is apart from it.
+## Bodies a landing can be on (the ground); empty = any body.
+var surfaces: Array[Node3D] = []
+## Bodies touching the released body after its first released step (see the header); one leaves the
+## set once the body is apart from it.
 var _start_contacts: Array[Node3D] = []
-var _seed_contacts := false   # contact_monitor was off at release: take the first report as the start
 
 
 func _init() -> void:
@@ -58,13 +64,10 @@ func release(body: RigidBody3D, velocity: Vector3) -> void:
 	mass = body.mass
 	in_flight = true
 	landed_step = -1
-	_seed_contacts = not body.contact_monitor
+	_start_contacts.clear()   # seeded from the first released step's report (_check_landing)
 	body.max_contacts_reported = maxi(body.max_contacts_reported, 4)   # 0 (the default) reports nothing
-	if _seed_contacts:
+	if not body.contact_monitor:
 		body.contact_monitor = true
-		_start_contacts.clear()
-	else:
-		_start_contacts.assign(body.get_colliding_bodies())
 	body.freeze = false
 	body.sleeping = false
 	body.linear_velocity = velocity
@@ -84,17 +87,19 @@ func apply(body: RigidBody3D, step_dt: float) -> void:
 	steps += 1
 
 
-## Ends the free flight at a contact with a body that is not a release surface still being left.
-## Contact reports describe the previous step, so a landing is found on the step after the touch.
+## Ends the free flight at a contact with a ground body (`surfaces`, or any body when empty) that
+## is not a release surface still being left. Contact reports describe the previous step, so a
+## landing is found on the step after the touch.
 func _check_landing(body: RigidBody3D) -> void:
+	if steps == 0:
+		return   # the report is from before the release (frozen, or the previous run)
 	var touching := body.get_colliding_bodies()
-	if _seed_contacts and steps == 1:
-		_seed_contacts = false
-		_start_contacts.assign(touching)
+	if steps == 1:
+		_start_contacts.assign(touching)   # the first released step: the release contacts
 		return
 	_start_contacts.assign(_start_contacts.filter(func(other: Node3D) -> bool: return touching.has(other)))
 	for other in touching:
-		if not _start_contacts.has(other):
+		if not _start_contacts.has(other) and (surfaces.is_empty() or surfaces.has(other)):
 			in_flight = false
 			landed_step = steps
 			return

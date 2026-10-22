@@ -12,6 +12,8 @@ var beam: RigidBody3D
 var load_body: RigidBody3D
 var worst_angle := 0.0
 var worst_position := 0.0
+## The finger holds the load (it moves the frozen body by hand): those steps are not measured.
+var hand_holds := false
 var _posed_angle := 0.0
 var _posed_load := PackedFloat64Array([0.0, 0.0])
 var _posed_beam := PackedFloat64Array([0.0, 0.0])
@@ -51,10 +53,11 @@ func step(_dt: float) -> void:
 	var a := engine_angle()
 	if steps > 0:
 		worst_angle = maxf(worst_angle, absf(a - _posed_angle))
-		var l := load_body.global_position
-		var b := beam.global_position
-		worst_position = maxf(worst_position, maxf(absf(l.x - _posed_load[0]), absf(l.y - _posed_load[1])))
-		worst_position = maxf(worst_position, maxf(absf(b.x - _posed_beam[0]), absf(b.y - _posed_beam[1])))
+		if not hand_holds:
+			var l := load_body.global_position
+			var b := beam.global_position
+			worst_position = maxf(worst_position, maxf(absf(l.x - _posed_load[0]), absf(l.y - _posed_load[1])))
+			worst_position = maxf(worst_position, maxf(absf(b.x - _posed_beam[0]), absf(b.y - _posed_beam[1])))
 	record(a)
 	steps += 1
 	pose()

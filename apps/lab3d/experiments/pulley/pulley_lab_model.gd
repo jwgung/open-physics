@@ -9,8 +9,9 @@
 class_name PulleyLabModel
 extends RefCounted
 
-const CELLS_PER_M := 20            # 5 cm handle grid
+const CELLS_PER_M := 20            # the 5 cm handle grid (default; the lab sets cells_per_m from the definition's snap)
 
+var cells_per_m := CELLS_PER_M     # handle cells per metre: 1 / the definition's handle snap
 var strands := 1
 var mass := 20.0
 var g := 9.81
@@ -27,7 +28,7 @@ func reset() -> void:
 
 ## Rope pulled so far (m).
 func pulled() -> float:
-	return (cells_before + stroke_cells) / float(CELLS_PER_M)
+	return (cells_before + stroke_cells) / float(cells_per_m)
 
 
 ## How far the load has risen (m): d_pull / n (PulleyAdvantageChallenge.liftDistanceForPull), at most max_lift.
@@ -37,7 +38,7 @@ func lift() -> float:
 
 ## The most the current stroke may pull (cells): the rest of the rope up to max_lift.
 func stroke_limit() -> int:
-	return maxi(0, roundi(PhysicsLaws.pulley_pull_distance(max_lift, strands) * CELLS_PER_M) - cells_before)
+	return maxi(0, roundi(PhysicsLaws.pulley_pull_distance(max_lift, strands) * cells_per_m) - cells_before)
 
 
 ## F = m g / n (PulleyAdvantageChallenge.requiredForce).

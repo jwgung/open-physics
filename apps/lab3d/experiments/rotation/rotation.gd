@@ -43,6 +43,7 @@ var stand: StaticBody3D
 ## The finger holds this object ("" = none).
 var holding := ""
 var _floor: StaticBody3D
+var _was_lifted := false
 var _placed := {}                 # ids put down by hand (kept across a screen rebuild)
 
 
@@ -56,7 +57,10 @@ func _ready() -> void:
 func set_control(id: String, value: Variant) -> void:
 	match id:
 		"mass":
-			model.mass = _clamp_to_control(id, float(value))
+			var clamped := _clamp_to_control(id, float(value))
+			if is_nan(clamped):
+				return
+			model.mass = clamped
 		"effort":
 			var option := _find_option(id, str(value))
 			if option.is_empty():
@@ -85,6 +89,7 @@ func run_action(id: String) -> void:
 		model.cells = 0
 		_placed.clear()
 		_restart_clock()
+		_was_lifted = false   # the pop below is the reaction; no lowering on top of it
 		props.reset()
 		_changed()
 
@@ -100,6 +105,7 @@ func _changed() -> void:
 	_add_graph_point()
 	_show_markers()
 	_show()
+	_track_lift()
 	_update_status(true)
 
 
@@ -137,7 +143,9 @@ func _physics_process(_delta: float) -> void:
 	if holding == "handle":
 		model.cells = handle_cells()
 		_tick_clock()
+	driver.hand_holds = holding == "load"
 	driver.step(1.0 / float(Engine.physics_ticks_per_second))
+	_track_lift()
 	if status() != _last_status:
 		_update_status()
 
@@ -163,7 +171,7 @@ func _show_markers() -> void:
 	for option in _find_control("effort").get("options", []):
 		if option.id == effort_id:
 			chosen = points.size()
-		points.append(model.pivot_x + float(option.fraction) * (BEAM_HALF - model.pivot_x))
+		points.append(model.effort_x_at(float(option.fraction)))
 	props.show_markers(points, chosen, BEAM_THICK, BEAM_DEPTH)
 
 
@@ -178,8 +186,17 @@ func status() -> String:
 	return "ready"
 
 
-func _status_changed(previous: String, current: String) -> void:
-	props.status_changed(previous, current)
+## The lift and lowering reactions follow the beam's state itself, not status() changes: a change made
+## by the hand (a released handle, a moved load, a new condition) updates the status quietly but
+## still lifts or sets the beam down.
+func _track_lift() -> void:
+	var up := model.lifting()
+	if up != _was_lifted:
+		_was_lifted = up
+		if up:
+			props.lifted()
+		else:
+			props.lowered()
 
 
 func observations() -> Dictionary:
@@ -273,7 +290,7 @@ func manipulation_surface(surface_id: String) -> ManipSurface:
 	var surface: ManipSurface
 	match surface_id:
 		"press":
-			surface = PressLineSurface.new(handle_rest(), REACH, _grid_step("handle"), HANDLE_SIZE.y * 0.5)
+			surface = _press_line(handle_rest(), REACH, _grid_step("handle"), HANDLE_SIZE.y * 0.5)
 		"beam_top":
 			surface = ManipSurface.new(Transform3D(Basis(), Vector3(0.0, PIVOT_Y + BEAM_THICK * 0.5, 0.0)),
 				Vector2(LOAD_MIN, 0.0), Vector2(model.pivot_x - LOAD_GAP, 0.0), Vector2(_grid_step("load"), 0.0))
@@ -331,9 +348,11 @@ func manipulation_cancelled(_id: String) -> void:
 
 
 func placements() -> Dictionary:
+	# The fulcrum first: restoring the load limits it to LOAD_GAP left of the fulcrum, so the fulcrum
+	# must already be where it was (the screen restores in this order).
 	var result := {}
-	if _placed.has("load"):
-		result["load"] = Transform3D(Basis(), Vector3(model.load_x, PIVOT_Y + model.load_up, 0.0))
 	if _placed.has("fulcrum"):
 		result["fulcrum"] = Transform3D(Basis(), Vector3(model.pivot_x, stand_height() * 0.5, 0.0))
+	if _placed.has("load"):
+		result["load"] = Transform3D(Basis(), Vector3(model.load_x, PIVOT_Y + model.load_up, 0.0))
 	return result

@@ -172,10 +172,3 @@ func lowered() -> void:
 func reset() -> void:
 	if juice != null:
 		juice.pop()
-
-
-func status_changed(previous: String, current: String) -> void:
-	if current == "lifted":
-		lifted()
-	elif previous == "lifted":
-		lowered()

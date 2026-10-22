@@ -16,6 +16,9 @@
 ## 6. art: visual only, draw-node budget, the strands reach from the fixed block to the hook.
 ## 7-8. the real input path on a fresh screen: hand-over-hand strokes, the ratchet, a cancelled pull.
 ## 9. the measurement demo (--auto-drag) pulls the grip and starts again.
+## 11. second review: lift-off reaction while the grip is held (quiet status), a batch restore does not
+##    reset at once, a NaN mass changes nothing mid-pull, the coiled rope grows while pulling, the press
+##    line is reused, the cell size follows the definition's snap.
 ## 10. review fixes: changing the strands while the grip is held starts the run again (load down, no
 ##    jump, clock and graph restarted), the engine load is only moved when the lift changes.
 extends RefCounted
@@ -48,6 +51,7 @@ func run() -> void:
 	await check_input_path()
 	await check_demo()
 	await check_restart_while_held()
+	await check_review_fixes_2()
 
 
 # --- helpers ----------------------------------------------------------------------------------
@@ -436,3 +440,67 @@ func check_restart_while_held() -> void:
 		"pulley: changing the strands while the grip is held restarts the run like the reset button (grip let go, load down without a jump, clock and graph start again); the engine load is only moved when the lift changes",
 		"running %s, restarted %s, after %s, reset %s, idle %s, one write %s (worst lift %s)" % [running, restarted, after, reset, idle, one_write, str(worst_lift)])
 	await _free(lab)
+
+
+# --- 11. second review ----------------------------------------------------------------------------
+
+func check_review_fixes_2() -> void:
+	var lab: Experiment = await _lab()
+	lab.props.juice.process_mode = Node.PROCESS_MODE_DISABLED   # the reactions' kicks stay readable
+	lab.props.juice._squash_v = 0.0
+	# Lift-off while the grip is held: grabbing updates the status quietly (ground -> pulling), the
+	# load leaving the ground still stretches it.
+	lab.manipulation_started("handle")
+	var kicked_early: float = lab.props.juice._squash_v
+	lab.handle.global_position = lab.handle_top() + Vector3(0.0, -0.5, 0.0)
+	for i in 5:
+		await tree.physics_frame
+	var stretched: float = lab.props.juice._squash_v
+	# The press line: the manipulator's surface and the lab's pull line are the same object; the coiled
+	# rope grows while the rope is pulled (not only after the stroke), pulled() long.
+	var line: Object = lab.manipulation_surface("pull")
+	var reused: bool = line == lab.manipulation_surface("pull") and lab._press == line
+	await tree.process_frame
+	var pile_y: float = lab.props.pile.scale.y
+	var pile_ok: bool = absf(pile_y - (0.04 + minf(lab.model.pulled(), 10.0) * 0.03)) < 1e-9 and lab.model.pulled() > 0.4
+	# A NaN mass in the middle of the pull changes nothing: no restart, no graph point, same numbers.
+	var graph_size: int = lab.graph.size()
+	var mass: float = lab.model.mass
+	var pulled: float = lab.model.pulled()
+	lab.set_control("mass", NAN)
+	lab.set_control("mass", INF)
+	var nan_same: bool = lab.model.mass == mass and lab.graph.size() == graph_size and lab.model.pulled() == pulled and lab.holding
+	expect.call(kicked_early == 0.0 and stretched > 0.0 and reused and pile_ok and nan_same,
+		"pulley: the load lifting off the ground stretches it also when the grip was grabbed quietly; the coiled rope grows with the pull; the press line is built once; a NaN / infinite mass mid-pull changes nothing",
+		"kick %s then %s, reused %s, pile %s (pulled %s), nan same %s" % [kicked_early, stretched, reused, pile_y, pulled, nan_same])
+	lab.manipulation_cancelled("handle")
+	await tree.physics_frame
+	# A restore batch: the strands set inside it do not reset the pull at once, end_batch does once.
+	lab.set_stroke(20, false)
+	lab.let_go()
+	await tree.physics_frame
+	var before: float = lab.model.pulled()
+	lab.begin_batch()
+	lab.set_control("strands", "two")
+	await tree.physics_frame
+	var kept: bool = before == 1.0 and lab.model.pulled() == 1.0 and lab.model.strands == 2
+	lab.end_batch()
+	await tree.physics_frame
+	var reset_once: bool = lab.model.pulled() == 0.0 and absf(lab.driver.engine_lift()) < 1e-6 and lab.props.moving_block.mesh != null
+	expect.call(kept and reset_once, "pulley: inside a restore batch a changed strand count does not reset the pull; end_batch restarts it once",
+		"kept %s, reset once %s" % [kept, reset_once])
+	await _free(lab)
+	# The cell size is the definition's snap: a different snap changes the model with it.
+	var definition: Dictionary = ExperimentRegistry.find("pulley").duplicate(true)
+	definition.manipulation.objects[0].snap = 0.1
+	var other := ExperimentRegistry.instantiate(definition)
+	tree.root.add_child(other)
+	await tree.process_frame
+	var from_snap: bool = other.model.cells_per_m == 10 and other.model.stroke_limit() == 24
+	var default_lab: Experiment = await _lab()
+	var snap: float = Manipulator.parse_rules(default_lab.definition).handle.snap
+	var same_source: bool = default_lab.model.cells_per_m == roundi(1.0 / snap) and default_lab.model.cells_per_m == int(vectors.cells_per_m)
+	expect.call(from_snap and same_source, "pulley: the cell size comes from the definition's handle snap (0.05 -> 20 per metre, 0.1 -> 10)",
+		"default %d, snap 0.1 -> %d" % [default_lab.model.cells_per_m, other.model.cells_per_m])
+	await _free(other)
+	await _free(default_lab)

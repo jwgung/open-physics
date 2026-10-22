@@ -17,6 +17,9 @@
 ##    required force, the graph's clock runs while it is held, letting go puts it back level;
 ##    dragging the load and the fulcrum (0.25 m grid, the load stays left of the fulcrum).
 ## 9. the measurement demo (--auto-drag) presses the handle and lets go.
+## 11. second review: a restored layout (fulcrum 1.5, load 1.0) is the same after a screen rebuild, the
+##    lift / lowering reactions also follow hand changes, the hand-held load is not measured as an engine
+##    deviation, a NaN mass mid-press changes nothing, the press line is reused.
 ## 10. review fixes: every condition can be lifted (the handle's scale fits the required force), the
 ##    rolling graph stays bounded with a stopped clock, a NaN / infinite mass is refused, the markers
 ##    follow every point, the engine bodies are only moved when the pose changes.
@@ -27,6 +30,7 @@ const EXPERIMENT_SCREEN := "res://scripts/shell/experiment_screen.gd"
 const UI_THEME := "res://scripts/app/ui_theme.gd"
 const STEP_HZ := 60
 const ENGINE_TOLERANCE := 1e-4
+const REACH_TEST := 0.9            # m of press that lifts the default case
 
 var tree: SceneTree
 var expect: Callable
@@ -53,6 +57,7 @@ func run() -> void:
 	await check_liftable_on_the_lab()
 	check_rolling_graph()
 	await check_review_fixes()
+	await check_review_fixes_2()
 
 
 # --- helpers ----------------------------------------------------------------------------------
@@ -550,3 +555,67 @@ func check_review_fixes() -> void:
 		"rotation: the driver moves the beam and the load only when the pose changes (none in 30 idle steps, one at the lift, none while held, one on a new condition)",
 		"writes %d -> %d; idle %s lift %s held %s moved %s" % [writes, lab.driver.pose_writes, idle, lift_write, held, moved])
 	await _free(lab)
+
+
+# --- 11. second review ----------------------------------------------------------------------------
+
+func check_review_fixes_2() -> void:
+	# The saved layout is restored in the screen's order (placements() order), so the load is not
+	# limited by the default fulcrum.
+	var lab: Experiment = await _lab()
+	lab.manipulation_placed("fulcrum", Transform3D(Basis(), Vector3(1.5, 0.0, 0.0)))
+	lab.manipulation_placed("load", Transform3D(Basis(), Vector3(1.0, 0.0, 0.0)))
+	var saved: Dictionary = lab.placements()
+	var pivot: float = lab.model.pivot_x
+	var load_at: float = lab.model.load_x
+	var torque: float = lab.model.load_torque()
+	await _free(lab)
+	var rebuilt: Experiment = await _lab()
+	rebuilt.begin_batch()
+	for id in saved:
+		rebuilt.manipulation_placed(id, saved[id])
+	rebuilt.end_batch()
+	var restored: bool = pivot == 1.5 and load_at == 1.0 and rebuilt.model.pivot_x == 1.5 and rebuilt.model.load_x == 1.0 \
+		and rebuilt.model.load_torque() == torque and rebuilt.placements().keys() == saved.keys()
+	expect.call(restored, "rotation: a layout with the fulcrum at 1.5 m and the load at 1.0 m is the same after a screen rebuild (positions and torque)",
+		"saved %s; pivot %s load %s torque %s -> %s" % [str(saved.keys()), rebuilt.model.pivot_x, rebuilt.model.load_x, torque, rebuilt.model.load_torque()])
+	# Reactions follow the beam: pressing lifts (stretch), letting go by hand lowers it (settle),
+	# although the hand changes only update the status quietly.
+	var juice: ArtJuice = rebuilt.props.juice
+	juice.process_mode = Node.PROCESS_MODE_DISABLED
+	juice._squash_v = 0.0
+	rebuilt.manipulation_started("handle")
+	rebuilt.handle.global_position = rebuilt.handle_rest() + Vector3(0.0, -REACH_TEST, 0.0)
+	for i in 5:
+		await tree.physics_frame
+	var stretched: float = juice._squash_v
+	var lifted: bool = rebuilt.model.lifting()
+	# The press line is built once for the manipulator and the lab.
+	var line: Object = rebuilt.manipulation_surface("press")
+	var reused: bool = line == rebuilt.manipulation_surface("press") and rebuilt._press == line
+	# A NaN mass in the middle of the press changes nothing: no graph point, same numbers.
+	var graph_size: int = rebuilt.graph.size()
+	var mass: float = rebuilt.model.mass
+	var required: float = rebuilt.model.required()
+	rebuilt.set_control("mass", NAN)
+	var nan_same: bool = rebuilt.model.mass == mass and rebuilt.model.required() == required and rebuilt.graph.size() == graph_size and rebuilt.model.lifting()
+	juice._squash_v = 0.0
+	rebuilt.manipulation_placed("handle", rebuilt.handle.global_transform)
+	var lowered: float = juice._squash_v
+	expect.call(lifted and stretched > 0.0 and lowered < 0.0 and reused and nan_same,
+		"rotation: lifting stretches and a hand letting go settles the beam (also on the quiet status path); the press line is built once; a NaN mass mid-press changes nothing",
+		"lifted %s, stretch %s, lower %s, reused %s, nan same %s" % [lifted, stretched, lowered, reused, nan_same])
+	# Holding the load by hand is not an engine deviation: the frozen load moves with the finger.
+	rebuilt.driver.reset()
+	rebuilt.manipulation_started("load")
+	rebuilt.load_body.global_position += Vector3(0.7, 0.4, 0.0)
+	for i in 10:
+		await tree.physics_frame
+	var held_worst: float = rebuilt.driver.worst_position
+	rebuilt.manipulation_cancelled("load")
+	for i in 10:
+		await tree.physics_frame
+	expect.call(held_worst <= ENGINE_TOLERANCE and rebuilt.driver.worst_position <= ENGINE_TOLERANCE,
+		"rotation: steps while the finger holds the load are not measured as engine deviation (worst position %s m)" % String.num_scientific(held_worst), "")
+	await _free(rebuilt)
+

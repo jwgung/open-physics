@@ -28,11 +28,15 @@ var props := PulleyProps.new()
 var strands_id := "one"
 ## The finger holds the grip.
 var holding := false
+var _lifted := false
 
 
 func _ready() -> void:
 	model.g = engine_g   # the weight m g uses the engine's gravity (the project setting, the web's 9.81)
 	model.max_lift = MAX_LIFT
+	var snap := _grid_step("handle")   # the one source of the cell size: the definition's handle grid
+	if snap > 0.0:
+		model.cells_per_m = roundi(1.0 / snap)
 	_build_world()
 	for control in definition.get("controls", []):
 		set_control(control.id, control.default)
@@ -47,9 +51,13 @@ func set_control(id: String, value: Variant) -> void:
 				return
 			strands_id = str(value)
 			model.strands = int(option.n)
-			_restart()             # the web starts the pull again when the strands change
+			_restart()             # the web starts the pull again when the strands change (reset_run, once per batch)
+			return
 		"mass":
-			model.mass = _clamp_to_control(id, float(value))
+			var clamped := _clamp_to_control(id, float(value))
+			if is_nan(clamped):
+				return
+			model.mass = clamped
 		_:
 			return
 	_changed()
@@ -67,13 +75,12 @@ func control_value(id: String) -> Variant:
 func run_action(id: String) -> void:
 	if id == "reset":
 		_restart()
-		_changed()
 
 
 ## A new pull: the rope, the clock and the graph start again, the props too. A grip the finger still
 ## holds is let go first (its stroke does not count): the load must not jump to the old stroke under
 ## the new strand count, and the clock must not go on with the old run.
-func _restart() -> void:
+func _new_pull() -> void:
 	if holding:
 		holding = false
 		_end_press()
@@ -81,7 +88,15 @@ func _restart() -> void:
 	model.reset()
 	model.holding = false
 	_restart_clock()
+	_lifted = false   # the pop below is the reaction
 	props.reset()
+
+
+## The screen's batch calls this once at its end (Experiment._restart): the new pull, then the posed
+## bodies, props and graph point.
+func reset_run() -> void:
+	_new_pull()
+	_changed()
 
 
 func _changed() -> void:
@@ -91,6 +106,7 @@ func _changed() -> void:
 	props.show_strands(model.strands)
 	_add_graph_point()
 	_show()
+	_track_lift()
 	_update_status(true)
 
 
@@ -133,6 +149,7 @@ func _physics_process(_delta: float) -> void:
 		model.stroke_cells = handle_cells()
 		_tick_clock()
 	driver.step(1.0 / float(Engine.physics_ticks_per_second))
+	_track_lift()
 	if status() != _last_status:
 		_update_status()
 
@@ -148,7 +165,7 @@ func _process(_delta: float) -> void:
 func _show() -> void:
 	var grip_top := handle.global_position + Vector3(0.0, HANDLE_SIZE.y * 0.5, 0.0)
 	props.show_rope(TOP_Y, load_body.global_position.y + HOOK_UP, GUIDE, grip_top,
-		model.cells_before / float(PulleyLabModel.CELLS_PER_M), load_body.global_position, LOAD_SIZE * 0.5, model.weight(), model.applied())
+		model.pulled(), load_body.global_position, LOAD_SIZE * 0.5, model.weight(), model.applied())
 
 
 ## ground (on the floor), pulling (the hand holds it up), held (the ratchet holds it), top (at the
@@ -161,8 +178,13 @@ func status() -> String:
 	return "pulling" if holding else "held"
 
 
-func _status_changed(previous: String, current: String) -> void:
-	props.status_changed(previous, current)
+## The lift-off reaction follows the load itself, not status() changes: grabbing the grip updates
+## the status quietly (ground -> pulling), which must not swallow the load leaving the ground.
+func _track_lift() -> void:
+	var up := model.lift() > 0.0
+	if up and not _lifted:
+		props.lifted_off()
+	_lifted = up
 
 
 func observations() -> Dictionary:
@@ -223,8 +245,8 @@ func manipulation_body(id: String) -> PhysicsBody3D:
 func manipulation_surface(surface_id: String) -> ManipSurface:
 	if surface_id != "pull":
 		return null
-	var reach := minf(STROKE, model.stroke_limit() / float(PulleyLabModel.CELLS_PER_M))
-	var surface := PressLineSurface.new(handle_top(), reach, _grid_step("handle"), HANDLE_SIZE.y * 0.5)
+	var reach := minf(STROKE, model.stroke_limit() / float(model.cells_per_m))
+	var surface := _press_line(handle_top(), reach, _grid_step("handle"), HANDLE_SIZE.y * 0.5)
 	surface.exclude = [load_body.get_rid()]
 	return surface
 

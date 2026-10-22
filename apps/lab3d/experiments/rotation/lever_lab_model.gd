@@ -38,11 +38,21 @@ func load_arm() -> float:
 
 ## r_effort: fulcrum to the effort point (m).
 func effort_arm() -> float:
-	return fraction * (beam_half - pivot_x)
+	return effort_arm_at(fraction)
+
+
+## r_effort of an effort point at `at` (a fraction of the right arm).
+func effort_arm_at(at: float) -> float:
+	return at * (beam_half - pivot_x)
 
 
 func effort_x() -> float:
-	return pivot_x + effort_arm()
+	return effort_x_at(fraction)
+
+
+## x of the effort point at `at` (a fraction of the right arm) on the level beam.
+func effort_x_at(at: float) -> float:
+	return pivot_x + effort_arm_at(at)
 
 
 ## F = m g r_load / r_effort (LeverChallenge.requiredForce).

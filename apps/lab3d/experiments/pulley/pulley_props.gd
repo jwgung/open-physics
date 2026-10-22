@@ -200,8 +200,3 @@ func lifted_off() -> void:
 func reset() -> void:
 	if juice != null:
 		juice.pop()
-
-
-func status_changed(previous: String, current: String) -> void:
-	if previous == "ground" and current != "ground":
-		lifted_off()

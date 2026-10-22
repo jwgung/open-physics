@@ -15,7 +15,7 @@ import {
   momentum,
   speed,
 } from "../../../src/physics/laws/mechanics";
-import { tsApexTime, tsLandingTime } from "./ts-oracle";
+import { tsApexTime, tsLandingTime, vectorMismatch } from "./ts-oracle";
 
 const STEP_HZ = 60;
 // The web's gravity buttons (mechanics: data-gravity) as the labs' "gravity" options.
@@ -109,7 +109,7 @@ describe("uniform-field lab display vectors (free fall, projectile)", () => {
       writeFileSync(vectorsPath, `${JSON.stringify(vectors, null, 2)}\n`);
     }
     const committed = JSON.parse(readFileSync(vectorsPath, "utf8"));
-    expect(committed).toEqual(JSON.parse(JSON.stringify(vectors)));
+    expect(vectorMismatch(committed, JSON.parse(JSON.stringify(vectors)))).toBeNull();
   });
 
   it("are self-consistent", () => {

@@ -44,7 +44,7 @@ import {
   periodFromAngularFrequency,
 } from "../../../src/physics/laws/oscillation";
 import { torque } from "../../../src/physics/laws/rotation";
-import { tsApexTime, tsLandingTime } from "./ts-oracle";
+import { tsApexTime, tsLandingTime, vectorMismatch } from "./ts-oracle";
 import { AnchoredSpringLaw, BuoyancyRegionLaw, PushFrictionLaw } from "../../../src/physics/laws/world-mechanics";
 
 type Value = number | boolean | string | number[] | { [key: string]: Value };
@@ -522,7 +522,7 @@ describe("formula parity vectors for the 3D guided mechanics experiments", () =>
       writeFileSync(vectorsPath, `${JSON.stringify(vectors, null, 2)}\n`);
     }
     const committed = JSON.parse(readFileSync(vectorsPath, "utf8"));
-    expect(committed).toEqual(JSON.parse(JSON.stringify(vectors)));
+    expect(vectorMismatch(committed, JSON.parse(JSON.stringify(vectors)))).toBeNull();
   });
 
   it("cover all 10 guided mechanics labs with at least one law each", () => {

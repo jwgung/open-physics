@@ -20,6 +20,7 @@ import { MATERIALS, type PlaygroundMaterial } from "../../../src/app/physics-pla
 import type { Body } from "../../../src/physics/world";
 import { coefficientOfRestitution, kineticEnergy, momentum } from "../../../src/physics/laws/mechanics";
 import { PhysicsSimulation } from "../../../src/physics/simulation";
+import { vectorMismatch } from "./ts-oracle";
 
 const STEP_HZ = 60;
 const DT = 1 / STEP_HZ;
@@ -180,7 +181,7 @@ describe("collision lab display vectors", () => {
       writeFileSync(vectorsPath, `${JSON.stringify(vectors, null, 2)}\n`);
     }
     const committed = JSON.parse(readFileSync(vectorsPath, "utf8"));
-    expect(committed).toEqual(JSON.parse(JSON.stringify(vectors)));
+    expect(vectorMismatch(committed, JSON.parse(JSON.stringify(vectors)))).toBeNull();
   });
 
   it("are self-consistent", () => {

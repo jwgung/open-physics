@@ -373,6 +373,10 @@ static func _orbit_result(outcome: String, path: PackedFloat64Array, radius: flo
 
 # --- buoyancy (fluid.ts, world-mechanics.ts BuoyancyRegionLaw) ------------------------------------
 
+## mechanics.ts density: rho = m / V
+static func density(mass: float, volume: float) -> float:
+	return mass / volume
+
 ## fluid.ts buoyantForce: F_b = rho g V
 static func buoyant_force(fluid_density: float, g: float, displaced_volume: float) -> float:
 	return fluid_density * g * displaced_volume

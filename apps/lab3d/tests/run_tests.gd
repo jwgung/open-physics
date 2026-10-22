@@ -21,6 +21,9 @@
 ## 9. spring lab (Task 4d, tests/spring_lab_checks.gd): the model and the engine ball step by step
 ##    against the TS-core vectors (tests/spring_lab_vectors.json), period and energy measured from the
 ##    engine ball, panel, art, the first release of a fresh screen, the input path, the demo.
+## 10. buoyancy lab (Task 4d, tests/buoyancy_lab_checks.gd): the model and the engine drum step by step
+##    against the TS-core vectors (tests/buoyancy_lab_vectors.json), floating depth / sinking /
+##    neutral from the engine drum, panel, art, a fresh screen, the input path, the demo.
 ## Times are engine fixed steps (60 Hz), independent of rendering FPS.
 extends SceneTree
 
@@ -104,6 +107,11 @@ func _run() -> void:
 	_expect(spring != null and spring.can_instantiate(), "spring lab checks compile", "")
 	if spring != null and spring.can_instantiate():
 		await spring.new(self, _expect).run()
+	print("== buoyancy lab (Task 4d) ==")
+	var buoyancy: GDScript = load("res://tests/buoyancy_lab_checks.gd")
+	_expect(buoyancy != null and buoyancy.can_instantiate(), "buoyancy lab checks compile", "")
+	if buoyancy != null and buoyancy.can_instantiate():
+		await buoyancy.new(self, _expect).run()
 	print("RESULT: %s (%d failure(s))" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
 

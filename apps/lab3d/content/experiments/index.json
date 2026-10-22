@@ -6,6 +6,7 @@
     "collision.json",
     "spring.json",
     "friction.json",
+    "buoyancy.json",
     "incline-friction.json"
   ],
   "hidden": [

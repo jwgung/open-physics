@@ -1,0 +1,66 @@
+{
+  "id": "buoyancy",
+  "version": 1,
+  "content": "buoyancy",
+  "scene": "res://experiments/buoyancy/buoyancy.gd",
+  "bench_id": "BU",
+  "camera": {
+    "target": [0.0, 1.15, 0.0],
+    "distance": 8.0,
+    "distance_range": [2.5, 18.0],
+    "yaw_range_deg": [-100.0, 100.0],
+    "pitch_range_deg": [-89.0, -2.0],
+    "pan_radius": 5.0,
+    "default_mode": "three_quarter",
+    "views": {
+      "front": { "yaw_deg": 0.0, "pitch_deg": -6.0, "distance": 7.5 },
+      "three_quarter": { "yaw_deg": 24.0, "pitch_deg": -20.0 },
+      "top": { "yaw_deg": 0.0, "pitch_deg": -89.0, "distance": 9.0 },
+      "side": { "yaw_deg": 90.0, "pitch_deg": -10.0, "distance": 8.0 },
+      "follow": { "yaw_deg": 18.0, "pitch_deg": -14.0, "distance": 4.5 }
+    }
+  },
+  "controls": [
+    {
+      "id": "mass", "type": "slider", "label": "통 질량", "unit": " kg",
+      "min": 5.0, "max": 150.0, "step": 5.0, "default": 70.0, "digits": 0
+    },
+    {
+      "id": "volume", "type": "choice", "label": "통 부피", "default": "big",
+      "note": "물의 밀도는 1000 kg/m³예요.",
+      "options": [
+        { "id": "big", "label": "100 L", "volume": 0.1, "height": 0.5, "note": "부피 0.1 m³ · 높이 0.5 m (같은 무게의 물 100 kg)" },
+        { "id": "small", "label": "50 L", "volume": 0.05, "height": 0.4, "note": "부피 0.05 m³ · 높이 0.4 m (같은 무게의 물 50 kg)" }
+      ]
+    }
+  ],
+  "actions": [
+    { "id": "release", "label": "놓기", "style": "primary" },
+    { "id": "reset", "label": "처음으로" }
+  ],
+  "observations": [
+    { "id": "state", "label": "상태" },
+    { "id": "judgement", "label": "밀도로 본 결과" },
+    { "id": "density", "label": "통의 밀도 ρ = m/V", "unit": "kg/m³", "digits": 0 },
+    { "id": "floating_depth", "label": "뜰 때 잠기는 깊이 (ρ/ρ물 × 높이)", "unit": "m", "digits": 3 },
+    { "id": "depth", "label": "지금 잠긴 깊이", "unit": "m", "digits": 3 },
+    { "id": "buoyant", "label": "부력 F = ρ물 g V잠김", "unit": "N", "digits": 0 },
+    { "id": "weight", "label": "무게 mg", "unit": "N", "digits": 0 },
+    { "id": "net", "label": "알짜힘 (위 +, 물의 저항 포함)", "unit": "N", "digits": 0 },
+    { "id": "speed", "label": "속력", "unit": "m/s", "digits": 2 }
+  ],
+  "manipulation": {
+    "objects": [
+      { "id": "drum", "surface": "tank", "snap": 0.05, "height": false }
+    ]
+  },
+  "graph": {
+    "title": "물에 잠긴 깊이",
+    "x": { "label": "시간 t", "unit": "s", "max": 10.0 },
+    "y": { "label": "잠긴 깊이", "unit": "m", "min_max": 0.5 },
+    "series": [
+      { "id": "depth", "label": "통", "color": "#ff7a1a", "style": "line" },
+      { "id": "floating", "label": "뜰 때 깊이 (공식)", "color": "#2d7cf6", "style": "line" }
+    ]
+  }
+}

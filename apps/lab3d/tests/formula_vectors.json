@@ -1,0 +1,7977 @@
+{
+  "source": "src/physics/laws, src/physics/world.ts, src/app/mechanics-scenes.ts, src/app/mechanics-challenges.ts",
+  "tolerance": 1e-9,
+  "dt": 0.016666666666666666,
+  "experiments": {
+    "free-fall": [
+      "constant_acceleration_displacement",
+      "constant_acceleration_velocity",
+      "uniform_gravity_force",
+      "gravitational_potential_energy",
+      "kinetic_energy",
+      "momentum"
+    ],
+    "projectile": [
+      "constant_acceleration_displacement",
+      "constant_acceleration_velocity",
+      "kinetic_energy"
+    ],
+    "collision": [
+      "post_collision_velocity_1d",
+      "post_collision_velocity_1d_second",
+      "elastic_collision_1d",
+      "world_collision_velocities",
+      "collision_restitution"
+    ],
+    "spring": [
+      "anchored_spring_force",
+      "spring_potential_energy",
+      "angular_frequency",
+      "period_from_angular_frequency",
+      "harmonic_displacement",
+      "harmonic_velocity",
+      "kinetic_energy",
+      "harmonic_energy"
+    ],
+    "friction": [
+      "push_friction_force",
+      "push_friction_holding",
+      "push_max_static_force"
+    ],
+    "rotation": [
+      "lever_required_force",
+      "lever_mechanical_advantage",
+      "lever_lifting",
+      "torque_2d"
+    ],
+    "constraints": [
+      "pendulum_period",
+      "pendulum_angular_frequency",
+      "pendulum_step",
+      "pendulum_offset",
+      "pendulum_run"
+    ],
+    "pulley": [
+      "pulley_required_force",
+      "pulley_pull_distance",
+      "pulley_lift_distance"
+    ],
+    "orbit": [
+      "circular_orbit_speed",
+      "circular_orbit_period",
+      "escape_speed",
+      "point_gravity_acceleration",
+      "orbit_analyze"
+    ],
+    "buoyancy": [
+      "submerged_fraction",
+      "buoyancy_region_force",
+      "buoyancy_drag_force",
+      "floating_submerged_fraction",
+      "buoyancy_net_force",
+      "buoyant_force"
+    ]
+  },
+  "cases": [
+    {
+      "experiment": "free-fall",
+      "law": "constant_acceleration_displacement",
+      "args": [
+        0,
+        -1.62,
+        0.25
+      ],
+      "expect": -0.050625
+    },
+    {
+      "experiment": "free-fall",
+      "law": "constant_acceleration_velocity",
+      "args": [
+        0,
+        -1.62,
+        0.25
+      ],
+      "expect": -0.405
+    },
+    {
+      "experiment": "free-fall",
+      "law": "constant_acceleration_displacement",
+      "args": [
+        0,
+        -1.62,
+        0.5
+      ],
+      "expect": -0.2025
+    },
+    {
+      "experiment": "free-fall",
+      "law": "constant_acceleration_velocity",
+      "args": [
+        0,
+        -1.62,
+        0.5
+      ],
+      "expect": -0.81
+    },
+    {
+      "experiment": "free-fall",
+      "law": "constant_acceleration_displacement",
+      "args": [
+        0,
+        -1.62,
+        1
+      ],
+      "expect": -0.81
+    },
+    {
+      "experiment": "free-fall",
+      "law": "constant_acceleration_velocity",
+      "args": [
+        0,
+        -1.62,
+        1
+      ],
+      "expect": -1.62
+    },
+    {
+      "experiment": "free-fall",
+      "law": "constant_acceleration_displacement",
+      "args": [
+        0,
+        -1.62,
+        1.3
+      ],
+      "expect": -1.3689000000000002
+    },
+    {
+      "experiment": "free-fall",
+      "law": "constant_acceleration_velocity",
+      "args": [
+        0,
+        -1.62,
+        1.3
+      ],
+      "expect": -2.1060000000000003
+    },
+    {
+      "experiment": "free-fall",
+      "law": "uniform_gravity_force",
+      "args": [
+        0.5,
+        1.62
+      ],
+      "expect": 0.81
+    },
+    {
+      "experiment": "free-fall",
+      "law": "gravitational_potential_energy",
+      "args": [
+        0.5,
+        1.62,
+        8.3
+      ],
+      "expect": 6.723000000000001
+    },
+    {
+      "experiment": "free-fall",
+      "law": "kinetic_energy",
+      "args": [
+        0.5,
+        2.1060000000000003
+      ],
+      "expect": 1.1088090000000004
+    },
+    {
+      "experiment": "free-fall",
+      "law": "momentum",
+      "args": [
+        0.5,
+        -2.1060000000000003
+      ],
+      "expect": -1.0530000000000002
+    },
+    {
+      "experiment": "free-fall",
+      "law": "uniform_gravity_force",
+      "args": [
+        1,
+        1.62
+      ],
+      "expect": 1.62
+    },
+    {
+      "experiment": "free-fall",
+      "law": "gravitational_potential_energy",
+      "args": [
+        1,
+        1.62,
+        8.3
+      ],
+      "expect": 13.446000000000002
+    },
+    {
+      "experiment": "free-fall",
+      "law": "kinetic_energy",
+      "args": [
+        1,
+        2.1060000000000003
+      ],
+      "expect": 2.2176180000000008
+    },
+    {
+      "experiment": "free-fall",
+      "law": "momentum",
+      "args": [
+        1,
+        -2.1060000000000003
+      ],
+      "expect": -2.1060000000000003
+    },
+    {
+      "experiment": "free-fall",
+      "law": "uniform_gravity_force",
+      "args": [
+        3,
+        1.62
+      ],
+      "expect": 4.86
+    },
+    {
+      "experiment": "free-fall",
+      "law": "gravitational_potential_energy",
+      "args": [
+        3,
+        1.62,
+        8.3
+      ],
+      "expect": 40.33800000000001
+    },
+    {
+      "experiment": "free-fall",
+      "law": "kinetic_energy",
+      "args": [
+        3,
+        2.1060000000000003
+      ],
+      "expect": 6.652854000000002
+    },
+    {
+      "experiment": "free-fall",
+      "law": "momentum",
+      "args": [
+        3,
+        -2.1060000000000003
+      ],
+      "expect": -6.318000000000001
+    },
+    {
+      "experiment": "free-fall",
+      "law": "constant_acceleration_displacement",
+      "args": [
+        0,
+        -9.81,
+        0.25
+      ],
+      "expect": -0.3065625
+    },
+    {
+      "experiment": "free-fall",
+      "law": "constant_acceleration_velocity",
+      "args": [
+        0,
+        -9.81,
+        0.25
+      ],
+      "expect": -2.4525
+    },
+    {
+      "experiment": "free-fall",
+      "law": "constant_acceleration_displacement",
+      "args": [
+        0,
+        -9.81,
+        0.5
+      ],
+      "expect": -1.22625
+    },
+    {
+      "experiment": "free-fall",
+      "law": "constant_acceleration_velocity",
+      "args": [
+        0,
+        -9.81,
+        0.5
+      ],
+      "expect": -4.905
+    },
+    {
+      "experiment": "free-fall",
+      "law": "constant_acceleration_displacement",
+      "args": [
+        0,
+        -9.81,
+        1
+      ],
+      "expect": -4.905
+    },
+    {
+      "experiment": "free-fall",
+      "law": "constant_acceleration_velocity",
+      "args": [
+        0,
+        -9.81,
+        1
+      ],
+      "expect": -9.81
+    },
+    {
+      "experiment": "free-fall",
+      "law": "constant_acceleration_displacement",
+      "args": [
+        0,
+        -9.81,
+        1.3
+      ],
+      "expect": -8.28945
+    },
+    {
+      "experiment": "free-fall",
+      "law": "constant_acceleration_velocity",
+      "args": [
+        0,
+        -9.81,
+        1.3
+      ],
+      "expect": -12.753000000000002
+    },
+    {
+      "experiment": "free-fall",
+      "law": "uniform_gravity_force",
+      "args": [
+        0.5,
+        9.81
+      ],
+      "expect": 4.905
+    },
+    {
+      "experiment": "free-fall",
+      "law": "gravitational_potential_energy",
+      "args": [
+        0.5,
+        9.81,
+        8.3
+      ],
+      "expect": 40.71150000000001
+    },
+    {
+      "experiment": "free-fall",
+      "law": "kinetic_energy",
+      "args": [
+        0.5,
+        12.753000000000002
+      ],
+      "expect": 40.65975225000001
+    },
+    {
+      "experiment": "free-fall",
+      "law": "momentum",
+      "args": [
+        0.5,
+        -12.753000000000002
+      ],
+      "expect": -6.376500000000001
+    },
+    {
+      "experiment": "free-fall",
+      "law": "uniform_gravity_force",
+      "args": [
+        1,
+        9.81
+      ],
+      "expect": 9.81
+    },
+    {
+      "experiment": "free-fall",
+      "law": "gravitational_potential_energy",
+      "args": [
+        1,
+        9.81,
+        8.3
+      ],
+      "expect": 81.42300000000002
+    },
+    {
+      "experiment": "free-fall",
+      "law": "kinetic_energy",
+      "args": [
+        1,
+        12.753000000000002
+      ],
+      "expect": 81.31950450000002
+    },
+    {
+      "experiment": "free-fall",
+      "law": "momentum",
+      "args": [
+        1,
+        -12.753000000000002
+      ],
+      "expect": -12.753000000000002
+    },
+    {
+      "experiment": "free-fall",
+      "law": "uniform_gravity_force",
+      "args": [
+        3,
+        9.81
+      ],
+      "expect": 29.43
+    },
+    {
+      "experiment": "free-fall",
+      "law": "gravitational_potential_energy",
+      "args": [
+        3,
+        9.81,
+        8.3
+      ],
+      "expect": 244.269
+    },
+    {
+      "experiment": "free-fall",
+      "law": "kinetic_energy",
+      "args": [
+        3,
+        12.753000000000002
+      ],
+      "expect": 243.95851350000007
+    },
+    {
+      "experiment": "free-fall",
+      "law": "momentum",
+      "args": [
+        3,
+        -12.753000000000002
+      ],
+      "expect": -38.25900000000001
+    },
+    {
+      "experiment": "free-fall",
+      "law": "constant_acceleration_displacement",
+      "args": [
+        0,
+        -24.79,
+        0.25
+      ],
+      "expect": -0.7746875
+    },
+    {
+      "experiment": "free-fall",
+      "law": "constant_acceleration_velocity",
+      "args": [
+        0,
+        -24.79,
+        0.25
+      ],
+      "expect": -6.1975
+    },
+    {
+      "experiment": "free-fall",
+      "law": "constant_acceleration_displacement",
+      "args": [
+        0,
+        -24.79,
+        0.5
+      ],
+      "expect": -3.09875
+    },
+    {
+      "experiment": "free-fall",
+      "law": "constant_acceleration_velocity",
+      "args": [
+        0,
+        -24.79,
+        0.5
+      ],
+      "expect": -12.395
+    },
+    {
+      "experiment": "free-fall",
+      "law": "constant_acceleration_displacement",
+      "args": [
+        0,
+        -24.79,
+        1
+      ],
+      "expect": -12.395
+    },
+    {
+      "experiment": "free-fall",
+      "law": "constant_acceleration_velocity",
+      "args": [
+        0,
+        -24.79,
+        1
+      ],
+      "expect": -24.79
+    },
+    {
+      "experiment": "free-fall",
+      "law": "constant_acceleration_displacement",
+      "args": [
+        0,
+        -24.79,
+        1.3
+      ],
+      "expect": -20.94755
+    },
+    {
+      "experiment": "free-fall",
+      "law": "constant_acceleration_velocity",
+      "args": [
+        0,
+        -24.79,
+        1.3
+      ],
+      "expect": -32.227
+    },
+    {
+      "experiment": "free-fall",
+      "law": "uniform_gravity_force",
+      "args": [
+        0.5,
+        24.79
+      ],
+      "expect": 12.395
+    },
+    {
+      "experiment": "free-fall",
+      "law": "gravitational_potential_energy",
+      "args": [
+        0.5,
+        24.79,
+        8.3
+      ],
+      "expect": 102.8785
+    },
+    {
+      "experiment": "free-fall",
+      "law": "kinetic_energy",
+      "args": [
+        0.5,
+        32.227
+      ],
+      "expect": 259.64488224999997
+    },
+    {
+      "experiment": "free-fall",
+      "law": "momentum",
+      "args": [
+        0.5,
+        -32.227
+      ],
+      "expect": -16.1135
+    },
+    {
+      "experiment": "free-fall",
+      "law": "uniform_gravity_force",
+      "args": [
+        1,
+        24.79
+      ],
+      "expect": 24.79
+    },
+    {
+      "experiment": "free-fall",
+      "law": "gravitational_potential_energy",
+      "args": [
+        1,
+        24.79,
+        8.3
+      ],
+      "expect": 205.757
+    },
+    {
+      "experiment": "free-fall",
+      "law": "kinetic_energy",
+      "args": [
+        1,
+        32.227
+      ],
+      "expect": 519.2897644999999
+    },
+    {
+      "experiment": "free-fall",
+      "law": "momentum",
+      "args": [
+        1,
+        -32.227
+      ],
+      "expect": -32.227
+    },
+    {
+      "experiment": "free-fall",
+      "law": "uniform_gravity_force",
+      "args": [
+        3,
+        24.79
+      ],
+      "expect": 74.37
+    },
+    {
+      "experiment": "free-fall",
+      "law": "gravitational_potential_energy",
+      "args": [
+        3,
+        24.79,
+        8.3
+      ],
+      "expect": 617.2710000000001
+    },
+    {
+      "experiment": "free-fall",
+      "law": "kinetic_energy",
+      "args": [
+        3,
+        32.227
+      ],
+      "expect": 1557.8692935
+    },
+    {
+      "experiment": "free-fall",
+      "law": "momentum",
+      "args": [
+        3,
+        -32.227
+      ],
+      "expect": -96.68099999999998
+    },
+    {
+      "experiment": "projectile",
+      "law": "constant_acceleration_displacement",
+      "args": [
+        5.6,
+        0,
+        0.2
+      ],
+      "expect": 1.1199999999999999
+    },
+    {
+      "experiment": "projectile",
+      "law": "constant_acceleration_displacement",
+      "args": [
+        7.2,
+        -1.62,
+        0.2
+      ],
+      "expect": 1.4076000000000002
+    },
+    {
+      "experiment": "projectile",
+      "law": "constant_acceleration_velocity",
+      "args": [
+        7.2,
+        -1.62,
+        0.2
+      ],
+      "expect": 6.876
+    },
+    {
+      "experiment": "projectile",
+      "law": "kinetic_energy",
+      "args": [
+        1,
+        8.867884527890515
+      ],
+      "expect": 39.31968799999999
+    },
+    {
+      "experiment": "projectile",
+      "law": "constant_acceleration_displacement",
+      "args": [
+        5.6,
+        0,
+        0.5
+      ],
+      "expect": 2.8
+    },
+    {
+      "experiment": "projectile",
+      "law": "constant_acceleration_displacement",
+      "args": [
+        7.2,
+        -1.62,
+        0.5
+      ],
+      "expect": 3.3975
+    },
+    {
+      "experiment": "projectile",
+      "law": "constant_acceleration_velocity",
+      "args": [
+        7.2,
+        -1.62,
+        0.5
+      ],
+      "expect": 6.390000000000001
+    },
+    {
+      "experiment": "projectile",
+      "law": "kinetic_energy",
+      "args": [
+        1,
+        8.496593435018532
+      ],
+      "expect": 36.09605000000001
+    },
+    {
+      "experiment": "projectile",
+      "law": "constant_acceleration_displacement",
+      "args": [
+        5.6,
+        0,
+        0.9
+      ],
+      "expect": 5.04
+    },
+    {
+      "experiment": "projectile",
+      "law": "constant_acceleration_displacement",
+      "args": [
+        7.2,
+        -1.62,
+        0.9
+      ],
+      "expect": 5.8239
+    },
+    {
+      "experiment": "projectile",
+      "law": "constant_acceleration_velocity",
+      "args": [
+        7.2,
+        -1.62,
+        0.9
+      ],
+      "expect": 5.742
+    },
+    {
+      "experiment": "projectile",
+      "law": "kinetic_energy",
+      "args": [
+        1,
+        8.020633640804197
+      ],
+      "expect": 32.165282
+    },
+    {
+      "experiment": "projectile",
+      "law": "constant_acceleration_displacement",
+      "args": [
+        5.6,
+        0,
+        1.4
+      ],
+      "expect": 7.839999999999999
+    },
+    {
+      "experiment": "projectile",
+      "law": "constant_acceleration_displacement",
+      "args": [
+        7.2,
+        -1.62,
+        1.4
+      ],
+      "expect": 8.4924
+    },
+    {
+      "experiment": "projectile",
+      "law": "constant_acceleration_velocity",
+      "args": [
+        7.2,
+        -1.62,
+        1.4
+      ],
+      "expect": 4.932
+    },
+    {
+      "experiment": "projectile",
+      "law": "kinetic_energy",
+      "args": [
+        1,
+        7.462213076561135
+      ],
+      "expect": 27.842312000000003
+    },
+    {
+      "experiment": "projectile",
+      "law": "constant_acceleration_displacement",
+      "args": [
+        5.6,
+        0,
+        0.2
+      ],
+      "expect": 1.1199999999999999
+    },
+    {
+      "experiment": "projectile",
+      "law": "constant_acceleration_displacement",
+      "args": [
+        7.2,
+        -9.81,
+        0.2
+      ],
+      "expect": 1.2438000000000002
+    },
+    {
+      "experiment": "projectile",
+      "law": "constant_acceleration_velocity",
+      "args": [
+        7.2,
+        -9.81,
+        0.2
+      ],
+      "expect": 5.2379999999999995
+    },
+    {
+      "experiment": "projectile",
+      "law": "kinetic_energy",
+      "args": [
+        1,
+        7.667896973747103
+      ],
+      "expect": 29.398321999999993
+    },
+    {
+      "experiment": "projectile",
+      "law": "constant_acceleration_displacement",
+      "args": [
+        5.6,
+        0,
+        0.5
+      ],
+      "expect": 2.8
+    },
+    {
+      "experiment": "projectile",
+      "law": "constant_acceleration_displacement",
+      "args": [
+        7.2,
+        -9.81,
+        0.5
+      ],
+      "expect": 2.3737500000000002
+    },
+    {
+      "experiment": "projectile",
+      "law": "constant_acceleration_velocity",
+      "args": [
+        7.2,
+        -9.81,
+        0.5
+      ],
+      "expect": 2.295
+    },
+    {
+      "experiment": "projectile",
+      "law": "kinetic_energy",
+      "args": [
+        1,
+        6.052026520100519
+      ],
+      "expect": 18.313512499999998
+    },
+    {
+      "experiment": "projectile",
+      "law": "constant_acceleration_displacement",
+      "args": [
+        5.6,
+        0,
+        0.9
+      ],
+      "expect": 5.04
+    },
+    {
+      "experiment": "projectile",
+      "law": "constant_acceleration_displacement",
+      "args": [
+        7.2,
+        -9.81,
+        0.9
+      ],
+      "expect": 2.50695
+    },
+    {
+      "experiment": "projectile",
+      "law": "constant_acceleration_velocity",
+      "args": [
+        7.2,
+        -9.81,
+        0.9
+      ],
+      "expect": -1.6290000000000004
+    },
+    {
+      "experiment": "projectile",
+      "law": "kinetic_energy",
+      "args": [
+        1,
+        5.832121483645551
+      ],
+      "expect": 17.006820499999993
+    },
+    {
+      "experiment": "projectile",
+      "law": "constant_acceleration_displacement",
+      "args": [
+        5.6,
+        0,
+        1.4
+      ],
+      "expect": 7.839999999999999
+    },
+    {
+      "experiment": "projectile",
+      "law": "constant_acceleration_displacement",
+      "args": [
+        7.2,
+        -9.81,
+        1.4
+      ],
+      "expect": 0.4662000000000006
+    },
+    {
+      "experiment": "projectile",
+      "law": "constant_acceleration_velocity",
+      "args": [
+        7.2,
+        -9.81,
+        1.4
+      ],
+      "expect": -6.534
+    },
+    {
+      "experiment": "projectile",
+      "law": "kinetic_energy",
+      "args": [
+        1,
+        8.605414342145297
+      ],
+      "expect": 37.026577999999986
+    },
+    {
+      "experiment": "projectile",
+      "law": "constant_acceleration_displacement",
+      "args": [
+        5.6,
+        0,
+        0.2
+      ],
+      "expect": 1.1199999999999999
+    },
+    {
+      "experiment": "projectile",
+      "law": "constant_acceleration_displacement",
+      "args": [
+        7.2,
+        -24.79,
+        0.2
+      ],
+      "expect": 0.9442000000000002
+    },
+    {
+      "experiment": "projectile",
+      "law": "constant_acceleration_velocity",
+      "args": [
+        7.2,
+        -24.79,
+        0.2
+      ],
+      "expect": 2.242
+    },
+    {
+      "experiment": "projectile",
+      "law": "kinetic_energy",
+      "args": [
+        1,
+        6.032127651169195
+      ],
+      "expect": 18.193281999999996
+    },
+    {
+      "experiment": "projectile",
+      "law": "constant_acceleration_displacement",
+      "args": [
+        5.6,
+        0,
+        0.5
+      ],
+      "expect": 2.8
+    },
+    {
+      "experiment": "projectile",
+      "law": "constant_acceleration_displacement",
+      "args": [
+        7.2,
+        -24.79,
+        0.5
+      ],
+      "expect": 0.5012500000000002
+    },
+    {
+      "experiment": "projectile",
+      "law": "constant_acceleration_velocity",
+      "args": [
+        7.2,
+        -24.79,
+        0.5
+      ],
+      "expect": -5.194999999999999
+    },
+    {
+      "experiment": "projectile",
+      "law": "kinetic_energy",
+      "args": [
+        1,
+        7.638587893059815
+      ],
+      "expect": 29.17401249999999
+    },
+    {
+      "experiment": "projectile",
+      "law": "constant_acceleration_displacement",
+      "args": [
+        5.6,
+        0,
+        0.9
+      ],
+      "expect": 5.04
+    },
+    {
+      "experiment": "projectile",
+      "law": "constant_acceleration_displacement",
+      "args": [
+        7.2,
+        -24.79,
+        0.9
+      ],
+      "expect": -3.5599500000000006
+    },
+    {
+      "experiment": "projectile",
+      "law": "constant_acceleration_velocity",
+      "args": [
+        7.2,
+        -24.79,
+        0.9
+      ],
+      "expect": -15.111
+    },
+    {
+      "experiment": "projectile",
+      "law": "kinetic_energy",
+      "args": [
+        1,
+        16.11528221906151
+      ],
+      "expect": 129.85116050000002
+    },
+    {
+      "experiment": "projectile",
+      "law": "constant_acceleration_displacement",
+      "args": [
+        5.6,
+        0,
+        1.4
+      ],
+      "expect": 7.839999999999999
+    },
+    {
+      "experiment": "projectile",
+      "law": "constant_acceleration_displacement",
+      "args": [
+        7.2,
+        -24.79,
+        1.4
+      ],
+      "expect": -14.214199999999996
+    },
+    {
+      "experiment": "projectile",
+      "law": "constant_acceleration_velocity",
+      "args": [
+        7.2,
+        -24.79,
+        1.4
+      ],
+      "expect": -27.505999999999997
+    },
+    {
+      "experiment": "projectile",
+      "law": "kinetic_energy",
+      "args": [
+        1,
+        28.070269610390273
+      ],
+      "expect": 393.97001799999987
+    },
+    {
+      "experiment": "collision",
+      "law": "post_collision_velocity_1d",
+      "args": [
+        1,
+        3.4,
+        2,
+        -1.7,
+        0.88
+      ],
+      "expect": -2.9919999999999995
+    },
+    {
+      "experiment": "collision",
+      "law": "post_collision_velocity_1d_second",
+      "args": [
+        1,
+        3.4,
+        2,
+        -1.7,
+        0.88
+      ],
+      "expect": 1.4959999999999998
+    },
+    {
+      "experiment": "collision",
+      "law": "post_collision_velocity_1d",
+      "args": [
+        3,
+        1.2,
+        0.5,
+        0,
+        0.88
+      ],
+      "expect": 0.8777142857142858
+    },
+    {
+      "experiment": "collision",
+      "law": "post_collision_velocity_1d_second",
+      "args": [
+        3,
+        1.2,
+        0.5,
+        0,
+        0.88
+      ],
+      "expect": 1.9337142857142857
+    },
+    {
+      "experiment": "collision",
+      "law": "post_collision_velocity_1d",
+      "args": [
+        0.5,
+        0.4,
+        1,
+        -0.3,
+        0.88
+      ],
+      "expect": -0.47733333333333333
+    },
+    {
+      "experiment": "collision",
+      "law": "post_collision_velocity_1d_second",
+      "args": [
+        0.5,
+        0.4,
+        1,
+        -0.3,
+        0.88
+      ],
+      "expect": 0.13866666666666666
+    },
+    {
+      "experiment": "collision",
+      "law": "post_collision_velocity_1d",
+      "args": [
+        1,
+        3.4,
+        2,
+        -1.7,
+        0.5
+      ],
+      "expect": -1.7
+    },
+    {
+      "experiment": "collision",
+      "law": "post_collision_velocity_1d_second",
+      "args": [
+        1,
+        3.4,
+        2,
+        -1.7,
+        0.5
+      ],
+      "expect": 0.85
+    },
+    {
+      "experiment": "collision",
+      "law": "post_collision_velocity_1d",
+      "args": [
+        3,
+        1.2,
+        0.5,
+        0,
+        0.5
+      ],
+      "expect": 0.9428571428571428
+    },
+    {
+      "experiment": "collision",
+      "law": "post_collision_velocity_1d_second",
+      "args": [
+        3,
+        1.2,
+        0.5,
+        0,
+        0.5
+      ],
+      "expect": 1.5428571428571427
+    },
+    {
+      "experiment": "collision",
+      "law": "post_collision_velocity_1d",
+      "args": [
+        0.5,
+        0.4,
+        1,
+        -0.3,
+        0.5
+      ],
+      "expect": -0.3
+    },
+    {
+      "experiment": "collision",
+      "law": "post_collision_velocity_1d_second",
+      "args": [
+        0.5,
+        0.4,
+        1,
+        -0.3,
+        0.5
+      ],
+      "expect": 0.050000000000000044
+    },
+    {
+      "experiment": "collision",
+      "law": "post_collision_velocity_1d",
+      "args": [
+        1,
+        3.4,
+        2,
+        -1.7,
+        0.72
+      ],
+      "expect": -2.448
+    },
+    {
+      "experiment": "collision",
+      "law": "post_collision_velocity_1d_second",
+      "args": [
+        1,
+        3.4,
+        2,
+        -1.7,
+        0.72
+      ],
+      "expect": 1.224
+    },
+    {
+      "experiment": "collision",
+      "law": "post_collision_velocity_1d",
+      "args": [
+        3,
+        1.2,
+        0.5,
+        0,
+        0.72
+      ],
+      "expect": 0.9051428571428571
+    },
+    {
+      "experiment": "collision",
+      "law": "post_collision_velocity_1d_second",
+      "args": [
+        3,
+        1.2,
+        0.5,
+        0,
+        0.72
+      ],
+      "expect": 1.7691428571428571
+    },
+    {
+      "experiment": "collision",
+      "law": "post_collision_velocity_1d",
+      "args": [
+        0.5,
+        0.4,
+        1,
+        -0.3,
+        0.72
+      ],
+      "expect": -0.4026666666666667
+    },
+    {
+      "experiment": "collision",
+      "law": "post_collision_velocity_1d_second",
+      "args": [
+        0.5,
+        0.4,
+        1,
+        -0.3,
+        0.72
+      ],
+      "expect": 0.10133333333333334
+    },
+    {
+      "experiment": "collision",
+      "law": "post_collision_velocity_1d",
+      "args": [
+        1,
+        3.4,
+        2,
+        -1.7,
+        0.08
+      ],
+      "expect": -0.2720000000000001
+    },
+    {
+      "experiment": "collision",
+      "law": "post_collision_velocity_1d_second",
+      "args": [
+        1,
+        3.4,
+        2,
+        -1.7,
+        0.08
+      ],
+      "expect": 0.13600000000000012
+    },
+    {
+      "experiment": "collision",
+      "law": "post_collision_velocity_1d",
+      "args": [
+        3,
+        1.2,
+        0.5,
+        0,
+        0.08
+      ],
+      "expect": 1.014857142857143
+    },
+    {
+      "experiment": "collision",
+      "law": "post_collision_velocity_1d_second",
+      "args": [
+        3,
+        1.2,
+        0.5,
+        0,
+        0.08
+      ],
+      "expect": 1.1108571428571428
+    },
+    {
+      "experiment": "collision",
+      "law": "post_collision_velocity_1d",
+      "args": [
+        0.5,
+        0.4,
+        1,
+        -0.3,
+        0.08
+      ],
+      "expect": -0.104
+    },
+    {
+      "experiment": "collision",
+      "law": "post_collision_velocity_1d_second",
+      "args": [
+        0.5,
+        0.4,
+        1,
+        -0.3,
+        0.08
+      ],
+      "expect": -0.047999999999999966
+    },
+    {
+      "experiment": "collision",
+      "law": "elastic_collision_1d",
+      "args": [
+        1,
+        3.4,
+        2,
+        -1.7
+      ],
+      "expect": [
+        -3.4,
+        1.7
+      ]
+    },
+    {
+      "experiment": "collision",
+      "law": "elastic_collision_1d",
+      "args": [
+        3,
+        2,
+        1,
+        0
+      ],
+      "expect": [
+        1,
+        3
+      ]
+    },
+    {
+      "experiment": "collision",
+      "law": "world_collision_velocities",
+      "args": [
+        1,
+        2,
+        3.4,
+        0,
+        -1.7,
+        0,
+        1,
+        0,
+        0.88,
+        0.88,
+        1
+      ],
+      "expect": [
+        -2.9919999999999995,
+        0,
+        1.4959999999999998,
+        0
+      ]
+    },
+    {
+      "experiment": "collision",
+      "law": "world_collision_velocities",
+      "args": [
+        1,
+        2,
+        3.4,
+        0.5,
+        -1.7,
+        -0.2,
+        0.9553364891256061,
+        0.29552020666133955,
+        0.88,
+        0.5,
+        1
+      ],
+      "expect": [
+        -1.4522306837079424,
+        -1.0009708419389527,
+        0.7261153418539712,
+        0.5504854209694763
+      ]
+    },
+    {
+      "experiment": "collision",
+      "law": "world_collision_velocities",
+      "args": [
+        3,
+        1,
+        2,
+        1,
+        0,
+        0,
+        0.7648421872844885,
+        -0.644217687237691,
+        0.72,
+        0.08,
+        1
+      ],
+      "expect": [
+        1.8306894305234973,
+        1.142608325359645,
+        0.5079317084295083,
+        -0.4278249760789356
+      ]
+    },
+    {
+      "experiment": "collision",
+      "law": "world_collision_velocities",
+      "args": [
+        1,
+        2,
+        0.4,
+        0,
+        -0.3,
+        0,
+        1,
+        0,
+        0.88,
+        0.88,
+        1
+      ],
+      "expect": [
+        -0.0666666666666666,
+        0,
+        -0.06666666666666668,
+        0
+      ]
+    },
+    {
+      "experiment": "collision",
+      "law": "collision_restitution",
+      "args": [
+        0.88,
+        0.5,
+        5.1,
+        1
+      ],
+      "expect": 0.5
+    },
+    {
+      "experiment": "collision",
+      "law": "collision_restitution",
+      "args": [
+        0.72,
+        0.88,
+        0.7,
+        1
+      ],
+      "expect": 0
+    },
+    {
+      "experiment": "collision",
+      "law": "collision_restitution",
+      "args": [
+        0.08,
+        0.5,
+        1,
+        1
+      ],
+      "expect": 0.08000000000000007
+    },
+    {
+      "experiment": "spring",
+      "law": "anchored_spring_force",
+      "args": [
+        2.4,
+        0,
+        5,
+        0.45
+      ],
+      "expect": -12.000000000000002
+    },
+    {
+      "experiment": "spring",
+      "law": "spring_potential_energy",
+      "args": [
+        5,
+        2.4
+      ],
+      "expect": 14.399999999999999
+    },
+    {
+      "experiment": "spring",
+      "law": "anchored_spring_force",
+      "args": [
+        -0.8,
+        1.5,
+        5,
+        0.45
+      ],
+      "expect": 3.3249999999999993
+    },
+    {
+      "experiment": "spring",
+      "law": "spring_potential_energy",
+      "args": [
+        5,
+        -0.8
+      ],
+      "expect": 1.6000000000000003
+    },
+    {
+      "experiment": "spring",
+      "law": "anchored_spring_force",
+      "args": [
+        1.1,
+        -2,
+        5,
+        0
+      ],
+      "expect": -5.499999999999998
+    },
+    {
+      "experiment": "spring",
+      "law": "spring_potential_energy",
+      "args": [
+        5,
+        1.1
+      ],
+      "expect": 3.0250000000000004
+    },
+    {
+      "experiment": "spring",
+      "law": "anchored_spring_force",
+      "args": [
+        0.3,
+        0.7,
+        5,
+        0
+      ],
+      "expect": -1.4999999999999991
+    },
+    {
+      "experiment": "spring",
+      "law": "spring_potential_energy",
+      "args": [
+        5,
+        0.3
+      ],
+      "expect": 0.22499999999999998
+    },
+    {
+      "experiment": "spring",
+      "law": "angular_frequency",
+      "args": [
+        5,
+        0.5
+      ],
+      "expect": 3.1622776601683795
+    },
+    {
+      "experiment": "spring",
+      "law": "period_from_angular_frequency",
+      "args": [
+        3.1622776601683795
+      ],
+      "expect": 1.98691765315922
+    },
+    {
+      "experiment": "spring",
+      "law": "harmonic_displacement",
+      "args": [
+        2.4,
+        3.1622776601683795,
+        0.3,
+        0
+      ],
+      "expect": 1.3986086656853396
+    },
+    {
+      "experiment": "spring",
+      "law": "harmonic_velocity",
+      "args": [
+        2.4,
+        3.1622776601683795,
+        0.3,
+        0
+      ],
+      "expect": -6.167571483387828
+    },
+    {
+      "experiment": "spring",
+      "law": "harmonic_displacement",
+      "args": [
+        2.4,
+        3.1622776601683795,
+        1.1,
+        0
+      ],
+      "expect": -2.2650713320842106
+    },
+    {
+      "experiment": "spring",
+      "law": "harmonic_velocity",
+      "args": [
+        2.4,
+        3.1622776601683795,
+        1.1,
+        0
+      ],
+      "expect": 2.5088879221086375
+    },
+    {
+      "experiment": "spring",
+      "law": "harmonic_displacement",
+      "args": [
+        2.4,
+        3.1622776601683795,
+        2.5,
+        0
+      ],
+      "expect": -0.1240547313462208
+    },
+    {
+      "experiment": "spring",
+      "law": "harmonic_velocity",
+      "args": [
+        2.4,
+        3.1622776601683795,
+        2.5,
+        0
+      ],
+      "expect": -7.579320829487703
+    },
+    {
+      "experiment": "spring",
+      "law": "kinetic_energy",
+      "args": [
+        0.5,
+        1.7
+      ],
+      "expect": 0.7224999999999999
+    },
+    {
+      "experiment": "spring",
+      "law": "angular_frequency",
+      "args": [
+        5,
+        1
+      ],
+      "expect": 2.23606797749979
+    },
+    {
+      "experiment": "spring",
+      "law": "period_from_angular_frequency",
+      "args": [
+        2.23606797749979
+      ],
+      "expect": 2.8099258924162904
+    },
+    {
+      "experiment": "spring",
+      "law": "harmonic_displacement",
+      "args": [
+        2.4,
+        2.23606797749979,
+        0.3,
+        0
+      ],
+      "expect": 1.879948678685476
+    },
+    {
+      "experiment": "spring",
+      "law": "harmonic_velocity",
+      "args": [
+        2.4,
+        2.23606797749979,
+        0.3,
+        0
+      ],
+      "expect": -3.3360103158628975
+    },
+    {
+      "experiment": "spring",
+      "law": "harmonic_displacement",
+      "args": [
+        2.4,
+        2.23606797749979,
+        1.1,
+        0
+      ],
+      "expect": -1.8632768181918378
+    },
+    {
+      "experiment": "spring",
+      "law": "harmonic_velocity",
+      "args": [
+        2.4,
+        2.23606797749979,
+        1.1,
+        0
+      ],
+      "expect": -3.3824543594769314
+    },
+    {
+      "experiment": "spring",
+      "law": "harmonic_displacement",
+      "args": [
+        2.4,
+        2.23606797749979,
+        2.5,
+        0
+      ],
+      "expect": 1.846375489733263
+    },
+    {
+      "experiment": "spring",
+      "law": "harmonic_velocity",
+      "args": [
+        2.4,
+        2.23606797749979,
+        2.5,
+        0
+      ],
+      "expect": 3.4284818439888616
+    },
+    {
+      "experiment": "spring",
+      "law": "kinetic_energy",
+      "args": [
+        1,
+        1.7
+      ],
+      "expect": 1.4449999999999998
+    },
+    {
+      "experiment": "spring",
+      "law": "angular_frequency",
+      "args": [
+        5,
+        3
+      ],
+      "expect": 1.2909944487358056
+    },
+    {
+      "experiment": "spring",
+      "law": "period_from_angular_frequency",
+      "args": [
+        1.2909944487358056
+      ],
+      "expect": 4.866934411168335
+    },
+    {
+      "experiment": "spring",
+      "law": "harmonic_displacement",
+      "args": [
+        2.4,
+        1.2909944487358056,
+        0.3,
+        0
+      ],
+      "expect": 2.2222387800837624
+    },
+    {
+      "experiment": "spring",
+      "law": "harmonic_velocity",
+      "args": [
+        2.4,
+        1.2909944487358056,
+        0.3,
+        0
+      ],
+      "expect": -1.1702241981003978
+    },
+    {
+      "experiment": "spring",
+      "law": "harmonic_displacement",
+      "args": [
+        2.4,
+        1.2909944487358056,
+        1.1,
+        0
+      ],
+      "expect": 0.36031833880124947
+    },
+    {
+      "experiment": "spring",
+      "law": "harmonic_velocity",
+      "args": [
+        2.4,
+        1.2909944487358056,
+        1.1,
+        0
+      ],
+      "expect": -3.0632691400755463
+    },
+    {
+      "experiment": "spring",
+      "law": "harmonic_displacement",
+      "args": [
+        2.4,
+        1.2909944487358056,
+        2.5,
+        0
+      ],
+      "expect": -2.3911522162239094
+    },
+    {
+      "experiment": "spring",
+      "law": "harmonic_velocity",
+      "args": [
+        2.4,
+        1.2909944487358056,
+        2.5,
+        0
+      ],
+      "expect": 0.26580405956107034
+    },
+    {
+      "experiment": "spring",
+      "law": "kinetic_energy",
+      "args": [
+        3,
+        1.7
+      ],
+      "expect": 4.334999999999999
+    },
+    {
+      "experiment": "spring",
+      "law": "harmonic_energy",
+      "args": [
+        5,
+        2.4
+      ],
+      "expect": 14.399999999999999
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        10,
+        0,
+        1,
+        0.4,
+        0.22,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 7.841799999999999
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        10,
+        0,
+        1,
+        0.4,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        40,
+        0,
+        1,
+        0.4,
+        0.22,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 37.8418
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        40,
+        0,
+        1,
+        0.4,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        80,
+        0,
+        1,
+        0.4,
+        0.22,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 77.8418
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        80,
+        0,
+        1,
+        0.4,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        80,
+        0.5,
+        1,
+        0.4,
+        0.22,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 77.8418
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        80,
+        0.5,
+        1,
+        0.4,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        0,
+        0.5,
+        1,
+        0.4,
+        0.22,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": -2.1582000000000003
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        0,
+        0.5,
+        1,
+        0.4,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        -30,
+        -0.2,
+        1,
+        0.4,
+        0.22,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": -27.8418
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        -30,
+        -0.2,
+        1,
+        0.4,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        5,
+        0.004,
+        1,
+        0.4,
+        0.22,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 2.8417999999999997
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        5,
+        0.004,
+        1,
+        0.4,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        0,
+        0.02,
+        1,
+        0.4,
+        0.22,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": -1.2
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        0,
+        0.02,
+        1,
+        0.4,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_max_static_force",
+      "args": [
+        0.4,
+        1,
+        9.81
+      ],
+      "expect": 3.9240000000000004
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        10,
+        0,
+        8,
+        0.4,
+        0.22,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 0
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        10,
+        0,
+        8,
+        0.4,
+        9.81
+      ],
+      "expect": true
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        40,
+        0,
+        8,
+        0.4,
+        0.22,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 22.734399999999997
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        40,
+        0,
+        8,
+        0.4,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        80,
+        0,
+        8,
+        0.4,
+        0.22,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 62.734399999999994
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        80,
+        0,
+        8,
+        0.4,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        80,
+        0.5,
+        8,
+        0.4,
+        0.22,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 62.734399999999994
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        80,
+        0.5,
+        8,
+        0.4,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        0,
+        0.5,
+        8,
+        0.4,
+        0.22,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": -17.265600000000003
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        0,
+        0.5,
+        8,
+        0.4,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        -30,
+        -0.2,
+        8,
+        0.4,
+        0.22,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": -12.734399999999997
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        -30,
+        -0.2,
+        8,
+        0.4,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        5,
+        0.004,
+        8,
+        0.4,
+        0.22,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 0
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        5,
+        0.004,
+        8,
+        0.4,
+        9.81
+      ],
+      "expect": true
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        0,
+        0.02,
+        8,
+        0.4,
+        0.22,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": -9.6
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        0,
+        0.02,
+        8,
+        0.4,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_max_static_force",
+      "args": [
+        0.4,
+        8,
+        9.81
+      ],
+      "expect": 31.392000000000003
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        10,
+        0,
+        1,
+        0.6,
+        0.42,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 5.8798
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        10,
+        0,
+        1,
+        0.6,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        40,
+        0,
+        1,
+        0.6,
+        0.42,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 35.8798
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        40,
+        0,
+        1,
+        0.6,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        80,
+        0,
+        1,
+        0.6,
+        0.42,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 75.8798
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        80,
+        0,
+        1,
+        0.6,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        80,
+        0.5,
+        1,
+        0.6,
+        0.42,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 75.8798
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        80,
+        0.5,
+        1,
+        0.6,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        0,
+        0.5,
+        1,
+        0.6,
+        0.42,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": -4.1202
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        0,
+        0.5,
+        1,
+        0.6,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        -30,
+        -0.2,
+        1,
+        0.6,
+        0.42,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": -25.8798
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        -30,
+        -0.2,
+        1,
+        0.6,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        5,
+        0.004,
+        1,
+        0.6,
+        0.42,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 0
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        5,
+        0.004,
+        1,
+        0.6,
+        9.81
+      ],
+      "expect": true
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        0,
+        0.02,
+        1,
+        0.6,
+        0.42,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": -1.2
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        0,
+        0.02,
+        1,
+        0.6,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_max_static_force",
+      "args": [
+        0.6,
+        1,
+        9.81
+      ],
+      "expect": 5.886
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        10,
+        0,
+        8,
+        0.6,
+        0.42,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 0
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        10,
+        0,
+        8,
+        0.6,
+        9.81
+      ],
+      "expect": true
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        40,
+        0,
+        8,
+        0.6,
+        0.42,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 0
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        40,
+        0,
+        8,
+        0.6,
+        9.81
+      ],
+      "expect": true
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        80,
+        0,
+        8,
+        0.6,
+        0.42,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 47.0384
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        80,
+        0,
+        8,
+        0.6,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        80,
+        0.5,
+        8,
+        0.6,
+        0.42,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 47.0384
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        80,
+        0.5,
+        8,
+        0.6,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        0,
+        0.5,
+        8,
+        0.6,
+        0.42,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": -32.9616
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        0,
+        0.5,
+        8,
+        0.6,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        -30,
+        -0.2,
+        8,
+        0.6,
+        0.42,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 2.961599999999997
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        -30,
+        -0.2,
+        8,
+        0.6,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        5,
+        0.004,
+        8,
+        0.6,
+        0.42,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 0
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        5,
+        0.004,
+        8,
+        0.6,
+        9.81
+      ],
+      "expect": true
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        0,
+        0.02,
+        8,
+        0.6,
+        0.42,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": -9.6
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        0,
+        0.02,
+        8,
+        0.6,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_max_static_force",
+      "args": [
+        0.6,
+        8,
+        9.81
+      ],
+      "expect": 47.088
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        10,
+        0,
+        1,
+        0.26,
+        0.08,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 9.2152
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        10,
+        0,
+        1,
+        0.26,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        40,
+        0,
+        1,
+        0.26,
+        0.08,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 39.2152
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        40,
+        0,
+        1,
+        0.26,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        80,
+        0,
+        1,
+        0.26,
+        0.08,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 79.2152
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        80,
+        0,
+        1,
+        0.26,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        80,
+        0.5,
+        1,
+        0.26,
+        0.08,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 79.2152
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        80,
+        0.5,
+        1,
+        0.26,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        0,
+        0.5,
+        1,
+        0.26,
+        0.08,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": -0.7848
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        0,
+        0.5,
+        1,
+        0.26,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        -30,
+        -0.2,
+        1,
+        0.26,
+        0.08,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": -29.2152
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        -30,
+        -0.2,
+        1,
+        0.26,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        5,
+        0.004,
+        1,
+        0.26,
+        0.08,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 4.2152
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        5,
+        0.004,
+        1,
+        0.26,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        0,
+        0.02,
+        1,
+        0.26,
+        0.08,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": -0.7848
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        0,
+        0.02,
+        1,
+        0.26,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_max_static_force",
+      "args": [
+        0.26,
+        1,
+        9.81
+      ],
+      "expect": 2.5506
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        10,
+        0,
+        8,
+        0.26,
+        0.08,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 0
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        10,
+        0,
+        8,
+        0.26,
+        9.81
+      ],
+      "expect": true
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        40,
+        0,
+        8,
+        0.26,
+        0.08,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 33.7216
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        40,
+        0,
+        8,
+        0.26,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        80,
+        0,
+        8,
+        0.26,
+        0.08,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 73.7216
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        80,
+        0,
+        8,
+        0.26,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        80,
+        0.5,
+        8,
+        0.26,
+        0.08,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 73.7216
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        80,
+        0.5,
+        8,
+        0.26,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        0,
+        0.5,
+        8,
+        0.26,
+        0.08,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": -6.2784
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        0,
+        0.5,
+        8,
+        0.26,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        -30,
+        -0.2,
+        8,
+        0.26,
+        0.08,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": -23.7216
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        -30,
+        -0.2,
+        8,
+        0.26,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        5,
+        0.004,
+        8,
+        0.26,
+        0.08,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 0
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        5,
+        0.004,
+        8,
+        0.26,
+        9.81
+      ],
+      "expect": true
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        0,
+        0.02,
+        8,
+        0.26,
+        0.08,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": -6.2784
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        0,
+        0.02,
+        8,
+        0.26,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_max_static_force",
+      "args": [
+        0.26,
+        8,
+        9.81
+      ],
+      "expect": 20.4048
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        10,
+        0,
+        1,
+        0.76,
+        0.58,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 4.3102
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        10,
+        0,
+        1,
+        0.76,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        40,
+        0,
+        1,
+        0.76,
+        0.58,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 34.3102
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        40,
+        0,
+        1,
+        0.76,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        80,
+        0,
+        1,
+        0.76,
+        0.58,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 74.3102
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        80,
+        0,
+        1,
+        0.76,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        80,
+        0.5,
+        1,
+        0.76,
+        0.58,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 74.3102
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        80,
+        0.5,
+        1,
+        0.76,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        0,
+        0.5,
+        1,
+        0.76,
+        0.58,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": -5.6898
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        0,
+        0.5,
+        1,
+        0.76,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        -30,
+        -0.2,
+        1,
+        0.76,
+        0.58,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": -24.310200000000002
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        -30,
+        -0.2,
+        1,
+        0.76,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        5,
+        0.004,
+        1,
+        0.76,
+        0.58,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 0
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        5,
+        0.004,
+        1,
+        0.76,
+        9.81
+      ],
+      "expect": true
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        0,
+        0.02,
+        1,
+        0.76,
+        0.58,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": -1.2
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        0,
+        0.02,
+        1,
+        0.76,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_max_static_force",
+      "args": [
+        0.76,
+        1,
+        9.81
+      ],
+      "expect": 7.4556000000000004
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        10,
+        0,
+        8,
+        0.76,
+        0.58,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 0
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        10,
+        0,
+        8,
+        0.76,
+        9.81
+      ],
+      "expect": true
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        40,
+        0,
+        8,
+        0.76,
+        0.58,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 0
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        40,
+        0,
+        8,
+        0.76,
+        9.81
+      ],
+      "expect": true
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        80,
+        0,
+        8,
+        0.76,
+        0.58,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 34.4816
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        80,
+        0,
+        8,
+        0.76,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        80,
+        0.5,
+        8,
+        0.76,
+        0.58,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 34.4816
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        80,
+        0.5,
+        8,
+        0.76,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        0,
+        0.5,
+        8,
+        0.76,
+        0.58,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": -45.5184
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        0,
+        0.5,
+        8,
+        0.76,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        -30,
+        -0.2,
+        8,
+        0.76,
+        0.58,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 15.5184
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        -30,
+        -0.2,
+        8,
+        0.76,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        5,
+        0.004,
+        8,
+        0.76,
+        0.58,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 0
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        5,
+        0.004,
+        8,
+        0.76,
+        9.81
+      ],
+      "expect": true
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        0,
+        0.02,
+        8,
+        0.76,
+        0.58,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": -9.6
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        0,
+        0.02,
+        8,
+        0.76,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_max_static_force",
+      "args": [
+        0.76,
+        8,
+        9.81
+      ],
+      "expect": 59.644800000000004
+    },
+    {
+      "experiment": "rotation",
+      "law": "lever_required_force",
+      "args": [
+        5,
+        9.81,
+        2.552,
+        2.1111999999999997
+      ],
+      "expect": 59.29120879120881
+    },
+    {
+      "experiment": "rotation",
+      "law": "lever_mechanical_advantage",
+      "args": [
+        2.552,
+        2.1111999999999997
+      ],
+      "expect": 0.8272727272727272
+    },
+    {
+      "experiment": "rotation",
+      "law": "lever_lifting",
+      "args": [
+        -5,
+        59.29120879120881
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "rotation",
+      "law": "lever_lifting",
+      "args": [
+        53.36208791208793,
+        59.29120879120881
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "rotation",
+      "law": "lever_lifting",
+      "args": [
+        59.29120879120881,
+        59.29120879120881
+      ],
+      "expect": true
+    },
+    {
+      "experiment": "rotation",
+      "law": "lever_lifting",
+      "args": [
+        60.29120879120881,
+        59.29120879120881
+      ],
+      "expect": true
+    },
+    {
+      "experiment": "rotation",
+      "law": "torque_2d",
+      "args": [
+        -2.552,
+        0,
+        0,
+        -49.050000000000004
+      ],
+      "expect": 125.17560000000002
+    },
+    {
+      "experiment": "rotation",
+      "law": "torque_2d",
+      "args": [
+        2.1111999999999997,
+        0,
+        0,
+        -59.29120879120881
+      ],
+      "expect": -125.17560000000002
+    },
+    {
+      "experiment": "rotation",
+      "law": "lever_required_force",
+      "args": [
+        20,
+        9.81,
+        2.552,
+        2.1111999999999997
+      ],
+      "expect": 237.16483516483524
+    },
+    {
+      "experiment": "rotation",
+      "law": "lever_mechanical_advantage",
+      "args": [
+        2.552,
+        2.1111999999999997
+      ],
+      "expect": 0.8272727272727272
+    },
+    {
+      "experiment": "rotation",
+      "law": "lever_lifting",
+      "args": [
+        -5,
+        237.16483516483524
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "rotation",
+      "law": "lever_lifting",
+      "args": [
+        213.44835164835172,
+        237.16483516483524
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "rotation",
+      "law": "lever_lifting",
+      "args": [
+        237.16483516483524,
+        237.16483516483524
+      ],
+      "expect": true
+    },
+    {
+      "experiment": "rotation",
+      "law": "lever_lifting",
+      "args": [
+        238.16483516483524,
+        237.16483516483524
+      ],
+      "expect": true
+    },
+    {
+      "experiment": "rotation",
+      "law": "torque_2d",
+      "args": [
+        -2.552,
+        0,
+        0,
+        -196.20000000000002
+      ],
+      "expect": 500.70240000000007
+    },
+    {
+      "experiment": "rotation",
+      "law": "torque_2d",
+      "args": [
+        2.1111999999999997,
+        0,
+        0,
+        -237.16483516483524
+      ],
+      "expect": -500.70240000000007
+    },
+    {
+      "experiment": "rotation",
+      "law": "lever_required_force",
+      "args": [
+        5,
+        9.81,
+        2.552,
+        3.6191999999999998
+      ],
+      "expect": 34.58653846153847
+    },
+    {
+      "experiment": "rotation",
+      "law": "lever_mechanical_advantage",
+      "args": [
+        2.552,
+        3.6191999999999998
+      ],
+      "expect": 1.418181818181818
+    },
+    {
+      "experiment": "rotation",
+      "law": "lever_lifting",
+      "args": [
+        -5,
+        34.58653846153847
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "rotation",
+      "law": "lever_lifting",
+      "args": [
+        31.12788461538462,
+        34.58653846153847
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "rotation",
+      "law": "lever_lifting",
+      "args": [
+        34.58653846153847,
+        34.58653846153847
+      ],
+      "expect": true
+    },
+    {
+      "experiment": "rotation",
+      "law": "lever_lifting",
+      "args": [
+        35.58653846153847,
+        34.58653846153847
+      ],
+      "expect": true
+    },
+    {
+      "experiment": "rotation",
+      "law": "torque_2d",
+      "args": [
+        -2.552,
+        0,
+        0,
+        -49.050000000000004
+      ],
+      "expect": 125.17560000000002
+    },
+    {
+      "experiment": "rotation",
+      "law": "torque_2d",
+      "args": [
+        3.6191999999999998,
+        0,
+        0,
+        -34.58653846153847
+      ],
+      "expect": -125.17560000000002
+    },
+    {
+      "experiment": "rotation",
+      "law": "lever_required_force",
+      "args": [
+        20,
+        9.81,
+        2.552,
+        3.6191999999999998
+      ],
+      "expect": 138.34615384615387
+    },
+    {
+      "experiment": "rotation",
+      "law": "lever_mechanical_advantage",
+      "args": [
+        2.552,
+        3.6191999999999998
+      ],
+      "expect": 1.418181818181818
+    },
+    {
+      "experiment": "rotation",
+      "law": "lever_lifting",
+      "args": [
+        -5,
+        138.34615384615387
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "rotation",
+      "law": "lever_lifting",
+      "args": [
+        124.51153846153848,
+        138.34615384615387
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "rotation",
+      "law": "lever_lifting",
+      "args": [
+        138.34615384615387,
+        138.34615384615387
+      ],
+      "expect": true
+    },
+    {
+      "experiment": "rotation",
+      "law": "lever_lifting",
+      "args": [
+        139.34615384615387,
+        138.34615384615387
+      ],
+      "expect": true
+    },
+    {
+      "experiment": "rotation",
+      "law": "torque_2d",
+      "args": [
+        -2.552,
+        0,
+        0,
+        -196.20000000000002
+      ],
+      "expect": 500.70240000000007
+    },
+    {
+      "experiment": "rotation",
+      "law": "torque_2d",
+      "args": [
+        3.6191999999999998,
+        0,
+        0,
+        -138.34615384615387
+      ],
+      "expect": -500.70240000000007
+    },
+    {
+      "experiment": "rotation",
+      "law": "lever_required_force",
+      "args": [
+        5,
+        9.81,
+        2.552,
+        5.4288
+      ],
+      "expect": 23.05769230769231
+    },
+    {
+      "experiment": "rotation",
+      "law": "lever_mechanical_advantage",
+      "args": [
+        2.552,
+        5.4288
+      ],
+      "expect": 2.127272727272727
+    },
+    {
+      "experiment": "rotation",
+      "law": "lever_lifting",
+      "args": [
+        -5,
+        23.05769230769231
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "rotation",
+      "law": "lever_lifting",
+      "args": [
+        20.75192307692308,
+        23.05769230769231
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "rotation",
+      "law": "lever_lifting",
+      "args": [
+        23.05769230769231,
+        23.05769230769231
+      ],
+      "expect": true
+    },
+    {
+      "experiment": "rotation",
+      "law": "lever_lifting",
+      "args": [
+        24.05769230769231,
+        23.05769230769231
+      ],
+      "expect": true
+    },
+    {
+      "experiment": "rotation",
+      "law": "torque_2d",
+      "args": [
+        -2.552,
+        0,
+        0,
+        -49.050000000000004
+      ],
+      "expect": 125.17560000000002
+    },
+    {
+      "experiment": "rotation",
+      "law": "torque_2d",
+      "args": [
+        5.4288,
+        0,
+        0,
+        -23.05769230769231
+      ],
+      "expect": -125.1756
+    },
+    {
+      "experiment": "rotation",
+      "law": "lever_required_force",
+      "args": [
+        20,
+        9.81,
+        2.552,
+        5.4288
+      ],
+      "expect": 92.23076923076924
+    },
+    {
+      "experiment": "rotation",
+      "law": "lever_mechanical_advantage",
+      "args": [
+        2.552,
+        5.4288
+      ],
+      "expect": 2.127272727272727
+    },
+    {
+      "experiment": "rotation",
+      "law": "lever_lifting",
+      "args": [
+        -5,
+        92.23076923076924
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "rotation",
+      "law": "lever_lifting",
+      "args": [
+        83.00769230769232,
+        92.23076923076924
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "rotation",
+      "law": "lever_lifting",
+      "args": [
+        92.23076923076924,
+        92.23076923076924
+      ],
+      "expect": true
+    },
+    {
+      "experiment": "rotation",
+      "law": "lever_lifting",
+      "args": [
+        93.23076923076924,
+        92.23076923076924
+      ],
+      "expect": true
+    },
+    {
+      "experiment": "rotation",
+      "law": "torque_2d",
+      "args": [
+        -2.552,
+        0,
+        0,
+        -196.20000000000002
+      ],
+      "expect": 500.70240000000007
+    },
+    {
+      "experiment": "rotation",
+      "law": "torque_2d",
+      "args": [
+        5.4288,
+        0,
+        0,
+        -92.23076923076924
+      ],
+      "expect": -500.7024
+    },
+    {
+      "experiment": "constraints",
+      "law": "pendulum_period",
+      "args": [
+        4.375,
+        1.62
+      ],
+      "expect": 10.325507102576028
+    },
+    {
+      "experiment": "constraints",
+      "law": "pendulum_angular_frequency",
+      "args": [
+        4.375,
+        1.62
+      ],
+      "expect": 0.608511063404532
+    },
+    {
+      "experiment": "constraints",
+      "law": "pendulum_period",
+      "args": [
+        4.375,
+        9.81
+      ],
+      "expect": 4.195989505781238
+    },
+    {
+      "experiment": "constraints",
+      "law": "pendulum_angular_frequency",
+      "args": [
+        4.375,
+        9.81
+      ],
+      "expect": 1.497426363560397
+    },
+    {
+      "experiment": "constraints",
+      "law": "pendulum_period",
+      "args": [
+        4.375,
+        24.79
+      ],
+      "expect": 2.6395545009825563
+    },
+    {
+      "experiment": "constraints",
+      "law": "pendulum_angular_frequency",
+      "args": [
+        4.375,
+        24.79
+      ],
+      "expect": 2.380396125497963
+    },
+    {
+      "experiment": "constraints",
+      "law": "pendulum_step",
+      "args": [
+        0.62,
+        0,
+        0.016666666666666666,
+        9.81,
+        4.375,
+        0.06
+      ],
+      "expect": [
+        0.6196380981000081,
+        -0.021714113999508435,
+        -1.302846839970506
+      ]
+    },
+    {
+      "experiment": "constraints",
+      "law": "pendulum_offset",
+      "args": [
+        4.375,
+        0.6196380981000081
+      ],
+      "expect": [
+        2.5407400302110386,
+        3.5616379797620095
+      ]
+    },
+    {
+      "experiment": "constraints",
+      "law": "pendulum_step",
+      "args": [
+        -0.41891978165475663,
+        -0.6039069138935462,
+        0.016666666666666666,
+        9.81,
+        4.375,
+        0.06
+      ],
+      "expect": [
+        -0.42872146975444503,
+        -0.5881012859813056,
+        0.948337674734437
+      ]
+    },
+    {
+      "experiment": "constraints",
+      "law": "pendulum_offset",
+      "args": [
+        4.375,
+        -0.42872146975444503
+      ],
+      "expect": [
+        -1.8187239079886586,
+        3.979053699877706
+      ]
+    },
+    {
+      "experiment": "constraints",
+      "law": "pendulum_step",
+      "args": [
+        0.008432069061215514,
+        0.8302313718044034,
+        0.016666666666666666,
+        9.81,
+        4.375,
+        0.06
+      ],
+      "expect": [
+        0.022250169489550477,
+        0.8290860257000979,
+        -0.06872076625833101
+      ]
+    },
+    {
+      "experiment": "constraints",
+      "law": "pendulum_offset",
+      "args": [
+        4.375,
+        0.022250169489550477
+      ],
+      "expect": [
+        0.09733645965868017,
+        4.373917078960358
+      ]
+    },
+    {
+      "experiment": "constraints",
+      "law": "pendulum_step",
+      "args": [
+        0.36598172545711694,
+        -0.578121040680853,
+        0.016666666666666666,
+        9.81,
+        4.375,
+        0.06
+      ],
+      "expect": [
+        0.3561331106262491,
+        -0.5909168898520725,
+        -0.767750950273168
+      ]
+    },
+    {
+      "experiment": "constraints",
+      "law": "pendulum_offset",
+      "args": [
+        4.375,
+        0.3561331106262491
+      ],
+      "expect": [
+        1.5253551209140397,
+        4.100477625240908
+      ]
+    },
+    {
+      "experiment": "constraints",
+      "law": "pendulum_step",
+      "args": [
+        -0.508103791007452,
+        0.04955166717147898,
+        0.016666666666666666,
+        9.81,
+        4.375,
+        0.06
+      ],
+      "expect": [
+        -0.5069757223798891,
+        0.06768411765377526,
+        1.087947028937777
+      ]
+    },
+    {
+      "experiment": "constraints",
+      "law": "pendulum_offset",
+      "args": [
+        4.375,
+        -0.5069757223798891
+      ],
+      "expect": [
+        -2.1242182356880948,
+        3.8246989276504046
+      ]
+    },
+    {
+      "experiment": "constraints",
+      "law": "pendulum_step",
+      "args": [
+        0.3714511348214354,
+        0.45441356212310025,
+        0.016666666666666666,
+        9.81,
+        4.375,
+        0.06
+      ],
+      "expect": [
+        0.3787910434296816,
+        0.4403945164947731,
+        -0.8411427376996284
+      ]
+    },
+    {
+      "experiment": "constraints",
+      "law": "pendulum_offset",
+      "args": [
+        4.375,
+        0.3787910434296816
+      ],
+      "expect": [
+        1.617863989916458,
+        4.0648666780266725
+      ]
+    },
+    {
+      "experiment": "constraints",
+      "law": "pendulum_step",
+      "args": [
+        -0.05392452266373369,
+        -0.6796131860942919,
+        0.016666666666666666,
+        9.81,
+        4.375,
+        0.06
+      ],
+      "expect": [
+        -0.06520651121353657,
+        -0.6769193129881732,
+        0.16163238636712135
+      ]
+    },
+    {
+      "experiment": "constraints",
+      "law": "pendulum_offset",
+      "args": [
+        4.375,
+        -0.06520651121353657
+      ],
+      "expect": [
+        -0.2850763674519444,
+        4.365702287687561
+      ]
+    },
+    {
+      "experiment": "constraints",
+      "law": "pendulum_run",
+      "args": [
+        0.62,
+        0,
+        0.016666666666666666,
+        9.81,
+        4.375,
+        0.06,
+        600
+      ],
+      "expect": [
+        -0.24360553112260436,
+        -0.5701934333119603
+      ]
+    },
+    {
+      "experiment": "constraints",
+      "law": "pendulum_step",
+      "args": [
+        -0.5,
+        0,
+        0.016666666666666666,
+        9.81,
+        4.375,
+        0.03
+      ],
+      "expect": [
+        -0.49970138637881223,
+        0.017916817271265647,
+        1.0750090362759388
+      ]
+    },
+    {
+      "experiment": "constraints",
+      "law": "pendulum_offset",
+      "args": [
+        4.375,
+        -0.49970138637881223
+      ],
+      "expect": [
+        -2.096340133677082,
+        3.8400498751884404
+      ]
+    },
+    {
+      "experiment": "constraints",
+      "law": "pendulum_step",
+      "args": [
+        0.35595069009382857,
+        0.4932560593763494,
+        0.016666666666666666,
+        9.81,
+        4.375,
+        0.03
+      ],
+      "expect": [
+        0.36395045968390083,
+        0.4799861754043353,
+        -0.7961930383208455
+      ]
+    },
+    {
+      "experiment": "constraints",
+      "law": "pendulum_offset",
+      "args": [
+        4.375,
+        0.36395045968390083
+      ],
+      "expect": [
+        1.557363051620703,
+        4.088428221877773
+      ]
+    },
+    {
+      "experiment": "constraints",
+      "law": "pendulum_step",
+      "args": [
+        -0.028482827139902245,
+        -0.7050984662060737,
+        0.016666666666666666,
+        9.81,
+        4.375,
+        0.03
+      ],
+      "expect": [
+        -0.040210854089113186,
+        -0.7036816169526565,
+        0.08501095520503579
+      ]
+    },
+    {
+      "experiment": "constraints",
+      "law": "pendulum_offset",
+      "args": [
+        4.375,
+        -0.040210854089113186
+      ],
+      "expect": [
+        -0.1758750819194817,
+        4.371463479838281
+      ]
+    },
+    {
+      "experiment": "constraints",
+      "law": "pendulum_step",
+      "args": [
+        -0.2980100652070231,
+        0.5259129026745325,
+        0.016666666666666666,
+        9.81,
+        4.375,
+        0.03
+      ],
+      "expect": [
+        -0.2890663503491783,
+        0.5366228914706885,
+        0.6425993277693643
+      ]
+    },
+    {
+      "experiment": "constraints",
+      "law": "pendulum_offset",
+      "args": [
+        4.375,
+        -0.2890663503491783
+      ],
+      "expect": [
+        -1.2471262848735862,
+        4.193483161952294
+      ]
+    },
+    {
+      "experiment": "constraints",
+      "law": "pendulum_step",
+      "args": [
+        0.4497771993467996,
+        -0.08100078595457763,
+        0.016666666666666666,
+        9.81,
+        4.375,
+        0.03
+      ],
+      "expect": [
+        0.44815706482873785,
+        -0.09720807108370572,
+        -0.9724371077476852
+      ]
+    },
+    {
+      "experiment": "constraints",
+      "law": "pendulum_offset",
+      "args": [
+        4.375,
+        0.44815706482873785
+      ],
+      "expect": [
+        1.8957108220547372,
+        3.9429564389103455
+      ]
+    },
+    {
+      "experiment": "constraints",
+      "law": "pendulum_step",
+      "args": [
+        -0.35873519429080564,
+        -0.3833259895817303,
+        0.016666666666666666,
+        9.81,
+        4.375,
+        0.03
+      ],
+      "expect": [
+        -0.3649020873466748,
+        -0.37001358335215045,
+        0.7987443737747908
+      ]
+    },
+    {
+      "experiment": "constraints",
+      "law": "pendulum_offset",
+      "args": [
+        4.375,
+        -0.3649020873466748
+      ],
+      "expect": [
+        -1.5612530072564748,
+        4.086944341110192
+      ]
+    },
+    {
+      "experiment": "constraints",
+      "law": "pendulum_step",
+      "args": [
+        0.08382407571868128,
+        0.6292807913568467,
+        0.016666666666666666,
+        9.81,
+        4.375,
+        0.03
+      ],
+      "expect": [
+        0.09425469559813142,
+        0.6258371927670083,
+        -0.20661591539030102
+      ]
+    },
+    {
+      "experiment": "constraints",
+      "law": "pendulum_offset",
+      "args": [
+        4.375,
+        0.09425469559813142
+      ],
+      "expect": [
+        0.4117539939331476,
+        4.3555807475559565
+      ]
+    },
+    {
+      "experiment": "constraints",
+      "law": "pendulum_run",
+      "args": [
+        -0.5,
+        0,
+        0.016666666666666666,
+        9.81,
+        4.375,
+        0.03,
+        600
+      ],
+      "expect": [
+        0.256791791036902,
+        0.5113404593935907
+      ]
+    },
+    {
+      "experiment": "constraints",
+      "law": "pendulum_step",
+      "args": [
+        0.1,
+        0,
+        0.016666666666666666,
+        9.81,
+        4.375,
+        0
+      ],
+      "expect": [
+        0.0999378180433457,
+        -0.0037309173992586065,
+        -0.2238550439555164
+      ]
+    },
+    {
+      "experiment": "constraints",
+      "law": "pendulum_offset",
+      "args": [
+        4.375,
+        0.0999378180433457
+      ],
+      "expect": [
+        0.43650051002243057,
+        4.353170373963114
+      ]
+    },
+    {
+      "experiment": "constraints",
+      "law": "pendulum_step",
+      "args": [
+        -0.07586621958735466,
+        -0.09891746013262419,
+        0.016666666666666666,
+        9.81,
+        4.375,
+        0
+      ],
+      "expect": [
+        -0.07746763542275062,
+        -0.09608495012375716,
+        0.1699506005320221
+      ]
+    },
+    {
+      "experiment": "constraints",
+      "law": "pendulum_offset",
+      "args": [
+        4.375,
+        -0.07746763542275062
+      ],
+      "expect": [
+        -0.33858201603802107,
+        4.361878863335802
+      ]
+    },
+    {
+      "experiment": "constraints",
+      "law": "pendulum_step",
+      "args": [
+        0.013845299981038731,
+        0.14849640503449515,
+        0.016666666666666666,
+        9.81,
+        4.375,
+        0
+      ],
+      "expect": [
+        0.016311616696470556,
+        0.14797900292590954,
+        -0.03104412651513629
+      ]
+    },
+    {
+      "experiment": "constraints",
+      "law": "pendulum_offset",
+      "args": [
+        4.375,
+        0.016311616696470556
+      ],
+      "expect": [
+        0.07136015849640366,
+        4.374417987318926
+      ]
+    },
+    {
+      "experiment": "constraints",
+      "law": "pendulum_step",
+      "args": [
+        0.055094094082938666,
+        -0.1238742604260272,
+        0.016666666666666666,
+        9.81,
+        4.375,
+        0
+      ],
+      "expect": [
+        0.0529952246832795,
+        -0.12593216397954982,
+        -0.12347421321135767
+      ]
+    },
+    {
+      "experiment": "constraints",
+      "law": "pendulum_offset",
+      "args": [
+        4.375,
+        0.0529952246832795
+      ],
+      "expect": [
+        0.23174559642252396,
+        4.368857857442695
+      ]
+    },
+    {
+      "experiment": "constraints",
+      "law": "pendulum_step",
+      "args": [
+        -0.09651162631432435,
+        0.03741508949102751,
+        0.016666666666666666,
+        9.81,
+        4.375,
+        0
+      ],
+      "expect": [
+        -0.09582802181049785,
+        0.04101627022959015,
+        0.2160708443137586
+      ]
+    },
+    {
+      "experiment": "constraints",
+      "law": "pendulum_offset",
+      "args": [
+        4.375,
+        -0.09582802181049785
+      ],
+      "expect": [
+        -0.41860623084756626,
+        4.354927533667534
+      ]
+    },
+    {
+      "experiment": "constraints",
+      "law": "pendulum_step",
+      "args": [
+        0.08975061669509138,
+        0.06768316493977324,
+        0.016666666666666666,
+        9.81,
+        4.375,
+        0
+      ],
+      "expect": [
+        0.09082284265097927,
+        0.06433355735327348,
+        -0.20097645518998503
+      ]
+    },
+    {
+      "experiment": "constraints",
+      "law": "pendulum_offset",
+      "args": [
+        4.375,
+        0.09082284265097927
+      ],
+      "expect": [
+        0.3968038859119152,
+        4.356968174789117
+      ]
+    },
+    {
+      "experiment": "constraints",
+      "law": "pendulum_step",
+      "args": [
+        -0.03817997317020046,
+        -0.13904789924144662,
+        0.016666666666666666,
+        9.81,
+        4.375,
+        0
+      ],
+      "expect": [
+        -0.04047366326568822,
+        -0.13762140572926596,
+        0.08558961073084022
+      ]
+    },
+    {
+      "experiment": "constraints",
+      "law": "pendulum_offset",
+      "args": [
+        4.375,
+        -0.04047366326568822
+      ],
+      "expect": [
+        -0.17702393655009244,
+        4.371417107287785
+      ]
+    },
+    {
+      "experiment": "constraints",
+      "law": "pendulum_run",
+      "args": [
+        0.1,
+        0,
+        0.016666666666666666,
+        9.81,
+        4.375,
+        0,
+        600
+      ],
+      "expect": [
+        -0.07451677238272238,
+        -0.10119602769549702
+      ]
+    },
+    {
+      "experiment": "pulley",
+      "law": "pulley_required_force",
+      "args": [
+        5,
+        1.62,
+        1
+      ],
+      "expect": 8.100000000000001
+    },
+    {
+      "experiment": "pulley",
+      "law": "pulley_required_force",
+      "args": [
+        5,
+        9.81,
+        1
+      ],
+      "expect": 49.050000000000004
+    },
+    {
+      "experiment": "pulley",
+      "law": "pulley_required_force",
+      "args": [
+        5,
+        24.79,
+        1
+      ],
+      "expect": 123.94999999999999
+    },
+    {
+      "experiment": "pulley",
+      "law": "pulley_required_force",
+      "args": [
+        20,
+        1.62,
+        1
+      ],
+      "expect": 32.400000000000006
+    },
+    {
+      "experiment": "pulley",
+      "law": "pulley_required_force",
+      "args": [
+        20,
+        9.81,
+        1
+      ],
+      "expect": 196.20000000000002
+    },
+    {
+      "experiment": "pulley",
+      "law": "pulley_required_force",
+      "args": [
+        20,
+        24.79,
+        1
+      ],
+      "expect": 495.79999999999995
+    },
+    {
+      "experiment": "pulley",
+      "law": "pulley_pull_distance",
+      "args": [
+        0.5,
+        1
+      ],
+      "expect": 0.5
+    },
+    {
+      "experiment": "pulley",
+      "law": "pulley_lift_distance",
+      "args": [
+        0.5,
+        1
+      ],
+      "expect": 0.5
+    },
+    {
+      "experiment": "pulley",
+      "law": "pulley_pull_distance",
+      "args": [
+        1,
+        1
+      ],
+      "expect": 1
+    },
+    {
+      "experiment": "pulley",
+      "law": "pulley_lift_distance",
+      "args": [
+        1,
+        1
+      ],
+      "expect": 1
+    },
+    {
+      "experiment": "pulley",
+      "law": "pulley_pull_distance",
+      "args": [
+        4.166666666666667,
+        1
+      ],
+      "expect": 4.166666666666667
+    },
+    {
+      "experiment": "pulley",
+      "law": "pulley_lift_distance",
+      "args": [
+        4.166666666666667,
+        1
+      ],
+      "expect": 4.166666666666667
+    },
+    {
+      "experiment": "pulley",
+      "law": "pulley_required_force",
+      "args": [
+        5,
+        1.62,
+        2
+      ],
+      "expect": 4.050000000000001
+    },
+    {
+      "experiment": "pulley",
+      "law": "pulley_required_force",
+      "args": [
+        5,
+        9.81,
+        2
+      ],
+      "expect": 24.525000000000002
+    },
+    {
+      "experiment": "pulley",
+      "law": "pulley_required_force",
+      "args": [
+        5,
+        24.79,
+        2
+      ],
+      "expect": 61.974999999999994
+    },
+    {
+      "experiment": "pulley",
+      "law": "pulley_required_force",
+      "args": [
+        20,
+        1.62,
+        2
+      ],
+      "expect": 16.200000000000003
+    },
+    {
+      "experiment": "pulley",
+      "law": "pulley_required_force",
+      "args": [
+        20,
+        9.81,
+        2
+      ],
+      "expect": 98.10000000000001
+    },
+    {
+      "experiment": "pulley",
+      "law": "pulley_required_force",
+      "args": [
+        20,
+        24.79,
+        2
+      ],
+      "expect": 247.89999999999998
+    },
+    {
+      "experiment": "pulley",
+      "law": "pulley_pull_distance",
+      "args": [
+        0.5,
+        2
+      ],
+      "expect": 1
+    },
+    {
+      "experiment": "pulley",
+      "law": "pulley_lift_distance",
+      "args": [
+        0.5,
+        2
+      ],
+      "expect": 0.25
+    },
+    {
+      "experiment": "pulley",
+      "law": "pulley_pull_distance",
+      "args": [
+        1,
+        2
+      ],
+      "expect": 2
+    },
+    {
+      "experiment": "pulley",
+      "law": "pulley_lift_distance",
+      "args": [
+        1,
+        2
+      ],
+      "expect": 0.5
+    },
+    {
+      "experiment": "pulley",
+      "law": "pulley_pull_distance",
+      "args": [
+        4.166666666666667,
+        2
+      ],
+      "expect": 8.333333333333334
+    },
+    {
+      "experiment": "pulley",
+      "law": "pulley_lift_distance",
+      "args": [
+        4.166666666666667,
+        2
+      ],
+      "expect": 2.0833333333333335
+    },
+    {
+      "experiment": "pulley",
+      "law": "pulley_required_force",
+      "args": [
+        5,
+        1.62,
+        4
+      ],
+      "expect": 2.0250000000000004
+    },
+    {
+      "experiment": "pulley",
+      "law": "pulley_required_force",
+      "args": [
+        5,
+        9.81,
+        4
+      ],
+      "expect": 12.262500000000001
+    },
+    {
+      "experiment": "pulley",
+      "law": "pulley_required_force",
+      "args": [
+        5,
+        24.79,
+        4
+      ],
+      "expect": 30.987499999999997
+    },
+    {
+      "experiment": "pulley",
+      "law": "pulley_required_force",
+      "args": [
+        20,
+        1.62,
+        4
+      ],
+      "expect": 8.100000000000001
+    },
+    {
+      "experiment": "pulley",
+      "law": "pulley_required_force",
+      "args": [
+        20,
+        9.81,
+        4
+      ],
+      "expect": 49.050000000000004
+    },
+    {
+      "experiment": "pulley",
+      "law": "pulley_required_force",
+      "args": [
+        20,
+        24.79,
+        4
+      ],
+      "expect": 123.94999999999999
+    },
+    {
+      "experiment": "pulley",
+      "law": "pulley_pull_distance",
+      "args": [
+        0.5,
+        4
+      ],
+      "expect": 2
+    },
+    {
+      "experiment": "pulley",
+      "law": "pulley_lift_distance",
+      "args": [
+        0.5,
+        4
+      ],
+      "expect": 0.125
+    },
+    {
+      "experiment": "pulley",
+      "law": "pulley_pull_distance",
+      "args": [
+        1,
+        4
+      ],
+      "expect": 4
+    },
+    {
+      "experiment": "pulley",
+      "law": "pulley_lift_distance",
+      "args": [
+        1,
+        4
+      ],
+      "expect": 0.25
+    },
+    {
+      "experiment": "pulley",
+      "law": "pulley_pull_distance",
+      "args": [
+        4.166666666666667,
+        4
+      ],
+      "expect": 16.666666666666668
+    },
+    {
+      "experiment": "pulley",
+      "law": "pulley_lift_distance",
+      "args": [
+        4.166666666666667,
+        4
+      ],
+      "expect": 1.0416666666666667
+    },
+    {
+      "experiment": "orbit",
+      "law": "circular_orbit_speed",
+      "args": [
+        38.712158203125,
+        3.7125,
+        1
+      ],
+      "expect": 3.2291666666666665
+    },
+    {
+      "experiment": "orbit",
+      "law": "circular_orbit_period",
+      "args": [
+        38.712158203125,
+        3.7125,
+        1
+      ],
+      "expect": 7.223636269286466
+    },
+    {
+      "experiment": "orbit",
+      "law": "escape_speed",
+      "args": [
+        38.712158203125,
+        3.7125,
+        1
+      ],
+      "expect": 4.56673129516312
+    },
+    {
+      "experiment": "orbit",
+      "law": "point_gravity_acceleration",
+      "args": [
+        38.712158203125,
+        3.7125,
+        1
+      ],
+      "expect": 2.8087588851477743
+    },
+    {
+      "experiment": "orbit",
+      "law": "circular_orbit_speed",
+      "args": [
+        38.712158203125,
+        7.425,
+        1
+      ],
+      "expect": 2.28336564758156
+    },
+    {
+      "experiment": "orbit",
+      "law": "circular_orbit_period",
+      "args": [
+        38.712158203125,
+        7.425,
+        1
+      ],
+      "expect": 20.431528763350215
+    },
+    {
+      "experiment": "orbit",
+      "law": "escape_speed",
+      "args": [
+        38.712158203125,
+        7.425,
+        1
+      ],
+      "expect": 3.2291666666666665
+    },
+    {
+      "experiment": "orbit",
+      "law": "point_gravity_acceleration",
+      "args": [
+        38.712158203125,
+        7.425,
+        1
+      ],
+      "expect": 0.7021897212869436
+    },
+    {
+      "experiment": "orbit",
+      "law": "circular_orbit_speed",
+      "args": [
+        38.712158203125,
+        1.85625,
+        1
+      ],
+      "expect": 4.56673129516312
+    },
+    {
+      "experiment": "orbit",
+      "law": "circular_orbit_period",
+      "args": [
+        38.712158203125,
+        1.85625,
+        1
+      ],
+      "expect": 2.553941095418777
+    },
+    {
+      "experiment": "orbit",
+      "law": "escape_speed",
+      "args": [
+        38.712158203125,
+        1.85625,
+        1
+      ],
+      "expect": 6.458333333333333
+    },
+    {
+      "experiment": "orbit",
+      "law": "point_gravity_acceleration",
+      "args": [
+        38.712158203125,
+        1.85625,
+        1
+      ],
+      "expect": 11.235035540591097
+    },
+    {
+      "experiment": "orbit",
+      "law": "orbit_analyze",
+      "args": [
+        3.7125,
+        0,
+        0,
+        3.2291666666666665,
+        0,
+        0,
+        38.712158203125,
+        1.2291666666666667
+      ],
+      "expect": {
+        "outcome": "orbit",
+        "speed": 3.2291666666666665,
+        "circular_speed": 3.2291666666666665,
+        "escape_speed": 4.56673129516312,
+        "path": [
+          3.7125,
+          0,
+          3.711376496445941,
+          0.06458333333333333,
+          3.701264969144233,
+          0.25813774467307876,
+          3.681056257333762,
+          0.4509878402427849,
+          3.650791883114452,
+          0.6426058506294302,
+          3.610541092883118,
+          0.8324659628884027,
+          3.560400813910082,
+          1.020045793665561,
+          3.5004955308031684,
+          1.2048278681190623,
+          3.4309770806016298,
+          1.3863011000951582,
+          3.352024365517971,
+          1.5639622688382984,
+          3.263842982642408,
+          1.737317487360052,
+          3.1666647702415647,
+          1.9058836574560765,
+          3.0607472706184673,
+          2.0691899062481234,
+          2.946373109853034,
+          2.2267789990411955,
+          2.823849295109021,
+          2.3782087232266544,
+          2.6935064305722816,
+          2.5230532379323316,
+          2.5556978534735757,
+          2.6609043841222735,
+          2.4107986920440605,
+          2.7913729498831406,
+          2.259204847649909,
+          2.914089885702724,
+          2.101331903750861,
+          3.0287074646493313,
+          1.9376139647224784,
+          3.1349003824994943,
+          1.7685024279698405,
+          3.2323667930356694,
+          1.5944646931378323,
+          3.3208292739450225,
+          1.4159828125863074,
+          3.400035718994385,
+          1.2335520876437671,
+          3.4697601524339015,
+          1.0476796154772252,
+          3.5298034618912437,
+          0.8588827917153277,
+          3.579994046357638,
+          0.6676877742333996,
+          3.6201883762340503,
+          0.4746279137500221,
+          3.650271462797995,
+          0.2802421570923796,
+          3.6701572348656097,
+          0.08507342915972241,
+          3.679788820856559,
+          -0.11033300025105584,
+          3.679138734917451,
+          -0.3054311584979983,
+          3.6682089662189887,
+          -0.4996760147093539,
+          3.6470309710091455,
+          -0.692525120630937,
+          3.6156655674752005,
+          -0.8834402414006094,
+          3.5742027339374443,
+          -1.0718889700110208,
+          3.5227613113626837,
+          -1.2573463193275516,
+          3.4614886116423693,
+          -1.4392962856727387,
+          3.3905599335243433,
+          -1.6172333781697064,
+          3.3101779885151577,
+          -1.790664108253259,
+          3.2205722394781957,
+          -1.9591084340059626,
+          3.1219981550381934,
+          -2.1221011542550485,
+          3.0147363832623366,
+          -2.2791932476713477,
+          2.8990918484193355,
+          -2.429953152440508,
+          2.7753927749185663,
+          -2.5739679824260726,
+          2.643989642799741,
+          -2.71084467611008,
+          2.5052540793781977,
+          -2.8402110749761245,
+          2.3595776918508875,
+          -2.961716928388602,
+          2.2073708458328265,
+          -3.0750348224166397,
+          2.0490613949231014,
+          -3.1798610304483463,
+          1.8850933664936607,
+          -3.275916283837187,
+          1.7159256089537112,
+          -3.3629464612141513,
+          1.5420304057685408,
+          -3.4407231954839075,
+          1.3638920615052899,
+          -3.5090443978974704,
+          1.1820054651411627,
+          -3.56773469895541,
+          0.9968746358036404,
+          -3.616645806242032,
+          0.8090112560194922,
+          -3.655656779620152,
+          0.6189331974319957,
+          -3.6846742245263737,
+          0.4271630438061515,
+          -3.7036324043966777,
+          0.23422661598229902,
+          -3.7124932735205367,
+          0.04065150326193469,
+          -3.7112464318678082,
+          -0.1530343944817048,
+          -3.699909003655811,
+          -0.34630430987904937,
+          -3.6785254416239703,
+          -0.5386340324491959,
+          -3.647167259160236,
+          -0.7295033106380238,
+          -3.605932692577381,
+          -0.9183972280775463,
+          -3.5549462959687426,
+          -1.1048075508616437,
+          -3.4943584711826774,
+          -1.2882340428606216,
+          -3.424344935543826,
+          -1.4681857463226466,
+          -3.345106130018254,
+          -1.6441822252321912,
+          -3.256866570569835,
+          -1.8157547691125155,
+          -3.159874145488172,
+          -1.9824475551694805,
+          -3.0543993614852414,
+          -2.1438187668762922,
+          -2.9407345413603414,
+          -2.2994416672920623,
+          -2.819192976022251,
+          -2.44890562559037,
+          -2.6901080336353487,
+          -2.59181709544662,
+          -2.5538322286243225,
+          -2.7278005440943276,
+          -2.4107362532316157,
+          -2.8564993310101197,
+          -2.2612079742743547,
+          -2.977576535325036,
+          -2.1056513976947717,
+          -3.0907157311854996,
+          -1.944485603441443,
+          -3.195621710401239,
+          -1.7781436531594668,
+          -3.2920211518196467,
+          -1.6070714731072706,
+          -3.379663236956887,
+          -1.43172671465738,
+          -3.4583202114960017,
+          -1.252577594679309,
+          -3.5277878923317916,
+          -1.0701017180458858,
+          -3.5878861199020995,
+          -0.8847848844507579,
+          -3.638459155595959,
+          -0.6971198816754407,
+          -3.679376024071733,
+          -0.5076052673998873,
+          -3.7105308003537436,
+          -0.3167441416118449,
+          -3.7318428416048905,
+          -0.1250429116378275,
+          -3.743256963496358,
+          0.06698994820713507,
+          -3.7447435611147553,
+          0.2588451403723415,
+          -3.7362986743629847,
+          0.4500137892593324,
+          -3.717943997824799,
+          0.6399886858808641,
+          -3.6897268350755867,
+          0.8282655300228067,
+          -3.6517199974344257,
+          1.014344167929086,
+          -3.6040216471660176,
+          1.1977298235106133,
+          -3.546755085156852,
+          1.3779343210527637,
+          -3.4800684831089073,
+          1.554477297362778,
+          -3.4041345603174626,
+          1.7268874012589224,
+          -3.3191502051281794,
+          1.8947034782579386,
+          -3.2253360412035135,
+          2.0574757382669375,
+          -3.1229359387706728,
+          2.2147669040312112,
+          -3.0122164710736357,
+          2.366153338031361,
+          -2.8934663163110135,
+          2.51122614546263,
+          -2.766995605410511,
+          2.6495922508674794,
+          -2.633135216070105,
+          2.7808754459304117,
+          -2.4922360135863384,
+          2.9047174058830834,
+          -2.3446680390918497,
+          3.0207786719091674,
+          -2.190819645937704,
+          3.128739596883629,
+          -2.0310965850815386,
+          3.228301251731527,
+          -1.8659210404800426,
+          3.3191862896486075,
+          -1.695730615633806,
+          3.401139765391406,
+          -1.5209772725938926,
+          3.47392990681981,
+          -1.34212622491224,
+          3.537348835861682,
+          -1.159654786201598,
+          3.5912132360686977,
+          -0.9740511761645161,
+          3.635364963946586,
+          -0.7858132861539129,
+          3.669671601272885,
+          -0.5954474065389674,
+          3.6940269456626273,
+          -0.4034669183681685,
+          3.708351436708266,
+          -0.21039095204488634,
+          3.712592515105925,
+          -0.01674301595815504,
+          3.706724912286701,
+          0.17695040175933452,
+          3.690750868200212,
+          0.3701612549447211,
+          3.6647002750485353,
+          0.5623613809614362,
+          3.6286307449426807,
+          0.7530239582473391,
+          3.5826275996510093,
+          0.9416249757871855,
+          3.5268037808296326,
+          1.127644710235296,
+          3.461299679368522,
+          1.3105692062192904,
+          3.3862828827533473,
+          1.4898917551751083,
+          3.301947839631125,
+          1.6651143678998548,
+          3.208515441076456,
+          1.8357492358648437,
+          3.1062325183831163,
+          2.001320176209062,
+          2.9953712575512372,
+          2.1613640552355466,
+          2.876228531001329,
+          2.315432185162106,
+          2.74912514742059,
+          2.4630916888355348,
+          2.6144050210317706,
+          2.6039268271067892,
+          2.4724342619674644,
+          2.737540283585171,
+          2.32360018983002,
+          2.8635544015437056,
+          2.168310272916074,
+          2.981612367836613,
+          2.0069909959815346,
+          3.0913793388136996,
+          1.8400866598142118,
+          3.1925435033759637,
+          1.6680581162635684,
+          3.28481707851154,
+          1.4913814427466028,
+          3.367937232880852,
+          1.3105465606020896,
+          3.4416669342835307,
+          1.1260558019987479,
+          3.5057957171359466,
+          0.9384224304129631,
+          3.5601403664153755,
+          0.7481691199752487,
+          3.604545514882684,
+          0.5558263992386616,
+          3.6388841507774967,
+          0.3619310651441943,
+          3.663058033585203,
+          0.16702457314530605,
+          3.6769980159007125,
+          -0.028348590395793488,
+          3.6806642698561225,
+          -0.2236425473154125,
+          3.674046417034717,
+          -0.41831167196202024,
+          3.6571635612581526,
+          -0.6118122343870124,
+          3.630064224103264,
+          -0.8036040360920268,
+          3.592826183475645,
+          -0.9931520320615618,
+          3.545556216034891,
+          -1.1799279328990562,
+          3.4883897447271504,
+          -1.3634117810130655,
+          3.4214903931304694,
+          -1.5430934949662645,
+          3.345049448753535,
+          -1.7184743763018857,
+          3.259285237845291,
+          -1.8890685733976351,
+          3.164442414668144,
+          -2.0544044971635427,
+          3.0607911685581204,
+          -2.214026183694769,
+          2.948626352438605,
+          -2.367494599309952,
+          2.8282665367679365,
+          -2.514388883746976,
+          2.7000529931831094,
+          -2.6543075276475445,
+          2.5643486123506474,
+          -2.786869480836149,
+          2.421536760750174,
+          -2.91171518828425,
+          2.2720200812956435,
+          -3.0285075510431643,
+          2.1162192428431865,
+          -3.136932809825703,
+          1.9545716437432825,
+          -3.2367013493135297,
+          1.7875300746688068,
+          -3.327548421661194,
+          1.6155613459903722,
+          -3.409234788055728,
+          1.4391448849773418,
+          -3.4815472775694944,
+          1.2587713080784515,
+          -3.5442992629111303,
+          1.0749409734818665,
+          -3.5973310530322893,
+          0.8881625190726453,
+          -3.6405102028844514,
+          0.6989513907981979,
+          -3.6737317409383574,
+          0.5078283663216823,
+          -3.696918315377139,
+          0.31531807869185835,
+          -3.7100202601516328,
+          0.1219475445882042,
+          -3.713015582341758,
+          -0.07175529848531997,
+          -3.7059098725005586,
+          -0.2652630418830294,
+          -3.6887361398670793,
+          -0.458050238411104,
+          -3.661554574520694,
+          -0.6495948140835373,
+          -3.6244522387128653,
+          -0.8393794555148569,
+          -3.5775426897530225,
+          -1.0268929696502516,
+          -3.5209655369439044,
+          -1.2116316127611233,
+          -3.4548859351590933,
+          -1.393100385860568,
+          -3.379494017732575,
+          -1.5708142939169845,
+          -3.2950042713880734,
+          -1.7442995664632088,
+          -3.2016548559759013,
+          -1.9130948374116936,
+          -3.099706871808489,
+          -2.076752282091971,
+          -2.989443577393999,
+          -2.23483870972374,
+          -2.8711695603620373,
+          -2.3869366097264217,
+          -2.745209864357921,
+          -2.5326451504431113,
+          -2.611909074653837,
+          -2.671581129022897,
+          -2.4716303651880556,
+          -2.8033798713600206,
+          -2.3247545096986775,
+          -2.927696081131055,
+          -2.1716788595677614,
+          -3.044204637102024,
+          -2.0128162909364673,
+          -3.1526013379961855,
+          -1.8485941235935857,
+          -3.2526035943201923,
+          -1.6794530140797876,
+          -3.343951066641847,
+          -1.5058458253894225,
+          -3.4264062498970205,
+          -1.3282364755919416,
+          -3.4997550033770795,
+          -1.1470987676371265,
+          -3.563807026111923,
+          -0.9629152025532939,
+          -3.618396277418206,
+          -0.7761757781964737,
+          -3.66338134242826,
+          -0.5873767756620417,
+          -3.6986457424535217,
+          -0.39701953542919133,
+          -3.72409819006776,
+          -0.20560922527355446,
+          -3.7396727888211525,
+          -0.013653601954797756,
+          -3.7453291775171498,
+          0.17833823133547633,
+          -3.741052619001262,
+          0.3698570697943665,
+          -3.7268540334253832,
+          0.5603948521323314,
+          -3.7027699759641606,
+          0.7494459040363588,
+          -3.668862558972315,
+          0.9365081779974983,
+          -3.6252193185848167,
+          1.1210844875124573,
+          -3.571953025776525,
+          1.3026837336454833,
+          -3.5092014419153976,
+          1.4808221219063087,
+          -3.4371270188647287,
+          1.6550243673629217,
+          -3.3559165437161487,
+          1.8248248858649005,
+          -3.2657807282672633,
+          1.989768969204644,
+          -3.1669537433968817,
+          2.1494139419908,
+          -3.0596926985375905,
+          2.303330297951362,
+          -2.944277066500899,
+          2.451102813324252,
+          -2.821008053975059,
+          2.5923316349317167,
+          -2.690207918090647,
+          2.726633340472744,
+          -2.5522192295347117,
+          2.853641968506076,
+          -2.4074040827912233,
+          2.97301001553664,
+          -2.2561432541941415,
+          3.08440939756162,
+          -2.0988353085998828,
+          3.1875323733804675,
+          -1.935895655618504,
+          3.282092426927269,
+          -1.7677555564874896,
+          3.367825105845699,
+          -1.5948610828285295,
+          3.444488813497714,
+          -1.4176720286957616,
+          3.511865551578833,
+          -1.236660777503183,
+          3.569761610506854,
+          -1.0523111256086313,
+          3.6180082047586217,
+          -0.865117064531105,
+          3.6564620503526286,
+          -0.6755815239861934,
+          3.685005881715113,
+          -0.48421507813983233,
+          3.7035489052253237,
+          -0.2915346177021212,
+          3.712027186812982,
+          -0.09806199070894694,
+          3.7104039710788315,
+          0.09567738493206893,
+          3.6986699295284535,
+          0.2891559338251655,
+          3.6768433356510637,
+          0.48184535686505003,
+          3.6449701647393913,
+          0.6732180826510219,
+          3.6031241165343237,
+          0.8627487325579222,
+          3.5514065589889547,
+          1.0499155952742207,
+          3.4899463916808333,
+          1.234202106417293,
+          3.4188998276582296,
+          1.4150983286489536,
+          3.3384500927853784,
+          1.5921024275432316,
+          3.248807041951969,
+          1.764722138305735,
+          3.1502066918323437,
+          1.9324762183123132,
+          3.042910670218346,
+          2.094895880326531,
+          2.9272055823045924,
+          2.251526201173016,
+          2.803402294674019,
+          2.4019275005892315,
+          2.6718351381123147,
+          2.545676684953584,
+          2.5328610307696278,
+          2.68236855059475,
+          2.3868585235837227,
+          2.811617041427131,
+          2.234226770277399,
+          2.933056455731573,
+          2.0753844246410873,
+          3.046342597009708,
+          1.9107684682056845,
+          3.1511538639849586,
+          1.7408329717971733,
+          3.2471922750033957,
+          1.5660477948399325,
+          3.3341844223029793,
+          1.3868972266360775,
+          3.411882351869406,
+          1.2038785741902522,
+          3.480064364879736,
+          1.0175007014694502,
+          3.5385357370495387,
+          0.8282825252824318,
+          3.5871293525435233,
+          0.6367514732299807,
+          3.625706249481136,
+          0.4434419094127805,
+          3.6541560744646815,
+          0.24889353378553586,
+          3.672397443975116,
+          0.05364976121191299,
+          3.680378210916389,
+          -0.14174391359690353,
+          3.6780756350395474,
+          -0.3367415589881517,
+          3.6654964564389014,
+          -0.5307984507970892,
+          3.642676871780492,
+          -0.7233727119711115,
+          3.6096824133938354,
+          -0.9139269410917115,
+          3.5666077318273843,
+          -1.1019298235704222,
+          3.513576282932299,
+          -1.2868577194072544,
+          3.4507399209939478,
+          -1.4681962215507773,
+          3.3782783998722477,
+          -1.6454416790862243,
+          3.296398784536826,
+          -1.818102679699754,
+          3.205334775787594,
+          -1.9857014861208468,
+          3.1053459513325308,
+          -2.1477754215280096,
+          2.9967169267494462,
+          -2.3038781992124973,
+          2.8797564401846767,
+          -2.4535811921274036,
+          2.7547963649370404,
+          -2.596474638301804,
+          2.622190654338131,
+          -2.7321687784681266,
+          2.4823142235688866,
+          -2.8602949226319727,
+          2.33556177324643,
+          -2.9805064427036005,
+          2.1823465597739236,
+          -3.092479688705593,
+          2.0230991175695596,
+          -3.1959148264683845,
+          1.858265938379101,
+          -3.290536595120888,
+          1.6883081129302608,
+          -3.3760949830742186,
+          1.5136999402077118,
+          -3.4523658215794337,
+          1.3349275096159627,
+          -3.5191512953124624,
+          1.1524872612553585,
+          -3.576280369798445,
+          0.9668845294659174,
+          -3.6236091358312437,
+          0.778632074696713,
+          -3.661021071369957,
+          0.5882486086372786,
+          -3.688427221701124,
+          0.3962573174044645,
+          -3.70576629894161,
+          0.20318438741580608,
+          -3.7130047022217827,
+          0.009557538401299928,
+          -3.7101364601307676,
+          -0.18409543218786922,
+          -3.697183097224771,
+          -0.3772480893201049,
+          -3.674193426595509,
+          -0.5693767812342381,
+          -3.6412432706686912,
+          -0.7599620373817504,
+          -3.5984351125525524,
+          -0.9484899400667566,
+          -3.545897680384179,
+          -1.1344534666172232,
+          -3.4837854672274817,
+          -1.3173537991479443,
+          -3.4122781891620897,
+          -1.4967015992008088,
+          -3.3315801842681783,
+          -1.6720182447691136,
+          -3.2419197552595658,
+          -1.842837027428438,
+          -3.143548458547552,
+          -2.008704307505499,
+          -3.0367403425323705,
+          -2.169180625417172,
+          -2.9217911379192443,
+          -2.3238417675034087,
+          -2.799017402843373,
+          -2.4722797848592504,
+          -2.668755625564284,
+          -2.614103963841781,
+          -2.531361287456418,
+          -2.748941747087165,
+          -2.3872078889811084,
+          -2.8764396040205202,
+          -2.236685941276793,
+          -2.9962638499770535,
+          -2.0802019259508744,
+          -3.1081014131766054,
+          -1.9181772255994953,
+          -3.211660548905601,
+          -1.7510470275220886,
+          -3.3066715003605966,
+          -1.579259203037134,
+          -3.3928871056965346,
+          -1.4032731647453967,
+          -3.4700833509008753,
+          -1.223558704028157,
+          -3.5380598681826188,
+          -1.04059481101166,
+          -3.5966403796234294,
+          -0.8548684791761794,
+          -3.6456730858874637,
+          -0.6668734967395916,
+          -3.6850309998278328,
+          -0.4771092269019581,
+          -3.714612224861839,
+          -0.2860793790000147,
+          -3.734340178015122,
+          -0.09429077258923196,
+          -3.744163757557623,
+          0.09774790355329618,
+          -3.7440574551728902,
+          0.2895273355290805,
+          -3.734021412617698,
+          0.4805388295552715,
+          -3.7140814228423977,
+          0.6702755563743338,
+          -3.684288875554854,
+          0.8582337928666808,
+          -3.6447206472234672,
+          1.0439141588834961,
+          -3.5954789355286243,
+          1.2268228472964595,
+          -3.536691038288144,
+          1.4064728452334556,
+          -3.4685090769019093,
+          1.582385144434954,
+          -3.3911096643849854,
+          1.7540899386251096,
+          -3.3046935180881256,
+          1.9211278057453338,
+          -3.209485017240657,
+          2.0830508728468375,
+          -3.105731705494233,
+          2.239423961383245,
+          -2.9937037386977354,
+          2.3898257105857295,
+          -2.873693278194496,
+          2.533849676542233,
+          -2.7460138300037444,
+          2.671105404540266,
+          -2.610999530329387,
+          2.801219472170788,
+          -2.46900437793148,
+          2.9238365006298994,
+          -2.3204014139994773,
+          3.0386201315969865,
+          -2.1655818502818684,
+          3.14525396701386,
+          -2.0049541463543625,
+          3.2434424690408235,
+          -1.8389430370483966,
+          3.3329118174240078,
+          -1.6679885112133512,
+          3.413410721475214,
+          -1.4925447431492125,
+          3.4847111838425198,
+          -1.313078978221139,
+          3.5466092132385536,
+          -1.1300703743528704,
+          3.5989254832952082,
+          -0.9440088012914282,
+          3.6415059347301098,
+          -0.7553935997401509,
+          3.674222318042914,
+          -0.5647323026696753,
+          3.696972674009803,
+          -0.3725393213356978,
+          3.709681749313723,
+          -0.1793345987567485,
+          3.712301344737105,
+          0.014357766366880464,
+          3.704810593454085,
+          0.2080109220823551,
+          3.68721616709145,
+          0.4010966885217456,
+          3.6595524073823698,
+          0.5930870024810541,
+          3.6218813814149056,
+          0.7834553773522388,
+          3.5742928586785165,
+          0.9716783743048936,
+          3.5169042083363884,
+          1.157237080409151,
+          3.449860215398975,
+          1.3396185891985166,
+          3.3733328147442485,
+          1.5183174789932854,
+          3.287520742221821,
+          1.6928372841445265,
+          3.192649102390239,
+          1.8626919542179214,
+          3.0889688527678762,
+          2.027407296018464,
+          2.97675620482618,
+          2.1865223932635702,
+          2.856311942317492,
+          2.339590998645745,
+          2.7279606579059403,
+          2.486182892988642,
+          2.592049909456311,
+          2.6258852061939675,
+          2.448949297729505,
+          2.7583036947027844,
+          2.299049467631092,
+          2.883063970254662,
+          2.142761035558254,
+          2.999812674822692,
+          1.9805134457866542,
+          3.1082185967322977,
+          1.812753759228944,
+          3.2079737231371857,
+          1.6399453782770592,
+          3.298794224226564,
+          1.4625667118075805,
+          3.3804213647732837,
+          1.2811097847796042,
+          3.452622338901847,
+          1.0960787971842807,
+          3.515191024256883,
+          0.9079886374110505,
+          3.5679486520848456,
+          0.7173633553744401,
+          3.610744390102185,
+          0.524734600994117,
+          3.6434558354094664,
+          0.33064003383706103,
+          3.6659894151199435,
+          0.1356217099118474,
+          3.6782806927997225,
+          -0.05977554825084136,
+          3.6802945792613637,
+          -0.2550057919918375,
+          3.6720254467098603,
+          -0.449523591085859,
+          3.6534971457055088,
+          -0.6427856761419944,
+          3.624762924878265,
+          -0.834252572527184,
+          3.585905253798654,
+          -1.0233902195536773,
+          3.5370355498771544,
+          -1.2096715687674926,
+          3.478293810623157,
+          -1.3925781553097856,
+          3.409848153042197,
+          -1.5716016364952718,
+          3.331894262382456
+        ]
+      }
+    },
+    {
+      "experiment": "orbit",
+      "law": "orbit_analyze",
+      "args": [
+        3.7125,
+        0,
+        0,
+        4.84375,
+        0,
+        0,
+        38.712158203125,
+        1.2291666666666667
+      ],
+      "expect": {
+        "outcome": "escape",
+        "speed": 4.84375,
+        "circular_speed": 3.2291666666666665,
+        "escape_speed": 4.56673129516312,
+        "path": [
+          3.7125,
+          0,
+          3.711376496445941,
+          0.096875,
+          3.7012776878173006,
+          0.38720738086249845,
+          3.6811799390680773,
+          0.6764951467366886,
+          3.6513060357517513,
+          0.9639888750835119,
+          3.6119907660602313,
+          1.248993521326293,
+          3.5636636534097113,
+          1.5308863810326672,
+          3.5068284240246665,
+          1.8091294466341672,
+          3.442041265089732,
+          2.0832758996866345,
+          3.369889715359267,
+          2.3529711745982858,
+          3.290973597379413,
+          2.617949517848216,
+          3.205888879677544,
+          2.8780272116912564,
+          3.1152148607039183,
+          3.1330936594369136,
+          3.019504665646915,
+          3.3831014024826027,
+          2.9192787711524866,
+          3.628055927574053,
+          2.8150211172165034,
+          3.868005885956185,
+          2.7071773071298235,
+          4.103034125084394,
+          2.596154406088134,
+          4.333249750374831,
+          2.482321899545168,
+          4.558781296309439,
+          2.3660134420036507,
+          4.779770990881052,
+          2.2475291008152904,
+          4.996370037900448,
+          2.1271378687161575,
+          5.208734809635617,
+          2.005080278736971,
+          5.4170238295959745,
+          1.8815710042750637,
+          5.621395425329045,
+          1.7568013657625055,
+          5.822005938759856,
+          1.6309416946996693,
+          6.019008393234418,
+          1.5041435273868975,
+          6.212551529591991,
+          1.3765416160423645,
+          6.402779136761828,
+          1.248255755556211,
+          6.589829614683828,
+          1.119392431094613,
+          6.773835718352985,
+          0.9900462960972457,
+          6.954924441328925,
+          0.8603014926601158,
+          7.133217005147296,
+          0.7302328274346509,
+          7.308828927825083,
+          0.5999068164279998,
+          7.481870150216448,
+          0.4693826117680528,
+          7.652445203512552,
+          0.3387128228207682,
+          7.82065340484661,
+          0.20794424317183782,
+          7.986589070910038,
+          0.07711849401562154,
+          8.150341741835012,
+          -0.05372740649761418,
+          8.311996409463278,
+          -0.1845605393743223,
+          8.471633745593115,
+          -0.31535163868708666,
+          8.629330326952925,
+          -0.4460746964705723,
+          8.785158854553845,
+          -0.5767066125735113,
+          8.939188365776577,
+          -0.7072268841412022,
+          9.09148443809066,
+          -0.8376173300350314,
+          9.2421093837211,
+          -0.9678618460585368,
+          9.391122434894282,
+          -1.0979461873586032,
+          9.538579919533884,
+          -1.2278577748111257,
+          9.684535427454898,
+          -1.3575855225885975,
+          9.829039967233417,
+          -1.4871196844481498,
+          9.97214211402226,
+          -1.6164517165778107,
+          10.113888148646147,
+          -1.7455741551010213,
+          10.254322188351594,
+          -1.8744805065691332,
+          10.393486309611419,
+          -2.003165149972708,
+          10.531420663395615,
+          -2.131623248978435,
+          10.66816358332268,
+          -2.259850673252575,
+          10.80375168710078,
+          -2.3878439278667316,
+          10.938219971658329,
+          -2.5156000898999196,
+          11.071601902350245,
+          -2.643116751454457,
+          11.203929496610291,
+          -2.7703919683940033,
+          11.335233402402675,
+          -2.897424214191749,
+          11.465542971807944,
+          -3.024212338346731,
+          11.594886330059706,
+          -3.1507555288877347,
+          11.723290440330416,
+          -3.2770532785383404,
+          11.850781164546278,
+          -3.4031053541642806,
+          11.977383320493878,
+          -3.5289117691662515,
+          12.103120735464238,
+          -3.6544727585183128,
+          12.228016296663876,
+          -3.7797887561847134,
+          12.35209199860721,
+          -3.9048603746768427,
+          12.475368987690088,
+          -4.029688386537557,
+          12.597867604130675,
+          -4.15427370756276,
+          12.71960742145113,
+          -4.27861738159017,
+          12.840607283661454,
+          -4.402720566702975,
+          12.96088534029581,
+          -4.5265845227119295,
+          13.080459079441049,
+          -4.650210599793431,
+          13.199345358887522,
+          -4.773600228173673,
+          13.317560435523168,
+          -4.896754908760072,
+          13.435119993083426,
+          -5.019676204631122,
+          13.55203916836173,
+          -5.1423657333046595,
+          13.668332575978056,
+          -5.264825159712476,
+          13.78401433179622
+        ]
+      }
+    },
+    {
+      "experiment": "orbit",
+      "law": "orbit_analyze",
+      "args": [
+        3.7125,
+        0,
+        -1.5,
+        1,
+        0,
+        0,
+        38.712158203125,
+        1.2291666666666667
+      ],
+      "expect": {
+        "outcome": "crash",
+        "speed": 1.8027756377319948,
+        "circular_speed": 3.2291666666666665,
+        "escape_speed": 4.56673129516312,
+        "path": [
+          3.7125,
+          0,
+          3.681376496445941,
+          0.02,
+          3.581069073274516,
+          0.0799362540700594,
+          3.4698941955212823,
+          0.139627478460767,
+          3.3471621943135377,
+          0.19885051123626296,
+          3.212043309795309,
+          0.25733356170837096,
+          3.063528382060834,
+          0.314737919932697,
+          2.90037312047696,
+          0.3706306716502241,
+          2.7210166478097078,
+          0.4244424586965663,
+          2.52345798033755,
+          0.47539913895813607,
+          2.30506006898874,
+          0.5224050983719125,
+          2.0622208283075776,
+          0.5638300560149155,
+          1.789779152260546,
+          0.5970836565458191,
+          1.4798328745697358,
+          0.6176580919879232,
+          1.1190424314460392,
+          0.616558948616921,
+          0.9836133075964721,
+          0.6082929187034288
+        ]
+      }
+    },
+    {
+      "experiment": "orbit",
+      "law": "orbit_analyze",
+      "args": [
+        3.7125,
+        0,
+        0.3,
+        2.5833333333333335,
+        0,
+        0,
+        38.712158203125,
+        1.2291666666666667
+      ],
+      "expect": {
+        "outcome": "orbit",
+        "speed": 2.6006943517282286,
+        "circular_speed": 3.2291666666666665,
+        "escape_speed": 4.56673129516312,
+        "path": [
+          3.7125,
+          0,
+          3.7173764964459406,
+          0.05166666666666667,
+          3.7252974580701808,
+          0.2065115862561056,
+          3.7232221026301966,
+          0.3608029270435597,
+          3.711233098892768,
+          0.5141339578610397,
+          3.6894098895906464,
+          0.6661028162405266,
+          3.657828950328337,
+          0.8163099974509073,
+          3.6165641660225267,
+          0.9643559038914354,
+          3.5656873273560983,
+          1.1098384221022826,
+          3.5052687550765365,
+          1.252350495744086,
+          3.4353780655213617,
+          1.3914776634519503,
+          3.3560850967904736,
+          1.5267955305402974,
+          3.267461021817235,
+          1.6578671431872651,
+          3.1695796825690867,
+          1.7842402330429732,
+          3.062519189151498,
+          1.905444299298694,
+          2.9463638392032165,
+          2.020987494290141,
+          2.821206427283542,
+          2.1303532779375325,
+          2.6871510317479554,
+          2.232996806127055,
+          2.5443163888712483,
+          2.328341019090109,
+          2.3928399919414813,
+          2.4157723988157835,
+          2.232883088251586,
+          2.494636370868898,
+          2.064636791250281,
+          2.564232337691661,
+          1.8883295808570812,
+          2.623808350571519,
+          1.7042365347367778,
+          2.672555460511405,
+          1.5126907200264899,
+          2.7096018410484244,
+          1.3140972813093896,
+          2.7340068587663726,
+          1.108950888213081,
+          2.7447553948171195,
+          0.8978573538138812,
+          2.740752915128737,
+          0.6815603959365097,
+          2.7208220797223075,
+          0.4609746682029119,
+          2.683702117106502,
+          0.23722629413344248,
+          2.6280528281160627,
+          0.011702112279995236,
+          2.5524660005678137,
+          -0.21389147110483986,
+          2.4554882950538004,
+          -0.437459992252214,
+          2.3356613657791483,
+          -0.6564446355086594,
+          2.1915870797129933,
+          -0.867743481047681,
+          2.0220279203131004,
+          -1.0676416472678252,
+          1.8260542120346164,
+          -1.2517709245389605,
+          1.6032489259451357,
+          -1.4151318075118626,
+          1.353974368440642,
+          -1.5522234100584757,
+          1.079688552861952,
+          -1.6573317368629399,
+          0.7832686912659822,
+          -1.7250101604542918,
+          0.46925732389983604,
+          -1.7507327578030387,
+          0.14390992425876575,
+          -1.7316121620064915,
+          -0.1850742341546284,
+          -1.6669860960078549,
+          -0.5091795653842663,
+          -1.5586600453471895,
+          -0.8199595562217754,
+          -1.4106940480447006,
+          -1.1099479830122596,
+          -1.2287985926231697,
+          -1.3733396605912662,
+          -1.0195459458474385,
+          -1.6062914050845103,
+          -0.7896260742700757,
+          -1.806854274590243,
+          -0.5452955927894524,
+          -1.9746604867918947,
+          -0.2920596671040352,
+          -2.1105128359284255,
+          -0.034551113549935425,
+          -2.21598736789196,
+          0.22345745458497548,
+          -2.293106495481176,
+          0.47896865645104447,
+          -2.344097822294676,
+          0.7296460221920487,
+          -2.3712307066960774,
+          0.9736965778307995,
+          -2.3767139039831786,
+          1.2097636921521353,
+          -2.36263710436854,
+          1.4368354131716217,
+          -2.3309420617563856,
+          1.6541690424962678,
+          -2.2834126328303226,
+          1.8612305610207773,
+          -2.221676269784681,
+          2.0576467249663772,
+          -2.1472119998600188,
+          2.243167547140916,
+          -2.0613617053615436,
+          2.417637085893284,
+          -1.9653427310744043,
+          2.580970780902484,
+          -1.8602606452677672,
+          2.733137901391289,
+          -1.7471214933097379,
+          2.8741479658147147,
+          -1.6268432041830556,
+          3.00404023868191,
+          -1.5002660063870694,
+          3.122875609690468,
+          -1.3681618257591666,
+          3.2307303181586904,
+          -1.231242703286289,
+          3.3276911088515053,
+          -1.0901683052314206,
+          3.4138515005619157,
+          -0.9455526131832956,
+          3.4893089222100393,
+          -0.7979698857455355,
+          3.554162527680474,
+          -0.6479599813931793,
+          3.6085115440620226,
+          -0.4960331265535348,
+          3.652454041451532,
+          -0.3426742060434917,
+          3.686086038408506,
+          -0.18834664570032478,
+          3.70950087732215,
+          -0.033495949995978054,
+          3.7227888197751473,
+          0.12144704904202869,
+          3.7260368245319517,
+          0.27606318100769667,
+          3.7193284808721243,
+          0.4299421187281135,
+          3.7027440782770698,
+          0.5826797107827425,
+          3.676360800472857,
+          0.7338754267768325,
+          3.6402530379474016,
+          0.8831298798705263,
+          3.5944928186450356,
+          1.0300423930533062,
+          3.5391503619008566,
+          1.1742085770259283,
+          3.474294766094763,
+          1.3152178883601946,
+          3.3999948462612304,
+          1.4526511369033501,
+          3.3163201442806334,
+          1.586077911236634,
+          3.223342141629539,
+          1.7150538904574515,
+          3.1211357133624964,
+          1.839118009726638,
+          3.0097808724949315,
+          1.9577894460422374,
+          2.8893648668186946,
+          2.070564389771054,
+          2.7599847061094303,
+          2.176912566894684,
+          2.62175021755655,
+          2.2762734771730955,
+          2.474787752165111,
+          2.368052315204606,
+          2.3192446962242066,
+          2.451615545742593,
+          2.1552949814193516,
+          2.526286113246483,
+          1.9831458368725208,
+          2.5913382809583942,
+          1.8030460887944775,
+          2.6459921205103734,
+          1.6152963913176352,
+          2.689407714733273,
+          1.4202618683083654,
+          2.720679202247574,
+          1.2183877628998083,
+          2.73882889487575,
+          1.010218829787648,
+          2.742801856042326,
+          0.796423361531474,
+          2.7314615664616273,
+          0.5778229021460523,
+          2.7035876601188735,
+          0.35542884038488287,
+          2.657877240782025,
+          0.13048713172345366,
+          2.59295205530005,
+          -0.09546774174282606,
+          2.5073748863591527,
+          -0.32054900518708385,
+          2.399680013168102,
+          -0.5424447389639644,
+          2.268424504533821,
+          -0.7583392410806299,
+          2.1122693324963566,
+          -0.9648365391604152,
+          1.9301013404818421,
+          -1.1579015312192094,
+          1.7212077604770497,
+          -1.3328451368227543,
+          1.4855118442890376,
+          -1.4843929093706372,
+          1.2238673618628217,
+          -1.6068868043459488,
+          0.9383866438611214,
+          -1.6946662048737688,
+          0.6327397607786781,
+          -1.7426410629343785,
+          0.31231975767822995,
+          -1.7469971367086783,
+          -0.015853365840339667,
+          -1.7058776587537683,
+          -0.34358072040570103,
+          -1.619824076368746,
+          -0.6622612070507113,
+          -1.491798242866335,
+          -0.9638235282096108,
+          -1.3267579657059179,
+          -1.2415519598341511,
+          -1.1309321100843401,
+          -1.4905889028080437,
+          -0.9110289742237042,
+          -1.7080442942345384,
+          -0.6735759258132351,
+          -1.892788641669191,
+          -0.4244839171630427,
+          -2.045075407507481,
+          -0.16883354064442696,
+          -2.1661269499020195,
+          0.08917237106230773,
+          -2.2577680817998984,
+          0.34615446052858095,
+          -2.3221414967366085,
+          0.5994534252945652,
+          -2.361506708909812,
+          0.847012050542199,
+          -2.37810889146331,
+          1.087261963511822,
+          -2.3741000586552166,
+          1.3190239275514304,
+          -2.3514966361316167,
+          1.5414243376230883,
+          -2.3121609190674977,
+          1.753827403220687,
+          -2.2577974170280766,
+          1.9557811306094275,
+          -2.1899579536288414,
+          2.146974821782096,
+          -2.110051512729998,
+          2.327205889374908,
+          -2.01935630267868,
+          2.4963540640707875,
+          -1.9190325008689566,
+          2.6543613993794377,
+          -1.8101347850124787,
+          2.8012167910991628,
+          -1.6936241660982505,
+          2.936943999174158,
+          -1.570378891032535,
+          3.061592382210284,
+          -1.441204335329097,
+          3.1752297327690453,
+          -1.306841894621011,
+          3.277936741195681,
+          -1.1679769321627558,
+          3.3698027241996784,
+          -1.0252458633391468,
+          3.450922338141583,
+          -0.8792424673392372,
+          3.5213930614363615,
+          -0.730523516788984,
+          3.581313280068894,
+          -0.5796138121246219,
+          3.6307808484090294,
+          -0.4270107011949332,
+          3.6698920270144244,
+          -0.2731881574262938,
+          3.6987407220007635,
+          -0.11860048269880624,
+          3.7174179684382667,
+          0.03631430567300546,
+          3.72601161432583,
+          0.19113135054803598,
+          3.724606172942708,
+          0.3454360451632316,
+          3.7132828205134025,
+          0.4988212944616855,
+          3.6921195237184063,
+          0.6508849078100616,
+          3.661191288101047,
+          0.8012270863703288,
+          3.6205705242373316,
+          0.9494479706981613,
+          3.5703275339755502,
+          1.0951452158069013,
+          3.51053112440777,
+          1.2379115620125216,
+          3.441249362786093,
+          1.3773323704125369,
+          3.362550491628168,
+          1.5129830919043823,
+          3.2745040300781483,
+          1.6444266382790798,
+          3.1771820955532037,
+          1.7712106232144817,
+          3.070660989228593,
+          1.8928644400508525,
+          2.9550231005028578,
+          2.0088961422238665,
+          2.830359199866154,
+          2.118789091402797,
+          2.696771207352939,
+          2.221998338109576,
+          2.5543755459797386,
+          2.317946700448846,
+          2.4033072174843486,
+          2.406020509429669,
+          2.243724772834383,
+          2.4855649955257877,
+          2.0758163942566723,
+          2.5558793025995663,
+          1.899807361239217,
+          2.6162111351149187,
+          1.7159692427274131,
+          2.66575107721007,
+          1.5246312444603505,
+          2.703626674462953,
+          1.3261942468094658,
+          2.728896451146496,
+          1.1211481963418364,
+          2.74054416235881,
+          0.9100936626896177,
+          2.7374737734748518,
+          0.6937685342476652,
+          2.718505950411946,
+          0.47308098281301386,
+          2.682377277591001,
+          0.24914993685902462,
+          2.627744056259165,
+          0.0233542830275221,
+          2.5531934499610465,
+          -0.2026082876050171,
+          2.457266020321774,
+          -0.42665272559353895,
+          2.338495399069171,
+          -0.6462301410773735,
+          2.1954729455296267,
+          -0.8582486598674487,
+          2.0269474763051845,
+          -1.0590028569093524,
+          1.831971738589312,
+          -1.2441322218412365,
+          1.61010649177178,
+          -1.40864142433124,
+          1.3616867206055894,
+          -1.5470278089487985,
+          1.0881381628861193,
+          -1.6535667786928874,
+          0.7923021249440781,
+          -1.7227895346178355,
+          0.4786846362709416,
+          -1.7501349604634815,
+          0.15350893326317733,
+          -1.7326686618038387,
+          -0.17554767391800086,
+          -1.6696740876714549,
+          -0.4999759744554457,
+          -1.5629024566289178,
+          -0.8113178417296664,
+          -1.4163671760865075,
+          -1.102079237992311,
+          -1.2357451202751375,
+          -1.3664162741726824,
+          -1.027589699083933,
+          -1.6004428279531782,
+          -0.7985852753542527,
+          -1.8021685330752837,
+          -0.5549928237310852,
+          -1.971189341802094,
+          -0.3023282248884702,
+          -2.1082784561670724,
+          -0.04523833071567869,
+          -2.2149889997915726,
+          0.212489052020425,
+          -2.2933263199739367,
+          0.46784154430806957,
+          -2.3455057159499564,
+          0.7184686161615084,
+          -2.373787926822845,
+          0.9625645086008942,
+          -2.3803758501892758,
+          1.1987611728735306,
+          -2.3673553431384873,
+          1.4260365646252295,
+          -2.336665787671888,
+          1.6436391103542036,
+          -2.2900897103032425,
+          1.8510269999906157,
+          -2.2292539674182885,
+          2.0478201467219765,
+          -2.155637501783044,
+          2.233762540048119,
+          -2.0705824616855724,
+          2.4086929193315205,
+          -1.9753066927248828,
+          2.572522008331077,
+          -1.870916415919335,
+          2.72521487589409,
+          -1.7584184220278594,
+          2.8667772806311294,
+          -1.638731435775248,
+          2.9972451037160406,
+          -1.5126965017171863,
+          3.1166761734525177,
+          -1.3810863608636694,
+          3.2251439431626454,
+          -1.2446138536755804,
+          3.3227326072223407,
+          -1.1039394199901273,
+          3.409533335505562,
+          -0.9596777822061442,
+          3.4856413800617085,
+          -0.8124039025212693,
+          3.5511538644545415,
+          -0.6626583030789261,
+          3.6061681097597926,
+          -0.5109518325956528,
+          3.6507803848223417,
+          -0.35776995624788793,
+          3.6850849943870143,
+          -0.20357663839956935,
+          3.7091736389646166,
+          -0.048817880776441676,
+          3.723134996176589,
+          0.10607502772078932,
+          3.7270544859128036,
+          0.2606824990602244,
+          3.721014191767707,
+          0.4145938263766234,
+          3.705092919537521,
+          0.5674045150334501,
+          3.679366380578086,
+          0.7187137263130009,
+          3.6439074939549365,
+          0.8681217982371834,
+          3.5987868069128344,
+          1.0152278099945893,
+          3.544073038557225,
+          1.1596271578074153,
+          3.47983375705882,
+          1.3009091108647057,
+          3.4061362064452436,
+          1.4386543162277832,
+          3.3230483054255298,
+          1.572432221436502,
+          3.2306398480322045,
+          1.701798382980574,
+          3.128983944543254,
+          1.8262916279418653,
+          3.0181587516204673,
+          1.9454310350949044,
+          2.898249553434123,
+          2.0587127007729644,
+          2.769351271437161,
+          2.1656062541678938,
+          2.6315715002830795,
+          2.2655510868935904,
+          2.485034192254051,
+          2.3579522633072694,
+          2.329884143860219,
+          2.442176082316416,
+          2.166292477701354,
+          2.517545269819961,
+          1.9944633623393357,
+          2.5833337959834757,
+          1.8146422752961202,
+          2.638761336909928,
+          1.6271261921732572,
+          2.6829874414615014,
+          1.432276181182283,
+          2.715105529263231,
+          1.230532999499535,
+          2.734136947529283,
+          1.0224364265541022,
+          2.7390254703480177,
+          0.8086492263160113,
+          2.7286328607060164,
+          0.5899867940662327,
+          2.70173647031382,
+          0.36745368463787753,
+          2.6570303771321524,
+          0.14228827976128705,
+          2.5931323237188186,
+          -0.08398328100516009,
+          2.508599803077777,
+          -0.309483311594136,
+          2.4019601225108156,
+          -0.5319096111139284,
+          2.271761192953424,
+          -0.7484565508032733,
+          2.1166520231612207,
+          -0.9557380547934567,
+          1.9355039668820353,
+          -1.149727824656566,
+          1.72758448149132,
+          -1.3257430418211926,
+          1.492792118646387,
+          -1.478510886108484,
+          1.2319507972069408,
+          -1.602367605067688,
+          0.9471385023039126,
+          -1.6916366115966135,
+          0.6419885710197109,
+          -1.7411993483356512,
+          0.32185889118196087,
+          -1.7472002137570393,
+          -0.006258523118739492,
+          -1.7077310730889868,
+          -0.33417965129487437,
+          -1.623278102498247,
+          -0.6533010102340272,
+          -1.4967517666810843,
+          -0.9555312777789564,
+          -1.3330691702973132,
+          -1.2341207903552924,
+          -1.1384328085188804,
+          -1.4841703777163786,
+          -0.9195389457899402,
+          -1.7027472109548623,
+          -0.682914668166259,
+          -1.8886826164727974,
+          -0.4344788023259555,
+          -2.042197004937826,
+          -0.1793245778568358,
+          -2.1644864886225723,
+          0.07833038473224486,
+          -2.257355960523959,
+          0.33509153260389823,
+          -2.3229335191570692,
+          0.5882849860321342,
+          -2.363468299158739,
+          0.8358400913851312,
+          -2.3811983010849938,
+          1.07617637613316,
+          -2.3782707424349376,
+          1.308103858849727,
+          -2.356698980135093,
+          1.530739464267499,
+          -2.318343480499542,
+          1.7434390827710857,
+          -2.264907803703493,
+          1.945743416535878,
+          -2.197943440728145,
+          2.1373353456837423,
+          -2.118859469492415,
+          2.3180066212571018,
+          -2.028934482220881,
+          2.4876319643811504,
+          -1.9293292317196067,
+          2.6461489768419075,
+          -1.8210990922314938,
+          2.793542579496317,
+          -1.7052058420690765,
+          2.929832964822927,
+          -1.5825285304043728,
+          3.0550662723338435,
+          -1.4538733445495973,
+          3.169307373478564,
+          -1.3199824835973737,
+          3.272634292444992,
+          -1.1815420934995515,
+          3.3651338978927248,
+          -1.0391893430938806,
+          3.4468985845567346,
+          -0.8935187301469774,
+          3.5180237282698865,
+          -0.7450877074178263,
+          3.5786057476732034,
+          -0.5944217149507325,
+          3.6287406441900982,
+          -0.4420186986697238,
+          3.6685229214382904,
+          -0.28835318830629886,
+          3.6980448082245667,
+          -0.1338800005905103,
+          3.7173957272123905,
+          0.020962373057679153,
+          3.7266619654979176,
+          0.1757486411403299,
+          3.7259265146211127,
+          0.33006380108059497,
+          3.715269056708058,
+          0.4835003991842499,
+          3.6947660810635,
+          0.6356559218567625,
+          3.664491122069653,
+          0.7861302813502978,
+          3.6245151150775032,
+          0.9345233616068008,
+          3.574906872425045,
+          1.0804325914151702,
+          3.5157336870757705,
+          1.2234505131622564,
+          3.4470620769203566,
+          1.3631623159789268,
+          3.3689586888104563,
+          1.499143302116675,
+          3.2814913882049184,
+          1.6309562549986378,
+          3.1847305682575846,
+          1.7581486766503163,
+          3.078750721678484,
+          1.8802498612396588,
+          2.9636323302631538,
+          1.9967677704048465,
+          2.83946414123471,
+          2.1071856751643043,
+          2.706345917263954,
+          2.2109585288576254,
+          2.5643917692086555,
+          2.3075090363236663,
+          2.4137342084797746,
+          2.396223387244568,
+          2.254529091041434,
+          2.4764466275807115,
+          2.086961669282863,
+          2.5474776542731266,
+          1.911254023656586,
+          2.6085638378867566,
+          1.7276742157247214,
+          2.6588953101065687,
+          1.5365475910030517,
+          2.6975990047139904,
+          1.3382707665206683,
+          2.723732621902305,
+          1.133328966143489,
+          2.736278811397034,
+          0.9223175156169163,
+          2.7341400616089517,
+          0.7059684722437072,
+          2.716135071395061,
+          0.48518352251476793,
+          2.6809978122322704,
+          0.2610743936943752,
+          2.6273811217714034,
+          0.03501201043119484,
+          2.5538675809557727,
+          -0.19131466715881354,
+          2.458991700655633,
+          -0.41583002797825364,
+          2.3412791456336772,
+          -0.6359951437894353,
+          2.1993108307714104,
+          -0.8487282385590855,
+          2.031821976202024,
+          -1.0503334193646194,
+          1.8378478271745198,
+          -1.2364579814330294,
+          1.6169270062516596,
+          -1.402110914342818,
+          1.3693672405470096,
+          -1.5417879820161422,
+          1.0965620282870603,
+          -1.6497542156030875,
+          0.8013167537113142,
+          -1.7205188985814437,
+          0.4881008390997448,
+          -1.749485962943028,
+          0.16310508613443986,
+          -1.7336741636632769,
+          -0.16601545641939242,
+          -1.672312737319176,
+          -0.4907583174572147,
+          -1.567098556303093,
+          -0.8026541255124355,
+          -1.4219981934677657,
+          -1.0941813337495259,
+          -1.2426546298401078,
+          -1.3594575463425276,
+          -1.0356021238823625,
+          -1.5945537840489798,
+          -0.8075191702793353,
+          -1.7974382435729526,
+          -0.5646708920045436,
+          -1.967670538254572,
+          -0.31258372989547456,
+          -2.105994174544378,
+          -0.05591846578301503,
+          -2.2139392425951154,
+          0.20152196766745734,
+          -2.2934939180422513,
+          0.45671023359249874,
+          -2.346861100642924,
+          0.7072817636161327,
+          -2.376292827979942,
+          0.9514180233261723,
+          -2.383986070147755,
+          1.1877395482889384,
+          -2.3720227924129964,
+          1.4152141989157687,
+          -2.342339955641262,
+          1.6330815209730538,
+          -2.2967187148252894,
+          1.8407919063104365,
+          -2.2367852956732173,
+          2.037958417276075,
+          -2.1640185269097314,
+          2.2243190120680594,
+          -2.0797607975708314,
+          2.3997071031869415,
+          -1.9852304323785386,
+          2.5640286908950656,
+          -1.8815342863176154,
+          2.7172446364876524,
+          -1.7696798791501884,
+          2.8593569320041627,
+          -1.6505867169362778,
+          2.990398069024902,
+          -1.5250966475258754,
+          3.1104228086689574,
+          -1.3939832157104894,
+          3.2195018129266773,
+          -1.257960051180228,
+          3.3177167208859233,
+          -1.1176883580628185,
+          3.4051563490171954,
+          -0.9737835910903438,
+          3.4819137684064456,
+          -0.8268214082552482,
+          3.5480840685727943,
+          -0.677342988138532,
+          3.603762661202176,
+          -0.5258597949903563,
+          3.649044010837381,
+          -0.3728578679859806,
+          3.6840207056661423,
+          -0.21880170398017612,
+          3.708782801868927,
+          -0.06413779617984705,
+          3.7234173909289074,
+          0.09070211520570559,
+          3.7280083519453155,
+          0.24529802992521096,
+          3.7226362611599946,
+          0.3992388667156108,
+          3.707378439254081,
+          0.5521197929499999,
+          3.6823091240112293,
+          0.7035396667856361,
+          3.647499762092135,
+          0.8530985563164176,
+          3.6030194192716554,
+          1.0003953021922707,
+          3.5489353138609516,
+          1.145025091511179,
+          3.4853134834569595,
+          1.2865770115672301,
+          3.4122196009108787,
+          1.4246315523004422,
+          3.329719961781197,
+          1.5587580260969847,
+          3.2378826728630963,
+          1.6885118729997974,
+          3.136779080045947,
+          1.8134318185010418,
+          3.026485484201874,
+          1.9330368500307142,
+          2.9070852066132424,
+          2.0468229772263893,
+          2.7786710813054363,
+          2.154259740365533,
+          2.6413484714416504,
+          2.2547864314192623
+        ]
+      }
+    },
+    {
+      "experiment": "orbit",
+      "law": "orbit_analyze",
+      "args": [
+        3.7125,
+        0,
+        0,
+        0.4,
+        0,
+        0,
+        38.712158203125,
+        1.2291666666666667
+      ],
+      "expect": {
+        "outcome": "crash",
+        "speed": 0.4,
+        "circular_speed": 3.2291666666666665,
+        "escape_speed": 4.56673129516312,
+        "path": [
+          3.7125,
+          0,
+          3.7105248898875955,
+          0.010607142857142857,
+          3.6927177510913056,
+          0.04237186230776151,
+          3.6569341363405954,
+          0.07392981583118521,
+          3.602826992511599,
+          0.10511646224643029,
+          3.5298524498083688,
+          0.13575130381047434,
+          3.4372379023476465,
+          0.16562891447962347,
+          3.323932451258122,
+          0.19450678464714016,
+          3.18853122773965,
+          0.2220878025576427,
+          3.0291585251889535,
+          0.24799351685749785,
+          2.8432818198390843,
+          0.27172086157489905,
+          2.6274016160849487,
+          0.2925673195863331,
+          2.3764989576728253,
+          0.3094905939619223,
+          2.082956525477513,
+          0.3208159974950508,
+          1.734152107877958,
+          0.3235274277456482,
+          1.3058394888018643,
+          0.3110912898351611,
+          1.1370964677939275,
+          0.3010475851445244
+        ]
+      }
+    },
+    {
+      "experiment": "buoyancy",
+      "law": "submerged_fraction",
+      "args": [
+        -0.2,
+        1.4583333333333333
+      ],
+      "expect": 0
+    },
+    {
+      "experiment": "buoyancy",
+      "law": "buoyancy_region_force",
+      "args": [
+        1.45,
+        9.81,
+        1.8,
+        0,
+        0.5,
+        -1
+      ],
+      "expect": 0
+    },
+    {
+      "experiment": "buoyancy",
+      "law": "buoyancy_drag_force",
+      "args": [
+        1.8,
+        0,
+        0.5,
+        0.4
+      ],
+      "expect": 0
+    },
+    {
+      "experiment": "buoyancy",
+      "law": "submerged_fraction",
+      "args": [
+        0.1,
+        1.4583333333333333
+      ],
+      "expect": 0.06857142857142856
+    },
+    {
+      "experiment": "buoyancy",
+      "law": "buoyancy_region_force",
+      "args": [
+        1.45,
+        9.81,
+        1.8,
+        0.06857142857142856,
+        0.5,
+        -0.5
+      ],
+      "expect": 1.0062514285714286
+    },
+    {
+      "experiment": "buoyancy",
+      "law": "buoyancy_drag_force",
+      "args": [
+        1.8,
+        0.06857142857142856,
+        0.5,
+        0.4
+      ],
+      "expect": -0.024685714285714283
+    },
+    {
+      "experiment": "buoyancy",
+      "law": "submerged_fraction",
+      "args": [
+        0.7,
+        1.4583333333333333
+      ],
+      "expect": 0.48
+    },
+    {
+      "experiment": "buoyancy",
+      "law": "buoyancy_region_force",
+      "args": [
+        1.45,
+        9.81,
+        1.8,
+        0.48,
+        0.5,
+        0.3
+      ],
+      "expect": 6.698160000000001
+    },
+    {
+      "experiment": "buoyancy",
+      "law": "buoyancy_drag_force",
+      "args": [
+        1.8,
+        0.48,
+        0.5,
+        0.4
+      ],
+      "expect": -0.1728
+    },
+    {
+      "experiment": "buoyancy",
+      "law": "submerged_fraction",
+      "args": [
+        1,
+        1.4583333333333333
+      ],
+      "expect": 0.6857142857142857
+    },
+    {
+      "experiment": "buoyancy",
+      "law": "buoyancy_region_force",
+      "args": [
+        1.45,
+        9.81,
+        1.8,
+        0.6857142857142857,
+        0.5,
+        0
+      ],
+      "expect": 9.753942857142858
+    },
+    {
+      "experiment": "buoyancy",
+      "law": "buoyancy_drag_force",
+      "args": [
+        1.8,
+        0.6857142857142857,
+        0.5,
+        0.4
+      ],
+      "expect": -0.24685714285714289
+    },
+    {
+      "experiment": "buoyancy",
+      "law": "submerged_fraction",
+      "args": [
+        2,
+        1.4583333333333333
+      ],
+      "expect": 1
+    },
+    {
+      "experiment": "buoyancy",
+      "law": "buoyancy_region_force",
+      "args": [
+        1.45,
+        9.81,
+        1.8,
+        1,
+        0.5,
+        -0.1
+      ],
+      "expect": 14.3145
+    },
+    {
+      "experiment": "buoyancy",
+      "law": "buoyancy_drag_force",
+      "args": [
+        1.8,
+        1,
+        0.5,
+        0.4
+      ],
+      "expect": -0.36000000000000004
+    },
+    {
+      "experiment": "buoyancy",
+      "law": "floating_submerged_fraction",
+      "args": [
+        0.3078938215700098,
+        0.8928920825530283
+      ],
+      "expect": 0.3448275862068966
+    },
+    {
+      "experiment": "buoyancy",
+      "law": "buoyancy_net_force",
+      "args": [
+        0.8928920825530283,
+        0.3078938215700098,
+        9.81,
+        1.6239364513727619
+      ],
+      "expect": 9.3195
+    },
+    {
+      "experiment": "buoyancy",
+      "law": "buoyant_force",
+      "args": [
+        0.8928920825530283,
+        9.81,
+        1.6239364513727619
+      ],
+      "expect": 14.2245
+    },
+    {
+      "experiment": "buoyancy",
+      "law": "submerged_fraction",
+      "args": [
+        -0.2,
+        1.4583333333333333
+      ],
+      "expect": 0
+    },
+    {
+      "experiment": "buoyancy",
+      "law": "buoyancy_region_force",
+      "args": [
+        1.45,
+        9.81,
+        1.8,
+        0,
+        1,
+        -1
+      ],
+      "expect": 0
+    },
+    {
+      "experiment": "buoyancy",
+      "law": "buoyancy_drag_force",
+      "args": [
+        1.8,
+        0,
+        1,
+        0.4
+      ],
+      "expect": 0
+    },
+    {
+      "experiment": "buoyancy",
+      "law": "submerged_fraction",
+      "args": [
+        0.1,
+        1.4583333333333333
+      ],
+      "expect": 0.06857142857142856
+    },
+    {
+      "experiment": "buoyancy",
+      "law": "buoyancy_region_force",
+      "args": [
+        1.45,
+        9.81,
+        1.8,
+        0.06857142857142856,
+        1,
+        -0.5
+      ],
+      "expect": 1.0371085714285713
+    },
+    {
+      "experiment": "buoyancy",
+      "law": "buoyancy_drag_force",
+      "args": [
+        1.8,
+        0.06857142857142856,
+        1,
+        0.4
+      ],
+      "expect": -0.049371428571428566
+    },
+    {
+      "experiment": "buoyancy",
+      "law": "submerged_fraction",
+      "args": [
+        0.7,
+        1.4583333333333333
+      ],
+      "expect": 0.48
+    },
+    {
+      "experiment": "buoyancy",
+      "law": "buoyancy_region_force",
+      "args": [
+        1.45,
+        9.81,
+        1.8,
+        0.48,
+        1,
+        0.3
+      ],
+      "expect": 6.568560000000001
+    },
+    {
+      "experiment": "buoyancy",
+      "law": "buoyancy_drag_force",
+      "args": [
+        1.8,
+        0.48,
+        1,
+        0.4
+      ],
+      "expect": -0.3456
+    },
+    {
+      "experiment": "buoyancy",
+      "law": "submerged_fraction",
+      "args": [
+        1,
+        1.4583333333333333
+      ],
+      "expect": 0.6857142857142857
+    },
+    {
+      "experiment": "buoyancy",
+      "law": "buoyancy_region_force",
+      "args": [
+        1.45,
+        9.81,
+        1.8,
+        0.6857142857142857,
+        1,
+        0
+      ],
+      "expect": 9.753942857142858
+    },
+    {
+      "experiment": "buoyancy",
+      "law": "buoyancy_drag_force",
+      "args": [
+        1.8,
+        0.6857142857142857,
+        1,
+        0.4
+      ],
+      "expect": -0.49371428571428577
+    },
+    {
+      "experiment": "buoyancy",
+      "law": "submerged_fraction",
+      "args": [
+        2,
+        1.4583333333333333
+      ],
+      "expect": 1
+    },
+    {
+      "experiment": "buoyancy",
+      "law": "buoyancy_region_force",
+      "args": [
+        1.45,
+        9.81,
+        1.8,
+        1,
+        1,
+        -0.1
+      ],
+      "expect": 14.4045
+    },
+    {
+      "experiment": "buoyancy",
+      "law": "buoyancy_drag_force",
+      "args": [
+        1.8,
+        1,
+        1,
+        0.4
+      ],
+      "expect": -0.7200000000000001
+    },
+    {
+      "experiment": "buoyancy",
+      "law": "floating_submerged_fraction",
+      "args": [
+        0.6157876431400195,
+        0.8928920825530283
+      ],
+      "expect": 0.6896551724137931
+    },
+    {
+      "experiment": "buoyancy",
+      "law": "buoyancy_net_force",
+      "args": [
+        0.8928920825530283,
+        0.6157876431400195,
+        9.81,
+        1.6239364513727619
+      ],
+      "expect": 4.4145
+    },
+    {
+      "experiment": "buoyancy",
+      "law": "buoyant_force",
+      "args": [
+        0.8928920825530283,
+        9.81,
+        1.6239364513727619
+      ],
+      "expect": 14.2245
+    },
+    {
+      "experiment": "buoyancy",
+      "law": "submerged_fraction",
+      "args": [
+        -0.2,
+        1.4583333333333333
+      ],
+      "expect": 0
+    },
+    {
+      "experiment": "buoyancy",
+      "law": "buoyancy_region_force",
+      "args": [
+        1.45,
+        9.81,
+        1.8,
+        0,
+        3,
+        -1
+      ],
+      "expect": 0
+    },
+    {
+      "experiment": "buoyancy",
+      "law": "buoyancy_drag_force",
+      "args": [
+        1.8,
+        0,
+        3,
+        0.4
+      ],
+      "expect": 0
+    },
+    {
+      "experiment": "buoyancy",
+      "law": "submerged_fraction",
+      "args": [
+        0.1,
+        1.4583333333333333
+      ],
+      "expect": 0.06857142857142856
+    },
+    {
+      "experiment": "buoyancy",
+      "law": "buoyancy_region_force",
+      "args": [
+        1.45,
+        9.81,
+        1.8,
+        0.06857142857142856,
+        3,
+        -0.5
+      ],
+      "expect": 1.1605371428571427
+    },
+    {
+      "experiment": "buoyancy",
+      "law": "buoyancy_drag_force",
+      "args": [
+        1.8,
+        0.06857142857142856,
+        3,
+        0.4
+      ],
+      "expect": -0.1481142857142857
+    },
+    {
+      "experiment": "buoyancy",
+      "law": "submerged_fraction",
+      "args": [
+        0.7,
+        1.4583333333333333
+      ],
+      "expect": 0.48
+    },
+    {
+      "experiment": "buoyancy",
+      "law": "buoyancy_region_force",
+      "args": [
+        1.45,
+        9.81,
+        1.8,
+        0.48,
+        3,
+        0.3
+      ],
+      "expect": 6.050160000000001
+    },
+    {
+      "experiment": "buoyancy",
+      "law": "buoyancy_drag_force",
+      "args": [
+        1.8,
+        0.48,
+        3,
+        0.4
+      ],
+      "expect": -1.0368000000000002
+    },
+    {
+      "experiment": "buoyancy",
+      "law": "submerged_fraction",
+      "args": [
+        1,
+        1.4583333333333333
+      ],
+      "expect": 0.6857142857142857
+    },
+    {
+      "experiment": "buoyancy",
+      "law": "buoyancy_region_force",
+      "args": [
+        1.45,
+        9.81,
+        1.8,
+        0.6857142857142857,
+        3,
+        0
+      ],
+      "expect": 9.753942857142858
+    },
+    {
+      "experiment": "buoyancy",
+      "law": "buoyancy_drag_force",
+      "args": [
+        1.8,
+        0.6857142857142857,
+        3,
+        0.4
+      ],
+      "expect": -1.4811428571428573
+    },
+    {
+      "experiment": "buoyancy",
+      "law": "submerged_fraction",
+      "args": [
+        2,
+        1.4583333333333333
+      ],
+      "expect": 1
+    },
+    {
+      "experiment": "buoyancy",
+      "law": "buoyancy_region_force",
+      "args": [
+        1.45,
+        9.81,
+        1.8,
+        1,
+        3,
+        -0.1
+      ],
+      "expect": 14.764500000000002
+    },
+    {
+      "experiment": "buoyancy",
+      "law": "buoyancy_drag_force",
+      "args": [
+        1.8,
+        1,
+        3,
+        0.4
+      ],
+      "expect": -2.16
+    },
+    {
+      "experiment": "buoyancy",
+      "law": "floating_submerged_fraction",
+      "args": [
+        1.8473629294200586,
+        0.8928920825530283
+      ],
+      "expect": 2.0689655172413794
+    },
+    {
+      "experiment": "buoyancy",
+      "law": "buoyancy_net_force",
+      "args": [
+        0.8928920825530283,
+        1.8473629294200586,
+        9.81,
+        1.6239364513727619
+      ],
+      "expect": -15.205500000000002
+    },
+    {
+      "experiment": "buoyancy",
+      "law": "buoyant_force",
+      "args": [
+        0.8928920825530283,
+        9.81,
+        1.6239364513727619
+      ],
+      "expect": 14.2245
+    }
+  ],
+  "scenes": {
+    "uniform_field": {
+      "g": 9.81,
+      "v0": [
+        3,
+        4
+      ],
+      "masses": [
+        0.5,
+        1,
+        3
+      ],
+      "samples": [
+        {
+          "t": 0.25,
+          "x": 0.75,
+          "y": 0.6934374999999999
+        },
+        {
+          "t": 0.5,
+          "x": 1.5,
+          "y": 0.7737499999999999
+        },
+        {
+          "t": 0.75,
+          "x": 2.25,
+          "y": 0.2409374999999998
+        }
+      ]
+    },
+    "contact_force": {
+      "mass": 8,
+      "mu_s": 0.4,
+      "mu_k": 0.22,
+      "max_static": 31.392000000000003,
+      "hold_force": 25,
+      "push_force": 50,
+      "accel": 4.091799999999999,
+      "samples": [
+        {
+          "t": 1,
+          "s": 2.0458999999999996
+        },
+        {
+          "t": 2,
+          "s": 8.183599999999998
+        }
+      ]
+    },
+    "collision": {
+      "masses": [
+        1,
+        2
+      ],
+      "velocities": [
+        3.4,
+        -1.7
+      ],
+      "threshold": 1,
+      "elastic": {
+        "e": 1,
+        "after": [
+          -3.4,
+          1.7
+        ]
+      },
+      "rubber": {
+        "e": 0.88,
+        "after": [
+          -2.9919999999999995,
+          1.4959999999999998
+        ]
+      },
+      "momentum": 0
+    },
+    "force_injection": {
+      "spring": {
+        "stiffness": 5,
+        "mass": 1,
+        "amplitude": 0.5,
+        "period": 2.8099258924162904,
+        "energy": 0.625
+      },
+      "orbit": {
+        "mu": 38.712158203125,
+        "radius": 3.7125,
+        "speed": 3.2291666666666665,
+        "period": 7.223636269286466
+      },
+      "buoyancy": {
+        "displaced_mass": 1.45,
+        "drag": 1.8,
+        "size": 0.4,
+        "light": {
+          "mass": 1,
+          "fraction": 0.6896551724137931
+        },
+        "heavy": {
+          "mass": 3,
+          "fraction": 1
+        }
+      }
+    },
+    "kinematic_model": {
+      "pendulum": {
+        "length": 2,
+        "angle": 0.1,
+        "period": 2.837006706885775,
+        "angles": [
+          0.04311627329900234,
+          -0.06141804779776695,
+          -0.0980823122367278,
+          -0.026394923511000094
+        ]
+      },
+      "pulley": [
+        {
+          "strands": 1,
+          "force": 196.20000000000002,
+          "lift_for_pull_1m": 1
+        },
+        {
+          "strands": 2,
+          "force": 98.10000000000001,
+          "lift_for_pull_1m": 0.5
+        },
+        {
+          "strands": 4,
+          "force": 49.050000000000004,
+          "lift_for_pull_1m": 0.25
+        }
+      ],
+      "lever": {
+        "load_mass": 20,
+        "load_arm": 1,
+        "effort_arm": 2.5,
+        "required": 78.48
+      }
+    }
+  }
+}

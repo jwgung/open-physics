@@ -9,6 +9,8 @@
 ##    portrait/landscape layout.
 ## 4. manipulation (Task 2b, tests/manipulation_checks.gd): projection, snap, assist, drag/cancel/
 ##    height handle/overlap through the real input path, displayed numbers after a new start.
+## 5. formula correction layer (Task 3, tests/formula_checks.gd): PhysicsLaws parity for the 10
+##    guided mechanics experiments and one representative Jolt scene per correction method.
 ## Times are engine fixed steps (60 Hz), independent of rendering FPS.
 extends SceneTree
 
@@ -67,6 +69,11 @@ func _run() -> void:
 	_expect(checks != null and checks.can_instantiate(), "manipulation checks compile", "")
 	if checks != null and checks.can_instantiate():
 		await checks.new(self, _expect, _vectors).run(definition)
+	print("== formula correction layer: parity for the 10 guided experiments, representative scenes ==")
+	var formula: GDScript = load("res://tests/formula_checks.gd")
+	_expect(formula != null and formula.can_instantiate(), "formula checks compile", "")
+	if formula != null and formula.can_instantiate():
+		await formula.new(self, _expect).run()
 	print("RESULT: %s (%d failure(s))" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
 

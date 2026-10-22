@@ -1,5 +1,7 @@
 ## Loads experiment content from content/experiments/index.json and validates each definition
 ## against the shell's interface. Content is plain JSON so Task 4 can share it with the web app.
+## index.json `experiments` are listed on the list screen; `hidden` ones (development scenes) are
+## only opened by id (--experiment=<id>).
 class_name ExperimentRegistry
 extends RefCounted
 
@@ -11,6 +13,7 @@ const CONTROL_TYPES := ["slider", "choice"]
 
 
 static var _cache: Array[Dictionary] = []
+static var _hidden: Array[Dictionary] = []
 static var _loaded := false
 
 
@@ -20,13 +23,30 @@ static func load_all() -> Array[Dictionary]:
 	if _loaded:
 		return _cache
 	var result: Array[Dictionary] = []
+	var hidden: Array[Dictionary] = []
 	_cache = result
+	_hidden = hidden
 	_loaded = true
 	var index: Variant = _read_json(INDEX_PATH)
 	if not index is Dictionary:
 		push_error("ExperimentRegistry: cannot read %s" % INDEX_PATH)
 		return result
-	for file_name in index.get("experiments", []):
+	_load_files(index.get("experiments", []), result)
+	_load_files(index.get("hidden", []), hidden)
+	return result
+
+
+## The loaded definition with this id, listed or hidden ({} if there is none).
+static func find(id: String) -> Dictionary:
+	load_all()
+	for definition in _cache + _hidden:
+		if definition.id == id:
+			return definition
+	return {}
+
+
+static func _load_files(files: Array, into: Array[Dictionary]) -> void:
+	for file_name in files:
 		var path := INDEX_PATH.get_base_dir().path_join(str(file_name))
 		var definition: Variant = _read_json(path)
 		if not definition is Dictionary:
@@ -36,16 +56,7 @@ static func load_all() -> Array[Dictionary]:
 		if not problems.is_empty():
 			push_error("ExperimentRegistry: %s is invalid: %s" % [path, "; ".join(problems)])
 			continue
-		result.append(definition)
-	return result
-
-
-## The loaded definition with this id ({} if there is none).
-static func find(id: String) -> Dictionary:
-	for definition in load_all():
-		if definition.id == id:
-			return definition
-	return {}
+		into.append(definition)
 
 
 ## Returns a list of problems (empty = valid).
@@ -95,6 +106,44 @@ static func validate(definition: Dictionary) -> PackedStringArray:
 	var graph: Dictionary = definition.graph
 	if not graph.has("series") or graph.series.is_empty():
 		problems.append("graph.series missing")
+	problems.append_array(_validate_manipulation(definition.get("manipulation"), definition.actions))
+	return problems
+
+
+## Optional `manipulation` (Task 2b): {"objects": [{"id", "surface", "snap" (m, optional),
+## "height": false | {"max" (m, > 0, a multiple of step), "step" (m, optional)}}],
+## "demo_action" (optional, an action id: what the --auto-drag demo does after putting an object down)}.
+static func _validate_manipulation(manipulation: Variant, actions: Array = []) -> PackedStringArray:
+	var problems := PackedStringArray()
+	if manipulation == null:
+		return problems
+	if not manipulation is Dictionary or not manipulation.get("objects") is Array or manipulation.objects.is_empty():
+		problems.append("manipulation.objects missing")
+		return problems
+	var ids := {}
+	for object in manipulation.objects:
+		if not object is Dictionary or not object.get("id") is String or not object.get("surface") is String:
+			problems.append("manipulation object needs id and surface")
+			continue
+		if ids.has(object.id):
+			problems.append("duplicate manipulation object %s" % object.id)
+		ids[object.id] = true
+		var snap: Variant = object.get("snap", 0.0)
+		if not (snap is float or snap is int) or snap < 0.0:
+			problems.append("manipulation %s.snap must be a number >= 0" % object.id)
+		var height: Variant = object.get("height", false)
+		if height is Dictionary:
+			var top: Variant = height.get("max")
+			var step: Variant = height.get("step", 0.0)
+			if not (top is float or top is int) or top <= 0.0 or not (step is float or step is int) or step < 0.0:
+				problems.append("manipulation %s.height needs max > 0 and step >= 0" % object.id)
+			elif step > 0.0 and absf(float(top) / float(step) - roundf(float(top) / float(step))) > 1e-6:
+				problems.append("manipulation %s.height.max must be a multiple of step" % object.id)
+		elif height != false:
+			problems.append("manipulation %s.height must be false or {max, step}" % object.id)
+	var demo: Variant = manipulation.get("demo_action", "")
+	if not demo is String or (demo != "" and not actions.any(func(a: Dictionary) -> bool: return a.get("id") == demo)):
+		problems.append("manipulation.demo_action must be the id of one of the actions")
 	return problems
 
 

@@ -11,6 +11,7 @@ const UI_REFRESH_HZ := 10.0
 const TOP_BAR_HEIGHT := 84.0
 const SIDE_PANEL_WIDTH := 470.0
 const TIP_SECONDS := 8.0
+const DEMO_RELEASE_DELAY_S := 0.4   # --auto-drag: the auto-release waits this long after the demo put its object down
 
 ## Set by App for the screen it opens from --experiment: then the launch args (--ctl-*, --camera,
 ## ...) apply to this screen only (a rebuilt screen with a saved state restores that state instead).
@@ -19,6 +20,8 @@ var apply_launch_args := false
 var definition: Dictionary
 var experiment: Experiment
 var view: View3D
+## One-finger object manipulation (null when the experiment declares no `manipulation`).
+var manipulator: Manipulator
 
 var _top_bar: PanelContainer
 var _panel: PanelContainer
@@ -32,9 +35,11 @@ var _observation_labels: Dictionary = {}
 var _control_widgets: Dictionary = {}   # id -> {"slider": HSlider, "value": Label} or {"buttons": {}, "note": Label}
 var _graph: GraphView
 var _sections: Dictionary = {}          # section id -> card (for --scroll-to)
+var refresh_count := 0                  # full panel refreshes so far (tests)
 var _refresh_left := 0.0
 var _auto_release_every := 0.0
 var _auto_release_left := 0.0
+var _demo_release_left := -1.0          # --auto-drag: seconds until the placed object is released
 var _state: Dictionary = {}             # capture_state() of a screen being rebuilt
 var _updating := false                  # a control/action is running: refresh once afterwards
 var _graph_revision := -2               # Experiment.graph_revision() of the series on the graph
@@ -53,7 +58,7 @@ func capture_state() -> Dictionary:
 	var controls := {}
 	for control in definition.controls:
 		controls[control.id] = experiment.control_value(control.id)
-	return {"controls": controls, "camera": view.rig.get_state()}
+	return {"controls": controls, "camera": view.rig.get_state(), "placements": experiment.placements()}
 
 
 func _ready() -> void:
@@ -67,6 +72,16 @@ func _ready() -> void:
 	experiment.state_changed.connect(_on_state_changed)
 	experiment.impact.connect(view.rig.nudge)
 	view.set_world(experiment)
+	if definition.has("manipulation"):
+		manipulator = Manipulator.new()
+		manipulator.name = "Manipulator"
+		view.viewport.add_child(manipulator)
+		manipulator.setup(view, experiment)
+		view.single_pointer.connect(manipulator.handle_pointer)
+		manipulator.changed.connect(_on_manipulator_changed)
+		manipulator.demo_placed.connect(func() -> void:
+			if manipulator.demo_action != "":
+				_demo_release_left = DEMO_RELEASE_DELAY_S)
 	view.rig.follow_source = experiment
 	view.rig.configure(definition.camera)
 	view.rig.mode_changed.connect(_on_mode_changed)
@@ -87,6 +102,9 @@ func _restore_state() -> void:
 	_updating = true
 	for id in controls:
 		experiment.set_control(id, controls[id])
+	var placements: Dictionary = _state.get("placements", {})
+	for id in placements:
+		experiment.manipulation_placed(id, placements[id])
 	_updating = false
 	view.rig.set_state(_state.get("camera", {}))   # emits mode_changed; setup() refreshes once
 
@@ -109,6 +127,9 @@ func _apply_launch_args() -> void:
 	if every.is_valid_float():
 		_auto_release_every = float(every)
 		_auto_release_left = 1.0
+	var drag_every := Quality.cmdline_value("auto-drag")
+	if drag_every.is_valid_float() and manipulator != null:
+		manipulator.start_demo(float(drag_every))
 
 
 func _process(delta: float) -> void:
@@ -124,7 +145,11 @@ func _process(delta: float) -> void:
 		_auto_release_left -= delta
 		if _auto_release_left <= 0.0:
 			_auto_release_left = _auto_release_every
-			experiment.run_action("release")
+			_run_measured_action("release")
+	if _demo_release_left >= 0.0:
+		_demo_release_left -= delta
+		if _demo_release_left < 0.0:
+			_run_measured_action(manipulator.demo_action)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -312,7 +337,21 @@ func _build_conditions() -> Control:
 	return parts[0]
 
 
+## An action fired by a measurement hook (--auto-release, --auto-drag): the experiment's own change,
+## as in Task 2a, without the UI work of a button press (cancel, full refresh) unless an object is
+## held (then it goes back first, as for a button). A selection is still cleared so the height
+## handle does not follow a body the action sets moving.
+func _run_measured_action(id: String) -> void:
+	if manipulator != null and manipulator.mode != "":
+		experiment_action(id)
+		return
+	if manipulator != null and manipulator.selected_id != "":
+		manipulator.select("")
+	experiment.run_action(id)
+
+
 func experiment_action(id: String) -> void:
+	_drop_held_object()
 	_updating = true
 	experiment.run_action(id)
 	_updating = false
@@ -320,6 +359,7 @@ func experiment_action(id: String) -> void:
 
 
 func _set_control(id: String, value: Variant) -> void:
+	_drop_held_object()
 	_updating = true
 	experiment.set_control(id, value)
 	_updating = false
@@ -328,8 +368,25 @@ func _set_control(id: String, value: Variant) -> void:
 	_update_readouts(true)
 
 
-## state_changed during our own control/action call is covered by that call's single refresh.
+## A control or action changes the experiment under a held object: put it back first. The height
+## handle goes away too (a released object may fall or move on, the handle would follow it).
+func _drop_held_object() -> void:
+	if manipulator != null:
+		var was_updating := _updating
+		_updating = true   # the caller refreshes once afterwards
+		manipulator.cancel()
+		manipulator.select("")
+		_updating = was_updating
+
+
+## state_changed during our own control/action call is covered by that call's single refresh; one
+## inside a manipulator callback (placed / cancelled) by its `changed`.
 func _on_state_changed() -> void:
+	if not _updating and not (manipulator != null and manipulator.notifying):
+		_refresh()
+
+
+func _on_manipulator_changed() -> void:
 	if not _updating:
 		_refresh()
 
@@ -434,6 +491,7 @@ func _build_explanation() -> Control:
 
 ## Everything: all controls, observations and graph (events, actions, a restored state).
 func _refresh() -> void:
+	refresh_count += 1
 	if experiment == null or not experiment.is_inside_tree():
 		return
 	for control in definition.controls:

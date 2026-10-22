@@ -4,6 +4,9 @@
 // Coefficient sets: the benchmark spec's S3 pair (mu_s 0.5 / mu_k 0.4) and the web app's surface
 // materials (MATERIALS: mu_s = friction + 0.18, mu_k = friction), which the experiment content
 // (content/experiments/incline-friction.json) must repeat exactly.
+// "runs" (Task 2b): the box can start anywhere on the incline, so the displayed distance stops at
+// the run length from the chosen start to the lower end (7.5 m was the default start) and the box
+// leaves the incline when s(t) reaches it; s(t) samples come from constantAccelerationDisplacement.
 // Runs in the root `npm test`. Regenerate: UPDATE_INCLINE_VECTORS=1 npx vitest run apps/lab3d
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -72,6 +75,25 @@ function coefficientSet(id: string, muS: number, muK: number) {
   };
 }
 
+/** A start position: run length L (m) from the start to the incline's lower end. */
+function runVector(material: PlaygroundMaterial, thetaDeg: number, runLength: number) {
+  const muS = MATERIALS[material].friction + STATIC_OFFSET;
+  const muK = MATERIALS[material].friction;
+  const accel = tangentialAcceleration(thetaDeg, 0, muS, muK);
+  const displacement = (t: number) => constantAccelerationDisplacement({ x: 0, y: 0 }, { x: accel, y: 0 }, t).x;
+  const tLeave = Math.sqrt((2 * runLength) / accel);
+  return {
+    material,
+    theta_deg: thetaDeg,
+    run_length: runLength,
+    accel,
+    t_leave: tLeave,
+    displacement: [0.25, 0.5, 0.75, 1, 1.25, 1.5, 2, 2.5, 3]
+      .filter((t) => t < tLeave)
+      .map((t) => ({ t, s: displacement(t) })),
+  };
+}
+
 function buildVectors() {
   return {
     source: "src/physics/laws (SurfaceContactFrictionModifier, constantAccelerationDisplacement), src/app/physics-playground.ts MATERIALS",
@@ -82,6 +104,7 @@ function buildVectors() {
       coefficientSet("spec-s3", 0.5, 0.4),
       ...MATERIAL_ORDER.map((id) => coefficientSet(id, MATERIALS[id].friction + STATIC_OFFSET, MATERIALS[id].friction)),
     ],
+    runs: [runVector("wood", 40, 4), runVector("steel", 35, 2.5), runVector("rubber", 45, 6), runVector("clay", 45, 1)],
   };
 }
 
@@ -96,6 +119,13 @@ describe("incline friction parity vectors for the 3D app", () => {
     const spec = vectors.sets[0];
     expect(spec.critical_angle_deg).toBeCloseTo(26.565, 3);
     expect(spec.accel_35).toBeCloseTo(2.412, 3);
+    for (const run of vectors.runs) {
+      // The leaving time is where the TS displacement reaches the run length; samples stop before it.
+      const atLeave = constantAccelerationDisplacement({ x: 0, y: 0 }, { x: run.accel, y: 0 }, run.t_leave).x;
+      expect(atLeave).toBeCloseTo(run.run_length, 9);
+      expect(run.displacement.every((row) => row.s < run.run_length)).toBe(true);
+      expect(run.displacement.length).toBeGreaterThanOrEqual(2);
+    }
   });
 
   it("experiment content uses the TS surface materials", () => {

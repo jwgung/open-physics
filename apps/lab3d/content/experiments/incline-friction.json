@@ -22,7 +22,7 @@
     "description": "중력의 빗면 성분이 최대 정지 마찰력보다 크면 상자가 미끄러지고, 미끄러지는 동안에는 운동 마찰이 가속도를 줄입니다.",
     "equation": "mg sinθ > μs·mg cosθ · a = g(sinθ − μk cosθ)"
   },
-  "tip": "두 손가락을 함께 끌면 시점이 돌아가고, 벌리거나 오므리며 움직이면 확대·축소와 이동이 돼요.",
+  "tip": "상자를 한 손가락으로 끌어 빗면 위 출발 위치를 바꿀 수 있어요. 두 손가락을 함께 끌면 시점이 돌아가고, 벌리거나 오므리며 움직이면 확대·축소와 이동이 돼요.",
   "scene": "res://experiments/incline_friction/incline_friction.gd",
   "bench_id": "S3",
   "camera": {
@@ -67,8 +67,15 @@
     { "id": "tangential", "label": "중력의 빗면 성분 mg sinθ", "unit": "N", "digits": 2 },
     { "id": "max_static", "label": "최대 정지 마찰력 μs·mg cosθ", "unit": "N", "digits": 2 },
     { "id": "acceleration", "label": "가속도 a", "unit": "m/s²", "digits": 2 },
-    { "id": "distance", "label": "이동 거리 (시뮬레이션)", "unit": "m", "digits": 2 }
+    { "id": "distance", "label": "이동 거리 (시뮬레이션)", "unit": "m", "digits": 2 },
+    { "id": "run", "label": "출발점에서 빗면 끝까지", "unit": "m", "digits": 1 }
   ],
+  "manipulation": {
+    "objects": [
+      { "id": "box", "surface": "incline", "snap": 0.5, "height": false }
+    ],
+    "demo_action": "release"
+  },
   "graph": {
     "title": "놓은 뒤 이동 거리",
     "x": { "label": "시간 t", "unit": "s", "max": 3.0 },

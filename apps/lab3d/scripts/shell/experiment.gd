@@ -17,6 +17,15 @@ signal impact(strength: float)
 var definition: Dictionary = {}
 
 
+## Adds a box collision shape of `size` to a body (floors, blocks, boxes of the experiments).
+func _add_box_shape(body: CollisionObject3D, size: Vector3) -> void:
+	var shape := CollisionShape3D.new()
+	var box_shape := BoxShape3D.new()
+	box_shape.size = size
+	shape.shape = box_shape
+	body.add_child(shape)
+
+
 ## Sets a control declared in definition.controls. `value` is a float for sliders and the option
 ## id (String) for choices. Called once per control with its default before the first frame.
 func set_control(_id: String, _value: Variant) -> void:
@@ -55,3 +64,51 @@ func graph_revision() -> int:
 ## World position the "따라가기" camera mode follows.
 func follow_point() -> Vector3:
 	return global_position
+
+
+# --- manipulation (Task 2b) ---------------------------------------------------------------------
+# definition.manipulation.objects lists the objects a finger may pick up and the rules (surface id,
+# grid step, height handle); the shell's Manipulator does the picking, dragging, snapping and the
+# preview, and asks the experiment for the geometry and tells it the outcome. While an object is
+# held it is frozen; the experiment decides what a placed object does next (README "조작").
+
+## The physics body of a manipulable object (null = not available right now).
+func manipulation_body(_id: String) -> PhysicsBody3D:
+	return null
+
+
+## The surface `surface_id` (from the object's rule) as it is now, e.g. at the current incline angle.
+func manipulation_surface(_surface_id: String) -> ManipSurface:
+	return null
+
+
+## Visual reactions of the object (hold lift, settle, wobble), or null.
+func manipulation_juice(_id: String) -> ArtJuice:
+	return null
+
+
+## A finger picked the object up. The shell has frozen the body; stop whatever it was doing.
+func manipulation_started(_id: String) -> void:
+	pass
+
+
+## Extra placement rule of the experiment (the shell already checks the region and overlaps).
+func placement_allowed(_id: String, _transform: Transform3D) -> bool:
+	return true
+
+
+## The object was put down at `transform` (already snapped and checked). Also used to restore a
+## saved placement (placements()) when the screen is rebuilt.
+func manipulation_placed(_id: String, _transform: Transform3D) -> void:
+	pass
+
+
+## The pick-up was cancelled (second finger, system cancel, or let go where it cannot be placed).
+## The shell has put the body back where it was picked up.
+func manipulation_cancelled(_id: String) -> void:
+	pass
+
+
+## id -> Transform3D of the objects the user placed (kept across a screen rebuild).
+func placements() -> Dictionary:
+	return {}

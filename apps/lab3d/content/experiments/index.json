@@ -1,4 +1,9 @@
 {
   "version": 1,
-  "experiments": ["incline-friction.json"]
+  "experiments": [
+    "incline-friction.json"
+  ],
+  "hidden": [
+    "manipulation-dev.json"
+  ]
 }

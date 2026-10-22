@@ -1,0 +1,63 @@
+{
+  "id": "manipulation-dev",
+  "version": 1,
+  "title": "조작 확인 (개발용)",
+  "category": "개발",
+  "icon": "▣",
+  "question": "상자를 끌어 바닥 위에 놓고, 옆의 손잡이로 높이를 바꿔 보세요.",
+  "steps": [
+    "상자를 한 손가락으로 끌어 바닥 위 다른 자리에 놓아요.",
+    "놓은 상자 옆 노란 손잡이를 위아래로 끌어 높이를 바꿔요.",
+    "상자 떨어뜨리기를 눌러 높이 놓은 상자가 떨어지는지 봐요."
+  ],
+  "observe": "다른 상자나 파란 블록과 겹치는 자리, 바닥 밖에는 놓을 수 없어요.",
+  "law": {
+    "title": "조작 평면",
+    "description": "끄는 동안 상자는 바닥과 나란한 평면 위에서만 움직이고, 높이는 손잡이로만 바뀝니다.",
+    "equation": "격자 0.25 m · 높이 0–2 m"
+  },
+  "tip": "상자를 한 손가락으로 끌어 옮기고, 놓은 뒤 옆의 노란 손잡이로 높이를 바꿔요.",
+  "scene": "res://experiments/manipulation_dev/manipulation_dev.gd",
+  "bench_id": "DEV",
+  "camera": {
+    "target": [0.0, 0.6, 0.0],
+    "distance": 9.0,
+    "distance_range": [3.0, 20.0],
+    "yaw_range_deg": [-100.0, 100.0],
+    "pitch_range_deg": [-89.0, -2.0],
+    "pan_radius": 5.0,
+    "default_mode": "three_quarter",
+    "views": {
+      "front": { "yaw_deg": 0.0, "pitch_deg": -6.0, "distance": 10.0 },
+      "three_quarter": { "yaw_deg": 30.0, "pitch_deg": -32.0 },
+      "top": { "yaw_deg": 0.0, "pitch_deg": -89.0, "distance": 11.0 },
+      "side": { "yaw_deg": 90.0, "pitch_deg": -10.0, "distance": 11.0 },
+      "follow": { "yaw_deg": 20.0, "pitch_deg": -25.0, "distance": 5.0 }
+    }
+  },
+  "controls": [],
+  "actions": [
+    { "id": "drop", "label": "상자 떨어뜨리기", "style": "primary" },
+    { "id": "reset", "label": "처음으로" }
+  ],
+  "observations": [
+    { "id": "red", "label": "빨간 상자 높이", "unit": "m", "digits": 2 },
+    { "id": "orange", "label": "주황 상자 높이", "unit": "m", "digits": 2 },
+    { "id": "pink", "label": "분홍 상자 높이", "unit": "m", "digits": 2 }
+  ],
+  "graph": {
+    "title": "상자 높이",
+    "x": { "label": "상자", "unit": "번", "max": 4.0 },
+    "y": { "label": "높이", "unit": "m", "min_max": 2.0 },
+    "series": [
+      { "id": "height", "label": "바닥에서 높이", "color": "#2d7cf6", "style": "points" }
+    ]
+  },
+  "manipulation": {
+    "objects": [
+      { "id": "red", "surface": "floor", "snap": 0.25, "height": { "max": 2.0, "step": 0.25 } },
+      { "id": "orange", "surface": "floor", "snap": 0.25, "height": { "max": 2.0, "step": 0.25 } },
+      { "id": "pink", "surface": "floor", "snap": 0.25, "height": { "max": 2.0, "step": 0.25 } }
+    ]
+  }
+}

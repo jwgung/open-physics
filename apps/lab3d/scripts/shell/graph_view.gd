@@ -1,6 +1,8 @@
 ## Line/point graph for definition.graph (lab-graph.ts look: light grid, round 2.5-unit lines,
 ## latest point emphasised). The x range is fixed (graph.x.max); y grows to fit the data with
-## graph.y.min_max as the smallest top value. Axis ticks are numbers with units.
+## graph.y.min_max as the smallest top value. With graph.y.signed the y axis runs from -top to +top
+## around a zero line in the middle (signed values: the collision lab's momenta, + = to the right).
+## Axis ticks are numbers with units.
 class_name GraphView
 extends Control
 
@@ -39,18 +41,15 @@ func _draw() -> void:
 	var x_spec: Dictionary = spec.get("x", {})
 	var y_spec: Dictionary = spec.get("y", {})
 	var x_max: float = x_spec.get("max", 1.0)
-	var y_max: float = y_spec.get("min_max", 1.0)
-	for id in series:
-		for point in series[id]:
-			y_max = maxf(y_max, point.y * 1.08)
-	y_max = _nice_ceiling(y_max)
+	var signed: bool = y_spec.get("signed", false)
+	var y_max := y_top(spec, series)
+	var y_min := -y_max if signed else 0.0
 	var muted := UiTheme.MUTED
 	var grid := Color("e1ebf5")
 	for i in 3:
 		var y := plot.position.y + plot.size.y * i / 2.0
 		draw_line(Vector2(plot.position.x, y), Vector2(plot.end.x, y), grid, 1.0)
-		var value := y_max * (2 - i) / 2.0
-		draw_string(font, Vector2(4.0, y + 6.0), _format(value), HORIZONTAL_ALIGNMENT_RIGHT, PAD_LEFT - 12.0, font_size, muted)
+		draw_string(font, Vector2(4.0, y + 6.0), _format(y_tick_values(y_max, signed)[i]), HORIZONTAL_ALIGNMENT_RIGHT, PAD_LEFT - 12.0, font_size, muted)
 	for i in 4:
 		var x := plot.position.x + plot.size.x * i / 3.0
 		draw_line(Vector2(x, plot.position.y), Vector2(x, plot.end.y), grid if i > 0 else Color("c9d8e8"), 1.0)
@@ -60,7 +59,7 @@ func _draw() -> void:
 	draw_string(font, Vector2(plot.end.x - 300.0, size.y - 4.0), x_label, HORIZONTAL_ALIGNMENT_RIGHT, 300.0, font_size, muted)
 
 	var to_screen := func(p: Vector2) -> Vector2:
-		return Vector2(plot.position.x + p.x / x_max * plot.size.x, plot.end.y - p.y / y_max * plot.size.y)
+		return Vector2(plot.position.x + p.x / x_max * plot.size.x, plot.end.y - (p.y - y_min) / (y_max - y_min) * plot.size.y)
 	for entry in spec.get("series", []):
 		var points: PackedVector2Array = series.get(entry.id, PackedVector2Array())
 		if points.is_empty():
@@ -75,6 +74,26 @@ func _draw() -> void:
 			draw_circle(screen[-1], 7.0, color, true, -1.0, true)
 		elif screen.size() >= 2:
 			draw_polyline(screen, color, 3.0, true)
+
+
+## The top value of the y axis: the data (with 8 % headroom) rounded up to a nice number, at least
+## graph.y.min_max.
+static func y_top(graph_spec: Dictionary, data: Dictionary) -> float:
+	var y_spec: Dictionary = graph_spec.get("y", {})
+	var signed: bool = y_spec.get("signed", false)
+	var top: float = y_spec.get("min_max", 1.0)
+	for id in data:
+		for point in data[id]:
+			top = maxf(top, (absf(point.y) if signed else point.y) * 1.08)
+	return _nice_ceiling(top)
+
+
+## The values of the three horizontal grid lines, top to bottom: max, max/2, 0 - or, on a signed axis
+## (zero line in the middle), +max, 0, -max.
+static func y_tick_values(top: float, signed: bool) -> Array[float]:
+	if signed:
+		return [top, 0.0, -top]
+	return [top, top * 0.5, 0.0]
 
 
 static func _format(value: float) -> String:

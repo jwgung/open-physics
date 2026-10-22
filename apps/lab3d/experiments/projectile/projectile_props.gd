@@ -2,8 +2,8 @@
 ## reactions only: the floor, ball and arrow-knob bodies are built by projectile.gd.
 ## - launch stand: a blue post behind the launch point with an arm and a yellow pad under the
 ##   waiting ball; the pad flips down on release (the ball falls past the stand on a vertical throw),
-## - the purple velocity arrow (the web's purple arrow) from the ball to the yellow knob, rebuilt
-##   only when the angle or speed changes (about 60 vertices),
+## - the purple velocity arrow (the web's purple arrow, VelocityArrow) from the ball to the yellow
+##   knob (VelocityArrow.knob_mesh), rebuilt only when its length changes (about 60 vertices),
 ## - the formula path: PATH_DOTS white dots on x(t), y(t) from the launch to the landing (one
 ##   MultiMesh, updated only when a condition or the start changes) and a white ring where the
 ##   formula lands,
@@ -19,17 +19,13 @@ const DOT_RADIUS := 0.05
 const TICKS_FROM := -8
 const TICKS_TO := 12
 const TICKS_Z := 0.9
-const ARROW_RADIUS := 0.05
-const HEAD_LENGTH := 0.22
 
 var juice: ArtJuice
 var post: MeshInstance3D
 var pad: MeshInstance3D
-var arrow: MeshInstance3D
+var arrow: VelocityArrow
 var path: MultiMeshInstance3D
 var ring: MeshInstance3D
-## (angle, speed) the arrow mesh was built for.
-var _arrow_key := Vector2(-1.0, -1.0)
 
 
 func ticks_mesh() -> Mesh:
@@ -62,13 +58,6 @@ func pad_mesh() -> Mesh:
 	return b.commit()
 
 
-func knob_mesh(size: float) -> Mesh:
-	var b := ArtKit.builder()
-	b.ao_min = 0.9
-	b.add_rounded_box(Transform3D.IDENTITY, Vector3.ONE * size, 0.05, 1, ArtPalette.YELLOW, ArtPalette.YELLOW_TOP)
-	return b.commit()
-
-
 func ring_mesh() -> Mesh:
 	var b := ArtKit.builder()
 	b.ao_min = 1.0
@@ -88,10 +77,8 @@ func dress(experiment: Node3D, ball: RigidBody3D, ball_visual: MeshInstance3D, b
 	pad = ArtKit.instance(pad_mesh())
 	pad.name = "LaunchPad"
 	experiment.add_child(pad)
-	arrow = MeshInstance3D.new()
+	arrow = VelocityArrow.new()
 	arrow.name = "VelocityArrow"
-	arrow.material_override = ArtKit.lit_material()
-	arrow.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	experiment.add_child(arrow)
 	var dot := ArtKit.builder()
 	dot.ao_min = 1.0
@@ -130,24 +117,8 @@ func place_stand(bottom: Vector3) -> void:
 
 
 ## The velocity arrow from the ball centre along (angle, speed), ending at the knob's near face.
-func set_arrow(center: Vector3, angle_deg: float, speed: float, tip_length: float, knob_half: float) -> void:
-	arrow.position = center
-	arrow.rotation = Vector3(0.0, 0.0, deg_to_rad(angle_deg))
-	var key := Vector2(angle_deg, speed)
-	if key == _arrow_key:
-		return
-	_arrow_key = key
-	var length := maxf(tip_length - knob_half, 0.3)
-	var b := ArtKit.builder()
-	b.ao_min = 1.0
-	var shaft := length - HEAD_LENGTH
-	# Built along +x (cylinders grow along +y from their base: turn them by -90 deg about z).
-	var along := Basis(Vector3.BACK, -PI * 0.5)
-	b.add_cylinder(Transform3D(along, Vector3.ZERO), ARROW_RADIUS, ARROW_RADIUS, shaft, 6,
-		ArtPalette.PURPLE, true, ArtPalette.PURPLE_TOP)
-	b.add_cylinder(Transform3D(along, Vector3(shaft, 0.0, 0.0)), ARROW_RADIUS * 2.6, 0.0, HEAD_LENGTH, 6,
-		ArtPalette.PURPLE, true, ArtPalette.PURPLE_TOP)
-	arrow.mesh = b.commit()
+func set_arrow(center: Vector3, angle_deg: float, tip_length: float, knob_half: float) -> void:
+	arrow.point(center, angle_deg, tip_length - knob_half)
 
 
 func show_arrow(on: bool) -> void:

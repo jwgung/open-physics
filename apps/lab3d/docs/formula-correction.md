@@ -64,7 +64,7 @@
 | 균일장 출발 보정 (`uniform_field`) | `UniformFieldCorrector` | 엔진 중력으로 적분, 첫 스텝 −mg/2(도약 출발). 표시 공식은 놓을 때의 엔진 장(크기·방향). 출발 면이 아닌 첫 접촉까지 자유 비행 기록 |
 | 충돌 결과 보정 (`collision`) | `CollisionCorrector` | 엔진이 바디 재질 그대로 접촉을 감지·해결. A–B 접촉 보고가 시작된 스텝 직전 속도를 접촉이 끝날 때까지 보관하고, 끝나면 속도 = 보관 속도 + 접촉 스텝의 외력 Δv(마지막 비접촉 스텝의 실제 속도 변화) + 법선 방향 `world_collision_velocities` 결과(엔진 법선·마찰 충격량만 버림). 제3 바디 동시 접촉·지속 접촉은 엔진 결과 |
 | 공식 힘 주입 (`force_injection`) | `ForceInjectionCorrector` → `SpringInjector`, `BuoyancyInjector`, `PointGravityInjector` | 엔진에 없는(또는 다른) 힘을 매 스텝 공식으로 계산해 주입, 도약 출발 |
-| 해석 모델 구동 (`kinematic_model`) | `KinematicModelCorrector` → `PendulumModelDriver`, `LeverModelDriver`, `PulleyModelDriver` | TS 모델을 고정 스텝으로 진행하고 바디를 키네마틱으로 그 자세에 놓음(엔진은 충돌만) |
+| 해석 모델 구동 (`kinematic_model`) | `KinematicModelCorrector` → `PendulumModelDriver`, `LeverModelDriver`, `PulleyModelDriver`; 충돌 실험의 `CollisionRailDriver`(두 공, Task 4c) | TS 모델을 고정 스텝으로 진행하고 바디를 키네마틱으로 그 자세에 놓음(엔진은 충돌만. 충돌 실험은 두 공끼리의 접촉도 공식) |
 
 ## 4. 실험별 보정 방식
 
@@ -74,7 +74,7 @@
 |---|---|---|---|---|---|
 | 자유 낙하 (`free-fall`) | 균일장 출발 보정 | `constantAccelerationDisplacement/Velocity`, `UniformGravity`, `kineticEnergy`, `momentum`, `gravitationalPotentialEnergy` | 높이, 속력, 가속도 g, 운동량, 운동·위치 에너지 | 스텝 위치 = ½gt² (≤ 1e-4 m), 질량 0.5·1·3 kg가 같이 떨어짐(≤ 1e-6 m), 바닥 접촉 시각 = √(2h/g) ±2스텝 | 적분이 symplectic Euler라 도약 출발만으로 정확(보정 끄면 8 cm 오차) |
 | 던지기 (`projectile`) | 균일장 출발 보정 | 위와 같음(축별) | 위치, 속도, 비행 경로(공식 곡선) | (x, y)(t) = x₀ + v₀t + ½at² (≤ 1e-4 m) | 같음. 착지 뒤 튀기는 엔진 접촉 |
-| 충돌 (`collision`) | 충돌 결과 보정 | `postCollisionVelocity1D(·Second)`, `elasticCollision1D`, world.ts 반발 규칙(`min(eA, eB)`, 1 m/s 미만 e = 0), `momentum` | 충돌 전후 속도, 운동량(합 보존) | 충돌 뒤 속도 = TS world 결과(≤ 1e-4 m/s): 재질 반발 0(두 스텝 해결)·0.88씩(Jolt e = 1), 느린 접근(0.7 m/s, e = 0), 깊은 겹침 출발, 중력 하 공중 충돌(TS `MultiBodyWorld` 80스텝 속도와 네 성분 비교). 운동량 보존(≤ 1e-4). 짝 바디의 바닥 반발 = 보정 없는 쌍둥이(재질 그대로) | Jolt 반발 결합이 합(min(a+b,1))이고 마찰이 있어 TS와 다름. 재질을 바꾸면 바닥·벽까지 바뀌어 결과만 덮어씀 |
+| 충돌 (`collision`) | 충돌 결과 보정(대표 장면). 안내형 실험은 공식 모델 구동(Task 4c, 아래) | `postCollisionVelocity1D(·Second)`, `elasticCollision1D`, world.ts 반발 규칙(`min(eA, eB)`, 1 m/s 미만 e = 0), `momentum` | 충돌 전후 속도, 운동량(합 보존) | 충돌 뒤 속도 = TS world 결과(≤ 1e-4 m/s): 재질 반발 0(두 스텝 해결)·0.88씩(Jolt e = 1), 느린 접근(0.7 m/s, e = 0), 깊은 겹침 출발, 중력 하 공중 충돌(TS `MultiBodyWorld` 80스텝 속도와 네 성분 비교). 운동량 보존(≤ 1e-4). 짝 바디의 바닥 반발 = 보정 없는 쌍둥이(재질 그대로) | Jolt 반발 결합이 합(min(a+b,1))이고 마찰이 있어 TS와 다름. 재질을 바꾸면 바닥·벽까지 바뀌어 결과만 덮어씀 |
 | 용수철 (`spring`) | 공식 힘 주입 | `AnchoredSpringLaw`(F = −kx − bv), `springPotentialEnergy`, `angularFrequency`, `periodFromAngularFrequency`, `harmonicDisplacement/Velocity/Energy`, `kineticEnergy` | 늘어난 길이(측정), 탄성·운동 에너지(TS 정의: 탄성 ½kx², 운동 ½mv². 감쇠·중력이 없으면 전체 = 놓을 때 상태의 ½kA² + ½mv₀², 운동 = 나머지. 있으면 현재 상태의 ½mv²(스텝 동기 속력) + ½kx²), 주기 | 주기 = 2π√(m/k) ±0.1%, 엔진 에너지(스텝 동기 속도) = ½kA² ±0.5%(10초), 감쇠 0.45에서 표시 에너지 = 현재 상태 K + U이고 줄기만 함, 정지 길이에서 2 m/s로 출발하면 전체 = ½mv₀² | 6DOF 스프링은 에너지 비보존(0.118–0.624 J). 주입 + 도약 출발은 3.5e-4 |
 | 마찰 (`friction`) | 접촉 힘 보정 (`push`) | `PushFrictionLaw`(정지·운동, 역주행 방지), `maximumStaticForce` | 미는 힘, 최대 정지 마찰력 μₛmg, 지금 마찰력, 운동 마찰력 μₖmg(`KineticFriction`), 속력, 열에너지(`work`), 상태(버팀/움직임. 정지 임계 0.01 px/s = 0.01/48 m/s) | μₛmg 아래 2초 정지(≤ 1 mm), 위에서 s = ½at², a = (F − μₖmg)/m(상대 ≤ 1e-4) | Jolt 마찰은 계수 하나. 빗면(Task 2a)과 같은 방식 |
 | 빗면 마찰 (Task 2a, 마찰 실험의 3D 첫 사례) | 접촉 힘 보정 (`surface`) | `SurfaceContactFrictionModifier`, 임계각 atan μₛ | 기존 그대로 | 기존 테스트(측정 기준 4절, 재질별 임계각, s = ½at² ±1%) 그대로 통과, 기록 해시 리팩터 전과 같음 | S3 |
@@ -104,6 +104,18 @@
 - 결과: 표시값 = TS(상대 4e-15), 엔진 변위 = 모델(≤ 2.5e-6 m), 열 = μₖmg × 미끄러진 거리(3e-16), 주는 힘의 일 = 운동 에너지 + 열(60 Hz 스텝 오차 5% 이내. 스텝마다 ½m(Δv)²와 떠나는 스텝의 절반 힘만큼 다르다). 경계값에서 버팀 2초(≤ 1 mm), +0.01 N에서 첫 스텝부터 s = (F − μₖmg)t²/2m.
 - 손잡이 힘 = 집은 자리에서 손잡이 격자점까지 칸 수 × (5 cm × 20 N/m) = 정수 N. 격자 간격은 64비트 규칙 값으로 센다(`ManipSurface.snap`은 32비트 `Vector2`라 0.05 × 20 = 1.0000000149가 된다).
 - 트랙 끝: 공식 위치가 끝(±(6 − 0.35 − 0.02) m)을 넘어가면 모델 속도 0, 위치를 끝으로 고정하고(빠른 상자가 한 스텝에 넘어간 몫 포함) 다음 스텝에 엔진 상자를 그 자리에 얼린다.
+
+### 실험 구현 (Task 4c: 충돌)
+
+충돌 실험(`experiments/collision/`)은 레일 위 두 공의 1차원 충돌이다. 사용자 우선순위("물리 공식에 맞게 동작하는 것이 제일 중요")에 따라 표시 수치뿐 아니라 **화면 속 공의 움직임**이 충돌 전·충돌 순간·충돌 뒤 모두 TS 공식과 스텝 단위로 같아야 한다(목표 ≤ 1e-4 m, ≤ 1e-4 m/s).
+
+- 공식 모델 `CollisionModel`: 웹 충돌 프리셋의 한 프레임(`physics-playground.ts` `advance`)을 레일에서 64비트로 진행한다. TS world 명시적 오일러(x += v dt, 레일 방향 힘 없음) → world.ts `resolveCollisions`(겹치면 겹친 만큼 질량 역비로 밀어내고, 다가가면 `world_collision_velocities`: 반발 min(eA, eB), 닫히는 속도 1 m/s 미만 e = 0) → `applyPresetDamping`(v ×= e^(−0.15 dt), 2 px/s 미만 정지) → `resolveWorldBounds`(벽 = 레일 끝 범퍼 면 ±7 m, 넘으면 벽에 두고 바깥으로 가면 v ×= −e). 첫 충돌(속도를 바꾼 첫 충격)의 앞뒤 속도·e를 기록하고, 충격량은 각 공의 Δp(`momentum` 차), 운동 에너지 합은 `kinetic_energy`.
+- 엔진: `CollisionRailDriver`(방식 `kinematic_model`)가 매 고정 스텝 물리 서버 전에 엔진 공의 위치를 기록하고, 모델을 한 스텝 진행한 뒤 두 공(얼린 키네마틱 `RigidBody3D`)을 모델 위치에 둔다. 두 공은 Jolt 안에서 서로 충돌하지 않는다(충돌 예외, 마스크 0). 엔진 공이 공식 위치에 놓이므로 엔진에서 잰 값은 독립 측정이 아니다: 패널에 "시뮬레이션" 관찰값을 두지 않고(이전 "지금 운동량 합(시뮬레이션)"은 공식 값을 다시 읽을 뿐이라 뺐다) 모든 수치가 공식 모델의 값이다. 엔진 위치는 테스트가 공식과 대조하는 데만 쓴다.
+- `CollisionCorrector`(Jolt 접촉 + 공식 결과 속도)를 쓰지 않은 이유: 같은 웹 시작 조건(1 kg·2 kg 고무, 3.4·−1.7 m/s)을 헤드리스로 재 보니, 엔진 속도를 매 스텝 모델 속도로 맞춰도 충돌 스텝 앞뒤에서 공 위치가 공식 궤적에서 최대 **0.084 m** 벗어났다(Jolt 추측 접촉이 접촉 스텝의 속도·위치를 바꾸고, TS는 겹친 뒤 밀어냄). 보정기만 두고 감쇠를 같이 주면 5초 뒤 **0.23 m**까지 벌어졌다. 접촉을 공식이 맡고 Jolt 접촉을 끈 구동(밀어내기 스텝은 위치로 반영)은 **2.4e-7 m**다. 대표 장면의 `CollisionCorrector`(속도 결과 ≤ 1e-4 m/s)는 Task 5 빈 실험실처럼 바디가 자유롭게 부딪히는 경우에 그대로 쓴다.
+- 남은 차이(측정, `tests/collision_lab_checks.gd`): 엔진 위치는 Godot 단정밀도(float32)라 ±7 m에서 반올림 2.4e-7 m(TS 표본 대비)·3.8e-7 m(매 스텝 모델 대비), 스텝 속도(변위/dt) 2.8e-5 m/s. 공의 회전은 없다(구르는 모습은 자식 메시만 돌림). 마찰은 공식에 없고 엔진 접촉도 없어 영향이 없다.
+- TS 오라클(`tools/collision-lab-vectors.test.ts` → `tests/collision_lab_vectors.json`): 웹 `PhysicsSimulation`에 원 두 개를 웹 px 단위로 넣고 60 Hz로 진행하며, 프리셋 감쇠·정지·벽 규칙을 웹과 같은 순서로 적용한다(이 상수들은 `physics-playground.ts` 안의 비공개 값이라 테스트가 소스에서 값을 읽어 같은지 확인한다). 7가지 경우의 6스텝마다 위치·속도·운동량, 첫 충돌(스텝, 앞뒤 속도, `coefficientOfRestitution`, 충격량, 운동량·에너지 합), 충돌 횟수를 기록한다.
+- 엔진 기록 `engine_a/b`는 `history_steps`까지만 쌓이므로 직전 스텝 위치는 `last_engine`에 따로 둔다(`FormulaCorrector.last_sample`처럼). 10초를 넘는 실행(웹 시작 약 29초)에서도 엔진 위치·스텝 속도·운동량이 공식과 1e-4 안이다. 충돌 연출 세기는 모델이 기록한 그 스텝의 닫히는 속도(`CollisionModel.last_closing`)로 정한다.
+- 결과: 모델 = TS(상대 7e-15, 첫 충돌 값 1e-15), 패널 = TS(1.6e-15), 운동량 보존(1.8e-15), 같은 질량 e = 1이면 속도 교환. 돌연변이(감쇠 끔, 밀어내기 끔, 충돌 결과 0.1% 변경, 벽 반발 무시, 구동이 한 스텝 늦음, 손잡이 눈금 변경, 엔진 접촉 켬) 모두 해당 검사가 실패했다.
 
 ## 5. 테스트 파이프라인
 

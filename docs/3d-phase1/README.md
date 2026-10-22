@@ -25,7 +25,7 @@ Notion Story·Task와 GitHub Issue는 발행하지 않는다. 이 문서가 Phas
 | 2b | 3D 앱 셸 조작 | 조작 평면(바닥·면 위 드래그), 스냅, 자동 안착, 보조 시점, 높이 손잡이 | 2a | 완료 | `feat/manipulation-plane`, [#7](https://github.com/jwgung/open-physics/pull/7) |
 | 2c | 아트 디렉션·연출 | 장난감·로우폴리 스타일(시안 중 B 잔디 섬으로 확정: 선명한 원색, 각진 로우폴리, 구운 조명·발밑 그림자, 통통 튀는 연출)을 정하고 빗면 실험에 적용한다. SM-P200 low 60 fps 유지. 이후 실험은 이 스타일로 만든다 | 2a | 완료 | `feat/art-direction`, [#6](https://github.com/jwgung/open-physics/pull/6) |
 | 3 | 공식 보정 계층과 parity 파이프라인 | 일반 접촉에 쓸 보정 설계(Jolt 접촉 콜백 범위 조사 포함), TS↔GDScript 벡터 테스트, CI(Node + Godot 헤드리스) | 1 | 완료 | `feat/formula-correction-layer`, [#8](https://github.com/jwgung/open-physics/pull/8) |
-| 4 | 역학 안내형 10개 3D 이식 | 실험별로 나눠 진행한다. 실험 콘텐츠는 JSON으로 빼서 웹 2D와 공유한다. 빗면 마찰은 2a에서 먼저 옮긴다 | 2a, 2b, 2c, 3 | 진행 중 (4a 완료, 4b 완료(검토 대기)) | 4a [#9](https://github.com/jwgung/open-physics/pull/9), 4b `feat/labs-contact-push` |
+| 4 | 역학 안내형 10개 3D 이식 | 실험별로 나눠 진행한다. 실험 콘텐츠는 JSON으로 빼서 웹 2D와 공유한다. 빗면 마찰은 2a에서 먼저 옮긴다 | 2a, 2b, 2c, 3 | 진행 중 (4a·4b 완료, 4c 완료(검토 대기)) | 4a [#9](https://github.com/jwgung/open-physics/pull/9), 4b [#10](https://github.com/jwgung/open-physics/pull/10), 4c `feat/labs-collision` |
 | 5 | 역학 빈 실험실 3D | 고정 블록·줄·용수철·지렛대·도르래·힘·중력원·물 | 2a, 2b, 2c, 3 | 대기 | |
 | 6 | 출시 준비 | 서명, 스토어 자료, 개인정보처리방침(수집 없음), Kids/Families 정책, 모바일 CI, iOS 실기기 확인 | 4, 5 | 대기 | |
 
@@ -34,7 +34,7 @@ Notion Story·Task와 GitHub Issue는 발행하지 않는다. 이 문서가 Phas
 **의도**: 역학 안내형 실험 10개를 셸(2a)·잔디 섬 스타일(2c)·조작 평면(2b)·공식 보정 계층(3) 위에 3D로 옮긴다. 빗면 마찰(2a)이 기준 실험이다. 실험 콘텐츠(질문·단계·관찰·법칙·용어·팁)는 JSON 하나를 웹 2D와 앱이 함께 쓴다.
 
 **결정사항** (2026-10-22, 사용자)
-- 보정 방식별 5묶음으로 나눠 PR을 낸다: 4a 균일장(자유 낙하, 던지기), 4b 접촉 힘(마찰 밀기), 4c 충돌, 4d 힘 주입(용수철, 부력, 궤도), 4e 해석 모델(진자, 지렛대, 도르래).
+- 보정 방식별 5묶음으로 나눠 PR을 낸다: 4a 균일장(자유 낙하, 던지기), 4b 접촉 힘(마찰 밀기), 4c 충돌, 4d 힘 주입(용수철, 부력, 궤도), 4e 해석 모델(진자, 지렛대, 도르래). 안내형 충돌은 공식 모델 구동(`CollisionRailDriver`)으로 만들었고 `CollisionCorrector`는 빈 실험실(Task 5)용으로 남긴다.
 - 아이 손 집기 크기와 기본 3/4 시점은 지금대로 둔다.
 
 **범위 (묶음마다)**
@@ -192,7 +192,7 @@ Notion Story·Task와 GitHub Issue는 발행하지 않는다. 이 문서가 Phas
 - 2026-10-22: Task 2b PR #7 머지(코드 리뷰 3회 반영). Task 3 착수.
 - 2026-10-22: Task 3 구현 완료(검토 대기). [공식 보정 문서](../../apps/lab3d/docs/formula-correction.md), 사용법·CI는 [앱 README](../../apps/lab3d/README.md#공식-보정-계층-task-3)
   - Jolt 조사(헤드리스 실험): `_integrate_forces`는 스텝 **뒤**에 불려 거기서 넣은 힘은 한 스텝 늦다 → 보정은 `_physics_process`. 적분은 symplectic Euler(정지 출발이 ½a t dt 앞섬) → 첫 스텝 반 힘(도약 출발)으로 스텝 위치가 공식과 같아진다. 반발은 두 재질의 합(1로 자름)이고 TS는 min, 임계 속도 1 m/s는 같다. PinJoint3D 진자는 솔버 감쇠로 30초에 진폭 −1.3%(웹 모델의 감쇠·각도 곡선 재현 불가), 6DOF 스프링은 에너지가 보존되지 않는다. 실험 스크립트는 `spikes/jolt-probes/`. 접촉 충격량 보고는 m g dt와 0.04% 차이.
-  - 보정 방식 5가지로 10개 실험을 나눴다: 접촉 힘 보정(마찰·빗면), 균일장 출발 보정(자유 낙하·던지기), 충돌 결과 보정(충돌), 공식 힘 주입(용수철·부력·궤도), 해석 모델 구동(진자·지렛대·도르래). 공통 기반 `FormulaCorrector`(고정 스텝 전 실행, 제한된 기록, 공식값/엔진값 구분)와 `FormulaBody`·`FormulaDriver`. 빗면은 `ContactFrictionCorrector` 위로 옮겼고 기록 해시가 리팩터 전과 같다.
+  - 보정 방식 5가지로 10개 실험을 나눴다: 접촉 힘 보정(마찰·빗면), 균일장 출발 보정(자유 낙하·던지기), 충돌 결과 보정(충돌), 공식 힘 주입(용수철·부력·궤도), 해석 모델 구동(진자·지렛대·도르래). 공통 기반 `FormulaCorrector`(고정 스텝 전 실행, 제한된 기록, 공식값/엔진값 구분)와 `FormulaBody`·`FormulaDriver`. 빗면은 `ContactFrictionCorrector` 위로 옮겼고 기록 해시가 리팩터 전과 같다. 후속: 안내형 충돌은 공식 모델 구동(`CollisionRailDriver`)이고, `CollisionCorrector`는 빈 실험실(Task 5)용이다.
   - 판정: 10개 실험 법칙을 `PhysicsLaws`로 포트(583개 TS 사례(리뷰 반영 뒤, 처음 519개), 상대 오차 ≤ 1e-9, 측정 최대 3e-13). 방식별 대표 Jolt 장면 통과(낙하·던지기 위치 ≤ 1e-4 m, 충돌 뒤 속도 ≤ 1e-4 m/s, 용수철 주기 0.006%·에너지 0.035%, 원 궤도 주기 0.007%, 부력 깊이 0.01%, 진자 각도 7e-9 rad). 빗면 기존 테스트 그대로 통과. 돌연변이 10종으로 실패 확인. CI(`.github/workflows/ci.yml`: Node 테스트·빌드 + Godot 4.7.2 공식 릴리스 SHA-512 검증·캐시 + 앱·스파이크 헤드리스)를 깨끗한 사본에서 같은 명령으로 재현해 통과. GitHub에서의 첫 실행은 PR 때 확인한다.
   - 남은 일: Hinge·Slider 조인트는 수치로 재지 않았다(빈 실험실 Task 5에서). 일반 다접촉 마찰·임의 형상 충돌 보정은 범위 밖. 3D 부력은 선형 잠김 비율이 정확한 상자·원기둥을 쓴다.
 - 2026-10-22: Task 3 PR #8 머지(코드 리뷰 2회 반영, GitHub CI 통과). Task 4를 보정 방식별 5묶음으로 진행하기로 결정(사용자), 4a 균일장(자유 낙하·던지기) 착수. 아이 손 집기 크기·기본 시점은 유지.
@@ -204,3 +204,8 @@ Notion Story·Task와 GitHub Issue는 발행하지 않는다. 이 문서가 Phas
   - 사용자 판단 필요: 웹 조건 중 캔버스 크기 의존 출발 높이(웹 약 7.8 m)를 3D에서는 0.5–8 m 조건(기본 5 m)으로, 던지기 각도·빠르기를 슬라이더(15°, 0.5 m/s)와 화살표 손잡이 둘 다로 둔 것. 그래프 가로축 3초 고정(달의 긴 비행은 앞부분만).
 - 2026-10-22: Task 4a PR #9 머지(코드 리뷰 2회 반영 — 착지 판정을 공식 소유로). 낙하 높이 기본 5 m(0.5–8 m)·발사 높이 0.5 m·공 크기 유지(사용자 확인). 4b 접촉 힘(마찰 밀기) 착수.
 - 2026-10-22: Task 4b 마찰 밀기 구현·헤드리스 검증·SM-P200 실측 완료(검토 대기). low 90초 × 3회 평균 59.8 fps(1% low 41.0, p95 18.1 ms), 스크린샷·화면 기록은 [4b 결과](../../spikes/bench/results/phase1-task4b/README.md). 실험 설명은 [앱 README "실험 목록"](../../apps/lab3d/README.md#실험-목록), 보정은 [공식 보정 4절 Task 4b](../../apps/lab3d/docs/formula-correction.md#실험-구현-task-4b-마찰-밀기).
+- 2026-10-22: Task 4b PR #10 머지(SM-P200 low 59.8 fps). 웹과 다르게 정한 점(8 kg 기본, 1 N 눈금·최대 80 N, 마찰력 선, 조건 변경 시 출발선)은 유지. 4c 충돌 착수.
+- 2026-10-22: Task 4c 충돌 구현·헤드리스 검증·SM-P200 실측 완료(검토 대기). 공 움직임을 공식 모델이 구동해 엔진 공 위치가 TS 공식과 2.4e-7 m 이내(스텝 속도 2.8e-5 m/s)다. low 90초 × 3회 평균 59.7 fps(1% low 37.2, p95 18.1 ms), 스크린샷·화면 기록은 [4c 결과](../../spikes/bench/results/phase1-task4c/README.md). 보정은 [공식 보정 4절 Task 4c](../../apps/lab3d/docs/formula-correction.md#실험-구현-task-4c-충돌).
+  - 웹과 다르게 정한 점: 레일은 ±7 m(범퍼 면), 닫히는 속도 1 m/s 미만 충돌도 기록(e = 0), 공을 집으면 출발 자리로 돌아감, 공 회전은 메시만(몸체는 안 돌림), 첫 충돌(속도를 바꾼 첫 충격)의 앞뒤 값만 패널에 남김.
+  - `CollisionCorrector` 대신 `CollisionRailDriver`를 쓴 이유: 엔진 접촉 보정은 충돌 앞뒤로 공이 공식 궤적에서 0.084 m 벗어났고, 모델 구동은 2.4e-7 m다.
+  - 패널의 "지금 운동량 합(시뮬레이션)"은 뺐다: 엔진 공이 공식 위치에 놓여 독립 측정이 아니기 때문이다.

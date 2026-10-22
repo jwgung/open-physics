@@ -13,6 +13,8 @@
 ##                  hold(false) lowers it again
 ##   settle()       put down by a finger: lowers the mesh with a small squash and dust
 ##   wobble()       cannot be placed here: a short sideways shake
+##   bump(dir, s)   hit by another body along the world direction `dir` (0..1): squash along `dir`
+##                  (the collision lab's balls), with a small dust puff
 ##   automatic      landing on the ground (fast downward speed stopping near ground_y): squash by
 ##                  the fall speed + dust + `landed(strength)`; coming to rest after that: wobble
 ## Springs closer to rest than SETTLED_VALUE / SETTLED_SPEED stop updating (set_process(false)).
@@ -46,12 +48,15 @@ const SETTLED_VALUE := 0.002    # springs closer than this to rest (and slower t
 const SETTLED_SPEED := 0.05
 
 var body: RigidBody3D
-var mesh: MeshInstance3D
+var mesh: Node3D   # the body's visual child (a MeshInstance3D, or a node holding the meshes)
 var size := 0.4                 # body height along its local y (m)
 ## Dust grains of a full-strength puff (half of it for the weakest). Experiments with several
 ## bodies lower it to stay inside the particle budget (art-direction.md section 8).
 var dust_amount := 16
 var ground_y := 0.0             # world height of the ground the body lands on
+## The body is a sphere of diameter `size` (its extent is the same in every direction, also when it
+## rolls); otherwise a cube of `size`.
+var round_body := false
 
 var _squash := 0.0              # +: taller/thinner, -: flatter/wider
 var _squash_v := 0.0
@@ -62,6 +67,9 @@ var _lift_v := 0.0
 var _lift_goal := 0.0
 var _wobble := 0.0              # sideways mesh offset (m), see wobble()
 var _wobble_v := 0.0
+var _bump := 0.0                # squash along _bump_dir (-: flatter along it), see bump()
+var _bump_v := 0.0
+var _bump_dir := Vector3.RIGHT  # world direction of the last bump
 var _scale := Vector3.ONE       # current squash scale along (sxz, sy, sxz), sy along `_normal`
 var _normal := Vector3.UP       # surface normal under the body (world)
 var _shadow_xf := Transform3D() # body transform at the last shadow update
@@ -75,7 +83,7 @@ var _ray := PhysicsRayQueryParameters3D.new()
 
 ## `ground_mask`: the layers the shadow ray hits (the ground the body lands on; default the world's
 ## layer 1, so handles on other layers, like the projectile arrow knob, are no shadow target).
-func setup(target_body: RigidBody3D, target_mesh: MeshInstance3D, body_size: float, ground := 0.0, ground_mask := 1) -> void:
+func setup(target_body: RigidBody3D, target_mesh: Node3D, body_size: float, ground := 0.0, ground_mask := 1) -> void:
 	body = target_body
 	mesh = target_mesh
 	size = body_size
@@ -165,6 +173,17 @@ func wobble() -> void:
 	set_process(true)
 
 
+## A hit along the world direction `dir` with strength 0..1 (LAND_KICK scale): the mesh flattens
+## along `dir` and widens across it (volume kept), then springs back; a small dust puff.
+func bump(dir: Vector3, strength: float) -> void:
+	if dir.length_squared() < 1e-8:
+		return
+	_bump_dir = dir.normalized()
+	_bump_v -= LAND_KICK * clampf(strength, 0.0, 1.0)
+	set_process(true)
+	puff(0.35 + 0.4 * clampf(strength, 0.0, 1.0))
+
+
 ## True while a reaction is still moving the mesh (tests).
 func is_animating() -> bool:
 	return is_processing()
@@ -221,8 +240,11 @@ func _process(delta: float) -> void:
 	_lift += _lift_v * dt
 	_wobble_v += (-WOBBLE_K * _wobble - WOBBLE_DAMP * _wobble_v) * dt
 	_wobble += _wobble_v * dt
+	_bump_v += (-SPRING_K * _bump - SPRING_DAMP * _bump_v) * dt
+	_bump = clampf(_bump + _bump_v * dt, -SQUASH_LIMIT, SQUASH_LIMIT)
 	if absf(_squash) < SETTLED_VALUE and absf(_squash_v) < SETTLED_SPEED and absf(_pop - 1.0) < SETTLED_VALUE and absf(_pop_v) < SETTLED_SPEED \
-			and absf(_lift - _lift_goal) < SETTLED_VALUE and absf(_lift_v) < SETTLED_SPEED and absf(_wobble) < SETTLED_VALUE and absf(_wobble_v) < SETTLED_SPEED:
+			and absf(_lift - _lift_goal) < SETTLED_VALUE and absf(_lift_v) < SETTLED_SPEED and absf(_wobble) < SETTLED_VALUE and absf(_wobble_v) < SETTLED_SPEED \
+			and absf(_bump) < SETTLED_VALUE and absf(_bump_v) < SETTLED_SPEED:
 		_squash = 0.0
 		_squash_v = 0.0
 		_pop = 1.0
@@ -231,6 +253,8 @@ func _process(delta: float) -> void:
 		_lift_v = 0.0
 		_wobble = 0.0
 		_wobble_v = 0.0
+		_bump = 0.0
+		_bump_v = 0.0
 		set_process(false)   # at rest: one last write below, then nothing until the next kick
 	var sy := (1.0 + _squash) * _pop
 	var sxz := (1.0 - _squash * 0.5) * _pop
@@ -242,17 +266,40 @@ func _process(delta: float) -> void:
 	for r in 3:
 		for c in 3:
 			m[c][r] += (sy - sxz) * u[r] * u[c]
+	if _bump != 0.0:
+		# The same volume-keeping squash along the bump direction, applied after the normal one.
+		var d := body.global_basis.inverse() * _bump_dir
+		var along := 1.0 + _bump
+		var across := 1.0 - _bump * 0.5
+		var mb := Basis.IDENTITY * across
+		for r in 3:
+			for c in 3:
+				mb[c][r] += (along - across) * d[r] * d[c]
+		m = mb * m
 	var side := _normal.cross(Vector3.FORWARD)
 	if side.length_squared() < 0.01:
 		side = _normal.cross(Vector3.RIGHT)
-	var offset := u * (_half_extent(_normal) * (sy - 1.0) + _lift) + body.global_basis.inverse() * side.normalized() * _wobble
+	# The bottom stays on the surface: the mesh is moved along `u` by how far the whole transform
+	# (also the bump's widening across the surface) pushed its lowest point below the unscaled one.
+	var offset := u * (_support(m, u) - _support(Basis.IDENTITY, u) + _lift) + body.global_basis.inverse() * side.normalized() * _wobble
 	mesh.transform = Transform3D(m, offset)
 
 
-## Half extent of the body (a cube of `size`) along the world direction `dir`.
+## Half extent of the body (a cube of `size`, or a sphere: round_body) along the world direction `dir`.
 func _half_extent(dir: Vector3) -> float:
+	if round_body:
+		return size * 0.5
 	var l := body.global_basis.inverse() * dir
 	return size * 0.5 * (absf(l.x) + absf(l.y) + absf(l.z))
+
+
+## How far the body mesh (a cube of `size` or a sphere) transformed by `m` reaches along the local
+## direction `u`: the support function of the transformed shape.
+func _support(m: Basis, u: Vector3) -> float:
+	var v := m.transposed() * u
+	if round_body:
+		return size * 0.5 * v.length()
+	return size * 0.5 * (absf(v.x) + absf(v.y) + absf(v.z))
 
 
 ## Blob shadow straight below the body, on whatever is there; smaller and lighter when high.

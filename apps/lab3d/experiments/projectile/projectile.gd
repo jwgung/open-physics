@@ -297,7 +297,7 @@ func _show_preview(bottom: Vector3, angle: float, launch_speed: float, place_kno
 		_knob_visual.visible = true
 	_shown_start = center
 	_shown_knob = knob.global_position
-	projectile_props().set_arrow(center, angle, launch_speed, tip.length(), KNOB_SIZE * 0.5)
+	projectile_props().set_arrow(center, angle, tip.length(), KNOB_SIZE * 0.5)
 	projectile_props().place_stand(bottom)
 	var vx := vx_of(angle, launch_speed)
 	var vy := vy_of(angle, launch_speed)
@@ -334,15 +334,8 @@ func _build_world() -> void:
 	_ball_visual.name = "Visual"
 	ball.add_child(_ball_visual)
 	add_child(ball)
-	knob = StaticBody3D.new()
-	knob.name = "ArrowKnob"
-	knob.collision_layer = 1 << (KNOB_LAYER - 1)
-	knob.collision_mask = 0
-	_add_box_shape(knob, Vector3.ONE * KNOB_SIZE)
-	_knob_visual = ArtKit.instance(projectile_props().knob_mesh(KNOB_SIZE))
-	_knob_visual.name = "Visual"
-	knob.add_child(_knob_visual)
-	add_child(knob)
+	knob = _make_knob("ArrowKnob", KNOB_LAYER, KNOB_SIZE)
+	_knob_visual = knob.get_node("Visual")
 	projectile_props().dress(self, ball, _ball_visual, BALL_RADIUS * 2.0)
 	projectile_props().juice.landed.connect(impact.emit)
 

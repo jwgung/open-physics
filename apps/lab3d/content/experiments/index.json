@@ -3,6 +3,7 @@
   "experiments": [
     "free-fall.json",
     "projectile.json",
+    "collision.json",
     "friction.json",
     "incline-friction.json"
   ],

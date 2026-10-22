@@ -100,11 +100,13 @@ func _ready() -> void:
 func _restore_state() -> void:
 	var controls: Dictionary = _state.get("controls", {})
 	_updating = true
+	experiment.begin_batch()
 	for id in controls:
 		experiment.set_control(id, controls[id])
 	var placements: Dictionary = _state.get("placements", {})
 	for id in placements:
 		experiment.manipulation_placed(id, placements[id])
+	experiment.end_batch()
 	_updating = false
 	view.rig.set_state(_state.get("camera", {}))   # emits mode_changed; setup() refreshes once
 

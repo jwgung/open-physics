@@ -37,6 +37,9 @@ var last_collision_step := -1
 ## The first collision (the web's collisionResult; here also below the threshold, with e = 0):
 ## velocities just before / after it (m/s) and the restitution it used.
 var collided := false
+## Closing speed (m/s, along the normal) of the latest impulse: the speed at which the balls
+## approached in that step (every collision, not only the first).
+var last_closing := 0.0
 var _bound_x := 0.0
 var _bound_v := 0.0
 var first_step := -1
@@ -53,6 +56,7 @@ func reset(start_a: float, start_b: float, velocity_a: float, velocity_b: float)
 	steps = 0
 	collisions = 0
 	last_collision_step = -1
+	last_closing = 0.0
 	collided = false
 	first_step = -1
 	before = PackedFloat64Array([0.0, 0.0])
@@ -96,6 +100,7 @@ func _resolve_collision() -> void:
 		restitution_a, restitution_b, threshold)
 	collisions += 1
 	last_collision_step = steps
+	last_closing = -normal_velocity
 	if not collided:
 		collided = true
 		first_step = steps

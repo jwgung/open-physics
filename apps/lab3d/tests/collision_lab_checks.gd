@@ -479,6 +479,13 @@ func check_review() -> void:
 	expect.call(graph_spec.y.get("signed", false) and GraphView.y_tick_values(top, true) == [top, 0.0, -top] and top >= 7.3
 		and GraphView.y_tick_values(8.0, false) == [8.0, 4.0, 0.0],
 		"graph: a signed y axis is labelled +max, 0, -max (the grid lines' values); an unsigned one max, max/2, 0", "top %s" % top)
+	# Reactions follow this step's closing speed: B against the wall, A arrives at 0.5 m/s.
+	_setup_lab(lab, {"a": {"material": "rubber", "mass": 1.0, "v": 0.5, "x": 5.0}, "b": {"material": "rubber", "mass": 2.0, "v": 0.0, "x": 6.5}})
+	lab.release()
+	await _until(lab, 200)
+	expect.call(lab.model.collisions == 2 and lab.hit_reactions == 1 and lab.model.last_closing < lab.HIT_CLOSING_MIN,
+		"collision: the first hit (0.4 m/s closing) reacts, the micro re-contact after the wall rebound does not repeat it",
+		"%d impulses, %d reactions, last closing %.3f m/s" % [lab.model.collisions, lab.hit_reactions, lab.model.last_closing])
 	# Engine record: a run longer than the history window (the web start runs ~29 s to rest).
 	_setup_lab(lab, _case("web start"))
 	lab.release()
@@ -506,6 +513,36 @@ func check_review() -> void:
 		"collision: past the history window (29 s run) the engine balls and their step velocity / momentum still equal the formula",
 		"steps %d, moving after 620: %d, |dx| %s, |dp| %s, step v %s" % [lab.model.steps, moving_late, String.num_scientific(worst_x),
 			String.num_scientific(worst_p), String.num_scientific(lab.driver.worst_velocity)])
+	# Arrows: a slow ball still gets a (minimum length) arrow in its direction; rest = none.
+	_setup_lab(lab, {"a": {"material": "rubber", "mass": 1.0, "v": 0.3, "x": -4.0}, "b": {"material": "rubber", "mass": 2.0, "v": -0.2, "x": 4.0}})
+	lab._show_arrows()
+	var slow: bool = lab.props.arrow_a.visible and lab.props.arrow_b.visible and is_zero_approx(lab.props.arrow_a.rotation.z) \
+		and is_equal_approx(absf(lab.props.arrow_b.rotation.z), PI) and lab.props.arrow_a._built_length == VelocityArrow.MIN_LENGTH
+	lab.set_control("velocity_a", 0.0)
+	lab._show_arrows()
+	var rest_hidden: bool = not lab.props.arrow_a.visible
+	lab.props.show_momentum(Vector3(0, 0.4, 0), 0.4, 0.2, Vector3(4, 0.5, 0), 0.5, -0.1)
+	var small_p: bool = lab.props.arrow_a.visible and lab.props.arrow_b.visible and lab.props.arrow_a._built_length == VelocityArrow.MIN_LENGTH
+	lab.props.show_momentum(Vector3(0, 0.4, 0), 0.4, 0.0, Vector3(4, 0.5, 0), 0.5, 0.0)
+	expect.call(slow and rest_hidden and small_p and not lab.props.arrow_a.visible,
+		"collision: slow velocities and small momenta get arrows at the minimum length (direction kept); zero = no arrow", "")
+	# One restart for the six defaults and one for a restored state (conditions and placements).
+	var fresh: Experiment = await _lab()
+	var screen := Control.new()
+	screen.theme = load(UI_THEME).build()
+	screen.size = Vector2(720, 1560)
+	tree.root.add_child(screen)
+	var restored: Control = load(EXPERIMENT_SCREEN).new()
+	restored.setup(ExperimentRegistry.find("collision"), {"controls": {"mass_a": 2.0, "mass_b": 1.5, "material_a": "wood", "material_b": "steel", "velocity_a": 2.0, "velocity_b": -1.0},
+		"placements": {"ball_a": Transform3D(Basis(), Vector3(-3.0, 0.4, 0.0)), "ball_b": Transform3D(Basis(), Vector3(3.0, 0.5, 0.0))}, "camera": {}})
+	screen.add_child(restored)
+	await tree.process_frame
+	var restored_lab: Experiment = restored.experiment
+	expect.call(fresh.reset_count == 1 and restored_lab.reset_count == 2 and restored_lab.mass_a == 2.0 and restored_lab.material_b == "steel"
+		and restored_lab.start_a == -3.0 and restored_lab.start_b == 3.0 and is_equal_approx(restored_lab.ball_a.global_position.x, -3.0),
+		"collision: opening the screen restarts the run once (not once per control); restoring a saved state once more", "%d / %d" % [fresh.reset_count, restored_lab.reset_count])
+	screen.queue_free()
+	await _free(fresh)
 	# Squash: the widening across a bump never sinks the ball into the rail.
 	var juice: ArtJuice = lab.props.juice_b
 	lab.release()
@@ -530,4 +567,15 @@ func check_review() -> void:
 	arrow.point(Vector3.ZERO, 0.0, 1.0)
 	expect.call(kept and arrow.mesh != built, "arrow: the mesh cache keeps the mesh for the same length and colours and rebuilds it when only the top colour changes", "")
 	arrow.free()
+	# Shared knob factory: a pickable handle with the knob mesh, on the knob layer, hit by nothing.
+	var proj: Experiment = ExperimentRegistry.instantiate(ExperimentRegistry.find("projectile"))
+	tree.root.add_child(proj)
+	await tree.process_frame
+	var knobs: Array = [lab.knob_a, lab.knob_b, proj.knob]
+	var ok := true
+	for knob in knobs:
+		ok = ok and knob.collision_layer == (1 << (lab.KNOB_LAYER - 1)) and knob.collision_mask == 0 and knob.get_node("Visual") is MeshInstance3D \
+			and knob.get_children().any(func(n): return n is CollisionShape3D)
+	expect.call(ok, "collision and projectile build their yellow arrow knobs with the same factory (layer, mask 0, shape, mesh)", "")
+	await _free(proj)
 	await _free(lab)

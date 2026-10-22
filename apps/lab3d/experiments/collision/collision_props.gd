@@ -78,7 +78,7 @@ static func force_pair_mesh() -> Mesh:
 
 
 func dress(experiment: Node3D, ball_a: RigidBody3D, radius_a: float, ball_b: RigidBody3D, radius_b: float,
-		knob_a: Node3D, knob_b: Node3D, knob_size: float, wall: float) -> void:
+		knob_a: Node3D, knob_b: Node3D, wall: float) -> void:
 	_host = experiment
 	_radius_a = radius_a
 	_radius_b = radius_b
@@ -92,13 +92,8 @@ func dress(experiment: Node3D, ball_a: RigidBody3D, radius_a: float, ball_b: Rig
 	var b := _dress_ball(experiment, ball_b, radius_b, ArtPalette.ORANGE)
 	juice_b = b[0]
 	spin_b = b[1]
-	var knob := VelocityArrow.knob_mesh(knob_size)
-	knob_visual_a = ArtKit.instance(knob)
-	knob_visual_a.name = "Visual"
-	knob_a.add_child(knob_visual_a)
-	knob_visual_b = ArtKit.instance(knob)
-	knob_visual_b.name = "Visual"
-	knob_b.add_child(knob_visual_b)
+	knob_visual_a = knob_a.get_node("Visual")   # built with the knob (Experiment._make_knob)
+	knob_visual_b = knob_b.get_node("Visual")
 	arrow_a = VelocityArrow.new()
 	arrow_a.name = "ArrowA"
 	experiment.add_child(arrow_a)
@@ -137,7 +132,7 @@ func spin(moved_a: float, moved_b: float) -> void:
 
 
 ## Waiting: purple velocity arrows from above each ball to its knob, signed lengths `la` / `lb` (m,
-## up to the knob's near face; too short = hidden, the knob covers it).
+## up to the knob's near face; 0 = hidden, any other length is drawn at least VelocityArrow.MIN_LENGTH long).
 func show_velocity(at_a: Vector3, radius_a: float, la: float, at_b: Vector3, radius_b: float, lb: float) -> void:
 	arrow_a.set_colors(ArtPalette.PURPLE, ArtPalette.PURPLE_TOP)
 	arrow_b.set_colors(ArtPalette.PURPLE, ArtPalette.PURPLE_TOP)
@@ -158,10 +153,12 @@ static func arrow_height(radius: float) -> float:
 	return 2.0 * radius + ARROW_LIFT
 
 
-## An arrow above the ball at `at` with signed length `length` (+ = to the right; too short = hidden).
+## An arrow above the ball at `at` with signed length `length` (+ = to the right). Hidden only when
+## the length rounds to 0; a short one is drawn at VelocityArrow.MIN_LENGTH (a slow ball or a small
+## momentum still shows its direction).
 func _place(arrow: VelocityArrow, at: Vector3, radius: float, length: float) -> void:
 	var l := snappedf(absf(length), LENGTH_STEP)
-	arrow.visible = l >= VelocityArrow.MIN_LENGTH
+	arrow.visible = l > 0.0
 	if arrow.visible:
 		arrow.point(Vector3(at.x, arrow_height(radius), 0.0), 0.0 if length > 0.0 else 180.0, l)
 

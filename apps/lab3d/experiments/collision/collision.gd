@@ -29,7 +29,7 @@ const KNOB_LAYER := 2
 const GRAPH_EVERY_STEPS := 6            # 10 Hz graph samples
 const HIT_CLOSING_MAX := 8.0            # m/s closing speed that gives the full hit strength
 const HIT_STRENGTH_MIN := 0.25          # weakest hit reaction
-const HIT_CLOSING_LATER := 3.0          # m/s assumed for hits after the first (only the first one's speeds are kept)
+const HIT_CLOSING_MIN := 0.3            # m/s: a contact that closes more slowly than this gets no reaction
 const IMPACT_STEPS := 30                # "충돌!" is shown this many steps after a hit (the web's 0.4 s flash)
 
 var model := CollisionModel.new()
@@ -54,7 +54,12 @@ var restitution_override := Vector2(-1.0, -1.0)
 var released := false
 ## A finger holds a ball or a knob (the run waits).
 var holding := ""
+## Reactions shown (hits at or above HIT_CLOSING_MIN) since the screen opened, and run resets (tests).
+var hit_reactions := 0
+var reset_count := 0
 var _placed := false
+var _batch := 0                          # begin_batch() depth: changes only mark the run for a restart
+var _batch_dirty := false
 var _floor: StaticBody3D
 var _graph: Array[Vector3] = []          # (t, pA, pB)
 var _graph_revision := 0
@@ -63,8 +68,29 @@ var _shown := Vector4.INF                # (ball A x, ball B x, knob A x, knob B
 
 func _ready() -> void:
 	_build_world()
+	begin_batch()   # the six defaults restart the run once, not six times (six pops)
 	for control in definition.get("controls", []):
 		set_control(control.id, control.default)
+	end_batch()
+
+
+func begin_batch() -> void:
+	_batch += 1
+
+
+func end_batch() -> void:
+	_batch = maxi(0, _batch - 1)
+	if _batch == 0 and _batch_dirty:
+		_batch_dirty = false
+		reset_run()
+
+
+## The conditions changed: the run starts over (once, when a batch is open).
+func _restart() -> void:
+	if _batch > 0:
+		_batch_dirty = true
+	else:
+		reset_run()
 
 
 func set_control(id: String, value: Variant) -> void:
@@ -87,7 +113,7 @@ func set_control(id: String, value: Variant) -> void:
 				material_b = str(value)
 		_:
 			return
-	reset_run()
+	_restart()
 
 
 func control_value(id: String) -> Variant:
@@ -134,6 +160,7 @@ func _load_model() -> void:
 func reset_run() -> void:
 	if ball_a == null:
 		return
+	reset_count += 1
 	released = false
 	_load_model()
 	driver.reset()
@@ -180,9 +207,15 @@ func _clock() -> float:
 	return model.steps / float(Engine.physics_ticks_per_second)
 
 
-## The model's balls just hit: visual reactions along the normal and the camera nudge.
+## The model's balls just hit: visual reactions along the normal and the camera nudge (not for a
+## contact slower than HIT_CLOSING_MIN).
 func _hit() -> void:
-	var closing := absf(model.before[0] - model.before[1]) if model.collisions == 1 else HIT_CLOSING_LATER
+	# The closing speed of this very step (a re-contact after a rebound is far slower than the first
+	# hit); a tiny one only presses the balls together: no squash, dust or camera nudge.
+	var closing := model.last_closing
+	if closing < HIT_CLOSING_MIN:
+		return
+	hit_reactions += 1
 	var strength := clampf(closing / HIT_CLOSING_MAX, HIT_STRENGTH_MIN, 1.0)
 	props.hit(model.xa + RADIUS_A if model.xa < model.xb else model.xa - RADIUS_A, strength)
 	impact.emit(strength)
@@ -298,9 +331,17 @@ func _show_arrows() -> void:
 		knob_a.global_position = Vector3(ball_a.global_position.x + va * ARROW_SCALE, CollisionProps.arrow_height(RADIUS_A), 0.0)
 	if holding != "arrow_b":
 		knob_b.global_position = Vector3(ball_b.global_position.x + vb * ARROW_SCALE, CollisionProps.arrow_height(RADIUS_B), 0.0)
-	props.show_velocity(ball_a.global_position, RADIUS_A, va * ARROW_SCALE - signf(va) * KNOB_HALF,
-		ball_b.global_position, RADIUS_B, vb * ARROW_SCALE - signf(vb) * KNOB_HALF)
+	props.show_velocity(ball_a.global_position, RADIUS_A, _arrow_length(va), ball_b.global_position, RADIUS_B, _arrow_length(vb))
 	_shown = Vector4(ball_a.global_position.x, ball_b.global_position.x, knob_a.global_position.x, knob_b.global_position.x)
+
+
+## Signed length of the velocity arrow of `velocity` (m): up to the knob's near face, never reversed
+## (a slow ball's knob sits within KNOB_HALF of the ball: the shortest length, the arrow draws it at
+## its minimum); 0 for a ball at rest.
+static func _arrow_length(velocity: float) -> float:
+	if velocity == 0.0:
+		return 0.0
+	return signf(velocity) * maxf(absf(velocity) * ARROW_SCALE - KNOB_HALF, CollisionProps.LENGTH_STEP)
 
 
 # --- world --------------------------------------------------------------------------------------
@@ -309,13 +350,13 @@ func _build_world() -> void:
 	_floor = _add_floor(null, Vector3(30.0, 0.4, 22.0))
 	ball_a = _make_ball("BallA", RADIUS_A, START_A)
 	ball_b = _make_ball("BallB", RADIUS_B, START_B)
-	knob_a = _make_knob("KnobA")
-	knob_b = _make_knob("KnobB")
+	knob_a = _make_knob("KnobA", KNOB_LAYER, KNOB_SIZE)
+	knob_b = _make_knob("KnobB", KNOB_LAYER, KNOB_SIZE)
 	_load_model()
 	driver.history_steps = int(graph_x_max() * Engine.physics_ticks_per_second) + 2
 	driver.attach(model, ball_a, ball_b)
 	driver.reset()
-	props.dress(self, ball_a, RADIUS_A, ball_b, RADIUS_B, knob_a, knob_b, KNOB_SIZE, WALL)
+	props.dress(self, ball_a, RADIUS_A, ball_b, RADIUS_B, knob_a, knob_b, WALL)
 
 
 ## A ball on the rail: a sphere the manipulator can pick (its own layer) that touches nothing.
@@ -335,16 +376,6 @@ func _make_ball(ball_name: String, radius: float, x: float) -> RigidBody3D:
 	ball.position = Vector3(x, radius, 0.0)
 	add_child(ball)
 	return ball
-
-
-func _make_knob(knob_name: String) -> StaticBody3D:
-	var knob := StaticBody3D.new()
-	knob.name = knob_name
-	knob.collision_layer = 1 << (KNOB_LAYER - 1)
-	knob.collision_mask = 0
-	_add_box_shape(knob, Vector3.ONE * KNOB_SIZE)
-	add_child(knob)
-	return knob
 
 
 # --- manipulation -----------------------------------------------------------------------------
@@ -410,7 +441,7 @@ func manipulation_placed(id: String, transform: Transform3D) -> void:
 			velocity_a = knob_velocity(transform.origin.x - ball_a.global_position.x)
 		"arrow_b":
 			velocity_b = knob_velocity(transform.origin.x - ball_b.global_position.x)
-	reset_run()
+	_restart()
 
 
 func manipulation_cancelled(_id: String) -> void:

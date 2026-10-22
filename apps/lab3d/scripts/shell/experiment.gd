@@ -82,6 +82,32 @@ func _status_changed(_previous: String, _current: String) -> void:
 	pass
 
 
+## A pickable handle: a StaticBody3D on `layer` (never hit: mask 0) with a box shape and the yellow
+## knob mesh as its "Visual" child, added to this experiment (the velocity arrows' knobs of the
+## projectile and collision labs).
+func _make_knob(knob_name: String, layer: int, size: float) -> StaticBody3D:
+	var knob := StaticBody3D.new()
+	knob.name = knob_name
+	knob.collision_layer = 1 << (layer - 1)
+	knob.collision_mask = 0
+	_add_box_shape(knob, Vector3.ONE * size)
+	var visual := ArtKit.instance(VelocityArrow.knob_mesh(size))
+	visual.name = "Visual"
+	knob.add_child(visual)
+	add_child(knob)
+	return knob
+
+
+## The screen restores a saved state (controls, then placements) between begin_batch() and
+## end_batch(): an experiment whose every change restarts the run restarts it once, in end_batch().
+func begin_batch() -> void:
+	pass
+
+
+func end_batch() -> void:
+	pass
+
+
 ## Sets a control declared in definition.controls. `value` is a float for sliders and the option
 ## id (String) for choices. Called once per control with its default before the first frame.
 func set_control(_id: String, _value: Variant) -> void:

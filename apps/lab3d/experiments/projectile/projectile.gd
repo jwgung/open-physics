@@ -334,15 +334,8 @@ func _build_world() -> void:
 	_ball_visual.name = "Visual"
 	ball.add_child(_ball_visual)
 	add_child(ball)
-	knob = StaticBody3D.new()
-	knob.name = "ArrowKnob"
-	knob.collision_layer = 1 << (KNOB_LAYER - 1)
-	knob.collision_mask = 0
-	_add_box_shape(knob, Vector3.ONE * KNOB_SIZE)
-	_knob_visual = ArtKit.instance(VelocityArrow.knob_mesh(KNOB_SIZE))
-	_knob_visual.name = "Visual"
-	knob.add_child(_knob_visual)
-	add_child(knob)
+	knob = _make_knob("ArrowKnob", KNOB_LAYER, KNOB_SIZE)
+	_knob_visual = knob.get_node("Visual")
 	projectile_props().dress(self, ball, _ball_visual, BALL_RADIUS * 2.0)
 	projectile_props().juice.landed.connect(impact.emit)
 

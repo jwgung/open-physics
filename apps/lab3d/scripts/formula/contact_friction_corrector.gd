@@ -76,6 +76,7 @@ func apply(body: RigidBody3D, dt: float) -> void:
 	var tangential_speed := velocity.dot(direction)
 	var corrected: float
 	var holding: bool
+	var rest_speed := PhysicsLaws.PUSH_REST_SPEED if law == "push" else REST_SPEED   # the incline keeps its 2a threshold
 	if law == "push":
 		var normal_acceleration := normal_load / mass
 		corrected = engine_tangential + PhysicsLaws.push_friction_force(
@@ -85,7 +86,7 @@ func apply(body: RigidBody3D, dt: float) -> void:
 		corrected = PhysicsLaws.corrected_tangential_force(
 			engine_tangential + applied_force, tangential_speed, normal_load, mu_s, mu_k, mass, dt)
 		holding = absf(tangential_speed) < REST_SPEED and corrected == 0.0
-	corrected *= start_factor(status == "holding" and not holding and absf(tangential_speed) < REST_SPEED)
+	corrected *= start_factor(status == "holding" and not holding and absf(tangential_speed) < rest_speed)
 	status = "holding" if holding else "sliding"
 	body.apply_central_force(direction * (corrected - engine_tangential))
 

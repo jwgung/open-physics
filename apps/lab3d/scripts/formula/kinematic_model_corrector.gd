@@ -31,10 +31,16 @@ func attach(target: PhysicsBody3D) -> void:
 
 
 func step(dt: float) -> void:
-	record(measure())
+	_record_step(dt)
 	steps += 1
 	advance(dt)
 	body.global_transform = pose()
+
+
+## Records this step's measurement (before the model advances); a driver that keeps its own
+## measurements instead of one sample series overrides it.
+func _record_step(_dt: float) -> void:
+	record(measure())
 
 
 ## Advances the model by one fixed step.

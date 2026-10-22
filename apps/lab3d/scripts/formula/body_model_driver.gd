@@ -40,7 +40,9 @@ func reset() -> void:
 	last_engine = body.global_position
 
 
-func step(dt: float) -> void:
+## Keeps the engine measurements instead of a sample series (samples stay empty: there is no
+## single measured quantity).
+func _record_step(dt: float) -> void:
 	var at := body.global_position
 	if steps > 0:
 		var dx := Vector3(float(at.x) - _posed[0], float(at.y) - _posed[1], float(at.z) - _posed[2])
@@ -52,7 +54,6 @@ func step(dt: float) -> void:
 	if engine.size() < history_steps:
 		engine.append(at)
 	last_engine = at
-	super(dt)
 
 
 func advance(dt: float) -> void:

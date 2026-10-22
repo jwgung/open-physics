@@ -25,7 +25,7 @@ Notion Story·Task와 GitHub Issue는 발행하지 않는다. 이 문서가 Phas
 | 2b | 3D 앱 셸 조작 | 조작 평면(바닥·면 위 드래그), 스냅, 자동 안착, 보조 시점, 높이 손잡이 | 2a | 완료 | `feat/manipulation-plane`, [#7](https://github.com/jwgung/open-physics/pull/7) |
 | 2c | 아트 디렉션·연출 | 장난감·로우폴리 스타일(시안 중 B 잔디 섬으로 확정: 선명한 원색, 각진 로우폴리, 구운 조명·발밑 그림자, 통통 튀는 연출)을 정하고 빗면 실험에 적용한다. SM-P200 low 60 fps 유지. 이후 실험은 이 스타일로 만든다 | 2a | 완료 | `feat/art-direction`, [#6](https://github.com/jwgung/open-physics/pull/6) |
 | 3 | 공식 보정 계층과 parity 파이프라인 | 일반 접촉에 쓸 보정 설계(Jolt 접촉 콜백 범위 조사 포함), TS↔GDScript 벡터 테스트, CI(Node + Godot 헤드리스) | 1 | 완료 | `feat/formula-correction-layer`, [#8](https://github.com/jwgung/open-physics/pull/8) |
-| 4 | 역학 안내형 10개 3D 이식 | 실험별로 나눠 진행한다. 실험 콘텐츠는 JSON으로 빼서 웹 2D와 공유한다. 빗면 마찰은 2a에서 먼저 옮긴다 | 2a, 2b, 2c, 3 | 진행 중 (4a·4b·4c 완료, 4d 진행) | 4a [#9](https://github.com/jwgung/open-physics/pull/9), 4b [#10](https://github.com/jwgung/open-physics/pull/10), 4c [#11](https://github.com/jwgung/open-physics/pull/11), 4d `feat/labs-force-injection` |
+| 4 | 역학 안내형 10개 3D 이식 | 실험별로 나눠 진행한다. 실험 콘텐츠는 JSON으로 빼서 웹 2D와 공유한다. 빗면 마찰은 2a에서 먼저 옮긴다 | 2a, 2b, 2c, 3 | 진행 중 (4a·4b·4c 완료, 4d 완료(검토 대기)) | 4a [#9](https://github.com/jwgung/open-physics/pull/9), 4b [#10](https://github.com/jwgung/open-physics/pull/10), 4c [#11](https://github.com/jwgung/open-physics/pull/11), 4d `feat/labs-force-injection` |
 | 5 | 역학 빈 실험실 3D | 고정 블록·줄·용수철·지렛대·도르래·힘·중력원·물 | 2a, 2b, 2c, 3 | 대기 | |
 | 6 | 출시 준비 | 서명, 스토어 자료, 개인정보처리방침(수집 없음), Kids/Families 정책, 모바일 CI, iOS 실기기 확인 | 4, 5 | 대기 | |
 
@@ -210,3 +210,7 @@ Notion Story·Task와 GitHub Issue는 발행하지 않는다. 이 문서가 Phas
   - `CollisionCorrector` 대신 `CollisionRailDriver`를 쓴 이유: 엔진 접촉 보정은 충돌 앞뒤로 공이 공식 궤적에서 0.084 m 벗어났고, 모델 구동은 2.4e-7 m다.
   - 패널의 "지금 운동량 합(시뮬레이션)"은 뺐다: 엔진 공이 공식 위치에 놓여 독립 측정이 아니기 때문이다.
 - 2026-10-22: Task 4c PR #11 머지(코드 리뷰 반영). 사용자 우선순위 "물리학 공식에 맞게 동작하는 것이 제일 중요" — 이후 실험은 표시값과 함께 엔진 물체 궤적을 공식과 스텝 단위로 대조한다. 4e 다음에 공의 회전·구름(자유 낙하·던지기) 작업을 하기로 함(사용자 동의). 4d 힘 주입(용수철·부력·궤도) 착수.
+- 2026-10-22: Task 4d 용수철·부력·궤도 구현·헤드리스 검증·SM-P200 실측 완료(검토 대기). 세 실험 모두 공식 모델이 물체를 구동해(`BodyModelDriver`) 엔진 물체 위치가 TS 공식과 4.6e-7 m 이내(스텝 속도 5.2e-5 m/s, 60초 실행 포함)이고 표시값은 TS와 4e-15 상대 오차 이내다. low 90초 × 3회 평균 용수철 59.8·부력 59.7·궤도 59.7 fps(1% low 41.9·39.8·33.7, p95 18.1–18.2 ms), 스크린샷·화면 기록은 [4d 결과](../../spikes/bench/results/phase1-task4d/README.md). 보정은 [공식 보정 4절 Task 4d](../../apps/lab3d/docs/formula-correction.md#실험-구현-task-4d-용수철-부력-궤도).
+  - 웹과 다르게 정한 점: 웹 명시적 오일러를 따르지 않고 정확한 해(용수철)·반암시적 오일러 4번 나눔(부력)·속도 Verlet 8번 나눔(궤도)을 쓴다(웹은 용수철 에너지 10초 +52 %, 부력 깊이 0.72 m 오차, 궤도 반지름 3 → 3.83 m로 어긋남). 용수철 그래프는 에너지 비율 0–100 % 고정 축. 부력은 선형 잠김 비율이 정확한 세운 통, 통을 끌어 놓으면 그 높이에서 정지 출발(0.05 m 눈금), 부피 100 L·50 L. 궤도는 별 표면 + 행성 반지름(1.2 m)에서 충돌·12 m에서 이탈, 출발 반지름 2–5 m(0.5 m)·발사 속력·방향을 화살표 손잡이(0.1 m/s·5° 눈금)로, 발사 전 `OrbitChallenge` 예측 점선 미리보기.
+  - "시뮬레이션" 관찰값은 4c처럼 뺐다: 엔진 물체가 공식 위치에 놓여 독립 측정이 아니기 때문이다.
+  - 후속(미완): 사람 손으로 손잡이 집기 확인 없음. 궤도는 33 ms 넘는 프레임이 회차당 23–26개(다른 실험 8개)로 1% low 33.7이다(원인 미확인).

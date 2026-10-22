@@ -507,6 +507,7 @@ func check_collision() -> void:
 	await _check_collision_applied_force()
 	await _check_collision_pressed()
 	await _check_collision_applied_during_contact()
+	await _check_collision_three_bodies()
 
 
 ## The collision corrector leaves the bodies' materials alone: a ball of a corrected pair bounces
@@ -657,6 +658,34 @@ func _check_collision_applied_during_contact() -> void:
 		error = absf(float(event.normal_before[0]) - want)
 		detail = "free vA %.5f vs %.5f m/s over %d contact step(s)" % [event.normal_before[0], want, event.steps]
 	expect.call(error <= 1e-5, "collision: an apply_central_force force acting through the contact steps stays in the outcome", detail)
+	world.queue_free()
+	await tree.process_frame
+
+
+## A and a third ball C hit B from both sides in the same step: the A-B contact is not corrected
+## (the impulses cannot be split), so all three move like an uncorrected twin trio.
+func _check_collision_three_bodies() -> void:
+	var world := _world()
+	var trios := []
+	for lane in [0.0, 5.0]:
+		var trio := []
+		for x in [-2.0, 0.0, 2.0]:
+			var ball := _body(world, 1.0, Vector3(x, 5.0, lane), 0.3, 0.0, false)
+			ball.gravity_scale = 0.0
+			ball.physics_material_override.bounce = 0.44
+			trio.append(ball)
+		trio[0].linear_velocity = Vector3(3.0, 0.0, 0.0)
+		trio[2].linear_velocity = Vector3(-3.0, 0.0, 0.0)
+		trios.append(trio)
+	var corrector := _collision_driver(world, trios[0][0], trios[0][1], 0.3, 0.3)
+	var worst := 0.0
+	for i in STEP_HZ:
+		await tree.physics_frame
+		for k in 3:
+			worst = maxf(worst, (trios[0][k].linear_velocity - trios[1][k].linear_velocity).length())
+	expect.call(corrector.events.is_empty() and worst <= 1e-4 and trios[0][0].linear_velocity.x < 0.0,
+		"collision: A and a third ball hitting B in the same step keep the engine result (no event)",
+		"%d event(s), max |dv| vs uncorrected twins %s, vA %.4f m/s" % [corrector.events.size(), String.num_scientific(worst), trios[0][0].linear_velocity.x])
 	world.queue_free()
 	await tree.process_frame
 

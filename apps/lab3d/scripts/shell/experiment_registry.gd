@@ -18,8 +18,11 @@ const SHARED_KEYS := ["title", "category", "icon", "question", "steps", "observe
 const APP_OVERRIDES := ["steps", "observe"]
 const CAMERA_MODES := CameraRig.MODES
 const REQUIRED_KEYS := ["id", "title", "category", "question", "steps", "observe", "law", "scene",
-	"camera", "controls", "actions", "observations", "graph"]
+	"camera", "controls", "actions", "observations", "key_observations", "graph"]
 const CONTROL_TYPES := ["slider", "choice"]
+## Key observations (Task 2d): the observation ids shown as small cards over the 3D view.
+const KEY_OBSERVATIONS_MIN := 2
+const KEY_OBSERVATIONS_MAX := 3
 
 
 static var _cache: Array[Dictionary] = []
@@ -147,6 +150,8 @@ static func validate(definition: Dictionary) -> PackedStringArray:
 		for mode in _view_modes():
 			if not camera.views.has(mode):
 				problems.append("camera.views.%s missing" % mode)
+			elif camera.views[mode].has("target") and not _is_vector3(camera.views[mode].target):
+				problems.append("camera.views.%s.target must be [x, y, z]" % mode)
 	var ids := {}
 	for control in definition.controls:
 		if not control.has("id") or control.get("type") not in CONTROL_TYPES or not control.has("default"):
@@ -167,10 +172,28 @@ static func validate(definition: Dictionary) -> PackedStringArray:
 	for observation in definition.observations:
 		if not observation.has("id") or not observation.has("label"):
 			problems.append("observation needs id and label")
+	problems.append_array(_validate_key_observations(definition.key_observations, definition.observations))
 	var graph: Dictionary = definition.graph
 	if not graph.has("series") or graph.series.is_empty():
 		problems.append("graph.series missing")
 	problems.append_array(_validate_manipulation(definition.get("manipulation"), definition.actions))
+	return problems
+
+
+## `key_observations`: 2-3 distinct ids of the definition's observations.
+static func _validate_key_observations(keys: Variant, observations: Array) -> PackedStringArray:
+	var problems := PackedStringArray()
+	if not keys is Array or keys.size() < KEY_OBSERVATIONS_MIN or keys.size() > KEY_OBSERVATIONS_MAX:
+		problems.append("key_observations must list %d-%d observation ids" % [KEY_OBSERVATIONS_MIN, KEY_OBSERVATIONS_MAX])
+		return problems
+	var ids := observations.map(func(o: Dictionary) -> Variant: return o.get("id"))
+	var seen := {}
+	for key in keys:
+		if not key is String or key not in ids:
+			problems.append("key_observations: %s is not an observation id" % str(key))
+		elif seen.has(key):
+			problems.append("key_observations: duplicate %s" % key)
+		seen[key] = true
 	return problems
 
 
@@ -222,6 +245,10 @@ static func instantiate(definition: Dictionary) -> Experiment:
 ## Every preset mode needs a view in the definition; "orbit" is only reached by dragging.
 static func _view_modes() -> Array:
 	return CAMERA_MODES.filter(func(mode: String) -> bool: return mode != "orbit")
+
+
+static func _is_vector3(value: Variant) -> bool:
+	return value is Array and value.size() == 3 and value.all(func(v: Variant) -> bool: return v is float or v is int)
 
 
 static func _extends_experiment(script: GDScript) -> bool:

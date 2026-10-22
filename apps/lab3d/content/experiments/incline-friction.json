@@ -11,7 +11,7 @@
     "yaw_range_deg": [-100.0, 100.0],
     "pitch_range_deg": [-89.0, -2.0],
     "pan_radius": 5.0,
-    "default_mode": "three_quarter",
+    "default_mode": "front",
     "views": {
       "front": { "yaw_deg": 0.0, "pitch_deg": -6.0, "distance": 9.5 },
       "three_quarter": { "yaw_deg": 35.0, "pitch_deg": -24.0 },
@@ -40,6 +40,7 @@
     { "id": "release", "label": "상자 놓기", "style": "primary" },
     { "id": "reset", "label": "처음으로" }
   ],
+  "key_observations": ["critical_angle", "state", "acceleration"],
   "observations": [
     { "id": "critical_angle", "label": "임계각 θc (tan θc = μs)", "unit": "°", "digits": 1 },
     { "id": "state", "label": "상자 상태" },

@@ -5,34 +5,60 @@ touchscreen node, so this registers a 2-contact HID digitizer with Android's `hi
 (uhid; the kernel's hid-multitouch driver turns it into a direct-touch input device) and streams
 reports through it.
 
-Usage (device in portrait, app in front):
+Usage (app in front; the app is landscape only):
   python3 -I apps/lab3d/tools/device_gesture.py orbit|pinch|pinch-fixed|pan|one-finger|drag-cancel
-Coordinates are screen pixels in the device's natural (portrait) orientation (SM-P200 1200x1920).
+  python3 -I apps/lab3d/tools/device_gesture.py tap --at X,Y
+Coordinates are landscape screen pixels (SM-P200 1920x1200, origin top-left as the app is shown).
+The HID screen reports in the device's natural (portrait) orientation, so each point is turned
+by the current display rotation (`dumpsys input` SurfaceOrientation) before it is sent.
 """
 import argparse
 import os
 import json
+import re
 import subprocess
 import tempfile
 
-SCREEN = (1200, 1920)
+NATURAL = (1200, 1920)   # SM-P200 natural (portrait) panel size in pixels
 STEPS = 24
 FRAME_MS = 16
 
-# name -> one waypoint list per finger (equal counts; segments get equal time). The 3D view is
-# the top ~45% of the portrait screen on SM-P200.
+# name -> one waypoint list per finger (equal counts; segments get equal time). The 3D view is the
+# whole landscape screen with the sidebar closed (Task 2d); the gestures stay clear of the title
+# bar, key cards (top-left) and action buttons (bottom-right).
 GESTURES = {
-    "orbit": [[(450, 560), (750, 560)], [(750, 560), (1050, 560)]],                   # move together
-    "pinch": [[(520, 560), (220, 560)], [(680, 560), (980, 560)]],                    # spread -> zoom in
-    "pinch-fixed": [[(520, 560), (220, 560)], [(680, 560), (680, 560)]],              # finger 1 held still, only 0 moves -> zoom in
-    "pan": [[(560, 480), (520, 480), (520, 760)], [(640, 480), (680, 480), (680, 760)]],  # small spread, then move
-    "one-finger": [[(400, 600), (900, 600)]],                                          # empty-view drag
-    # Task 2b: drag the incline box (default start, 3/4 view) and land a second finger halfway:
-    # the drag is cancelled and the box goes back to its start.
-    "drag-cancel": [[(865, 405), (700, 450), (560, 490)], [(250, 800), (250, 800), (250, 800)]],
+    "orbit": [[(660, 650), (960, 650)], [(960, 650), (1260, 650)]],                   # move together
+    "pinch": [[(880, 650), (580, 650)], [(1040, 650), (1340, 650)]],                  # spread -> zoom in
+    "pinch-fixed": [[(880, 650), (580, 650)], [(1040, 650), (1040, 650)]],            # finger 1 held still, only 0 moves -> zoom in
+    "pan": [[(920, 560), (880, 560), (880, 840)], [(1000, 560), (1040, 560), (1040, 840)]],  # small spread, then move
+    "one-finger": [[(700, 700), (1200, 700)]],                                         # empty-view drag
+    # Task 2b: drag the incline box (default start, front view, 20 deg) down the incline and land a
+    # second finger halfway: the drag is cancelled and the box goes back to its start.
+    "drag-cancel": [[(1296, 350), (1120, 415), (960, 475)], [(500, 900), (500, 900), (500, 900)]],
 }
 # Fraction of the gesture after which each finger touches down (default: from the start).
 STARTS = {"drag-cancel": [0.0, 0.5]}
+
+
+def rotation() -> int:
+    """Current display rotation in quarter turns (0-3) from `dumpsys input`."""
+    text = subprocess.run(["adb", "shell", "dumpsys input"], check=True, capture_output=True, text=True).stdout
+    found = re.search(r"SurfaceOrientation:\s*(\d)", text)
+    return int(found.group(1)) if found else 0
+
+
+def to_natural(point, quarter_turns):
+    """Shown (rotated) screen pixels -> the natural-orientation pixels the HID screen reports."""
+    x, y = point
+    w, h = NATURAL
+    if quarter_turns == 1:
+        return w - 1 - y, x
+    if quarter_turns == 2:
+        return w - 1 - x, h - 1 - y
+    if quarter_turns == 3:
+        return y, h - 1 - x
+    return x, y
+
 
 FINGER = [
     0x05, 0x0D, 0x09, 0x22, 0xA1, 0x02,                    # Digitizer: Finger, logical collection
@@ -53,8 +79,8 @@ def report(contacts):
     """contacts: list of (touching, id, x_px, y_px) for both slots."""
     data = [0x01]
     for touching, contact_id, x, y in contacts:
-        sx = round(x / (SCREEN[0] - 1) * 32767)
-        sy = round(y / (SCREEN[1] - 1) * 32767)
+        sx = round(x / (NATURAL[0] - 1) * 32767)
+        sy = round(y / (NATURAL[1] - 1) * 32767)
         data += [1 if touching else 0, contact_id, sx & 0xFF, sx >> 8, sy & 0xFF, sy >> 8]
     data.append(sum(1 for c in contacts if c[0]))
     return data
@@ -69,7 +95,7 @@ def point_at(waypoints, t):
     return x0 + (x1 - x0) * local, y0 + (y1 - y0) * local
 
 
-def commands(paths, starts):
+def commands(paths, starts, quarter_turns):
     lines = [{"id": 1, "command": "register", "name": "Open Physics test touch", "vid": 0x18D1, "pid": 0x7A01,
               "bus": "usb", "descriptor": DESCRIPTOR}, {"id": 1, "command": "delay", "duration": 1500}]
     for step in range(STEPS + 1):
@@ -77,12 +103,12 @@ def commands(paths, starts):
         contacts = []
         for slot in range(2):
             if slot < len(paths) and t >= starts[slot]:
-                contacts.append((True, slot, *point_at(paths[slot], t)))
+                contacts.append((True, slot, *to_natural(point_at(paths[slot], t), quarter_turns)))
             else:
                 contacts.append((False, slot, 0, 0))
         lines.append({"id": 1, "command": "report", "report": report(contacts)})
         lines.append({"id": 1, "command": "delay", "duration": FRAME_MS})
-    end = [(False, slot, *paths[min(slot, len(paths) - 1)][-1]) for slot in range(2)]
+    end = [(False, slot, *to_natural(paths[min(slot, len(paths) - 1)][-1], quarter_turns)) for slot in range(2)]
     lines.append({"id": 1, "command": "report", "report": report(end)})
     lines.append({"id": 1, "command": "delay", "duration": 300})
     return lines
@@ -90,9 +116,15 @@ def commands(paths, starts):
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("gesture", choices=sorted(GESTURES))
+    parser.add_argument("gesture", choices=sorted(GESTURES) + ["tap"])
+    parser.add_argument("--at", help="tap: X,Y in landscape screen pixels")
     args = parser.parse_args()
-    script = "\n".join(json.dumps(line) for line in commands(GESTURES[args.gesture], STARTS.get(args.gesture, [0.0, 0.0]))) + "\n"
+    if args.gesture == "tap":
+        x, y = (float(v) for v in args.at.split(","))
+        paths, starts = [[(x, y), (x, y)]], [0.0, 0.0]
+    else:
+        paths, starts = GESTURES[args.gesture], STARTS.get(args.gesture, [0.0, 0.0])
+    script = "\n".join(json.dumps(line) for line in commands(paths, starts, rotation())) + "\n"
     with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as handle:
         handle.write(script)
         local = handle.name

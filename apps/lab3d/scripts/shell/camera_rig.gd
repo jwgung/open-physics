@@ -2,7 +2,8 @@
 ## Modes: front (정면), three_quarter (3/4), top (위), side (옆), follow (따라가기, tracks
 ## follow_source.follow_point()), orbit (제한 회전: wherever the user turned it, within the
 ## experiment's yaw/pitch limits). Preset views and limits come from the experiment's
-## definition.camera. Gestures change the view directly (no lag); mode switches ease over
+## definition.camera; a view may look at its own `target` (default: camera.target), e.g. the
+## front view a little higher so the top of the apparatus clears the key cards (Task 2d). Gestures change the view directly (no lag); mode switches ease over
 ## ~0.4 s. Angles: yaw 0 looks along -z (camera on +z), pitch < 0 is above the target.
 class_name CameraRig
 extends Camera3D
@@ -27,6 +28,7 @@ var mode := "front"
 var follow_source: Object       # any object with follow_point() -> Vector3 (the experiment)
 
 var base_target := Vector3.ZERO
+var view_target := Vector3.ZERO   # look-at point of the current preset view (base_target unless the view sets `target`)
 var default_distance := 10.0
 var distance_range := Vector2(3.0, 30.0)
 var yaw_range := Vector2(-PI, PI)
@@ -56,6 +58,7 @@ var _held_target := Vector3.ZERO
 func configure(camera: Dictionary) -> void:
 	var t: Array = camera.get("target", [0, 0, 0])
 	base_target = Vector3(t[0], t[1], t[2])
+	view_target = base_target
 	default_distance = camera.get("distance", 10.0)
 	var d: Array = camera.get("distance_range", [3.0, 30.0])
 	distance_range = Vector2(d[0], d[1])
@@ -68,14 +71,31 @@ func configure(camera: Dictionary) -> void:
 	set_mode(camera.get("default_mode", "front"), true)
 
 
+func _target_of(view: Dictionary) -> Vector3:
+	var t: Variant = view.get("target")
+	return Vector3(t[0], t[1], t[2]) if t is Array and t.size() == 3 else base_target
+
+
 func _ready() -> void:
-	fov = 50.0
+	fov = FOV_DEG
 	_apply()
 
 
-## Portrait views keep the horizontal field of view so the apparatus stays in frame.
+## Field of view: FOV_DEG vertical for a view at least REFERENCE_ASPECT wide (the tablet's full
+## landscape screen, 16:10; wider phone screens see more to the sides). A narrower view (the
+## tablet's 3D view beside the open sidebar is about square) keeps the horizontal field of a
+## REFERENCE_ASPECT view instead, so the whole apparatus stays in frame when the sidebar opens.
+const FOV_DEG := 50.0
+const REFERENCE_ASPECT := 1.6
+
+
 func fit_aspect(view_size: Vector2) -> void:
-	keep_aspect = Camera3D.KEEP_WIDTH if view_size.x < view_size.y else Camera3D.KEEP_HEIGHT
+	if view_size.x >= view_size.y * REFERENCE_ASPECT:
+		keep_aspect = Camera3D.KEEP_HEIGHT
+		fov = FOV_DEG
+	else:
+		keep_aspect = Camera3D.KEEP_WIDTH
+		fov = rad_to_deg(2.0 * atan(tan(deg_to_rad(FOV_DEG) * 0.5) * REFERENCE_ASPECT))
 
 
 ## Switches mode. Preset modes reset pan and zoom to the preset ("정면으로" is set_mode("front")).
@@ -86,6 +106,7 @@ func set_mode(new_mode: String, instant := false) -> void:
 		return
 	if new_mode != "orbit":
 		var view: Dictionary = views.get(new_mode, {})
+		view_target = _target_of(view)
 		goal_yaw = clampf(deg_to_rad(view.get("yaw_deg", 0.0)), yaw_range.x, yaw_range.y)
 		goal_pitch = clampf(deg_to_rad(view.get("pitch_deg", -10.0)), pitch_range.x, pitch_range.y)
 		goal_distance = clampf(view.get("distance", default_distance), distance_range.x, distance_range.y)
@@ -284,7 +305,7 @@ static func view_direction(yaw: float, pitch: float) -> Vector3:
 func get_state() -> Dictionary:
 	var yaw: float = _assist_saved.get("yaw", goal_yaw)
 	var pitch: float = _assist_saved.get("pitch", goal_pitch)
-	return {"mode": mode, "yaw": yaw, "pitch": pitch, "distance": goal_distance, "pan": pan}
+	return {"mode": mode, "yaw": yaw, "pitch": pitch, "distance": goal_distance, "pan": pan, "target": view_target}
 
 
 func set_state(state: Dictionary) -> void:
@@ -295,6 +316,7 @@ func set_state(state: Dictionary) -> void:
 	goal_pitch = state.get("pitch", goal_pitch)
 	goal_distance = state.get("distance", goal_distance)
 	pan = state.get("pan", pan)
+	view_target = state.get("target", view_target)
 	var changed := saved != mode
 	mode = saved
 	snap()
@@ -320,7 +342,7 @@ func _goal_target() -> Vector3:
 		return _held_target
 	if mode == "follow" and follow_source != null and is_instance_valid(follow_source):
 		return follow_source.follow_point() + pan
-	return base_target + pan
+	return view_target + pan
 
 
 func _process(delta: float) -> void:

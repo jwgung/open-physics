@@ -102,7 +102,7 @@ func _err(value: Variant, want: float) -> float:
 func _open(definition: Dictionary) -> Control:
 	var host := Control.new()
 	host.theme = load(UI_THEME).build()
-	host.size = Vector2(720, 1560)
+	host.size = Vector2(1560, 720)
 	tree.root.add_child(host)
 	var screen: Control = load(EXPERIMENT_SCREEN).new()
 	screen.setup(definition)

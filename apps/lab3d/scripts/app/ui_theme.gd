@@ -81,6 +81,9 @@ static func build() -> Theme:
 	_label_variation(theme, "FpsLabel", bold, 18, WHITE)
 	theme.set_stylebox("normal", "FpsLabel", _box(Color(0.09, 0.14, 0.23, 0.78), Color.TRANSPARENT, 8, 10, 4))
 	_label_variation(theme, "BadgeLabel", bold, 26, WHITE)
+	# Key observation cards over the 3D view (Task 2d): small caption, the value as in the panel.
+	_label_variation(theme, "KeyLabel", bold, 16, SUBTLE)
+	_label_variation(theme, "KeyValueLabel", bold, 24, INK)
 
 	# Panels: white cards with a soft blue lip.
 	theme.set_stylebox("panel", "PanelContainer", _box(WHITE, LINE, 18, 18, 16, Color.TRANSPARENT, 2, CARD_LIP))
@@ -93,6 +96,7 @@ static func build() -> Theme:
 	_panel_variation(theme, "TopBar", _box(WHITE, Color.TRANSPARENT, 0, 16, 8, LINE))
 	_panel_variation(theme, "IconBadge", _box(ACCENT, Color.TRANSPARENT, 16, 12, 8, Color.TRANSPARENT, 0, LIP, ACCENT_DARK))
 	_panel_variation(theme, "ViewOverlay", _box(Color(1, 1, 1, 0.9), Color.TRANSPARENT, 16, 6, 6))
+	_panel_variation(theme, "KeyCard", _box(Color(1, 1, 1, 0.9), Color.TRANSPARENT, 14, 12, 8, Color.TRANSPARENT, 1, CARD_LIP, LINE))
 
 	# Buttons: white with a grey-blue lip; pressed = the lip shrinks (the button sinks).
 	theme.set_font_size("font_size", "Button", 21)

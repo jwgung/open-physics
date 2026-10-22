@@ -11,9 +11,9 @@
     "yaw_range_deg": [-100.0, 100.0],
     "pitch_range_deg": [-89.0, -2.0],
     "pan_radius": 7.0,
-    "default_mode": "three_quarter",
+    "default_mode": "front",
     "views": {
-      "front": { "yaw_deg": 0.0, "pitch_deg": -4.0, "distance": 13.5 },
+      "front": { "yaw_deg": 0.0, "pitch_deg": -4.0, "distance": 14.5, "target": [-0.8, 2.6, 0.0] },
       "three_quarter": { "yaw_deg": 25.0, "pitch_deg": -18.0 },
       "top": { "yaw_deg": 0.0, "pitch_deg": -89.0, "distance": 15.0 },
       "side": { "yaw_deg": 90.0, "pitch_deg": -8.0, "distance": 15.0 },
@@ -43,6 +43,7 @@
     { "id": "release", "label": "공 놓기", "style": "primary" },
     { "id": "reset", "label": "처음으로" }
   ],
+  "key_observations": ["range", "flight_time", "landing"],
   "observations": [
     { "id": "g", "label": "중력 가속도 g", "unit": "m/s²", "digits": 2 },
     { "id": "time", "label": "던진 뒤 시간 t", "unit": "s", "digits": 2 },

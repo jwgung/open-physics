@@ -1,10 +1,10 @@
 ## App root: theme, screen navigation (list -> experiment, settings) and the fps overlay.
+## Landscape only (Task 2d): project.godot locks the screen to sensor landscape on Android and iOS.
 ## Launch args (command line or Android `opargs`, see Quality.all_args):
 ##   --experiment=<id>   open that experiment directly (measurements, screenshots)
 ##   --screen=settings   open the settings screen
 ##   --fps=1             show the fps overlay
-##   --orientation=landscape|portrait   lock the screen orientation (screenshots; default: sensor)
-## plus the experiment screen's --camera / --ctl-<id> / --auto-release.
+## plus the experiment screen's --camera / --ctl-<id> / --sidebar / --scroll-to / --auto-release / --auto-drag.
 class_name App
 extends Control
 
@@ -51,11 +51,6 @@ func _ready() -> void:
 	config.load(SETTINGS_PATH)
 	_set_fps(Quality.cmdline_value("fps") == "1" or bool(config.get_value("ui", "show_fps", false)))
 	_definitions = ExperimentRegistry.load_all()
-	match Quality.cmdline_value("orientation"):
-		"landscape":
-			DisplayServer.screen_set_orientation(DisplayServer.SCREEN_LANDSCAPE)
-		"portrait":
-			DisplayServer.screen_set_orientation(DisplayServer.SCREEN_PORTRAIT)
 
 	var resume := ""
 	if FileAccess.file_exists(RESUME_PATH):

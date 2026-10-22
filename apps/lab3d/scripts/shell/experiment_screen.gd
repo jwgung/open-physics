@@ -1,6 +1,10 @@
-## Experiment screen: top bar, 3D view (camera modes, "정면으로", gestures) and the 2D panel
-## (question, conditions, observations, graph, explanation) built from the experiment's
-## definition. Layout: portrait = view on top, panel below; landscape = view left, side panel.
+## Experiment screen (Task 2d, landscape only): the 3D view fills the screen; over it sit the
+## back / title / settings / sidebar buttons, the experiment's key observations as small cards
+## (definition.key_observations) and its action buttons. Everything else (question, camera modes,
+## conditions, all observations, graph, steps, law, terms) is in the right sidebar, which slides
+## in and out. When it is open the 3D view shrinks to the area left of it (nothing in the scene is
+## hidden behind the sidebar, and the sidebar needs no background: the clear color shows through,
+## docs/ui-resolution.md).
 class_name ExperimentScreen
 extends Control
 
@@ -8,8 +12,11 @@ signal back_requested
 signal settings_requested
 
 const UI_REFRESH_HZ := 10.0
-const TOP_BAR_HEIGHT := 84.0
-const SIDE_PANEL_WIDTH := 470.0
+const SIDEBAR_WIDTH := 470.0
+const SIDEBAR_MAX_FRACTION := 0.42      # of the screen width (tablet 1152 units -> 470, phone 1560 -> 470)
+const SIDEBAR_SLIDE_S := 0.22
+const OVERLAY_MARGIN := 12.0
+const KEY_CARD_WIDTH := 200.0
 const TIP_SECONDS := 8.0
 const DEMO_RELEASE_DELAY_S := 0.4   # --auto-drag: the auto-release waits this long after the demo put its object down
 
@@ -23,14 +30,22 @@ var view: View3D
 ## One-finger object manipulation (null when the experiment declares no `manipulation`).
 var manipulator: Manipulator
 
-var _top_bar: PanelContainer
-var _panel: PanelContainer
-var _scroll: ScrollContainer
-var _mode_bar: PanelContainer
-var _mode_buttons: Dictionary = {}
-var _front_button: Button
+# 3D overlays (children of the view, placed by _fit_overlays).
+var _title_bar: PanelContainer
+var _top_buttons: HBoxContainer
+var _sidebar_button: Button
+var _key_row: HBoxContainer
+var _key_labels: Dictionary = {}        # observation id -> value Label of its key card
+var _action_row: HBoxContainer
+var _action_buttons: Dictionary = {}    # action id -> Button
 var _tip: Label
 var _tip_left := TIP_SECONDS
+# Sidebar.
+var _sidebar: PanelContainer
+var _sidebar_state := "closed"          # closed, opening, open, closing
+var _sidebar_tween: Tween
+var _scroll: ScrollContainer
+var _mode_buttons: Dictionary = {}
 var _observation_labels: Dictionary = {}
 var _control_widgets: Dictionary = {}   # id -> {"slider": HSlider, "value": Label} or {"buttons": {}, "note": Label}
 var _graph: GraphView
@@ -53,21 +68,21 @@ func setup(new_definition: Dictionary, state := {}, launch_args := false) -> voi
 	apply_launch_args = launch_args
 
 
-## Conditions (control values) and camera of this screen, for a rebuild with the same experiment.
+## Conditions (control values), camera and sidebar of this screen, for a rebuild with the same experiment.
 func capture_state() -> Dictionary:
 	var controls := {}
 	for control in definition.controls:
 		controls[control.id] = experiment.control_value(control.id)
-	return {"controls": controls, "camera": view.rig.get_state(), "placements": experiment.placements()}
+	return {"controls": controls, "camera": view.rig.get_state(), "placements": experiment.placements(),
+		"sidebar": is_sidebar_open()}
 
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_build_top_bar()
 	view = View3D.new()
 	add_child(view)
 	_build_view_overlays()
-	_build_panel()
+	_build_sidebar()
 	experiment = ExperimentRegistry.instantiate(definition)
 	experiment.state_changed.connect(_on_state_changed)
 	experiment.impact.connect(view.rig.nudge)
@@ -109,11 +124,14 @@ func _restore_state() -> void:
 	experiment.end_batch()
 	_updating = false
 	view.rig.set_state(_state.get("camera", {}))   # emits mode_changed; setup() refreshes once
+	if _state.get("sidebar", false):
+		open_sidebar(false)
 
 
 ## Measurement/screenshot hooks from the launch args (Quality.all_args):
 ## --camera=<mode>, --ctl-<control>=<value>, --auto-release=<seconds> (re-release periodically),
-## --scroll-to=<conditions|observations|graph|explanation> (panel scroll position).
+## --sidebar=open (open the sidebar), --scroll-to=<conditions|observations|graph|explanation>
+## (open the sidebar at that section).
 func _apply_launch_args() -> void:
 	for control in definition.controls:
 		var text := Quality.cmdline_value("ctl-" + control.id)
@@ -123,6 +141,8 @@ func _apply_launch_args() -> void:
 	if camera != "":
 		view.rig.set_mode(camera, true)
 	var section := Quality.cmdline_value("scroll-to")
+	if Quality.cmdline_value("sidebar") == "open" or _sections.has(section):
+		open_sidebar(false)
 	if _sections.has(section):
 		_scroll_to.call_deferred(section)
 	var every := Quality.cmdline_value("auto-release")
@@ -161,75 +181,177 @@ func _unhandled_input(event: InputEvent) -> void:
 
 # --- layout ---------------------------------------------------------------------------------
 
-func is_landscape() -> bool:
-	return size.x > size.y
+func sidebar_width() -> float:
+	return roundf(minf(SIDEBAR_WIDTH, size.x * SIDEBAR_MAX_FRACTION))
 
 
+func is_sidebar_open() -> bool:
+	return _sidebar_state == "open" or _sidebar_state == "opening"
+
+
+## The 3D view is the full screen while the sidebar is closed. Opening shrinks it at once to the
+## area left of the sidebar and slides the sidebar into the freed space; closing slides the
+## sidebar out first and gives the view the full width when it is gone. The view is resized once
+## per open/close, never during the slide (each resize reallocates its SubViewport).
 func _layout() -> void:
 	var w := size.x
 	var h := size.y
-	_top_bar.position = Vector2.ZERO
-	_top_bar.size = Vector2(w, TOP_BAR_HEIGHT)
-	var body := h - TOP_BAR_HEIGHT
-	if is_landscape():
-		var side := minf(SIDE_PANEL_WIDTH, w * 0.45)
-		view.position = Vector2(0, TOP_BAR_HEIGHT)
-		view.size = Vector2(w - side, body)
-		_panel.position = Vector2(w - side, TOP_BAR_HEIGHT)
-		_panel.size = Vector2(side, body)
+	var side := sidebar_width()
+	var view_width := w if _sidebar_state == "closed" else w - side
+	view.position = Vector2.ZERO
+	view.size = Vector2(view_width, h)
+	_sidebar.size = Vector2(side, h)
+	_sidebar.position.y = 0.0
+	if _sidebar_tween == null or not _sidebar_tween.is_valid():
+		_sidebar.position.x = w - side if _sidebar_state == "open" else w
+	_fit_overlays()
+
+
+func open_sidebar(animated := true) -> void:
+	if is_sidebar_open():
+		return
+	_sidebar_state = "opening"
+	_sidebar.visible = true
+	_sidebar_button.visible = false
+	_layout()
+	_slide_sidebar(size.x - sidebar_width(), "open", animated)
+
+
+func close_sidebar(animated := true) -> void:
+	if not is_sidebar_open():
+		return
+	_sidebar_state = "closing"
+	_slide_sidebar(size.x, "closed", animated)
+
+
+func toggle_sidebar() -> void:
+	if is_sidebar_open():
+		close_sidebar()
 	else:
-		var view_height := roundf(clampf(body * 0.46, 300.0, maxf(300.0, body - 380.0)))
-		view.position = Vector2(0, TOP_BAR_HEIGHT)
-		view.size = Vector2(w, view_height)
-		_panel.position = Vector2(0, TOP_BAR_HEIGHT + view_height)
-		_panel.size = Vector2(w, body - view_height)
+		open_sidebar()
+
+
+## Tweens only the sidebar's own position (no full-screen layer, art direction "screen change").
+func _slide_sidebar(to_x: float, final_state: String, animated: bool) -> void:
+	if _sidebar_tween != null and _sidebar_tween.is_valid():
+		_sidebar_tween.kill()
+	_sidebar_tween = null
+	if not animated or not is_inside_tree():
+		_sidebar.position.x = to_x
+		_finish_slide(final_state)
+		return
+	_sidebar_tween = _sidebar.create_tween()
+	_sidebar_tween.tween_property(_sidebar, "position:x", to_x, SIDEBAR_SLIDE_S) \
+		.set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
+	_sidebar_tween.finished.connect(_finish_slide.bind(final_state))
+
+
+func _finish_slide(final_state: String) -> void:
+	_sidebar_tween = null
+	_sidebar_state = final_state
+	_sidebar.visible = final_state == "open"
+	_sidebar_button.visible = final_state == "closed"
+	_layout()
 
 
 # --- building -------------------------------------------------------------------------------
 
-func _build_top_bar() -> void:
-	_top_bar = Ui.panel("TopBar")
-	add_child(_top_bar)
-	var row := Ui.hbox(12)
-	row.alignment = BoxContainer.ALIGNMENT_BEGIN
-	_top_bar.add_child(row)
-	var back := Ui.button("← 실험 목록", "FlatButton", 60)
+func _build_view_overlays() -> void:
+	_title_bar = Ui.panel("ViewOverlay")
+	_title_bar.mouse_filter = Control.MOUSE_FILTER_STOP   # chrome: a touch here never reaches the 3D view
+	view.add_child(_title_bar)
+	var title_row := Ui.hbox(4)
+	_title_bar.add_child(title_row)
+	var back := Ui.button("← 목록", "FlatButton", 56)
 	back.pressed.connect(back_requested.emit)
-	row.add_child(back)
+	title_row.add_child(back)
 	var title := Ui.label(definition.title, "HeadingLabel")
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	title.clip_text = true
-	row.add_child(title)
-	var settings := Ui.button("설정", "", 60)
+	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	title_row.add_child(title)
+
+	_top_buttons = Ui.hbox(8)
+	_top_buttons.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	view.add_child(_top_buttons)
+	var settings := Ui.button("설정", "", 56)
 	settings.pressed.connect(settings_requested.emit)
-	row.add_child(settings)
+	_top_buttons.add_child(settings)
+	_sidebar_button = Ui.button("설명·조건", "PrimaryButton", 56)
+	_sidebar_button.pressed.connect(open_sidebar.bind(true))
+	_top_buttons.add_child(_sidebar_button)
 
+	_key_row = Ui.hbox(8)
+	_key_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	view.add_child(_key_row)
+	for id in definition.key_observations:
+		var observation := _observation(id)
+		var card := Ui.panel("KeyCard")
+		card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		card.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+		card.custom_minimum_size.x = KEY_CARD_WIDTH
+		var stack := Ui.vbox(0)
+		stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		card.add_child(stack)
+		var caption := Ui.label(observation.label, "KeyLabel", true)
+		caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		stack.add_child(caption)
+		var value := Ui.label("—", "KeyValueLabel", true)   # a status text may take two lines
+		value.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		stack.add_child(value)
+		_key_row.add_child(card)
+		_key_labels[id] = value
 
-func _build_view_overlays() -> void:
-	_mode_bar = Ui.panel("ViewOverlay")
-	view.add_child(_mode_bar)
-	var modes := Ui.hbox(6)
-	_mode_bar.add_child(modes)
-	var group := ButtonGroup.new()
-	for mode in CameraRig.MODES:
-		var chip := Ui.button(CameraRig.MODE_LABELS[mode], "ChipButton", 56)
-		chip.toggle_mode = true
-		chip.button_group = group
-		chip.pressed.connect(view.rig.set_mode.bind(mode))
-		modes.add_child(chip)
-		_mode_buttons[mode] = chip
-
-	_front_button = Ui.button("정면으로", "PrimaryButton", 60)
-	view.add_child(_front_button)
-	_front_button.pressed.connect(view.rig.set_mode.bind("front"))
+	_action_row = Ui.hbox(10)
+	_action_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	view.add_child(_action_row)
+	for action in definition.actions:
+		var button := Ui.button(action.label, "PrimaryButton" if action.get("style") == "primary" else "", 64)
+		button.custom_minimum_size.x = 140
+		button.pressed.connect(experiment_action.bind(action.id))
+		_action_row.add_child(button)
+		_action_buttons[action.id] = button
 
 	_tip = Ui.label(definition.get("tip", ""), "HintLabel", true)
 	_tip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	view.add_child(_tip)
 	_tip.visible = _tip.text != ""
 	view.resized.connect(_fit_overlays)
+	# Wrapped card texts settle their height after the first layout pass (and change with status texts).
+	_key_row.minimum_size_changed.connect(_fit_overlays)
+
+
+func _observation(id: String) -> Dictionary:
+	for observation in definition.observations:
+		if observation.id == id:
+			return observation
+	return {}
+
+
+## Overlays are placed by hand at their minimum sizes: title bar top-left, settings and the
+## sidebar button top-right, the key cards under the title bar, the actions bottom-right and the
+## gesture tip bottom-left in the space left of them.
+func _fit_overlays() -> void:
+	if _title_bar == null:
+		return
+	var m := OVERLAY_MARGIN
+	var width := view.size.x
+	_top_buttons.size = _top_buttons.get_combined_minimum_size()
+	_top_buttons.position = Vector2(width - _top_buttons.size.x - m, m)
+	var title_min := _title_bar.get_combined_minimum_size()
+	_title_bar.size = Vector2(clampf(width - _top_buttons.size.x - m * 3.0, title_min.x, 560.0), title_min.y)
+	_title_bar.position = Vector2(m, m)
+	_key_row.size = _key_row.get_combined_minimum_size()
+	_key_row.position = Vector2(m, m + maxf(_title_bar.size.y, _top_buttons.size.y) + 8.0)
+	_action_row.size = _action_row.get_combined_minimum_size()
+	_action_row.position = Vector2(width - _action_row.size.x - m, view.size.y - _action_row.size.y - m)
+	var tip_width := minf(440.0, width - _action_row.size.x - m * 3.0)
+	# An autowrap label's minimum height depends on its width: set the width first.
+	_tip.size = Vector2(maxf(tip_width, 120.0), 0.0)
+	_tip.size.y = _tip.get_minimum_size().y
+	_tip.position = Vector2(m, view.size.y - _tip.size.y - m)
 
 
 func _scroll_to(section: String) -> void:
@@ -241,38 +363,32 @@ func _scroll_to(section: String) -> void:
 	_scroll.scroll_vertical = int(_sections[section].global_position.y - content.global_position.y)
 
 
-## Overlays are placed by hand: the mode bar sits bottom-left at its minimum size, "정면으로"
-## top-right, the gesture tip top-left in the space left of it.
-func _fit_overlays() -> void:
-	var margin := 12.0
-	_mode_bar.size = _mode_bar.get_combined_minimum_size()
-	_mode_bar.position = Vector2(margin, view.size.y - _mode_bar.size.y - margin)
-	_front_button.size = _front_button.get_combined_minimum_size()
-	_front_button.position = Vector2(view.size.x - _front_button.size.x - margin, margin)
-	var tip_width := minf(440.0, view.size.x - _front_button.size.x - margin * 3.0)
-	# An autowrap label's minimum height depends on its width: set the width first.
-	_tip.size = Vector2(maxf(tip_width, 120.0), 0.0)
-	_tip.size.y = _tip.get_minimum_size().y
-	_tip.position = Vector2(margin, margin)
-
-
-func _build_panel() -> void:
-	_panel = Ui.panel("SideSheet")
-	add_child(_panel)
+func _build_sidebar() -> void:
+	_sidebar = Ui.panel("SideSheet")
+	_sidebar.visible = false
+	add_child(_sidebar)
 	_scroll = Ui.scroller()
-	_panel.add_child(_scroll)
+	_sidebar.add_child(_scroll)
 	var pad := Ui.margin(18)
 	pad.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_scroll.add_child(pad)
 	var column := Ui.vbox(16)
 	pad.add_child(column)
 
-	var header := Ui.vbox(6)
-	header.add_child(Ui.label(definition.category, "EyebrowLabel"))
-	header.add_child(Ui.label(definition.question, "MutedLabel", true))
+	var header := Ui.hbox(8)
+	var heading := Ui.vbox(6)
+	heading.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	heading.add_child(Ui.label(definition.category, "EyebrowLabel"))
+	heading.add_child(Ui.label(definition.question, "MutedLabel", true))
+	header.add_child(heading)
+	var close := Ui.button("닫기", "", 56)
+	close.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	close.pressed.connect(close_sidebar.bind(true))
+	header.add_child(close)
 	column.add_child(header)
 
 	_sections = {
+		"camera": _build_camera_modes(),
 		"conditions": _build_conditions(),
 		"observations": _build_observations(),
 		"graph": _build_graph(),
@@ -290,13 +406,30 @@ func _section(title: String) -> Array:
 	return [card, body]
 
 
+## Camera mode chips (Task 2d: in the sidebar, not over the 3D view; the default view is front).
+func _build_camera_modes() -> Control:
+	var parts := _section("시점")
+	var chips := HFlowContainer.new()
+	chips.add_theme_constant_override("h_separation", 8)
+	chips.add_theme_constant_override("v_separation", 8)
+	var group := ButtonGroup.new()
+	for mode in CameraRig.MODES:
+		var chip := Ui.button(CameraRig.MODE_LABELS[mode], "ChipButton", 52)
+		chip.toggle_mode = true
+		chip.button_group = group
+		chip.pressed.connect(view.rig.set_mode.bind(mode))
+		chips.add_child(chip)
+		_mode_buttons[mode] = chip
+	parts[1].add_child(chips)
+	return parts[0]
+
+
 func _build_conditions() -> Control:
 	var parts := _section("조건 바꾸기")
 	var body: VBoxContainer = parts[1]
 	for control in definition.controls:
 		var row := Ui.hbox(8)
-		var caption := Ui.label(control.label, "")
-		caption.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		var caption := Ui.label(control.label, "", true)   # long captions wrap inside the sidebar width
 		row.add_child(caption)
 		body.add_child(row)
 		if control.type == "slider":
@@ -329,13 +462,6 @@ func _build_conditions() -> Control:
 			var note := Ui.label("", "MutedLabel", true)
 			body.add_child(note)
 			_control_widgets[control.id] = {"buttons": buttons, "note": note}
-	var actions := Ui.hbox(10)
-	for action in definition.actions:
-		var button := Ui.button(action.label, "PrimaryButton" if action.get("style") == "primary" else "", 64)
-		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		button.pressed.connect(experiment_action.bind(action.id))
-		actions.add_child(button)
-	body.add_child(actions)
 	return parts[0]
 
 
@@ -423,7 +549,8 @@ func _build_observations() -> Control:
 		var stack := Ui.vbox(2)
 		tile.add_child(stack)
 		stack.add_child(Ui.label(observation.label, "MutedLabel", true))
-		var value := Ui.label("—", "ValueLabel")
+		# Wraps: a long status text must not widen the sidebar past its width (Task 2d).
+		var value := Ui.label("—", "ValueLabel", true)
 		stack.add_child(value)
 		grid.add_child(tile)
 		_observation_labels[observation.id] = value
@@ -452,7 +579,7 @@ func _build_graph() -> Control:
 		legend.add_child(item)
 	parts[1].add_child(legend)
 	var y_spec: Dictionary = spec.get("y", {})
-	parts[1].add_child(Ui.label("세로: %s (%s)" % [y_spec.get("label", ""), y_spec.get("unit", "")], "MutedLabel"))
+	parts[1].add_child(Ui.label("세로: %s (%s)" % [y_spec.get("label", ""), y_spec.get("unit", "")], "MutedLabel", true))
 	return parts[0]
 
 
@@ -514,21 +641,29 @@ func _poll() -> void:
 	_update_readouts(false)
 
 
+## The displayed text of an observation value (panel tiles and key cards show the same text).
+static func format_observation(observation: Dictionary, value: Variant) -> String:
+	if value is float or value is int:
+		var text := Ui.number(value, int(observation.get("digits", 2)))
+		var unit: String = observation.get("unit", "")
+		if unit != "":
+			text += unit if unit == "°" else " " + unit
+		return text
+	if value is String:
+		return value
+	return "—"
+
+
 func _update_readouts(force_graph: bool) -> void:
 	var values := experiment.observations()
 	for observation in definition.observations:
-		var value: Variant = values.get(observation.id)
-		var text := "—"
-		if value is float or value is int:
-			text = Ui.number(value, int(observation.get("digits", 2)))
-			var unit: String = observation.get("unit", "")
-			if unit != "":
-				text += unit if unit == "°" else " " + unit
-		elif value is String:
-			text = value
+		var text := format_observation(observation, values.get(observation.id))
 		var label: Label = _observation_labels[observation.id]
 		if label.text != text:
 			label.text = text
+		var key: Label = _key_labels.get(observation.id)
+		if key != null and key.text != text:
+			key.text = text
 	var revision := experiment.graph_revision()
 	if force_graph or revision < 0 or revision != _graph_revision:
 		_graph_revision = revision

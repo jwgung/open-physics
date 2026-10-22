@@ -17,7 +17,7 @@
 
 ## 1. low 단계 fps
 
-`OPBENCH_RESULTS_DIR=spikes/bench/results/phase1-task4a OPBENCH_EXPERIMENT=<free-fall|projectile> OPBENCH_SCENE=<FF|PJ> OPBENCH_CTL= OPBENCH_SUSTAINED=0 apps/lab3d/tools/bench_device.sh low 3 90 60`. 화면: 세로, 기본 3/4 시점, 패널을 관찰값 위치로 스크롤, 조건은 기본값(지구, 높이 5 m / 45°·9 m/s). **4초마다 첫 조작 물체를 손가락 입력 경로 그대로 1초 동안 끌어 놓고 0.4초 뒤 `공 놓기`**(`--auto-drag=4`): 자유 낙하는 빨간 공을 바닥 선 끝(x 3 m)과 40% 지점(−0.5 m)으로 번갈아 옮긴 뒤 세 공을 떨어뜨리고(약 1초 낙하·착지 연출·관찰값·그래프 갱신), 던지기는 공을 발사 선 끝(−3 m)과 40% 지점(−6 m)으로 옮긴 뒤 던진다(1.4초 비행, 화살표·경로 미리보기 갱신). 끌 때마다 보조 시점이 돌고, 높이 손잡이가 선택된다. 셰이더 캐시 1회 → 90초 × 3회(회차 사이 60초). 10분 지속 측정은 하지 않았다(계약은 90초 × 3회). 표는 `node spikes/bench/summarize.mjs spikes/bench/results/phase1-task4a`(앞 30초 제외).
+`OPBENCH_RESULTS_DIR=spikes/bench/results/phase1-task4a OPBENCH_EXPERIMENT=<free-fall|projectile> OPBENCH_SCENE=<FF|PJ> OPBENCH_CTL= OPBENCH_SUSTAINED=0 apps/lab3d/tools/bench_device.sh low 3 90 60`(측정 당시 명령. 지금은 장면 이름을 실험 정의의 `bench_id`에서 읽어 `OPBENCH_SCENE`이 없고, 이 폴더처럼 결과가 있는 폴더에는 `OPBENCH_OVERWRITE=1` 없이 쓰지 않는다). 화면: 세로, 기본 3/4 시점, 패널을 관찰값 위치로 스크롤, 조건은 기본값(지구, 높이 5 m / 45°·9 m/s). **4초마다 첫 조작 물체를 손가락 입력 경로 그대로 1초 동안 끌어 놓고 0.4초 뒤 `공 놓기`**(`--auto-drag=4`): 자유 낙하는 빨간 공을 바닥 선 끝(x 3 m)과 40% 지점(−0.5 m)으로 번갈아 옮긴 뒤 세 공을 떨어뜨리고(약 1초 낙하·착지 연출·관찰값·그래프 갱신), 던지기는 공을 발사 선 끝(−3 m)과 40% 지점(−6 m)으로 옮긴 뒤 던진다(1.4초 비행, 화살표·경로 미리보기 갱신). 끌 때마다 보조 시점이 돌고, 높이 손잡이가 선택된다. 셰이더 캐시 1회 → 90초 × 3회(회차 사이 60초). 10분 지속 측정은 하지 않았다(계약은 90초 × 3회). 표는 `node spikes/bench/summarize.mjs spikes/bench/results/phase1-task4a`(앞 30초 제외).
 
 | 후보 | 장면 | 평균 FPS | 1% low* | p95 ms | 최고 온도 °C | PSS MB |
 |---|---|---|---|---|---|---|

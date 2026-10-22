@@ -2,7 +2,7 @@
 
 - 기기: SM-P200 (Galaxy Tab A 8.0 2019, Exynos 7904 / Mali-G71 MP2, Android 11, 1200×1920, 60 Hz) — 하한 기기
 - 일시: 2026-10-23 04:47–05:30
-- 빌드: `apps/lab3d` release APK(디버그 키스토어), Godot 4.7.2 + Jolt. 브랜치 `feat/labs-kinematic-model`(커밋 `a792ece` + 시험 보강, 문서 커밋 직전).
+- 빌드: `apps/lab3d` release APK(디버그 키스토어), Godot 4.7.2 + Jolt. 브랜치 `feat/labs-kinematic-model`의 커밋 `a792ece`(2026-10-23 04:44)에서 빌드해 04:47–05:30에 측정했다. 이후 `5df6e21`·`22ecb96`은 시험과 문서만 바꿨고 앱 코드는 같다(`git diff a792ece 22ecb96 -- apps/lab3d`에 `tests/`·`docs/`·`README.md`만 있음). 이 아래 1–3절의 모든 표·원본이 이 빌드다.
 - 계약: [Phase 1 README의 Task 4 상세](../../../../docs/3d-phase1/README.md#task-4-상세). 실험 설명은 [앱 README "실험 목록"](../../../../apps/lab3d/README.md#실험-목록), 보정은 [공식 보정 4절 Task 4e](../../../../apps/lab3d/docs/formula-correction.md#실험-구현-task-4e-진자지렛대도르래).
 - 조건: Task 4d와 같다. USB 연결(adb, SM-P200만 사용), 충전 중(시작 전 약 27 °C). 손가락 입력은 `--auto-drag`(손가락 입력 경로 재생)다. 사람 손으로 한 확인은 아니다. 기기 설정(`stay_on_while_plugged_in` 2, 밝기 128, 화면 크기 1200x1920)은 측정 전후 같다(변경하지 않음, 폰 세로 스크린샷은 `wm size 1080x2340`으로 찍고 `wm size reset`으로 복원 확인).
 
@@ -51,3 +51,9 @@
 - 사람 손가락으로 추·손잡이·받침점·짐을 집기 쉬운지는 확인하지 않았다.
 - 화면 기록은 프레임 단위로 검토하지 않았다(스크린샷과 중간 프레임으로 장면 확인). 진자의 프레임 시간 튐, 지렛대의 물리 ms는 원인 미확인.
 - 지렛대가 들리는 각도(0.18 rad = 10°)는 3/4 시점에서 작아 보인다(웹과 같은 값).
+
+## 4. 검증 반영 뒤 지렛대 재측정 (커밋 `426ea72`)
+
+- 빌드: 커밋 `426ea72`(검증 반영: 자세가 바뀔 때만 막대·짐 이동, 눈금 자동, 공용 베이스 `PressHandleLab`, `RollingGraph` 상한)의 release APK. 같은 SM-P200, `OPBENCH_EXPERIMENT=rotation OPBENCH_SUSTAINED=0 apps/lab3d/tools/bench_device.sh low 1 90 5`(셰이더 캐시 1회 + 90초 1회, 같은 조건·`--auto-drag=4`). 기기 설정 변경 없음(밝기 128, `stay_on_while_plugged_in` 2, 1200x1920 측정 뒤 확인). 원본: `review-fix/lab3d-low-RO-1.{jsonl,device.jsonl,perf.jsonl}`, `review-fix/gpu-clock-low.log`.
+- 결과(앞 30초 제외, 91초): 평균 **59.75 fps**(기준 59.5 이상), 최저 초당 53.2 fps, 33 ms 넘는 프레임 8개, 1% low 37.7, p95 18.1 ms, 드로우콜 109.6(이전 121.0, 줄어든 원인은 확인하지 않음: 이 변경에 아트 코드는 없다), 렌더 CPU 3.42 ms(이전 3.70–3.73).
+- 물리 ms **4.55**(이전 4.13–4.33, 3회). 자세가 안 바뀐 스텝에서 막대·짐을 다시 옮기지 않게 했지만 **물리 처리 시간은 줄지 않았다**(1회라 오차 범위 안이거나 조금 늘었다). 4 ms대의 큰 몫은 이 변경이 아닌 곳(정적 손잡이·받침점 이동, `--auto-drag` 입력, 스크립트 물리 단계)에 있는 것으로 보이나 쪼개 측정하지 않았다. fps에는 영향이 없다.

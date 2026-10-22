@@ -1,6 +1,6 @@
 # Open Physics 3D (apps/lab3d)
 
-역학 3D 실험 앱이다. Godot 4.7.2 + Jolt, GDScript. Phase 1 Task 2a에서 셸 뼈대(실험 등록, 카메라·제스처, 2D 패널, 품질 설정)와 첫 실험(빗면 마찰)을 만들었고, Task 2c에서 시각 스타일(잔디 섬: 선명한 원색, 각진 로우폴리, 하늘에 뜬 잔디 섬)과 연출을 정했다. 기준은 [아트 디렉션](docs/art-direction.md)이다. 계획과 진행은 [Phase 1 문서](../../docs/3d-phase1/README.md), 스택 결정은 [ADR 0001](../../docs/adr/0001-3d-app-stack.md)에 있다.
+역학 3D 실험 앱이다. Godot 4.7.2 + Jolt, GDScript. Phase 1 Task 2a에서 셸 뼈대(실험 등록, 카메라·제스처, 2D 패널, 품질 설정)와 첫 실험(빗면 마찰)을 만들었고, Task 2c에서 시각 스타일(잔디 섬: 선명한 원색, 각진 로우폴리, 하늘에 뜬 잔디 섬)과 연출을 정했다. Task 2b에서 한 손가락으로 물체를 집어 정해진 면 위로 옮기는 조작(조작 평면·스냅·높이 손잡이·보조 시점)을 더했다. 기준은 [아트 디렉션](docs/art-direction.md)이다. 계획과 진행은 [Phase 1 문서](../../docs/3d-phase1/README.md), 스택 결정은 [ADR 0001](../../docs/adr/0001-3d-app-stack.md)에 있다.
 
 - Android: arm64-v8a release APK(디버그 키스토어 서명, 배포용 아님). 렌더러는 품질 단계가 정한다(low = Compatibility, medium·high = Mobile).
 - 모든 작업은 헤드리스 CLI(`godot --headless`)로 한다. 에디터 GUI를 쓰지 않는다.
@@ -18,8 +18,10 @@ apps/lab3d/
   scripts/art/                        셸 공용 아트: ArtPalette, ArtMeshBuilder(로우폴리 메시), art_lit 셰이더(구운 조명),
                                       ArtKit(재질·환경·떠 있는 섬), ArtJuice(연출·블롭 그림자)
   scripts/shell/                      Experiment(실험 기반 클래스), ExperimentRegistry, ExperimentScreen,
-                                      View3D(3D 뷰·제스처), CameraRig(카메라 6모드), GraphView
+                                      View3D(3D 뷰·제스처), CameraRig(카메라 6모드·보조 시점), GraphView,
+                                      Manipulator(물체 조작), ManipSurface(조작 평면)
   experiments/incline_friction/       빗면 마찰 실험(장면·공식 보정 계층, InclineProps 소품)
+  experiments/manipulation_dev/       조작 확인용 개발 장면(목록에 없음, --experiment=manipulation-dev)
   content/experiments/                실험 콘텐츠 JSON(index.json + 실험별 파일)
   assets/fonts/                       Noto Sans CJK KR 서브셋(Regular·Bold, SIL OFL 1.1)
   tests/                              헤드리스 테스트, TS 생성 parity 벡터
@@ -41,6 +43,7 @@ apps/lab3d/
 | 카메라 모드·제한·"정면으로"를 처리한다 | `follow_point()`(따라가기 대상), JSON의 `camera` |
 | 3D를 품질 단계 해상도의 SubViewport에 그린다 | 장면은 `ArtKit`·`ArtMeshBuilder`로 꾸민다(엔진 조명·그림자 없음, [아트 디렉션](docs/art-direction.md)) |
 | 착지 때 카메라를 살짝 흔든다(`CameraRig.nudge`) | `impact(strength)` 신호(연출용, 선택) |
+| 한 손가락 조작: 집기·끌기·스냅·미리보기·높이 손잡이·취소·보조 시점(`Manipulator`) | JSON `manipulation`의 규칙, `manipulation_body`·`manipulation_surface`·`manipulation_juice`, 결과 통보(`manipulation_started`·`_placed`·`_cancelled`), 추가 규칙 `placement_allowed`, 화면 재구성 때 유지할 `placements()` |
 
 콘텐츠(문구·조건·관찰값·그래프·시점)는 JSON 데이터다. Task 4에서 웹 2D와 같은 파일을 공유할 수 있게 코드와 분리했다.
 
@@ -55,8 +58,45 @@ apps/lab3d/
 - `정면으로` 버튼은 3D 뷰 오른쪽 위에 항상 있다. 정면 모드 + 이동·확대 초기화다.
 - 빗면의 기본 시점(Task 2c): 대상 (0.8, 2.8, 0), 3/4 거리 8.5 m, 정면 9.5 m, 옆 12 m, 따라가기 4 m. 상자(0.4 m)와 연출이 보이게 Task 2a(11 m)보다 당겼다.
 - 터치: 두 손가락을 함께 끌면 회전(시점이 프리셋이면 `제한 회전`으로 바뀐다), 벌리거나 오므리면 확대·축소, 그 상태로 손가락을 옮기면 이동, 비틀면 좌우 회전(시작 대비 8°를 넘긴 만큼만 돌려, 확대만 할 때 손 떨림으로 프리셋이 바뀌지 않는다). 두 손가락 제스처는 처음 14 UI 단위 움직임으로 회전과 확대·이동 중 하나로 정한다. 한 손가락을 고정하고 다른 손가락만 움직여도(28 단위 이상) 확대·이동으로 인식한다.
-- 빈 곳 한 손가락 드래그는 카메라에 쓰지 않는다. `View3D.single_pointer` 신호로만 내보낸다(2b 조작용).
-- 데스크톱: 오른쪽 드래그 회전, 가운데 드래그 또는 Shift + 오른쪽 드래그 이동, 휠 확대·축소. 왼쪽 드래그는 한 손가락과 같이 비워 둔다.
+- 한 손가락은 카메라에 쓰지 않는다. `View3D.single_pointer` 신호로 물체 조작(아래 "조작")에 쓴다. 빈 곳 한 손가락 드래그는 아무 일도 하지 않는다.
+- 데스크톱: 오른쪽 드래그 회전, 가운데 드래그 또는 Shift + 오른쪽 드래그 이동, 휠 확대·축소. 왼쪽 드래그는 한 손가락과 같다(물체 조작).
+
+### 조작 (Task 2b)
+
+물체를 손가락 하나로 집어, 실험이 정한 면 위에서만 옮기고 놓는다. 높이는 따로 손잡이로 바꾼다. 셸의 `Manipulator`(`scripts/shell/manipulator.gd`)가 맡고, 실험은 어떤 물체를 어떤 면 위에서 어떤 격자로 옮기는지만 정한다.
+
+| 동작 | 사용자가 하는 것 | 일어나는 일 |
+|---|---|---|
+| 집기 | 물체를 누른다 | 손가락 광선 하나로 조작 가능한 물체만 찾는다. 빗나가면 화면에서 물체 중심이 44 UI 단위 안에 있는 물체를 집는다(0.4 m 상자는 기본 거리에서 화면 폭 약 36 단위라 아이 손끝보다 작다). 물체는 물리에서 얼려지고(freeze) 메시가 12 cm 떠오른다 |
+| 끌기 | 누른 채 움직인다 | 손가락 광선을 물체 중심 높이의 조작 평면(바닥, 빗면 윗면)에 투영해 그 자리로 옮긴다. 집을 때의 손가락–물체 간격은 유지한다. 평면을 7° 안쪽으로 스치는 광선(평면과 거의 나란한 시점)과 뒤쪽을 향하는 광선은 물체를 움직이지 않는다. 선(빗면 출발 위치)은 광선에 가장 가까운 선 위의 점을 쓴다. 놓을 수 있는 영역 밖으로는 최대 0.6 m까지만 나간다 |
+| 미리보기 | — | 물체는 손가락을 매끄럽게 따라가고, 발밑 표시(바닥에 닿는 네모 테두리)가 실제로 놓일 격자 칸에 붙는다. 흰색 = 놓을 수 있음, 남색 + X = 놓을 수 없음(영역 밖, 다른 물체·고정 블록과 겹침, 실험의 추가 규칙). 놓을 수 없게 바뀌는 순간 물체가 옆으로 흔들린다 |
+| 놓기 | 손가락을 뗀다 | 놓을 수 있으면 격자 칸에 정지 상태로 내려앉는다(메시가 내려오며 살짝 눌림 + 먼지). 놓을 수 없으면 집은 자리로 돌아가며 흔들린다 |
+| 취소 | 두 번째 손가락을 댄다, 시스템이 터치를 취소한다, 화면을 떠난다, 조건·버튼을 바꾼다 | 집은 자리로 돌아간다. 두 손가락은 그다음부터 카메라 제스처다 |
+| 높이 | 놓은 물체 옆 세로 손잡이(파란 막대 + 노란 손잡이)를 위아래로 끈다 | 실험이 허용한 물체만 손잡이가 보인다. 높이만 바뀌고(면의 법선 방향, 격자 단위) 수평 위치는 그대로다. 손잡이 터치 영역은 반지름 52 UI 단위. 손잡이는 카메라 오른쪽 옆에 붙어 시점을 돌려도 물체에 가리지 않는다. 빈 곳을 누르면 손잡이가 사라진다 |
+
+- 보조 시점: 끄는 동안 카메라가 조작 평면을 25° 이상 내려다보고, 선으로 움직이는 물체(빗면)·높이 손잡이는 그 선과 시선이 35° 이상 벌어지게 한다. 지금 시점이 이미 그러면 움직이지 않는다. 아니면 실험의 회전 제한 안에서 가장 가까운 방위·고도로 0.4초에 걸쳐 돌고, 놓거나 취소하면 원래 시점으로 돌아간다. 끄는 동안 따라가기 대상은 고정한다. 작은 보조 뷰(화면 속 화면) 대신 카메라 보정을 고른 근거는 [Task 2b 결과](../../spikes/bench/results/phase1-task2b/README.md) 2절.
+- 비용: 집을 때 광선 1개, 끄는 동안 이벤트마다 평면 계산(광선 없음) + 격자 칸·높이가 바뀔 때만 모양 질의 1개. 발밑 표시·손잡이 메시는 물체마다 한 번 만든다.
+- 실험 정의(`content/experiments/<id>.json`의 선택 필드 `manipulation`, `ExperimentRegistry.validate`가 검사):
+
+```json
+"manipulation": {
+  "objects": [
+    { "id": "box", "surface": "incline", "snap": 0.5, "height": false },
+    { "id": "red", "surface": "floor", "snap": 0.25, "height": { "max": 2.0, "step": 0.25 } }
+  ]
+}
+```
+
+| 필드 | 뜻 |
+|---|---|
+| `id` | 조작 가능한 물체(실험 스크립트의 `manipulation_body(id)`가 바디를 돌려준다). 중복 불가 |
+| `surface` | 옮길 면의 id. 실험 스크립트의 `manipulation_surface(id)`가 지금 모양의 `ManipSurface`(면 좌표계 `frame`, 놓을 수 있는 영역 `region_min`·`region_max`, 겹쳐도 되는 바디 `exclude`)를 돌려준다. z 폭이 0인 영역은 선이다 |
+| `snap` | 격자 간격(m, 면 좌표계 원점부터). 0이면 스냅 없음. 스크립트가 `ManipSurface.snap`을 정하면 그쪽이 먼저다 |
+| `height` | `false`(높이 손잡이 없음) 또는 `{ "max": m, "step": m }` |
+
+- 실험 스크립트는 결과를 받아 상태를 바꾼다: `manipulation_started`(멈추기), `manipulation_placed(id, transform)`(새 위치 반영), `manipulation_cancelled`. 셸이 이미 바디를 얼리고 옮겨 둔 뒤 부른다. 놓인 물체가 그다음 어떻게 움직일지는 실험이 정한다(빗면은 새 출발 위치에서 대기, 개발 장면은 `상자 떨어뜨리기` 전까지 그 자리에 고정).
+- 빗면: 상자를 빗면 위에서만(빗면 아래 끝에서 1 m ~ 기본 출발점 7.5 m) 0.5 m 눈금으로 옮긴다. 빗면 앞 가장자리에 0.5 m마다 짧은 눈금, 1 m마다 긴 눈금이 있다. 미끄러지는 상자나 바닥에 떨어진 상자를 집어도 된다(그 실행은 멈추고 새 출발 위치에서 기다린다). `이동 거리`·그래프 공식 곡선의 상한은 출발점에서 빗면 끝까지의 거리(`출발점에서 빗면 끝까지` 관찰값)다. 예전의 고정 7.5 m는 기본 출발점의 값이다.
+- 개발 장면(`--experiment=manipulation-dev`): 바닥 8 × 6 m(흰 테두리) 위 상자 3개와 고정 파란 블록. 0.25 m 격자, 높이 0–2 m(0.25 m 단위). 다른 상자·블록과 겹치는 자리와 테두리 밖에는 놓을 수 없고, 블록보다 높이 올린 상자는 블록 위로 옮길 수 있다. `상자 떨어뜨리기`는 얼린 상자를 풀어 떨어뜨린다. `content/experiments/index.json`의 `hidden`에 있어 목록에는 나오지 않는다.
 
 ### 레이아웃과 해상도
 
@@ -113,6 +153,7 @@ adb shell am start -n org.openphysics.lab3d/com.godot.game.GodotAppLauncher \
 | `--ctl-<조건 id>=<값>` | 조건 값(예: `--ctl-angle=30`, `--ctl-material=rubber`) |
 | `--scroll-to=<conditions\|observations\|graph\|explanation>` | 패널 스크롤 위치 |
 | `--auto-release=<초>` | 그 간격으로 상자를 다시 놓는다(측정용) |
+| `--auto-drag=<초>` | 그 간격으로 첫 조작 물체를 손가락 입력 경로 그대로 1초 동안 끌어 놓고(영역 끝과 40% 지점을 번갈아), 0.4초 뒤 `상자 놓기`를 누른다(측정용, `bench_device.sh` 기본) |
 | `--q-<항목>=<값>` | 품질 단계 항목 덮어쓰기(측정용) |
 
 ## 3. 빌드와 테스트
@@ -131,6 +172,8 @@ npm test                           # 루트: TS 테스트 + apps/lab3d/tools/inc
 | 빗면 공식 일치 | `tests/run_tests.gd` | 앱의 빗면 실험(Jolt + 공식 보정)이 측정 기준 4절 표(26° 정지, 27° 1초 안에 미끄러짐, 35° 가속도·이동 거리 ±1%, 20° 10초 ≤ 1 mm)를 재현. 재질별로 임계각 −0.5° 정지, +0.5° 미끄러짐, 40°에서 s(1s)·s(1.5s) ±1%, 그래프 점이 공식과 일치 |
 | 아트는 보이는 것만 | `tests/run_tests.gd` | 아트가 충돌 객체를 더하지 않음, 연출은 상자 메시만 바꾸고 충돌 모양은 그대로, 연출을 끈 실행과 운동·그래프·표시 값이 같음, 카메라 착지 반응이 모드·목표를 바꾸지 않음 |
 | 셸 | `tests/run_tests.gd` | 레지스트리 검증, 글꼴 서브셋이 쓰는 글자를 모두 포함, 카메라 모드 전환·제한·정면으로·따라가기, 제스처 분류(한 손가락은 카메라 불변), 세로·가로 레이아웃 |
+| 조작 | `tests/manipulation_checks.gd`(`run_tests.gd`가 부름) | 투영(바로 아래, 물체 중심 높이, 스치는 광선·뒤쪽 광선은 무시, 선 위 가장 가까운 점), 격자 스냅·영역·여유 0.6 m, 레지스트리의 `manipulation` 검사와 숨은 개발 장면, 보조 시점(필요할 때만 돌고 되돌아옴, 따라가기 대상 고정). 실제 입력 경로(View3D 터치 → Manipulator → 실험)로: 빗면 끌어 놓기·0.5 m 눈금 스냅·놓을 수 없는 곳(남색 표시·흔들림·제자리 복귀)·두 번째 손가락과 시스템 취소·마우스·미끄러지는 상자 집기·조작 중 조건 변경·화면 재구성 유지. 개발 장면: 바닥 격자, 높이 손잡이(높이만, 0.25 m 단위), 높이 조작 중 두 손가락 취소, 다른 상자·블록과 겹침 금지, 블록 위 높이에 놓기, 영역 밖 금지, 빈 곳 탭으로 선택 해제, 떨어뜨리기 |
+| 새 출발 위치의 표시 수치 | `tools/incline-vectors.test.ts` → `tests/incline_vectors.json` `runs`, `manipulation_checks.gd` | 재질·각도·출발 위치 4가지(1–6 m)에서 s(t) ±1%, 표시 `이동 거리`가 출발점에서 빗면 끝까지 거리에서 멈춤, 공식 곡선이 그 거리에서 끝남, 상자가 빗면을 떠나는 시각이 TS 공식 √(2L/a)와 3 step 안 |
 
 - TS 공식을 바꾸면 vitest가 먼저 깨진다. `UPDATE_INCLINE_VECTORS=1 npx vitest run apps/lab3d`로 벡터를 다시 만든 뒤 Godot 테스트로 GDScript 쪽 불일치를 확인한다.
 - UI 문구를 바꾸면 `apps/lab3d/tools/subset_font.sh`로 글꼴을 다시 만든다(fonttools가 없으면 `uvx`로 실행). 빠진 글자는 테스트가 잡는다. Noto Sans CJK에 없는 아래·위 첨자(ₛ, ₖ, ⁻¹)는 쓰지 않는다.
@@ -145,12 +188,13 @@ OPBENCH_RESULTS_DIR=$PWD/spikes/bench/results/phase1-task2c apps/lab3d/tools/ben
 node spikes/bench/summarize.mjs spikes/bench/results/phase1-task2c
 OPBENCH_PACKAGE=org.openphysics.lab3d OPBENCH_VARIANT_DIR=<dir> \
   spikes/bench/godot-variant.sh <이름> 20 40 --experiment=incline-friction --quality=low --q-ui_mode=root
-python3 -I apps/lab3d/tools/device_gesture.py orbit  # orbit | pinch | pinch-fixed | pan | one-finger
+python3 -I apps/lab3d/tools/device_gesture.py orbit  # orbit | pinch | pinch-fixed | pan | one-finger | drag-cancel
 ```
 
-- `bench_device.sh`는 패널을 관찰값·그래프 위치로 스크롤하고(`--scroll-to=observations`), 각도 30°에서 4초마다 상자를 다시 놓아 물리·관찰값·그래프가 계속 바뀌는 상태로 잰다. OPBENCH 장면 이름은 `S3`(측정 기준의 안내형 빗면)다.
+- `bench_device.sh`는 패널을 관찰값·그래프 위치로 스크롤하고(`--scroll-to=observations`), 각도 30°에서 4초마다 상자를 손가락 입력 경로로 끌어 새 출발 위치에 놓고 0.4초 뒤 놓기를 눌러(`--auto-drag=4`) 끌기·보조 시점·물리·관찰값·그래프가 계속 바뀌는 상태로 잰다. Task 2a·2c는 `OPBENCH_PLAY=--auto-release=4`(4초마다 다시 놓기만)로 쟀다. OPBENCH 장면 이름은 `S3`(측정 기준의 안내형 빗면)다.
+- 한 손가락 끌기는 `adb shell input swipe x1 y1 x2 y2 <ms>`로 재생한다. `device_gesture.py drag-cancel`은 빗면 상자(20°, 기본 시점)를 끄는 중 두 번째 손가락을 대 취소를 재생한다.
 - `device_gesture.py`는 Android `hid` 명령으로 2점 가상 멀티터치 화면을 등록해 두 손가락 제스처를 재생한다. `adb shell input`은 한 손가락만 되고, 실제 터치스크린 노드 쓰기는 SELinux가 막는다. 좌표는 세로 기준 SM-P200 화면 픽셀이다.
-- 결과: [Phase 1 Task 2a 측정 결과](../../spikes/bench/results/phase1-task2a/README.md), [Task 2c(잔디 섬 스타일)](../../spikes/bench/results/phase1-task2c/README.md).
+- 결과: [Phase 1 Task 2a 측정 결과](../../spikes/bench/results/phase1-task2a/README.md), [Task 2c(잔디 섬 스타일)](../../spikes/bench/results/phase1-task2c/README.md), [Task 2b(조작)](../../spikes/bench/results/phase1-task2b/README.md).
 
 ## 5. 실험 추가
 
@@ -167,11 +211,13 @@ python3 -I apps/lab3d/tools/device_gesture.py orbit  # orbit | pinch | pinch-fix
 4. 공식을 새로 쓰면 TS 코어 기준 벡터를 `tools/`의 vitest로 만들고 `tests/run_tests.gd`에 parity·공식 일치 검사를 더한다. 문구를 바꿨으면 글꼴 서브셋을 다시 만든다.
 5. `tools/build.sh`로 테스트·APK를 만들고 `bench_device.sh`로 low 60 fps를 확인한다.
 
-`ExperimentRegistry.validate()`가 필수 필드·카메라 모드·조건 형식을 검사하고, 잘못된 실험은 목록에서 빼고 오류를 남긴다.
+`ExperimentRegistry.validate()`가 필수 필드·카메라 모드·조건 형식·`manipulation` 규칙을 검사하고, 잘못된 실험은 목록에서 빼고 오류를 남긴다.
+
+물체를 손으로 옮기게 하려면 JSON에 `manipulation`을 더하고 스크립트에 `manipulation_body`·`manipulation_surface`(필요하면 `manipulation_juice`·`placement_allowed`·`placements`)와 결과 통보를 구현한다(1절 "조작"). 목록에 내지 않을 장면은 `index.json`의 `hidden`에 둔다.
 
 ## 6. 한계
 
-- 조작 평면·스냅·높이 손잡이는 Task 2b다. 한 손가락 입력은 지금 아무 일도 하지 않는다.
+- 조작은 물체를 면에 똑바로 세워 놓는다(면 좌표계 방향). 물체 회전·줄·용수철 연결·도구 팔레트는 Task 5다. 조작 대상의 충돌 모양은 바디의 첫 `CollisionShape3D`(상자·구·원기둥·캡슐, 원점에 놓인 것)로 본다.
 - 공식 보정은 빗면 전용(`friction_corrector.gd`)이다. 일반화와 CI는 Task 3이다.
 - Web export와 iOS는 아직 만들지 않았다.
 - 가로 모드에서는 패널이 조건 카드까지만 한 화면에 보이고 관찰값·그래프는 스크롤해야 한다.

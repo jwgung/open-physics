@@ -23,15 +23,17 @@ const REST_AMPLITUDE := 0.002     # m: a damped ball within this of the rest len
 const REST_SPEED := 0.005         # m/s
 
 var model := SpringModel.new()
-var driver := BodyModelDriver.new()
-var props := SpringProps.new()
 var ball: RigidBody3D
 ## Conditions (64-bit).
 var mass := 1.0
 var damping_id := "none"
 var pull := DEFAULT_PULL          # extension the ball is released from (m)
-var _placed := false
 var _floor: StaticBody3D
+
+
+func _init() -> void:
+	driver = BodyModelDriver.new()
+	props = SpringProps.new()
 
 
 func set_control(id: String, value: Variant) -> void:
@@ -89,14 +91,6 @@ func reset_run() -> void:
 	props.reset()
 	_show()
 	_update_status(true)
-
-
-func _reset_driver() -> void:
-	driver.reset()
-
-
-func _notify_released() -> void:
-	props.released()
 
 
 func _physics_process(_delta: float) -> void:
@@ -229,31 +223,14 @@ func manipulation_juice(id: String) -> ArtJuice:
 	return props.juice if id == "ball" else null
 
 
-## Picked up: a run stops (the ball follows the finger, the coil stretches with it).
-func manipulation_started(id: String) -> void:
-	released = false
-	holding = id
-	_update_status(true)
-
-
 ## Put down = let go: the ball is released from rest at the new pull (a restored placement only
 ## sets the pull).
 func manipulation_placed(_id: String, transform: Transform3D) -> void:
 	holding = ""
 	_placed = true
 	pull = extension_at(transform.origin.x)
-	if _batch > 0:
-		_batch_dirty = true
-		return
-	release()
+	_release_or_defer()
 
 
-func manipulation_cancelled(_id: String) -> void:
-	holding = ""
-	reset_run()
-
-
-func placements() -> Dictionary:
-	if not _placed:
-		return {}
+func _placement_transforms() -> Dictionary:
 	return {"ball": Transform3D(Basis(), Vector3(ANCHOR_X + REST_LENGTH + pull, ROD_Y, 0.0))}

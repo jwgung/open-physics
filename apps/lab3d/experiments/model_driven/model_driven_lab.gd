@@ -1,9 +1,12 @@
 ## Base of the guided labs whose bodies follow a formula model stepped at the fixed step and posed by
 ## a driver (Phase 1 Task 4d: spring, buoyancy, orbit; collision, Task 4c). What they share: the run
 ## state (released, holding, reset_count), the graph bookkeeping, the controls' defaults at start,
-## the release of the run and the free body the driver poses. A lab implements _build_world(),
-## _load_model() / _reset_driver(), _graph_point(), _notify_released(), _main_body(), reset_run()
-## and its own conditions (set_control, run_action, status, observations, manipulation).
+## the release of the run, the free body the driver poses, and the default manipulation hooks (a
+## pick-up stops the run, a cancelled one restarts it, a put-down is the lab's own). A lab sets
+## `driver` and `props` in _init() and implements _build_world(), _load_model(), _graph_point(),
+## _main_body(), reset_run() and its own conditions (set_control, run_action, status, observations,
+## manipulation_placed / _placement_transforms); it overrides _notify_released() or
+## manipulation_started() only where it differs.
 class_name ModelDrivenLab
 extends Experiment
 
@@ -16,6 +19,13 @@ var released := false
 var holding := ""
 ## Run resets (tests).
 var reset_count := 0
+## The lab's driver (set in _init(); BodyModelDriver, CollisionRailDriver): poses its bodies on the
+## model each fixed step and has reset().
+var driver: FormulaCorrector
+## The lab's props (set in _init()): meshes and reactions; they need reset() and released().
+var props: RefCounted
+## A body was put down by hand (or restored): placements() keeps it across a screen rebuild.
+var _placed := false
 ## The graph's points; the lab's _graph_point() decides what one is.
 var _graph: Array = []
 var _graph_revision := 0
@@ -41,7 +51,7 @@ func _load_model() -> void:
 
 ## A new driver run from the model's current state.
 func _reset_driver() -> void:
-	pass
+	driver.reset()
 
 
 ## The graph point of the model now.
@@ -51,7 +61,7 @@ func _graph_point() -> Variant:
 
 ## The lab's props react to the release (stretch, splash ...).
 func _notify_released() -> void:
-	pass
+	props.released()
 
 
 ## The body the "따라가기" camera follows (null = not built yet).
@@ -82,6 +92,38 @@ func release() -> void:
 	_add_graph_point()
 	_notify_released()
 	_update_status(true)
+
+
+## Put down = let go: release from rest now, or, while the screen restores a saved state (a batch),
+## only mark the run for the one restart in end_batch().
+func _release_or_defer() -> void:
+	if _batch > 0:
+		_batch_dirty = true
+		return
+	release()
+
+
+## Picked up: a run stops (the body follows the finger).
+func manipulation_started(id: String) -> void:
+	released = false
+	holding = id
+	_update_status(true)
+
+
+## A pick-up that is cancelled: the run waits at its conditions again.
+func manipulation_cancelled(_id: String) -> void:
+	holding = ""
+	reset_run()
+
+
+## Where the bodies were put down, kept across a screen rebuild (empty until one was).
+func placements() -> Dictionary:
+	return _placement_transforms() if _placed else {}
+
+
+## The put-down bodies' transforms (id -> Transform3D), for placements().
+func _placement_transforms() -> Dictionary:
+	return {}
 
 
 ## Appends the graph point of the model now.

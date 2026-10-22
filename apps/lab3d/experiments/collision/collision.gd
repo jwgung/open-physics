@@ -32,8 +32,6 @@ const HIT_CLOSING_MIN := 0.3            # m/s: a contact that closes more slowly
 const IMPACT_STEPS := 30                # "충돌!" is shown this many steps after a hit (the web's 0.4 s flash)
 
 var model := CollisionModel.new()
-var driver := CollisionRailDriver.new()
-var props := CollisionProps.new()
 var ball_a: RigidBody3D
 var ball_b: RigidBody3D
 var knob_a: StaticBody3D
@@ -51,9 +49,13 @@ var start_b := START_B
 var restitution_override := Vector2(-1.0, -1.0)
 ## Reactions shown (hits at or above HIT_CLOSING_MIN) since the screen opened (tests).
 var hit_reactions := 0
-var _placed := false
 var _floor: StaticBody3D
 var _shown := Vector4.INF                # (ball A x, ball B x, knob A x, knob B x) the arrows were placed for
+
+
+func _init() -> void:
+	driver = CollisionRailDriver.new()
+	props = CollisionProps.new()
 
 
 func set_control(id: String, value: Variant) -> void:
@@ -128,14 +130,6 @@ func reset_run() -> void:
 	props.reset()
 	_show_arrows()
 	_update_status(true)
-
-
-func _reset_driver() -> void:
-	driver.reset()
-
-
-func _notify_released() -> void:
-	props.released()
 
 
 ## (t, pA, pB).
@@ -382,14 +376,7 @@ func manipulation_placed(id: String, transform: Transform3D) -> void:
 	_restart()
 
 
-func manipulation_cancelled(_id: String) -> void:
-	holding = ""
-	reset_run()
-
-
 ## The start positions once a ball was moved (kept across a screen rebuild; the velocities are
 ## controls and come back with them).
-func placements() -> Dictionary:
-	if not _placed:
-		return {}
+func _placement_transforms() -> Dictionary:
 	return {"ball_a": Transform3D(Basis(), Vector3(start_a, RADIUS_A, 0.0)), "ball_b": Transform3D(Basis(), Vector3(start_b, RADIUS_B, 0.0))}

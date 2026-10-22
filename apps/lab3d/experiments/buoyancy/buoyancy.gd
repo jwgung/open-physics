@@ -24,18 +24,20 @@ const SPLASH_SPEED := 0.5         # m/s: a slower entry into the water gets no s
 const FLOOR_HIT_SPEED := 0.3      # m/s: a slower floor contact gets no bump
 
 var model := BuoyancyModel.new()
-var driver := BodyModelDriver.new()
-var props := BuoyancyProps.new()
 var drum: RigidBody3D
 ## Conditions (64-bit).
 var mass := 70.0
 var volume_id := "big"
 var start_bottom := WATERLINE + START_ABOVE   # height of the drum's bottom it is released from (m)
 var splashes := 0
-var _placed := false
 var _floor: StaticBody3D
 var _tank_floor: StaticBody3D
 var _shape: CylinderShape3D
+
+
+func _init() -> void:
+	driver = BodyModelDriver.new()
+	props = BuoyancyProps.new()
 
 
 func set_control(id: String, value: Variant) -> void:
@@ -110,14 +112,6 @@ func reset_run() -> void:
 	_clear_run()
 	props.reset()
 	_update_status(true)
-
-
-func _reset_driver() -> void:
-	driver.reset()
-
-
-func _notify_released() -> void:
-	props.released()
 
 
 ## (t, submerged depth).
@@ -268,29 +262,13 @@ func manipulation_juice(id: String) -> ArtJuice:
 	return props.juice if id == "drum" else null
 
 
-func manipulation_started(id: String) -> void:
-	released = false
-	holding = id
-	_update_status(true)
-
-
 ## Put down = let go: released from rest there (a restored placement only sets the height).
 func manipulation_placed(_id: String, transform: Transform3D) -> void:
 	holding = ""
 	_placed = true
 	start_bottom = bottom_at(transform.origin.y)
-	if _batch > 0:
-		_batch_dirty = true
-		return
-	release()
+	_release_or_defer()
 
 
-func manipulation_cancelled(_id: String) -> void:
-	holding = ""
-	reset_run()
-
-
-func placements() -> Dictionary:
-	if not _placed:
-		return {}
+func _placement_transforms() -> Dictionary:
 	return {"drum": Transform3D(Basis(), Vector3(0.0, start_bottom + drum_height() * 0.5, 0.0))}

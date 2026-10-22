@@ -28,8 +28,6 @@ const KNOB_LAYER := 2
 const PLANET_LAYER := 3
 
 var model := OrbitModel.new()
-var driver := BodyModelDriver.new()
-var props := OrbitProps.new()
 var planet: RigidBody3D
 var knob: StaticBody3D
 ## Conditions (64-bit): start radius (m), launch speed (m/s), direction (deg from outwards,
@@ -45,6 +43,11 @@ var _preview := PackedFloat64Array()   # (direction, speed, radius) the held pre
 var _chosen := PackedFloat64Array([0.0, 0.0])   # (direction, speed) the waiting arrow shows (reused every frame)
 var _surface: OrbitArrowSurface
 var _surface_at := Vector3.INF         # planet position the cached surface was built for
+
+
+func _init() -> void:
+	driver = BodyModelDriver.new()
+	props = OrbitProps.new()
 
 
 func set_control(id: String, value: Variant) -> void:
@@ -116,10 +119,6 @@ func reset_run() -> void:
 ## Launches the planet (a flight in progress starts again from the start).
 func launch() -> void:
 	release()
-
-
-func _reset_driver() -> void:
-	driver.reset()
 
 
 func _notify_released() -> void:
@@ -309,10 +308,8 @@ func manipulation_juice(id: String) -> ArtJuice:
 
 ## Picked up: a flight stops (a planet picked up in flight jumps under the finger onto its start line).
 func manipulation_started(id: String) -> void:
-	released = false
 	props.hide_gravity()
-	holding = id
-	_update_status(true)
+	super(id)
 
 
 func manipulation_placed(id: String, transform: Transform3D) -> void:
@@ -326,7 +323,3 @@ func manipulation_placed(id: String, transform: Transform3D) -> void:
 			speed = chosen[1]
 	_restart()
 
-
-func manipulation_cancelled(_id: String) -> void:
-	holding = ""
-	reset_run()

@@ -1,0 +1,9 @@
+config_version=5
+[application]
+config/name="jolt-probes"
+[physics]
+3d/physics_engine="Jolt Physics"
+3d/default_gravity=9.81
+3d/default_linear_damp=0.0
+3d/default_angular_damp=0.0
+common/physics_ticks_per_second=60

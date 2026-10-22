@@ -1,6 +1,6 @@
 # Open Physics 3D (apps/lab3d)
 
-역학 3D 실험 앱이다. Godot 4.7.2 + Jolt, GDScript. Phase 1 Task 2a에서 셸 뼈대(실험 등록, 카메라·제스처, 2D 패널, 품질 설정)와 첫 실험(빗면 마찰)을 만들었고, Task 2c에서 시각 스타일(잔디 섬: 선명한 원색, 각진 로우폴리, 하늘에 뜬 잔디 섬)과 연출을 정했다. Task 2b에서 한 손가락으로 물체를 집어 정해진 면 위로 옮기는 조작(조작 평면·스냅·높이 손잡이·보조 시점)을 더했다. 기준은 [아트 디렉션](docs/art-direction.md)이다. 계획과 진행은 [Phase 1 문서](../../docs/3d-phase1/README.md), 스택 결정은 [ADR 0001](../../docs/adr/0001-3d-app-stack.md)에 있다.
+역학 3D 실험 앱이다. Godot 4.7.2 + Jolt, GDScript. Phase 1 Task 2a에서 셸 뼈대(실험 등록, 카메라·제스처, 2D 패널, 품질 설정)와 첫 실험(빗면 마찰)을 만들었고, Task 2c에서 시각 스타일(잔디 섬: 선명한 원색, 각진 로우폴리, 하늘에 뜬 잔디 섬)과 연출을 정했다. Task 2b에서 한 손가락으로 물체를 집어 정해진 면 위로 옮기는 조작(조작 평면·스냅·높이 손잡이·보조 시점)을 더했다. Task 3에서 역학 안내형 10개 실험이 쓸 공식 보정 계층(`scripts/formula/`)과 TS↔GDScript parity, CI를 만들었다([공식 보정](docs/formula-correction.md)). 기준은 [아트 디렉션](docs/art-direction.md)이다. 계획과 진행은 [Phase 1 문서](../../docs/3d-phase1/README.md), 스택 결정은 [ADR 0001](../../docs/adr/0001-3d-app-stack.md)에 있다.
 
 - Android: arm64-v8a release APK(디버그 키스토어 서명, 배포용 아님). 렌더러는 품질 단계가 정한다(low = Compatibility, medium·high = Mobile).
 - 모든 작업은 헤드리스 CLI(`godot --headless`)로 한다. 에디터 GUI를 쓰지 않는다.
@@ -12,7 +12,8 @@
 apps/lab3d/
   project.godot, export_presets.cfg   Jolt, 60 Hz 고정 스텝, 짧은 변 720 UI 단위, 방향 sensor, Android export
   scenes/main.tscn                    App(루트 Control)
-  scripts/core/                       autoload Quality(품질 단계)·Bench(OPBENCH/OPPERF), PhysicsLaws(TS 공식 포트)
+  scripts/core/                       autoload Quality(품질 단계)·Bench(OPBENCH/OPPERF), PhysicsLaws(TS 공식 포트, 10개 실험)
+  scripts/formula/                    공식 보정 계층: FormulaCorrector(공통)·FormulaBody·FormulaDriver, 방식별 보정기
   scripts/app/                        App(화면 전환·fps 표시), 목록·설정 화면, UiTheme(섬 스타일 2D), Ui(위젯 헬퍼),
                                       IslandBanner(목록 머리 그림)
   scripts/art/                        셸 공용 아트: ArtPalette, ArtMeshBuilder(로우폴리 메시), art_lit 셰이더(구운 조명),
@@ -20,7 +21,7 @@ apps/lab3d/
   scripts/shell/                      Experiment(실험 기반 클래스), ExperimentRegistry, ExperimentScreen,
                                       View3D(3D 뷰·제스처), CameraRig(카메라 6모드·보조 시점), GraphView,
                                       Manipulator(물체 조작), ManipSurface(조작 평면)
-  experiments/incline_friction/       빗면 마찰 실험(장면·공식 보정 계층, InclineProps 소품)
+  experiments/incline_friction/       빗면 마찰 실험(장면, InclineFrictionCorrector = 접촉 힘 보정 설정, InclineProps 소품)
   experiments/manipulation_dev/       조작 확인용 개발 장면(목록에 없음, --experiment=manipulation-dev)
   content/experiments/                실험 콘텐츠 JSON(index.json + 실험별 파일)
   assets/fonts/                       Noto Sans CJK KR 서브셋(Regular·Bold, SIL OFL 1.1)
@@ -28,6 +29,7 @@ apps/lab3d/
   tools/                              빌드·글꼴·벡터 생성·실기기 측정·제스처 도구
   docs/ui-resolution.md               low 단계 UI 해상도 방식 결정과 측정 근거
   docs/art-direction.md               스타일 가이드(팔레트, 형태, 조명, 연출, 성능 예산, 새 실험 소품)
+  docs/formula-correction.md          공식 보정: Jolt 조사, 보정 방식, 실험 10개 표, 테스트 파이프라인
 ```
 
 화면 흐름은 실험 목록 → 실험 화면이고, 두 화면 모두 위쪽 `설정`에서 품질 설정 화면으로 간다. Android 뒤로 가기는 실험 → 목록 → 종료 순서다. 실험 화면에서 설정을 열어도 실험 화면은 해제되지 않고 보관돼, 돌아오면 각도·재질·놓기 상태·카메라가 그대로다. 같은 렌더러에서 품질(medium ↔ high)을 바꾸면 3D 뷰를 다시 만들며 이때는 조건 값과 카메라만 유지한다. 렌더러가 바뀌는 재시작은 앱이 다시 뜨므로 실험 화면 상태는 유지되지 않고 설정 화면으로 돌아온다. 실행 인자(`--ctl-*`, `--camera` 등)는 `--experiment`로 연 실험 화면에만 적용한다.
@@ -46,6 +48,21 @@ apps/lab3d/
 | 한 손가락 조작: 집기·끌기·스냅·미리보기·높이 손잡이·취소·보조 시점(`Manipulator`) | JSON `manipulation`의 규칙, `manipulation_body`·`manipulation_surface`·`manipulation_juice`, 결과 통보(`manipulation_started`·`_placed`·`_cancelled`), 추가 규칙 `placement_allowed`, 화면 재구성 때 유지할 `placements()` |
 
 콘텐츠(문구·조건·관찰값·그래프·시점)는 JSON 데이터다. Task 4에서 웹 2D와 같은 파일을 공유할 수 있게 코드와 분리했다.
+
+### 공식 보정 계층 (Task 3)
+
+안내형 실험의 핵심 운동과 화면 수치를 TS 공식 코어에 맞추는 공용 계층이다. 실험은 보정 방식 하나를 골라 보정기를 붙이고, 화면 숫자는 보정기의 `formula_values()`(또는 `PhysicsLaws`)에서만 가져온다. 엔진 측정값(`engine_values()`, `samples`)은 "(시뮬레이션)" 표시와 그래프 측정 점에만 쓴다. 보정은 고정 스텝마다 물리 서버 스텝 **전**(`_physics_process`)에 한다. 근거와 실험별 표는 [docs/formula-correction.md](docs/formula-correction.md).
+
+| 방식 | 보정기 | 실험 |
+|---|---|---|
+| 접촉 힘 보정 | `ContactFrictionCorrector`(빗면은 `InclineFrictionCorrector`) | 마찰(밀기), 빗면 |
+| 균일장 출발 보정 | `UniformFieldCorrector` | 자유 낙하, 던지기 |
+| 충돌 결과 보정 | `CollisionCorrector` | 충돌 |
+| 공식 힘 주입 | `SpringInjector`, `BuoyancyInjector`, `PointGravityInjector` | 용수철, 부력, 궤도 |
+| 해석 모델 구동 | `PendulumModelDriver`, `LeverModelDriver`, `PulleyModelDriver` | 줄·막대(진자), 지렛대, 도르래 |
+
+- 한 바디 보정기는 바디를 `FormulaBody`로 만들고 `body.corrector`에 넣는다. 여러 바디를 다루는 보정기(충돌, 모델 구동)는 `FormulaDriver`의 `correctors`에 넣고 `running`을 켠다.
+- 실행 순서: 놓는 스텝에 같은 `_physics_process`에서 보정이 시작된다. 그래서 놓기·리셋은 실험의 `_physics_process`나 그 전에 한다(빗면 `release()`와 같다).
 
 ### 카메라와 제스처
 
@@ -164,7 +181,7 @@ adb shell am start -n org.openphysics.lab3d/com.godot.game.GodotAppLauncher \
 apps/lab3d/tools/build.sh          # all: import → 헤드리스 테스트 → APK
 apps/lab3d/tools/build.sh test     # 헤드리스 테스트만 (exports/test.log)
 apps/lab3d/tools/build.sh android  # exports/android/open-physics-lab3d.apk (약 27 MB)
-npm test                           # 루트: TS 테스트 + apps/lab3d/tools/incline-vectors.test.ts
+npm test                           # 루트: TS 테스트 + apps/lab3d/tools/{incline,formula}-vectors.test.ts
 ```
 
 | 테스트 | 위치 | 확인하는 것 |
@@ -175,12 +192,33 @@ npm test                           # 루트: TS 테스트 + apps/lab3d/tools/inc
 | 아트는 보이는 것만 | `tests/run_tests.gd` | 아트가 충돌 객체를 더하지 않음, 연출은 상자 메시만 바꾸고 충돌 모양은 그대로, 연출을 끈 실행과 운동·그래프·표시 값이 같음, 카메라 착지 반응이 모드·목표를 바꾸지 않음 |
 | 셸 | `tests/run_tests.gd` | 레지스트리 검증, 글꼴 서브셋이 쓰는 글자를 모두 포함, 카메라 모드 전환·제한·정면으로·따라가기, 제스처 분류(한 손가락은 카메라 불변), 세로·가로 레이아웃 |
 | 조작 | `tests/manipulation_checks.gd`(`run_tests.gd`가 부름) | 투영(바로 아래, 물체 중심 높이, 스치는 광선·뒤쪽 광선은 무시, 선 위 가장 가까운 점), 격자 스냅·영역·여유 0.6 m, 레지스트리의 `manipulation` 검사와 숨은 개발 장면, 보조 시점(필요할 때만 돌고 되돌아옴, 따라가기 대상 고정). 실제 입력 경로(View3D 터치 → Manipulator → 실험)로: 빗면 끌어 놓기·0.5 m 눈금 스냅·놓을 수 없는 곳(남색 표시·흔들림·제자리 복귀)·두 번째 손가락과 시스템 취소·마우스·미끄러지는 상자 집기·조작 중 조건 변경·화면 재구성 유지. 개발 장면: 바닥 격자, 높이 손잡이(높이만, 0.25 m 단위), 높이 조작 중 두 손가락 취소, 다른 상자·블록과 겹침 금지, 블록 위 높이에 놓기, 영역 밖 금지, 빈 곳 탭으로 선택 해제, 떨어뜨리기. 리뷰 반영: 착지한 상자를 끌어 놓은 뒤 다시 착지 반응, 자동 놓기 타이머의 조작 취소, 높이 상한 초과 금지, 액션 때 손잡이 숨김, 떨어지는 상자 미저장, 손잡이 막대 기준 높이 끌기, 조작 중 사용자가 돌린 시점 유지, 보조 시점 탐색 횟수. 3차 리뷰 반영: 블록 위 상자 집기 높이 유지, 첫 목표가 막힌 곳이면 흔들지 않음, 눈금=스냅 격자·규칙 한 곳에서 읽기, 캡슐 축소, 놓기·취소 때 패널 갱신 1회, 데모 후속 액션 선언 |
+| 공식 벡터 생성·감시 (Task 3) | `tools/formula-vectors.test.ts`(루트 `npm test`) | TS 코어 함수·클래스(`src/physics/laws`, `world.ts` 충돌, `PendulumModel`, `Lever`·`Pulley`·`OrbitChallenge`)로 10개 실험의 법칙 사례 583개와 대표 장면 목표값을 만들어 `tests/formula_vectors.json`과 비교. 10개 실험이 모두 법칙을 갖는지 |
+| 공식 parity (Task 3) | `tests/formula_checks.gd`(`run_tests.gd`가 부름) | 실험마다 그 실험이 쓰는 `PhysicsLaws` 함수가 벡터와 상대 오차 1e-9 이내(측정 최대 3e-13), 벡터의 법칙에 포트가 모두 있음 |
+| 보정 방식별 대표 장면 (Task 3) | `tests/formula_checks.gd` | 실제 Jolt 바디로: 자유 낙하·던지기 위치 = ½at²(≤ 1e-4 m, 질량 무관), 밀기 정지·s(t), 던지기·테이블 가장자리 출발 접촉은 착지 아님, 표시 공식은 엔진 장(달 중력·기울어진 장), 접촉 모니터가 꺼져 있어도 착지, 탄성·고무 충돌 뒤 속도(재질 반발 0·0.88, 느린 접근, 깊은 겹침, 중력 하 공중 충돌)·운동량, 충돌 보정이 재질·바닥 반발을 바꾸지 않음, 벽에 튕기는 옆 공·`apply_central_force` 접근·눌린 쌍·세 공 동시 접촉은 충돌 아님, 접촉 중 `apply_*` 힘 유지, 용수철 주기 ±0.1%·에너지 ±0.5%·감쇠 시 현재 상태 에너지·출발 속도 포함 전체 에너지, 원 궤도 주기·반지름 ±0.1%, 부력 평형 깊이 ±0.5%·가라앉음·중성 판정, 진자 각도 = TS 모델(≤ 1e-5 rad, 기본 감쇠 포함)·길이·주기·다른 바디 밀기, 도르래 높이·힘, 지렛대 들림. 기준은 [공식 보정 4절](docs/formula-correction.md#4-실험별-보정-방식) |
 | 새 출발 위치의 표시 수치 | `tools/incline-vectors.test.ts` → `tests/incline_vectors.json` `runs`, `manipulation_checks.gd` | 재질·각도·출발 위치 4가지(1–6 m)에서 s(t) ±1%, 표시 `이동 거리`가 출발점에서 빗면 끝까지 거리에서 멈춤, 공식 곡선이 그 거리에서 끝남, 상자가 빗면을 떠나는 시각이 TS 공식 √(2L/a)와 3 step 안 |
 
-- TS 공식을 바꾸면 vitest가 먼저 깨진다. `UPDATE_INCLINE_VECTORS=1 npx vitest run apps/lab3d`로 벡터를 다시 만든 뒤 Godot 테스트로 GDScript 쪽 불일치를 확인한다.
+- TS 공식을 바꾸면 vitest가 먼저 깨진다. `UPDATE_INCLINE_VECTORS=1 UPDATE_FORMULA_VECTORS=1 npx vitest run apps/lab3d`로 벡터를 다시 만든 뒤 Godot 테스트로 GDScript 쪽 불일치를 확인한다.
 - UI 문구를 바꾸면 `apps/lab3d/tools/subset_font.sh`로 글꼴을 다시 만든다(fonttools가 없으면 `uvx`로 실행). 빠진 글자는 테스트가 잡는다. Noto Sans CJK에 없는 아래·위 첨자(ₛ, ₖ, ⁻¹)는 쓰지 않는다.
-- `build.sh test`는 `SCRIPT ERROR`(스크립트 컴파일·실행 오류)가 로그에 있으면 PASS여도 실패로 본다.
+- `build.sh test`(앱·스파이크 둘 다)는 `SCRIPT ERROR`(스크립트 컴파일·실행 오류)나 `ERROR`로 시작하는 줄이 로그에 있으면 PASS여도 실패로 본다. 코루틴 안 오류로 멈춘 실행은 `GODOT_TEST_TIMEOUT`(기본 900초) 뒤 실패한다. Godot 경로는 `GODOT`로 바꾼다(기본 `~/.local/share/godot-spike/godot`).
 - `-s`로 실행하는 테스트에서는 autoload 이름이 컴파일 시점에 없어서, `Quality`·`Bench`를 쓰는 스크립트는 테스트에서 `load()`로 불러 쓴다.
+
+### 테스트와 CI
+
+`.github/workflows/ci.yml`이 모든 PR과 dev·main push에서 돌고, 수동 실행(workflow_dispatch)도 된다(Pages 배포 `pages.yml`은 따로). checkout은 토큰을 남기지 않는다(`persist-credentials: false`). Jolt 조사용 `spikes/jolt-probes/`는 CI에 넣지 않았고 `run.sh`로 수동 실행한다.
+
+| 잡 | 단계 |
+|---|---|
+| `node` | `npm ci` → `npm test`(웹·공식 코어·3D 벡터) → `npm run test:spikes` → `npm run build` |
+| `godot` | 공식 릴리스 `Godot_v4.7.2-stable_linux.x86_64.zip`을 `.github/scripts/install-godot.sh`로 내려받아 SHA-512(릴리스 `SHA512-SUMS.txt` 값, 스크립트에 고정)를 검증·압축 해제 → `apps/lab3d/tools/build.sh test` → `spikes/godot/tools/build.sh test`. zip만 `actions/cache`에 두고 매번 다시 검증한다. 실패하면 두 `exports/test.log`를 아티팩트로 올린다 |
+
+로컬에서 같은 단계를 재현한다(작업 트리를 건드리지 않게 깨끗한 사본에서):
+
+```bash
+mkdir -p /tmp/ci-ws && git archive HEAD | tar -x -C /tmp/ci-ws && cd /tmp/ci-ws
+npm ci && npm test && npm run test:spikes && npm run build
+export GODOT=$(.github/scripts/install-godot.sh "$PWD/.godot-bin")
+apps/lab3d/tools/build.sh test && spikes/godot/tools/build.sh test
+```
 
 ## 4. 실기기 측정과 확인
 
@@ -210,7 +248,7 @@ python3 -I apps/lab3d/tools/device_gesture.py orbit  # orbit | pinch | pinch-fix
    - `graph`: `title`, `x`(`label`·`unit`·`max`), `y`(`label`·`unit`·`min_max`), `series`(`id`·`label`·`color`·`style: line|points`)
 2. `content/experiments/index.json`의 `experiments`에 파일 이름을 더한다. 목록 화면은 이 순서와 `category`로 묶어 보여준다.
 3. `experiments/<이름>/<이름>.gd`에 `extends Experiment` 스크립트를 만든다. `_ready()`에서 3D 월드를 만들고 `definition.controls`의 기본값으로 `set_control()`을 부른다. 보이는 소품·환경·연출은 `<이름>_props.gd`로 나눠 [아트 디렉션 9절](docs/art-direction.md#9-새-실험-소품-만드는-법)을 따른다. 화면 숫자는 공식(`PhysicsLaws`)에서 내고, 엔진 측정값은 따로 표시한다(공식 보정 원칙, [CONTEXT](../../CONTEXT.md)).
-4. 공식을 새로 쓰면 TS 코어 기준 벡터를 `tools/`의 vitest로 만들고 `tests/run_tests.gd`에 parity·공식 일치 검사를 더한다. 문구를 바꿨으면 글꼴 서브셋을 다시 만든다.
+4. 움직임은 [공식 보정](docs/formula-correction.md) 4절 표의 방식으로 보정한다(보정기를 붙이고 화면 숫자는 `formula_values()`에서). 새 법칙은 `tools/formula-vectors.test.ts`의 실험 그룹에 TS 사례를 더하고 `PhysicsLaws`에 포트한다(parity는 자동). 문구를 바꿨으면 글꼴 서브셋을 다시 만든다.
 5. `tools/build.sh`로 테스트·APK를 만들고 `bench_device.sh`로 low 60 fps를 확인한다.
 
 `ExperimentRegistry.validate()`가 필수 필드·카메라 모드·조건 형식·`manipulation` 규칙을 검사하고, 잘못된 실험은 목록에서 빼고 오류를 남긴다.
@@ -220,6 +258,6 @@ python3 -I apps/lab3d/tools/device_gesture.py orbit  # orbit | pinch | pinch-fix
 ## 6. 한계
 
 - 조작은 물체를 면에 똑바로 세워 놓는다(면 좌표계 방향). 물체 회전·줄·용수철 연결·도구 팔레트는 Task 5다. 조작 대상의 충돌 모양은 바디의 첫 `CollisionShape3D`(상자·구·원기둥·캡슐, 원점에 놓인 것)로 본다.
-- 공식 보정은 빗면 전용(`friction_corrector.gd`)이다. 일반화와 CI는 Task 3이다.
+- 공식 보정 계층은 알려진 면 하나 위의 마찰, 알려진 두 구의 충돌, 실험이 정한 힘·모델만 다룬다. 빈 실험실(Task 5)의 일반 다접촉 마찰·조인트는 따로 설계한다([공식 보정 2절 한계](docs/formula-correction.md#한계)).
 - Web export와 iOS는 아직 만들지 않았다.
 - 가로 모드에서는 패널이 조건 카드까지만 한 화면에 보이고 관찰값·그래프는 스크롤해야 한다.

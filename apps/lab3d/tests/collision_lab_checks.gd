@@ -321,6 +321,15 @@ func check_conditions() -> void:
 	expect.call(moved and back and float(shown.p_before) == 3.0 * 3.4 + 2.0 * -1.7 and lab.model.restitution_b == 0.08 and lab.material_a == "rubber"
 		and float(shown2.before_b) == 0.0 and shown2.after_a == "—" and lab.status() == "ready",
 		"collision: mass, material and velocity change the conditions and put the balls back; unknown ids are ignored", str(shown2.p_before))
+	# Every panel value is the formula model's: no "simulation" reading of the posed engine balls.
+	var ids: Array = []
+	for item in lab.definition.get("observations", []):
+		ids.append(item.id)
+	var labels_ok := true
+	for item in lab.definition.get("observations", []):
+		labels_ok = labels_ok and not str(item.label).contains("시뮬레이션")
+	expect.call(labels_ok and not shown2.has("measured") and ids.size() == shown2.size() and ids.all(func(id): return shown2.has(id)),
+		"collision: the panel shows only formula-model values (no 'simulation' reading of the posed engine balls)", "%d values" % ids.size())
 	await _free(lab)
 
 

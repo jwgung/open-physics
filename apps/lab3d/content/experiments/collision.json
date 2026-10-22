@@ -73,8 +73,7 @@
     { "id": "impulse_a", "label": "A가 받은 충격량 J = Δp", "unit": "N·s", "digits": 2 },
     { "id": "impulse_b", "label": "B가 받은 충격량", "unit": "N·s", "digits": 2 },
     { "id": "k_before", "label": "운동 에너지 합 · 충돌 전", "unit": "J", "digits": 2 },
-    { "id": "k_after", "label": "운동 에너지 합 · 충돌 뒤", "unit": "J", "digits": 2 },
-    { "id": "measured", "label": "지금 운동량 합 (시뮬레이션)", "unit": "kg·m/s", "digits": 2 }
+    { "id": "k_after", "label": "운동 에너지 합 · 충돌 뒤", "unit": "J", "digits": 2 }
   ],
   "manipulation": {
     "objects": [

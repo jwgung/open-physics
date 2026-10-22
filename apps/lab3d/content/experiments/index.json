@@ -1,6 +1,8 @@
 {
   "version": 1,
   "experiments": [
+    "free-fall.json",
+    "projectile.json",
     "incline-friction.json"
   ],
   "hidden": [

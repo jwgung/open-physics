@@ -404,7 +404,7 @@ func _sync_control(id: String) -> void:
 			for option in control.options:
 				widgets.buttons[option.id].set_pressed_no_signal(option.id == value)
 				if option.id == value:
-					var note: String = control.get("note", "")
+					var note: String = option.get("note", control.get("note", ""))   # an option may explain itself (gravity: g)
 					if option.has("mu_s"):
 						note = "μs = %.2f · μk = %.2f   %s" % [option.mu_s, option.mu_k, note]
 					widgets.note.text = note
@@ -435,14 +435,19 @@ func _build_graph() -> Control:
 	_graph = GraphView.new()
 	_graph.spec = spec
 	parts[1].add_child(_graph)
-	var legend := Ui.hbox(16)
+	# Wraps when the series do not fit on one line (free fall: three balls + the simulation).
+	var legend := HFlowContainer.new()
+	legend.add_theme_constant_override("h_separation", 16)
+	legend.add_theme_constant_override("v_separation", 6)
 	for entry in spec.series:
 		var swatch := ColorRect.new()
 		swatch.color = Color(entry.color)
 		swatch.custom_minimum_size = Vector2(14, 14)
 		swatch.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-		legend.add_child(swatch)
-		legend.add_child(Ui.label(entry.label, "MutedLabel"))
+		var item := Ui.hbox(8)
+		item.add_child(swatch)
+		item.add_child(Ui.label(entry.label, "MutedLabel"))
+		legend.add_child(item)
 	parts[1].add_child(legend)
 	var y_spec: Dictionary = spec.get("y", {})
 	parts[1].add_child(Ui.label("세로: %s (%s)" % [y_spec.get("label", ""), y_spec.get("unit", "")], "MutedLabel"))

@@ -11,6 +11,8 @@
 ##    height handle/overlap through the real input path, displayed numbers after a new start.
 ## 5. formula correction layer (Task 3, tests/formula_checks.gd): PhysicsLaws parity for the 10
 ##    guided mechanics experiments and one representative Jolt scene per correction method.
+## 6. uniform-field labs (Task 4a, tests/uniform_lab_checks.gd): free fall and projectile displays and
+##    motion against the TS-core vectors (tests/uniform_labs_vectors.json), art, manipulation.
 ## Times are engine fixed steps (60 Hz), independent of rendering FPS.
 extends SceneTree
 
@@ -74,6 +76,11 @@ func _run() -> void:
 	_expect(formula != null and formula.can_instantiate(), "formula checks compile", "")
 	if formula != null and formula.can_instantiate():
 		await formula.new(self, _expect).run()
+	print("== uniform-field labs (Task 4a): free fall, projectile ==")
+	var uniform: GDScript = load("res://tests/uniform_lab_checks.gd")
+	_expect(uniform != null and uniform.can_instantiate(), "uniform lab checks compile", "")
+	if uniform != null and uniform.can_instantiate():
+		await uniform.new(self, _expect).run()
 	print("RESULT: %s (%d failure(s))" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
 

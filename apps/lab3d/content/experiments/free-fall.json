@@ -1,0 +1,83 @@
+{
+  "id": "free-fall",
+  "version": 1,
+  "content": "free-fall",
+  "scene": "res://experiments/free_fall/free_fall.gd",
+  "bench_id": "FF",
+  "camera": {
+    "target": [0.0, 2.7, 0.0],
+    "distance": 11.5,
+    "distance_range": [3.0, 22.0],
+    "yaw_range_deg": [-100.0, 100.0],
+    "pitch_range_deg": [-89.0, -2.0],
+    "pan_radius": 5.0,
+    "default_mode": "three_quarter",
+    "views": {
+      "front": { "yaw_deg": 0.0, "pitch_deg": -4.0, "distance": 12.0 },
+      "three_quarter": { "yaw_deg": 30.0, "pitch_deg": -20.0 },
+      "top": { "yaw_deg": 0.0, "pitch_deg": -89.0, "distance": 9.0 },
+      "side": { "yaw_deg": 90.0, "pitch_deg": -6.0, "distance": 11.0 },
+      "follow": { "yaw_deg": 25.0, "pitch_deg": -15.0, "distance": 5.0 }
+    }
+  },
+  "controls": [
+    {
+      "id": "gravity", "type": "choice", "label": "중력", "default": "earth",
+      "options": [
+        { "id": "zero", "label": "무중력", "g": 0.0, "note": "무중력 · 0× · g = 0 m/s²" },
+        { "id": "moon", "label": "달", "g": 1.62, "note": "달 · 0.17× · g = 1.62 m/s²" },
+        { "id": "earth", "label": "지구", "g": 9.81, "note": "지구 · 1× · g = 9.81 m/s²" },
+        { "id": "jupiter", "label": "목성", "g": 24.79, "note": "목성 · 2.53× · g = 24.79 m/s²" }
+      ]
+    },
+    {
+      "id": "height", "type": "slider", "label": "세 공의 출발 높이", "unit": "m",
+      "min": 0.5, "max": 8.0, "step": 0.5, "default": 5.0, "digits": 1
+    },
+    {
+      "id": "mass", "type": "choice", "label": "빨간 공 무게", "default": "heavy",
+      "options": [
+        { "id": "light", "label": "가벼움", "kg": 0.5, "note": "빨간 공 0.5 kg · 주황 공 1 kg · 분홍 공 0.5 kg" },
+        { "id": "normal", "label": "보통", "kg": 1.0, "note": "빨간 공 1 kg · 주황 공 1 kg · 분홍 공 0.5 kg" },
+        { "id": "heavy", "label": "무거움", "kg": 3.0, "note": "빨간 공 3 kg · 주황 공 1 kg · 분홍 공 0.5 kg" }
+      ]
+    }
+  ],
+  "actions": [
+    { "id": "release", "label": "공 놓기", "style": "primary" },
+    { "id": "reset", "label": "처음으로" }
+  ],
+  "observations": [
+    { "id": "g", "label": "중력 가속도 g", "unit": "m/s²", "digits": 2 },
+    { "id": "time", "label": "놓은 뒤 시간 t", "unit": "s", "digits": 2 },
+    { "id": "state", "label": "공 상태" },
+    { "id": "fall_time", "label": "빨간 공이 바닥까지 √(2h₀/g)", "unit": "s", "digits": 2 },
+    { "id": "height_red", "label": "빨간 공 높이 h", "unit": "m", "digits": 2 },
+    { "id": "height_orange", "label": "주황 공 높이", "unit": "m", "digits": 2 },
+    { "id": "height_pink", "label": "분홍 공 높이", "unit": "m", "digits": 2 },
+    { "id": "speed", "label": "빨간 공 속력 v = gt", "unit": "m/s", "digits": 2 },
+    { "id": "momentum", "label": "빨간 공 운동량 p = mv", "unit": "kg·m/s", "digits": 2 },
+    { "id": "kinetic", "label": "빨간 공 운동 에너지 ½mv²", "unit": "J", "digits": 1 },
+    { "id": "potential", "label": "빨간 공 위치 에너지 mgh", "unit": "J", "digits": 1 },
+    { "id": "landing", "label": "바닥에 닿은 시각 (시뮬레이션)" }
+  ],
+  "graph": {
+    "title": "바닥까지 남은 높이",
+    "x": { "label": "시간 t", "unit": "s", "max": 3.0 },
+    "y": { "label": "높이 h", "unit": "m", "min_max": 1.0 },
+    "series": [
+      { "id": "pink", "label": "분홍 공", "color": "#ff4fa3", "style": "line" },
+      { "id": "orange", "label": "주황 공", "color": "#ff7a1a", "style": "line" },
+      { "id": "red", "label": "빨간 공", "color": "#ff3b3b", "style": "line" },
+      { "id": "measured", "label": "시뮬레이션", "color": "#1b2a4a", "style": "points" }
+    ]
+  },
+  "manipulation": {
+    "objects": [
+      { "id": "red", "surface": "line", "snap": 0.5, "height": { "max": 8.0, "step": 0.5 } },
+      { "id": "orange", "surface": "line", "snap": 0.5, "height": { "max": 8.0, "step": 0.5 } },
+      { "id": "pink", "surface": "line", "snap": 0.5, "height": { "max": 8.0, "step": 0.5 } }
+    ],
+    "demo_action": "release"
+  }
+}

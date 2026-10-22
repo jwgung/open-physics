@@ -26,6 +26,8 @@ const RED_TOP := Color("ff5a4f")
 const BLUE := Color("2d7cf6")
 const BLUE_DARK := Color("1f62d6")
 const WHITE := Color("ffffff")
+const PURPLE := Color("7a5cf0")       # velocity arrow (the web's purple arrow: projectile)
+const PURPLE_TOP := Color("9479ff")
 
 # Lighting (art_lit.gdshader) and contact
 const LIGHT := Color("ffffff")        # lit side multiplier

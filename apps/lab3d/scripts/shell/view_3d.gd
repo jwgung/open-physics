@@ -34,6 +34,8 @@ var _gesture_pair: Array = []      # touch indices of the two fingers the gestur
 var _pair_dragged: Dictionary = {} # pair finger index -> true once it dragged while "pending"
 var _twist_total := 0.0            # signed twist (rad) since the gesture reference was taken
 var _mouse_mode := ""              # "", "orbit", "pan"
+var _mouse_drag := false           # left button held (the mouse is acting as the single pointer)
+var _mouse_position := Vector2.ZERO
 
 
 func _init() -> void:
@@ -67,10 +69,14 @@ func _notification(what: int) -> void:
 
 
 ## Forgets every finger / mouse button state (the view left the tree or lost focus, so releases
-## may never arrive). A single finger that was manipulating an object is reported as cancelled.
+## may never arrive). A single finger (or the left mouse button) that was manipulating an object
+## is reported as cancelled.
 func reset_input() -> void:
 	if _touches.size() == 1 and _gesture == "":
 		single_pointer.emit("cancel", _touches.values()[0])
+	elif _mouse_drag:
+		single_pointer.emit("cancel", _mouse_position)
+	_mouse_drag = false
 	_touches.clear()
 	_gesture = ""
 	_gesture_pair = []
@@ -237,6 +243,8 @@ func _on_mouse_button(event: InputEventMouseButton) -> void:
 				rig.zoom(1.1)
 				gesture_used.emit()
 		MOUSE_BUTTON_LEFT:
+			_mouse_drag = event.pressed
+			_mouse_position = event.position
 			single_pointer.emit("press" if event.pressed else "release", event.position)
 
 
@@ -254,4 +262,5 @@ func _on_mouse_motion(event: InputEventMouseMotion) -> void:
 			gesture_used.emit()
 		_:
 			if event.button_mask & MOUSE_BUTTON_MASK_LEFT:
+				_mouse_position = event.position
 				single_pointer.emit("move", event.position)

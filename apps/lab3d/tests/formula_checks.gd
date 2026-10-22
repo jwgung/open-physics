@@ -457,6 +457,50 @@ func check_spring() -> void:
 		"force injection (spring): displayed energies come from the formula", str(shown))
 	world.queue_free()
 	await tree.process_frame
+	await _check_damped_spring(target)
+
+
+## Damped spring (b = 0.45 kg/s, the web preset): the displayed energies are those of the current
+## state (TS kineticEnergy m v^2 / 2 + springEnergy k x^2 / 2), so the total falls as the motion decays
+## (dE/dt = -b v^2 <= 0) and kinetic = m v^2 / 2 of the step-synchronised engine speed.
+func _check_damped_spring(target: Dictionary) -> void:
+	var world := _world()
+	var ball := _body(world, target.mass, Vector3(1.0 + float(target.amplitude), 5.0, 0.0), 0.2)
+	ball.gravity_scale = 0.0
+	ball.collision_layer = 0
+	ball.collision_mask = 0
+	var spring := SpringInjector.new()
+	spring.anchor = Vector3(0.0, 5.0, 0.0)
+	spring.rest_length = 1.0
+	spring.stiffness = target.stiffness
+	spring.damping = 0.45
+	spring.reset(ball)
+	ball.corrector = spring
+	var first := spring.formula_values()
+	var worst_sum := 0.0
+	var worst_rise := 0.0
+	var worst_kinetic := 0.0
+	var previous := INF
+	for i in 5 * STEP_HZ:
+		var speed := spring.synced_velocity(ball).length()   # state the next sample sees
+		await tree.physics_frame
+		if spring.steps < 2:
+			continue
+		var shown := spring.formula_values()
+		var total: float = shown.total_energy
+		worst_sum = maxf(worst_sum, absf(total - float(shown.kinetic_energy) - float(shown.spring_energy)))
+		worst_rise = maxf(worst_rise, total - previous)
+		worst_kinetic = maxf(worst_kinetic, absf(float(shown.kinetic_energy) - PhysicsLaws.kinetic_energy(target.mass, speed)))
+		previous = total
+	var last := spring.formula_values()
+	var start := PhysicsLaws.spring_potential_energy(target.stiffness, target.amplitude)
+	expect.call(float(first.total_energy) == start and worst_sum <= 1e-12 and worst_kinetic <= 1e-6,
+		"force injection (spring, damped): displayed energies = kinetic m v^2 / 2 + spring k x^2 / 2 of the current state",
+		"start %.4f J, |K + U - E| %s, |K - m v^2 / 2| %s" % [first.total_energy, String.num_scientific(worst_sum), String.num_scientific(worst_kinetic)])
+	expect.call(worst_rise <= 1e-6 and float(last.total_energy) < 0.5 * start,
+		"force injection (spring, damped): the displayed total energy only falls", "after 5 s %.4f J of %.4f J, max rise %s J" % [last.total_energy, start, String.num_scientific(worst_rise)])
+	world.queue_free()
+	await tree.process_frame
 
 
 ## orbit (force injection): a circular launch keeps its radius and closes one revolution in

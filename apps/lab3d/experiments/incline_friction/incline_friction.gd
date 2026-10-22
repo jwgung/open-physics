@@ -13,15 +13,11 @@ const BOX := 0.4
 const INCLINE_LENGTH := 8.0
 const START_X := 3.5          # release point along the incline (pivot local x), uphill end is +x
 const PIVOT_HEIGHT := 3.2
+const STAND_HEIGHT := PIVOT_HEIGHT - 0.15   # full height of the support post mesh
 const GRAPH_EVERY_STEPS := 6  # graph sample every 6 fixed steps (10 Hz)
 const FLOOR_DAMP := 4.0       # 1/s braking of a box lying on the floor after leaving the incline
 const FALL_LIMIT_Y := -3.0    # below this the box is stopped (it left the floor)
 
-const COLOR_FLOOR := Color("c9d3e0")
-const COLOR_INCLINE := Color("c8a27a")
-const COLOR_STAND := Color("8e9bb0")
-const COLOR_BOX := Color("ef7754")
-const COLOR_MARK := Color("365eea")
 
 var angle_deg := 20.0
 var material_id := "wood"
@@ -30,9 +26,12 @@ var mu_k := 0.22
 var released := false
 var box: InclineBox
 var corrector := InclineFrictionCorrector.new()
+## Grass island meshes, shadows and the box reactions (visual only, never the bodies).
+var props := InclineProps.new()
+var _stand: MeshInstance3D
+var _post: MeshInstance3D
 
 var _pivot: Node3D
-var _stand: MeshInstance3D
 var _graph_points := PackedVector2Array()
 var _last_status := ""
 var _graph_revision := 0
@@ -72,7 +71,8 @@ func run_action(id: String) -> void:
 func set_angle(degrees: float) -> void:
 	angle_deg = clampf(degrees, 0.0, 45.0)
 	_pivot.rotation = Vector3(0.0, 0.0, deg_to_rad(angle_deg))
-	_update_stand()
+	props.angle_changed(angle_deg)
+	_fit_stand()
 	reset_box()
 
 
@@ -110,7 +110,7 @@ func reset_box() -> void:
 	corrector.reset(box.global_position)
 	_graph_points.clear()
 	_graph_revision += 1
-	state_changed.emit()
+	_update_status()
 
 
 func release() -> void:
@@ -123,7 +123,16 @@ func release() -> void:
 	released = true
 	box.freeze = false
 	box.sleeping = false
+	_update_status()
+
+
+## Records the current status, tells the UI and lets the props react to the change.
+func _update_status() -> void:
+	var previous := _last_status
+	_last_status = status()
 	state_changed.emit()
+	if _last_status != previous:
+		props.status_changed(previous, _last_status)
 
 
 func formula_acceleration() -> float:
@@ -149,10 +158,8 @@ func _physics_process(_delta: float) -> void:
 		if t <= max_t + 0.001 and t > _graph_points[-1].x and status() != "left":
 			_graph_points.append(Vector2(t, corrector.samples[steps]))
 			_graph_revision += 1
-	var current := status()
-	if current != _last_status:
-		_last_status = current
-		state_changed.emit()
+	if status() != _last_status:
+		_update_status()
 	_settle_off_incline()
 
 
@@ -214,54 +221,41 @@ func follow_point() -> Vector3:
 
 
 func _build_world() -> void:
-	var environment := Environment.new()
-	environment.background_mode = Environment.BG_COLOR
-	environment.background_color = Color("eef2f7")
-	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	environment.ambient_light_color = Color(0.78, 0.81, 0.86)
-	environment.ambient_light_energy = 0.7
-	var world := WorldEnvironment.new()
-	world.environment = environment
-	add_child(world)
-	var sun := DirectionalLight3D.new()
-	sun.rotation = Vector3(deg_to_rad(-50.0), deg_to_rad(30.0), 0.0)
-	sun.light_energy = 0.9
-	Quality.configure_sun(sun, DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS)
-	add_child(sun)
-
 	var frictionless := PhysicsMaterial.new()
 	frictionless.friction = 0.0
 	frictionless.bounce = 0.0
 
+	# Collision floor (the island's top surface, y = 0); the island mesh is ArtKit's.
 	var floor_body := StaticBody3D.new()
 	floor_body.physics_material_override = frictionless
-	_add_box_shape(floor_body, Vector3(30.0, 0.4, 12.0), COLOR_FLOOR)
+	_add_box_shape(floor_body, Vector3(30.0, 0.4, 12.0))
 	floor_body.position = Vector3(0.0, -0.2, 0.0)
 	add_child(floor_body)
 
 	_pivot = Node3D.new()
 	_pivot.position = Vector3(0.0, PIVOT_HEIGHT, 0.0)
 	add_child(_pivot)
+	var incline_size := Vector3(INCLINE_LENGTH, 0.3, 2.0)
 	var incline := StaticBody3D.new()
 	incline.physics_material_override = frictionless
-	_add_box_shape(incline, Vector3(INCLINE_LENGTH, 0.3, 2.0), COLOR_INCLINE)
+	_add_box_shape(incline, incline_size)
+	incline.add_child(ArtKit.instance(props.incline_mesh(incline_size)))
 	incline.position = Vector3(0.0, -0.15, 0.0)
 	_pivot.add_child(incline)
 	# Start line where the box is released (visual only).
-	var mark := MeshInstance3D.new()
-	var mark_mesh := BoxMesh.new()
-	mark_mesh.size = Vector3(0.04, 0.01, 2.0)
-	mark_mesh.material = _material(COLOR_MARK)
-	mark.mesh = mark_mesh
-	mark.position = Vector3(START_X - BOX * 0.5, 0.005, 0.0)
+	var mark := ArtKit.instance(props.start_line_mesh(incline_size.z))
+	mark.position = Vector3(START_X - BOX * 0.5, 0.0, 0.0)
 	_pivot.add_child(mark)
 
 	# Support post under the pivot (visual only, no collision).
-	_stand = MeshInstance3D.new()
-	var stand_mesh := BoxMesh.new()
-	stand_mesh.material = _material(COLOR_STAND)
-	_stand.mesh = stand_mesh
+	_stand = ArtKit.instance(props.foot_mesh())
+	_stand.name = "Stand"
+	_post = ArtKit.instance(props.post_mesh(STAND_HEIGHT))
+	_post.name = "Post"
+	_stand.add_child(_post)
+	_stand.position = Vector3(0.0, 0.0, InclineProps.STAND_Z)
 	add_child(_stand)
+	_fit_stand()
 
 	box = InclineBox.new()
 	box.mass = MASS
@@ -273,7 +267,10 @@ func _build_world() -> void:
 	box.angular_damp = 0.0
 	box.freeze_mode = RigidBody3D.FREEZE_MODE_STATIC
 	box.freeze = true
-	_add_box_shape(box, Vector3.ONE * BOX, COLOR_BOX)
+	_add_box_shape(box, Vector3.ONE * BOX)
+	var box_visual := ArtKit.instance(props.box_mesh(BOX))
+	box_visual.name = "Visual"
+	box.add_child(box_visual)
 	add_child(box)
 
 	corrector.incline = _pivot
@@ -284,29 +281,21 @@ func _build_world() -> void:
 	set_coefficients(mu_s, mu_k)
 	box.corrector = corrector
 
-
-func _update_stand() -> void:
-	var height := PIVOT_HEIGHT - 0.15
-	(_stand.mesh as BoxMesh).size = Vector3(0.3, height, 0.3)
-	_stand.position = Vector3(0.0, height * 0.5, -0.7)
+	props.dress(self, _stand.position, box, box_visual, BOX)
+	props.juice.landed.connect(impact.emit)
 
 
-func _add_box_shape(body: CollisionObject3D, size: Vector3, color: Color) -> void:
+## The post leans and shortens with the incline so its top stays inside the hinge axle's circle.
+func _fit_stand() -> void:
+	if _post != null:
+		var pose := InclineProps.post_pose(PIVOT_HEIGHT, angle_deg)
+		_post.rotation.z = pose.x
+		_post.scale.y = pose.y / STAND_HEIGHT
+
+
+func _add_box_shape(body: CollisionObject3D, size: Vector3) -> void:
 	var shape := CollisionShape3D.new()
 	var box_shape := BoxShape3D.new()
 	box_shape.size = size
 	shape.shape = box_shape
 	body.add_child(shape)
-	var mesh := BoxMesh.new()
-	mesh.size = size
-	mesh.material = _material(color)
-	var instance := MeshInstance3D.new()
-	instance.mesh = mesh
-	body.add_child(instance)
-
-
-func _material(color: Color) -> StandardMaterial3D:
-	var material := StandardMaterial3D.new()
-	material.albedo_color = color
-	material.roughness = 0.85
-	return material

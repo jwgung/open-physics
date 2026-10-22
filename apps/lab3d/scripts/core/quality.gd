@@ -1,6 +1,6 @@
 ## Render quality tiers (autoload "Quality"), ported from spikes/godot/scripts/quality.gd.
-## One place decides renderer, 3D resolution, AA and shadows; experiments ask it when they build
-## lights, the experiment screen asks it how large to render the 3D view.
+## One place decides renderer, 3D resolution and AA; the experiment screen asks it how large to
+## render the 3D view. (No engine light or realtime shadow on any tier: see docs/art-direction.md.)
 ## Tier comes from `--quality=<tier>` (command line, or on Android the launch intent extra
 ## `opargs`, see all_args), else user://quality.txt, else DEFAULT_TIER. Single fields can be
 ## overridden for measurements with `--q-<field>=<value>` (not persisted), e.g. `--q-ui_mode=root`.
@@ -25,17 +25,15 @@ const BASE_SIZE := Vector2i(720, 720)
 ## renderer: "mobile" (Vulkan) or "gl_compatibility" (OpenGL ES 3); applied by restarting the app.
 ## view_scale: 3D view resolution as a fraction of the screen pixels it covers (0.45 = the Task 1
 ## low tier's 540 px on a 1200 px wide screen). msaa: 0 or 2 (x).
-## shadow_splits: 0 = shadows off, 1 = orthogonal, 2/4 = parallel splits (capped by the scene).
-## shadow_size: directional shadow atlas (px).
 ## ui_mode (measurement switch, see docs/ui-resolution.md):
 ##   native  = UI at screen resolution, 3D in a SubViewport at view_scale (chosen),
 ##   root    = Task 1 method: the whole root viewport (UI too) at root_short px on the short side,
 ##   scale3d = UI at screen resolution, 3D SubViewport at screen size with scaling_3d_scale.
 ## root_short: short side of the root viewport in ui_mode=root.
 const TIERS := {
-	"low": {"renderer": "gl_compatibility", "view_scale": 0.45, "msaa": 0, "shadow_splits": 0, "shadow_size": 1024, "ui_mode": "native", "root_short": 540},
-	"medium": {"renderer": "mobile", "view_scale": 0.6, "msaa": 2, "shadow_splits": 1, "shadow_size": 1024, "ui_mode": "native", "root_short": 720},
-	"high": {"renderer": "mobile", "view_scale": 1.0, "msaa": 2, "shadow_splits": 4, "shadow_size": 2048, "ui_mode": "native", "root_short": 0},
+	"low": {"renderer": "gl_compatibility", "view_scale": 0.45, "msaa": 0, "ui_mode": "native", "root_short": 540},
+	"medium": {"renderer": "mobile", "view_scale": 0.6, "msaa": 2, "ui_mode": "native", "root_short": 720},
+	"high": {"renderer": "mobile", "view_scale": 1.0, "msaa": 2, "ui_mode": "native", "root_short": 0},
 }
 const TIER_LABELS := {"low": "낮음", "medium": "보통", "high": "높음"}
 
@@ -175,7 +173,6 @@ func apply_root_viewport() -> void:
 		root.content_scale_mode = Window.CONTENT_SCALE_MODE_CANVAS_ITEMS
 		root.content_scale_size = BASE_SIZE
 	root.content_scale_aspect = Window.CONTENT_SCALE_ASPECT_EXPAND
-	RenderingServer.directional_shadow_atlas_set_size(get_value("shadow_size"), true)
 
 
 ## Configures a 3D SubViewport for the tier: MSAA and (ui_mode=scale3d) 3D resolution scaling.
@@ -235,17 +232,3 @@ func _ensure_renderer() -> bool:
 	OS.set_restart_on_exit(true, restart_args)
 	get_tree().quit()
 	return true
-
-
-## Applies the tier's shadow setting; `scene_mode` is the most the scene ever wants (high tier).
-func configure_sun(sun: DirectionalLight3D, scene_mode: DirectionalLight3D.ShadowMode) -> void:
-	var splits: int = get_value("shadow_splits")
-	sun.shadow_enabled = splits > 0
-	var scene_splits: int = {DirectionalLight3D.SHADOW_ORTHOGONAL: 1, DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS: 2}.get(scene_mode, 4)
-	match mini(splits, scene_splits):
-		1:
-			sun.directional_shadow_mode = DirectionalLight3D.SHADOW_ORTHOGONAL
-		2:
-			sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS
-		_:
-			sun.directional_shadow_mode = DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS

@@ -9,6 +9,9 @@ extends Node3D
 ## Emitted when a value shown in the panels changes outside a control (e.g. the box starts to
 ## slide). The screen also polls observations() at UI_REFRESH_HZ, so this is only a hint.
 signal state_changed
+## Something visibly hit the ground (strength 0..1). Visual only: the screen gives the camera a
+## small dip (CameraRig.nudge). Experiments emit it from their ArtJuice.landed.
+signal impact(strength: float)
 
 ## Parsed content JSON (see ExperimentRegistry). Read-only for the experiment.
 var definition: Dictionary = {}

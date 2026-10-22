@@ -1,4 +1,5 @@
-## Experiment list: one card per registered experiment, grouped by category (web "실험 선택").
+## Experiment list: one card per registered experiment, grouped by category (web "실험 선택"),
+## under the island banner (art direction).
 class_name ListScreen
 extends Control
 
@@ -34,6 +35,7 @@ func _ready() -> void:
 	scroll.add_child(pad)
 	var column := Ui.vbox(18)
 	pad.add_child(column)
+	column.add_child(IslandBanner.new())
 	column.add_child(Ui.label("실험 선택", "TitleLabel"))
 	column.add_child(Ui.label("질문을 고르고, 조건을 바꾸며 무슨 일이 일어나는지 관찰해요.", "MutedLabel", true))
 
@@ -52,10 +54,10 @@ func _card(definition: Dictionary) -> Control:
 	var badge := Ui.panel("IconBadge")
 	badge.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	badge.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	var icon := Ui.label(definition.get("icon", "•"), "HeadingLabel")
-	icon.custom_minimum_size = Vector2(36, 36)
+	var icon := Ui.label(definition.get("icon", "•"), "BadgeLabel")
+	icon.custom_minimum_size = Vector2(40, 40)
 	icon.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	icon.add_theme_color_override("font_color", UiTheme.ACCENT)
+	icon.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	badge.add_child(icon)
 	row.add_child(badge)
 	var text := Ui.vbox(8)

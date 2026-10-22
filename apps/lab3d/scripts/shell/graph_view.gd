@@ -45,7 +45,7 @@ func _draw() -> void:
 			y_max = maxf(y_max, point.y * 1.08)
 	y_max = _nice_ceiling(y_max)
 	var muted := UiTheme.MUTED
-	var grid := Color("e2e8f1")
+	var grid := Color("e1ebf5")
 	for i in 3:
 		var y := plot.position.y + plot.size.y * i / 2.0
 		draw_line(Vector2(plot.position.x, y), Vector2(plot.end.x, y), grid, 1.0)
@@ -53,7 +53,7 @@ func _draw() -> void:
 		draw_string(font, Vector2(4.0, y + 6.0), _format(value), HORIZONTAL_ALIGNMENT_RIGHT, PAD_LEFT - 12.0, font_size, muted)
 	for i in 4:
 		var x := plot.position.x + plot.size.x * i / 3.0
-		draw_line(Vector2(x, plot.position.y), Vector2(x, plot.end.y), grid if i > 0 else Color("cdd6e3"), 1.0)
+		draw_line(Vector2(x, plot.position.y), Vector2(x, plot.end.y), grid if i > 0 else Color("c9d8e8"), 1.0)
 		var text := _format(x_max * i / 3.0)
 		draw_string(font, Vector2(x - 40.0, plot.end.y + 24.0), text, HORIZONTAL_ALIGNMENT_CENTER, 80.0, font_size, muted)
 	var x_label := "%s (%s)" % [x_spec.get("label", ""), x_spec.get("unit", "")]
@@ -94,7 +94,7 @@ static func _nice_ceiling(value: float) -> float:
 static func _background() -> StyleBoxFlat:
 	var box := StyleBoxFlat.new()
 	box.bg_color = UiTheme.WHITE
-	box.set_corner_radius_all(10)
-	box.border_color = Color("e3e8f0")
-	box.set_border_width_all(1)
+	box.set_corner_radius_all(12)
+	box.border_color = Color("dfeaf5")
+	box.set_border_width_all(2)
 	return box

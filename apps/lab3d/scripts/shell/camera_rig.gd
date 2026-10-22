@@ -17,6 +17,11 @@ const MODE_LABELS := {
 const EASE_RATE := 8.0          # 1/s; ~95% of a transition in 0.37 s
 const ORBIT_RAD_PER_UNIT := 0.006
 const PAN_PER_UNIT := 0.0016    # world units per UI unit per metre of distance
+## Landing dip (nudge): a damped spring on a vertical offset of the drawn view only, so it never
+## changes the mode, the goal or the limits. Full strength dips ~5 cm and settles in ~0.2 s.
+const NUDGE_SPEED := 2.4        # m/s downward kick at strength 1
+const NUDGE_K := 300.0
+const NUDGE_DAMP := 20.0
 
 var mode := "front"
 var follow_source: Object       # any object with follow_point() -> Vector3 (the experiment)
@@ -38,6 +43,8 @@ var cur_yaw := 0.0
 var cur_pitch := -0.2
 var cur_distance := 10.0
 var cur_target := Vector3.ZERO
+var shake := 0.0                # vertical offset of the drawn view (m), see nudge()
+var _shake_v := 0.0
 
 
 ## Reads definition.camera (see content/experiments/*.json) and jumps to the default mode.
@@ -127,6 +134,11 @@ func pan_by(relative: Vector2) -> void:
 	cur_target += pan - before  # same delta as the goal, like orbit()
 
 
+## Small camera dip when something lands (strength 0..1). Visual only.
+func nudge(strength: float) -> void:
+	_shake_v -= NUDGE_SPEED * clampf(strength, 0.0, 1.0)
+
+
 ## Mode and view, to rebuild the camera later (App keeps it across a 3D view rebuild).
 func get_state() -> Dictionary:
 	return {"mode": mode, "yaw": goal_yaw, "pitch": goal_pitch, "distance": goal_distance, "pan": pan}
@@ -172,14 +184,22 @@ func _process(delta: float) -> void:
 	cur_pitch = lerpf(cur_pitch, goal_pitch, t)
 	cur_distance = lerpf(cur_distance, goal_distance, t)
 	cur_target = cur_target.lerp(_goal_target(), t)
+	if shake != 0.0 or _shake_v != 0.0:
+		var dt := minf(delta, 1.0 / 30.0)
+		_shake_v += (-NUDGE_K * shake - NUDGE_DAMP * _shake_v) * dt
+		shake += _shake_v * dt
+		if absf(shake) < 0.0001 and absf(_shake_v) < 0.001:
+			shake = 0.0
+			_shake_v = 0.0
 	_apply()
 
 
 func _apply() -> void:
 	var offset := Vector3(sin(cur_yaw) * cos(cur_pitch), -sin(cur_pitch), cos(cur_yaw) * cos(cur_pitch)) * cur_distance
-	var eye := cur_target + offset
+	var target := cur_target + Vector3(0.0, shake, 0.0)
+	var eye := target + offset
 	# Straight down: use -z as "up" so the top view keeps the front view's left/right.
 	var up := Vector3.UP if absf(cur_pitch) < deg_to_rad(88.5) else Vector3(-sin(cur_yaw), 0.0, -cos(cur_yaw))
-	if eye.is_equal_approx(cur_target):
+	if eye.is_equal_approx(target):
 		return
-	look_at_from_position(eye, cur_target, up)
+	look_at_from_position(eye, target, up)

@@ -26,19 +26,19 @@
   "scene": "res://experiments/incline_friction/incline_friction.gd",
   "bench_id": "S3",
   "camera": {
-    "target": [0.0, 2.2, 0.0],
-    "distance": 11.0,
-    "distance_range": [4.0, 24.0],
+    "target": [0.8, 2.8, 0.0],
+    "distance": 8.5,
+    "distance_range": [3.0, 20.0],
     "yaw_range_deg": [-100.0, 100.0],
     "pitch_range_deg": [-89.0, -2.0],
     "pan_radius": 5.0,
     "default_mode": "three_quarter",
     "views": {
-      "front": { "yaw_deg": 0.0, "pitch_deg": -6.0 },
+      "front": { "yaw_deg": 0.0, "pitch_deg": -6.0, "distance": 9.5 },
       "three_quarter": { "yaw_deg": 35.0, "pitch_deg": -24.0 },
       "top": { "yaw_deg": 0.0, "pitch_deg": -89.0 },
-      "side": { "yaw_deg": 90.0, "pitch_deg": -8.0 },
-      "follow": { "yaw_deg": 20.0, "pitch_deg": -18.0, "distance": 6.0 }
+      "side": { "yaw_deg": 90.0, "pitch_deg": -10.0, "distance": 12.0 },
+      "follow": { "yaw_deg": 20.0, "pitch_deg": -18.0, "distance": 4.0 }
     }
   },
   "controls": [
@@ -74,8 +74,8 @@
     "x": { "label": "시간 t", "unit": "s", "max": 3.0 },
     "y": { "label": "이동 거리 s", "unit": "m", "min_max": 1.0 },
     "series": [
-      { "id": "formula", "label": "공식 ½at²", "color": "#365eea", "style": "line" },
-      { "id": "measured", "label": "시뮬레이션", "color": "#ef7754", "style": "points" }
+      { "id": "formula", "label": "공식 ½at²", "color": "#2d7cf6", "style": "line" },
+      { "id": "measured", "label": "시뮬레이션", "color": "#ff3b3b", "style": "points" }
     ]
   }
 }

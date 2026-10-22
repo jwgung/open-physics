@@ -42,12 +42,19 @@ func _run() -> void:
 	await _check_materials(definition)
 	await _check_bounded_and_floor()
 	await _check_left_status()
+	await _check_art_is_visual_only()
+	await _check_juice_rotated_landing()
+	_check_stand_clearance()
+	_check_ramp_shadow_scale()
 	_lab.queue_free()
 	print("== shell: camera, gestures, layout ==")
 	await _check_camera(definition)
 	await _check_gestures(definition)
 	await _check_gesture_input_state(definition)
 	await _check_layout(definition)
+	await _check_button_feedback()
+	await _check_slide_in()
+	await _check_banner_collapsed()
 	await _check_launch_args_flag(definition)
 	await _check_graph_redraw(definition)
 	_check_wheel_zoom(definition)
@@ -157,6 +164,242 @@ func _check_left_status() -> void:
 	_expect(_lab.status() == "sliding" and not c.past_end, "a brief loss of contact is not 'left'", "%s, past_end %s" % [_lab.status(), str(c.past_end)])
 	c = await _run_steps(35.0, 6 * STEP_HZ)
 	_expect(_lab.status() == "left" and c.past_end, "passing the end of the incline is 'left'", "%s, x %.2f" % [_lab.status(), _lab._pivot.to_local(box.global_position).x])
+
+
+## The art layer (InclineProps / ArtJuice / ArtKit) only changes what is drawn: the collision
+## shapes keep their size and transform, the only collision objects are the floor, the incline
+## and the box, and a run with the box reactions switched off gives the same motion and numbers.
+func _check_art_is_visual_only() -> void:
+	var bodies: Array[String] = []
+	for node in _lab.find_children("*", "CollisionObject3D", true, false):
+		bodies.append(node.get_class())
+	bodies.sort()
+	_expect(bodies == ["RigidBody3D", "StaticBody3D", "StaticBody3D"],
+		"art adds no collision objects (floor, incline, box only)", ", ".join(bodies))
+	var juice: ArtJuice = _lab.props.juice
+	var box: RigidBody3D = _lab.box
+	var shape: CollisionShape3D = box.find_children("*", "CollisionShape3D", false, false)[0]
+	var box_children: Array[String] = []
+	for child in box.get_children():
+		box_children.append(child.get_class())
+	box_children.sort()
+	_expect(juice != null and juice.mesh is MeshInstance3D and juice.mesh.get_parent() == box and juice.mesh.mesh != null
+		and box_children == ["CollisionShape3D", "MeshInstance3D"] and juice.body == box and not box.is_ancestor_of(juice),
+		"box reactions act on the box's mesh child only (juice nodes live outside the body)", ", ".join(box_children))
+	_lab.set_coefficients(0.5, 0.4)
+	var runs: Array = []
+	var deformed := 0.0
+	var shape_ok := true
+	for with_juice in [true, false]:
+		# Off = the whole reaction path: status-driven pop/stretch/puff (props.juice = null) and the
+		# automatic landing, wobble and shadow ray (the node's processing).
+		_lab.props.juice = juice if with_juice else null
+		juice.process_mode = Node.PROCESS_MODE_INHERIT if with_juice else Node.PROCESS_MODE_DISABLED
+		_lab.set_angle(35.0)
+		await physics_frame
+		_lab.release()
+		while _lab.corrector.steps <= 3 * STEP_HZ:
+			await physics_frame
+			if with_juice:
+				deformed = maxf(deformed, (juice.mesh_scale() - Vector3.ONE).abs()[(juice.mesh_scale() - Vector3.ONE).abs().max_axis_index()])
+			shape_ok = shape_ok and shape.transform == Transform3D.IDENTITY and (shape.shape as BoxShape3D).size == Vector3.ONE * _lab.BOX
+		runs.append({"samples": _lab.corrector.samples.duplicate(), "obs": _lab.observations(), "pos": box.global_position, "graph": _lab.graph_series().measured})
+	_lab.props.juice = juice
+	juice.process_mode = Node.PROCESS_MODE_INHERIT
+	_expect(deformed > 0.05, "box reactions deform the box mesh (pop/stretch/squash)", "max |scale - 1| %.3f" % deformed)
+	_expect(shape_ok, "collision shape keeps its transform and size while the mesh is animated", "")
+	_expect(runs[0].samples == runs[1].samples and runs[0].pos == runs[1].pos and runs[0].graph == runs[1].graph,
+		"same motion with and without the box reactions", "s(3s) %.6f / %.6f m" % [runs[0].samples[-1], runs[1].samples[-1]])
+	_expect(str(runs[0].obs) == str(runs[1].obs), "same displayed values with and without the box reactions", str(runs[0].obs))
+
+
+## A body that lands rotated (rolled 90 deg here) is still flattened along world y and its dust
+## appears below it, not along the body's own y axis.
+func _check_juice_rotated_landing() -> void:
+	var world := Node3D.new()
+	root.add_child(world)
+	var floor_body := StaticBody3D.new()
+	var floor_shape := CollisionShape3D.new()
+	var floor_box := BoxShape3D.new()
+	floor_box.size = Vector3(10.0, 0.4, 10.0)
+	floor_shape.shape = floor_box
+	floor_body.add_child(floor_shape)
+	floor_body.position = Vector3(0.0, -0.2, 0.0)
+	world.add_child(floor_body)
+	var body := RigidBody3D.new()
+	var body_shape := CollisionShape3D.new()
+	var body_box := BoxShape3D.new()
+	body_box.size = Vector3.ONE * 0.4
+	body_shape.shape = body_box
+	body.add_child(body_shape)
+	var visual := ArtKit.instance(InclineProps.new().box_mesh(0.4))
+	body.add_child(visual)
+	world.add_child(body)
+	body.global_transform = Transform3D(Basis(Vector3.BACK, PI * 0.5), Vector3(0.0, 2.5, 0.0))
+	var juice := ArtJuice.new()
+	world.add_child(juice)
+	juice.setup(body, visual, 0.4)
+	var landed := [0.0]
+	juice.landed.connect(func(strength: float) -> void: landed[0] = strength)
+	var dust: CPUParticles3D = juice.get_node("Dust")
+	var flattest := 1.0
+	var dust_below := false
+	var steps := 0
+	while steps < 150:
+		await physics_frame
+		steps += 1
+		if landed[0] > 0.0:
+			var extent := (visual.global_transform * visual.mesh.get_aabb()).size   # world-axis aligned extent
+			flattest = minf(flattest, extent.y / extent.x)
+			dust_below = dust_below or dust.global_position.y < body.global_position.y - 0.1
+	var rest_extent := (visual.global_transform * visual.mesh.get_aabb()).size
+	_expect(landed[0] > 0.0 and flattest < 0.95 and absf(rest_extent.y - rest_extent.x) < 0.005,
+		"a body landed rolled 90 deg squashes along world y and returns to its size", "landed %.2f, min y/x %.3f, rest %s" % [landed[0], flattest, str(rest_extent)])
+	_expect(dust_below, "dust of a rolled body appears below it", "dust y %.2f, body y %.2f" % [dust.global_position.y, body.global_position.y])
+	_expect(not juice.is_processing(), "a settled juice stops its per-frame update", "")
+	world.queue_free()
+
+
+## The hinge: at every angle up to the slider's maximum the post top lies inside the axle's circle
+## (no gap), under the incline's underside (no crossing), and the axle/lugs touch the underside.
+func _check_stand_clearance() -> void:
+	var max_angle := 0.0
+	for control in _lab.definition.controls:
+		if control.id == "angle":
+			max_angle = float(control.max)
+	var post: MeshInstance3D = _lab.get_node("Stand/Post")
+	var incline_mesh: MeshInstance3D = _lab._pivot.find_children("*", "MeshInstance3D", true, false)[0]
+	var aabb := incline_mesh.mesh.get_aabb()
+	var axle_low: float = incline_mesh.get_parent().position.y + aabb.position.y
+	var touches: bool = absf(axle_low + InclineProps.AXLE_DEPTH + InclineProps.AXLE_RADIUS) < 0.01 \
+		and InclineProps.AXLE_DEPTH - InclineProps.AXLE_RADIUS < InclineProps.INCLINE_THICKNESS
+	var worst_circle := -INF
+	var worst_under := INF
+	var angle := 0.0
+	while angle <= max_angle + 0.001:
+		_lab.set_angle(angle)
+		var axle: Vector3 = _lab._pivot.global_transform * Vector3(0.0, -InclineProps.AXLE_DEPTH, 0.0)
+		var top_y: float = post.mesh.get_aabb().end.y
+		for cx in [-0.25, 0.25]:
+			var corner: Vector3 = post.global_transform * Vector3(cx, top_y, 0.0)
+			worst_circle = maxf(worst_circle, Vector2(corner.x - axle.x, corner.y - axle.y).length() - InclineProps.AXLE_RADIUS)
+			var local: Vector3 = _lab._pivot.global_transform.affine_inverse() * corner
+			worst_under = minf(worst_under, -InclineProps.INCLINE_THICKNESS - local.y)
+		angle += 2.5
+	_lab.set_angle(20.0)
+	_expect(max_angle >= 45.0 and touches and worst_circle < 0.0 and worst_under > 0.0,
+		"post top stays inside the hinge axle and under the incline at every angle",
+		"max angle %.0f, axle touches %s, circle margin %.3f m, underside clearance %.3f m" % [max_angle, touches, -worst_circle, worst_under])
+
+
+## Button look and press feedback: a pressed face moves down as a whole, disabled buttons keep the
+## normal vertical margins (text does not jump), and a release always restores the size.
+func _check_button_feedback() -> void:
+	var theme: Theme = load(UI_THEME).build()
+	for type in ["Button", "PrimaryButton"]:
+		var normal: StyleBoxFlat = theme.get_stylebox("normal", type)
+		var disabled: StyleBoxFlat = theme.get_stylebox("disabled", type)
+		var pressed: StyleBoxFlat = theme.get_stylebox("pressed", type)
+		var lift := normal.content_margin_bottom - pressed.content_margin_bottom
+		_expect(disabled.content_margin_top == normal.content_margin_top and disabled.content_margin_bottom == normal.content_margin_bottom
+			and disabled.border_width_bottom == normal.border_width_bottom,
+			"%s: disabled box has the normal margins and lip" % type, "%.1f/%.1f vs %.1f/%.1f" % [disabled.content_margin_top, disabled.content_margin_bottom, normal.content_margin_top, normal.content_margin_bottom])
+		_expect(lift > 0.0 and pressed.content_margin_top - normal.content_margin_top == lift and -pressed.expand_margin_top == lift
+			and pressed.content_margin_top + pressed.content_margin_bottom == normal.content_margin_top + normal.content_margin_bottom,
+			"%s: pressed face and text move down together by %.0f units, same size" % [type, lift], "")
+	for type in ["ChipButton", "FlatButton"]:
+		var normal: StyleBoxFlat = theme.get_stylebox("normal", type)
+		var disabled: StyleBoxFlat = theme.get_stylebox("disabled", type)
+		_expect(disabled != theme.get_stylebox("disabled", "Button") and disabled.content_margin_top == normal.content_margin_top
+			and disabled.content_margin_bottom == normal.content_margin_bottom and disabled.content_margin_left == normal.content_margin_left
+			and disabled.border_width_bottom == normal.border_width_bottom,
+			"%s: own disabled box with the normal margins and lip" % type, "")
+	# Press feedback lives in a Container (as in the real screens): a layout pass must not undo it.
+	var host := VBoxContainer.new()
+	host.theme = theme
+	root.add_child(host)
+	var button := Ui.button("x")
+	host.add_child(button)
+	var other := Ui.button("y")
+	host.add_child(other)
+	await process_frame
+	await process_frame
+	var press := InputEventMouseButton.new()
+	press.button_index = MOUSE_BUTTON_LEFT
+	press.pressed = true
+	button.gui_input.emit(press)
+	await create_timer(0.2).timeout
+	var shrunk: bool = Ui.press_amount(button) > 0.99 and button.get_theme_stylebox("normal").expand_margin_left < -1.0
+	other.custom_minimum_size.y += 10.0   # new layout pass over the container's children
+	host.queue_sort()
+	await process_frame
+	await process_frame
+	var kept: bool = Ui.press_amount(button) > 0.99 and button.get_theme_stylebox("normal").expand_margin_left < -1.0 and button.scale == Vector2.ONE
+	button.disabled = true
+	var release := InputEventMouseButton.new()
+	release.button_index = MOUSE_BUTTON_LEFT
+	release.pressed = false
+	button.gui_input.emit(release)
+	await create_timer(0.6).timeout
+	var restored: bool = absf(Ui.press_amount(button)) < 0.001 and is_equal_approx(button.get_theme_stylebox("disabled").expand_margin_left, 0.0)
+	button.gui_input.emit(press)
+	await create_timer(0.2).timeout
+	var ignored: bool = absf(Ui.press_amount(button)) < 0.001
+	host.queue_free()
+	_expect(shrunk and kept and restored and ignored, "press shrinks an enabled button and survives a container layout pass, release restores it even when disabled meanwhile, a disabled button ignores the press", "shrunk %s, kept %s, restored %s, ignored %s" % [shrunk, kept, restored, ignored])
+
+
+## Screen change: a screen that slides in again (the held experiment screen) stops its previous slide.
+func _check_slide_in() -> void:
+	var app: Control = load("res://scripts/app/app.gd").new()
+	var screen := Control.new()
+	root.add_child(screen)
+	app._slide_in(screen)
+	var first: Tween = screen.get_meta("slide_tween")
+	await create_timer(0.1).timeout
+	root.remove_child(screen)   # leaves and comes back, as when settings is opened and closed
+	root.add_child(screen)
+	app._slide_in(screen)
+	var second: Tween = screen.get_meta("slide_tween")
+	var restarted: bool = not first.is_valid() and second != first and second.is_valid() and screen.position.x == app.SLIDE_UNITS
+	await create_timer(0.5).timeout
+	_expect(restarted and screen.position.x == 0.0 and is_equal_approx(screen.modulate.a, 1.0),
+		"re-entering a screen kills its old slide tween and slides once", "restarted %s, x %.2f, alpha %.2f" % [restarted, screen.position.x, screen.modulate.a])
+	screen.queue_free()
+	app.free()
+
+
+## The list banner draws nothing for a collapsed rect (no polygon errors in the log).
+func _check_banner_collapsed() -> void:
+	var banner := IslandBanner.new()
+	banner.custom_minimum_size = Vector2.ZERO
+	root.add_child(banner)
+	banner.size = Vector2.ZERO
+	banner.queue_redraw()
+	await process_frame
+	await process_frame
+	banner.size = Vector2(0.5, 120)
+	await process_frame
+	banner.size = Vector2(300, 0.5)
+	await process_frame
+	banner.size = Vector2(400, 168)
+	await process_frame
+	banner.queue_free()
+	# Headless does not log polygon errors from degenerate draws, so the guard itself is checked.
+	var guard := not IslandBanner.can_draw(Vector2.ZERO) and not IslandBanner.can_draw(Vector2(0.5, 120)) \
+		and not IslandBanner.can_draw(Vector2(300, 0.5)) and IslandBanner.can_draw(Vector2(400, 168))
+	_expect(guard, "island banner skips drawing a collapsed rect and still draws normal ones (no errors in the log)", "")
+
+
+## The incline shadow mesh is built once; the angle only scales it.
+func _check_ramp_shadow_scale() -> void:
+	var shadow: MeshInstance3D = _lab.find_child("InclineShadow", true, false)
+	var mesh := shadow.mesh
+	_lab.set_angle(0.0)
+	var flat := shadow.scale.x
+	_lab.set_angle(40.0)
+	_expect(shadow.mesh == mesh and is_equal_approx(flat, 1.0) and shadow.scale.x < 0.8 and shadow.scale.x > 0.5,
+		"incline shadow keeps its mesh and scales with the angle", "x %.3f -> %.3f" % [flat, shadow.scale.x])
 
 
 func _has_material(id: String) -> bool:
@@ -298,7 +541,8 @@ func _check_camera(definition: Dictionary) -> void:
 	rig.pan_by(Vector2(100000, 0))
 	_expect(rig.pan.length() <= definition.camera.pan_radius + 1e-4, "pan stays inside pan_radius", "%.2f" % rig.pan.length())
 	rig.set_mode("front")
-	_expect(rig.pan == Vector3.ZERO and is_equal_approx(rig.goal_distance, definition.camera.distance), "정면으로 resets pan and zoom", "")
+	var front_distance: float = definition.camera.views.front.get("distance", definition.camera.distance)
+	_expect(rig.pan == Vector3.ZERO and is_equal_approx(rig.goal_distance, front_distance), "정면으로 resets pan and zoom", "%.2f" % rig.goal_distance)
 	rig.set_mode("follow")
 	target.position = Vector3(3, 1, 0)
 	_step(rig, 1.5)
@@ -332,6 +576,17 @@ func _check_camera(definition: Dictionary) -> void:
 	rig.set_state(saved)
 	_expect(rig.mode == saved.mode and is_equal_approx(rig.goal_yaw, saved.yaw) and is_equal_approx(rig.cur_distance, saved.distance),
 		"camera state round-trips", rig.mode)
+	# Landing dip: moves only the drawn view, then settles back.
+	rig.set_mode("three_quarter", true)
+	var before := rig.get_state()
+	var eye := rig.global_position
+	rig.nudge(1.0)
+	_step(rig, 0.05)
+	var dipped := rig.global_position.y - eye.y
+	var same_goal := rig.get_state() == before
+	_step(rig, 1.0)
+	_expect(dipped < -0.01 and dipped > -0.1 and same_goal and rig.shake == 0.0 and rig.global_position.is_equal_approx(eye),
+		"landing nudge dips the view a few cm and settles without changing the mode or goal", "dip %.3f m" % dipped)
 	holder.queue_free()
 
 

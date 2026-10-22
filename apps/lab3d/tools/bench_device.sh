@@ -40,6 +40,7 @@ if [[ ! -f $definition ]]; then
 fi
 scene=$(sed -n 's/.*"bench_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$definition" | head -n 1)
 scene=${scene:-$experiment}
+[[ -n "${OPBENCH_SCENE:-}" ]] && echo "OPBENCH_SCENE is ignored; using bench_id $scene from $definition" >&2
 if [[ $experiment == incline-friction ]]; then
   ctl=${OPBENCH_CTL---ctl-angle=30}
 else

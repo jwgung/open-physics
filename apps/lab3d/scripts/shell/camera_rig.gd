@@ -153,21 +153,21 @@ func nudge(strength: float) -> void:
 ## inside the experiment's limits that satisfies both (pass Vector3.ZERO to skip one). A view that
 ## already satisfies them is left alone. The follow target is held still until end_assist(), so
 ## the camera does not chase the object under the finger. Returns true if the view was turned.
+## `stats` (optional, tests): receives "checks", the number of views the search evaluated.
 const ASSIST_PLANE_DEG := 25.0
 const ASSIST_LINE_DEG := 35.0
 const ASSIST_STEP_DEG := 5.0
-## Number of assist_ok() evaluations so far (tests: the search must stay small).
-static var assist_checks := 0
 const ASSIST_REFINE_STEPS := 5   # bisection steps pulling the found view back toward the goal
 
 
-func begin_assist(plane_normal: Vector3, line_axis: Vector3) -> bool:
+func begin_assist(plane_normal: Vector3, line_axis: Vector3, stats := {}) -> bool:
 	_held_target = _goal_target()
 	_assist_active = true
 	_assist_saved = {}
+	stats["checks"] = 1
 	if assist_ok(goal_yaw, goal_pitch, plane_normal, line_axis):
 		return false
-	var found := _nearest_assist_view(plane_normal, line_axis)
+	var found := _nearest_assist_view(plane_normal, line_axis, stats)
 	if found.is_empty():
 		return false
 	_assist_saved = {"yaw": goal_yaw, "pitch": goal_pitch}
@@ -181,7 +181,7 @@ func begin_assist(plane_normal: Vector3, line_axis: Vector3) -> bool:
 ## stops once no closer view is possible (a typical turn needs a few dozen checks, not the whole
 ## range), then pulls the best view back toward the goal along each axis as far as it still
 ## satisfies (so the turn is no bigger than needed).
-func _nearest_assist_view(plane_normal: Vector3, line_axis: Vector3) -> Dictionary:
+func _nearest_assist_view(plane_normal: Vector3, line_axis: Vector3, stats: Dictionary) -> Dictionary:
 	var step := deg_to_rad(ASSIST_STEP_DEG)
 	var full_circle := yaw_range.y - yaw_range.x >= TAU - 0.001
 	var yaw_reach := PI if full_circle else yaw_range.y - yaw_range.x
@@ -204,6 +204,7 @@ func _nearest_assist_view(plane_normal: Vector3, line_axis: Vector3) -> Dictiona
 					var pitch: float = goal_pitch + pitch_side * j * step
 					if pitch < pitch_range.x - 0.0001 or pitch > pitch_range.y + 0.0001:
 						continue
+					stats["checks"] += 1
 					if assist_ok(yaw, pitch, plane_normal, line_axis):
 						best_cost = d + j * step
 						best_yaw = yaw
@@ -223,16 +224,19 @@ func _nearest_assist_view(plane_normal: Vector3, line_axis: Vector3) -> Dictiona
 	var hi := 1.0
 	for i in ASSIST_REFINE_STEPS:
 		var mid := (lo + hi) * 0.5
+		stats["checks"] += 1
 		if assist_ok(best_yaw, goal_pitch + pitch_back * mid, plane_normal, line_axis):
 			hi = mid
 		else:
 			lo = mid
 	best_pitch = goal_pitch + pitch_back * hi
-	var yaw_back := angle_difference(goal_yaw, best_yaw)
+	# Only a full circle turns the short way round; a limited range is crossed directly.
+	var yaw_back := angle_difference(goal_yaw, best_yaw) if full_circle else best_yaw - goal_yaw
 	lo = 0.0
 	hi = 1.0
 	for i in ASSIST_REFINE_STEPS:
 		var mid := (lo + hi) * 0.5
+		stats["checks"] += 1
 		if assist_ok(goal_yaw + yaw_back * mid, best_pitch, plane_normal, line_axis):
 			hi = mid
 		else:
@@ -240,6 +244,8 @@ func _nearest_assist_view(plane_normal: Vector3, line_axis: Vector3) -> Dictiona
 	var yaw_goal := goal_yaw + yaw_back * hi
 	if full_circle:
 		yaw_goal = wrapf(yaw_goal, yaw_range.x, yaw_range.x + TAU)
+	else:
+		yaw_goal = clampf(yaw_goal, yaw_range.x, yaw_range.y)
 	return {"yaw": yaw_goal, "pitch": best_pitch}
 
 
@@ -259,7 +265,6 @@ func is_assisting() -> bool:
 
 ## Whether a view at (yaw, pitch) sees the plane / line well enough (see begin_assist).
 static func assist_ok(yaw: float, pitch: float, plane_normal: Vector3, line_axis: Vector3) -> bool:
-	assist_checks += 1
 	var look := view_direction(yaw, pitch)
 	if plane_normal != Vector3.ZERO and absf(look.dot(plane_normal.normalized())) < sin(deg_to_rad(ASSIST_PLANE_DEG)):
 		return false

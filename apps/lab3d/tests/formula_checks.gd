@@ -140,6 +140,15 @@ func check_layer_contract() -> void:
 		"formula layer: record() keeps bounded samples and index-aligned velocities (NAN without one)", "%s / %s" % [base.samples, v])
 	base.record(7.0)
 	expect.call(is_nan(base.last_velocity), "formula layer: last_velocity belongs to the last sample (NAN without one)", str(base.last_velocity))
+	var incline := InclineFrictionCorrector.new()
+	var pivot := Node3D.new()
+	incline.incline = pivot
+	var aliased := incline.surface == pivot
+	var other := Node3D.new()
+	incline.surface = other
+	expect.call(aliased and incline.incline == other, "formula layer: InclineFrictionCorrector.incline is another name for surface (both ways)", "")
+	pivot.free()
+	other.free()
 
 
 # --- 2. representative scenes -------------------------------------------------------------------

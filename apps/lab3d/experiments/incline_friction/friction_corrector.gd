@@ -5,10 +5,12 @@
 class_name InclineFrictionCorrector
 extends ContactFrictionCorrector
 
-## Pivot whose local +y is the surface normal, top surface at local y = 0.
+## Pivot whose local +y is the surface normal, top surface at local y = 0. Another name for
+## `surface` (no separate storage): setting either one sets both.
 var incline: Node3D:
+	get:
+		return surface
 	set(value):
-		incline = value
 		surface = value
 
 

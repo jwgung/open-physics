@@ -114,7 +114,7 @@ func dress(experiment: Node3D, ball: RigidBody3D, ball_visual: MeshInstance3D, b
 	juice = ArtJuice.new()
 	juice.name = "BallJuice"
 	experiment.add_child(juice)
-	juice.setup(ball, ball_visual, ball_size)
+	juice.setup(ball, ball_visual, ball_size, 0.0, ball.collision_mask)   # not the arrow knob (its own layer)
 
 
 ## The stand under a waiting ball whose bottom is at `bottom` (no stand for a ball on the floor).

@@ -59,7 +59,8 @@ func dress(experiment: Node3D, balls: Dictionary, ball_size: float) -> void:
 		juice.name = "Juice_%s" % id
 		juice.dust_amount = DUST_PER_BALL
 		experiment.add_child(juice)
-		juice.setup(balls[id][0], balls[id][1], ball_size)
+		var ball: RigidBody3D = balls[id][0]
+		juice.setup(ball, balls[id][1], ball_size, 0.0, ball.collision_mask)   # the shadow lands where the ball can
 		juices[id] = juice
 
 

@@ -73,7 +73,9 @@ var _dust: CPUParticles3D
 var _ray := PhysicsRayQueryParameters3D.new()
 
 
-func setup(target_body: RigidBody3D, target_mesh: MeshInstance3D, body_size: float, ground := 0.0) -> void:
+## `ground_mask`: the layers the shadow ray hits (the ground the body lands on; default the world's
+## layer 1, so handles on other layers, like the projectile arrow knob, are no shadow target).
+func setup(target_body: RigidBody3D, target_mesh: MeshInstance3D, body_size: float, ground := 0.0, ground_mask := 1) -> void:
 	body = target_body
 	mesh = target_mesh
 	size = body_size
@@ -119,7 +121,7 @@ func setup(target_body: RigidBody3D, target_mesh: MeshInstance3D, body_size: flo
 	add_child(_dust)
 	_ray.exclude = [body.get_rid()]
 	_ray.collide_with_areas = false
-	_ray.collision_mask = 1   # the world's layer: handles on other layers (projectile arrow knob) cast no shadow target
+	_ray.collision_mask = ground_mask
 
 
 ## The next landing counts as a new one (squash, dust, landed signal), without any animation.

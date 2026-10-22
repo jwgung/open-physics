@@ -1,0 +1,70 @@
+name: CI
+
+# Node tests and build + Godot headless tests (3D app and spike) on every PR and on pushes to dev
+# and main. Pages deployment stays in pages.yml.
+on:
+  pull_request:
+  push:
+    branches: [dev, main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  node:
+    name: Node tests and build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install dependencies
+        run: npm ci
+      - name: Test (web app, formula core, 3D app parity vectors)
+        run: npm test
+      - name: Test (spike parity vectors)
+        run: npm run test:spikes
+      - name: Build
+        run: npm run build
+
+  godot:
+    name: Godot headless tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      GODOT_DIR: ${{ github.workspace }}/.godot-bin
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      # Only the official release zip is cached; install-godot.sh re-verifies its pinned SHA-512 on
+      # every run, so a cache entry cannot change the binary.
+      - name: Cache Godot release zip
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.GODOT_DIR }}/Godot_v4.7.2-stable_linux.x86_64.zip
+          key: godot-4.7.2-stable-linux-x86_64-${{ hashFiles('.github/scripts/install-godot.sh') }}
+      - name: Install Godot 4.7.2 (official release, SHA-512 checked)
+        run: echo "GODOT=$(.github/scripts/install-godot.sh "$GODOT_DIR")" >> "$GITHUB_ENV"
+      - name: 3D app tests (apps/lab3d)
+        run: apps/lab3d/tools/build.sh test
+      - name: Spike tests (spikes/godot)
+        run: spikes/godot/tools/build.sh test
+      - name: Upload test logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: godot-test-logs
+          path: |
+            apps/lab3d/exports/test.log
+            spikes/godot/exports/test.log
+          if-no-files-found: ignore

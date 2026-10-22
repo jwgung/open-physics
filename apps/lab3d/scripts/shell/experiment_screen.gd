@@ -11,6 +11,7 @@ const UI_REFRESH_HZ := 10.0
 const TOP_BAR_HEIGHT := 84.0
 const SIDE_PANEL_WIDTH := 470.0
 const TIP_SECONDS := 8.0
+const DEMO_RELEASE_DELAY_S := 0.4   # --auto-drag: the auto-release waits this long after the demo put its object down
 
 ## Set by App for the screen it opens from --experiment: then the launch args (--ctl-*, --camera,
 ## ...) apply to this screen only (a rebuilt screen with a saved state restores that state instead).
@@ -77,7 +78,7 @@ func _ready() -> void:
 		manipulator.setup(view, experiment)
 		view.single_pointer.connect(manipulator.handle_pointer)
 		manipulator.changed.connect(_refresh)
-		manipulator.demo_placed.connect(func() -> void: _demo_release_left = 0.4)
+		manipulator.demo_placed.connect(func() -> void: _demo_release_left = DEMO_RELEASE_DELAY_S)
 	view.rig.follow_source = experiment
 	view.rig.configure(definition.camera)
 	view.rig.mode_changed.connect(_on_mode_changed)

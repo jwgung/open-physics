@@ -35,6 +35,12 @@ const HANDLE_GAP := 0.3          # m between the object's side and the handle ro
 const KNOB_SIZE := 0.32          # m
 const ROD_RADIUS := 0.045
 const DEMO_DRAG_S := 1.0
+const DEMO_NEAR_FRACTION := 0.4  # the demo's near stop: this far along the region (the far stop is its end)
+const RAY_LENGTH := 200.0        # m, pick ray
+const ON_SURFACE_TOL := 0.05     # m, how far off its surface an object still counts as resting on it
+const REGION_EPS := 0.001        # m, "inside the drag region" tolerance
+const MARKER_MARGIN := 0.06      # m, footprint ring beyond the object's extent on every side
+const MARKER_THICKNESS := 0.02   # m
 
 var view: View3D
 var experiment: Experiment
@@ -66,6 +72,7 @@ var _rods: Dictionary = {}           # id -> MeshInstance3D (handle rod sized to
 var _knob: MeshInstance3D
 var _handle_body := Transform3D()    # body and camera transforms the handle was placed for
 var _handle_camera := Transform3D()
+var _handle_surface: ManipSurface    # surface of the selected object, built once per selection / state change
 var _demo_every := 0.0
 var _demo_left := 0.0
 var _demo_flip := false
@@ -80,14 +87,16 @@ func setup(target_view: View3D, target_experiment: Experiment) -> void:
 	rules.clear()
 	for object in experiment.definition.get("manipulation", {}).get("objects", []):
 		var h: Variant = object.get("height", false)
+		var height_rule: Dictionary = h if h is Dictionary else {}
 		rules[object.id] = {
 			"surface": str(object.surface),
 			"snap": float(object.get("snap", 0.0)),
-			"height_max": float(h.get("max", 0.0)) if h is Dictionary else 0.0,
-			"height_step": float(h.get("step", 0.0)) if h is Dictionary else 0.0,
+			"height_max": float(height_rule.get("max", 0.0)),
+			"height_step": float(height_rule.get("step", 0.0)),
 		}
 	_ray.collide_with_areas = false
 	_query.collide_with_areas = false
+	experiment.state_changed.connect(_forget_handle_surface)
 	var knob := ArtKit.builder()
 	knob.ao_min = 0.9
 	knob.add_rounded_box(Transform3D.IDENTITY, Vector3.ONE * KNOB_SIZE, 0.06, 1, ArtPalette.YELLOW, ArtPalette.YELLOW_TOP)
@@ -98,10 +107,6 @@ func setup(target_view: View3D, target_experiment: Experiment) -> void:
 	_knob.name = "HeightKnob"
 	_knob.visible = false
 	add_child(_knob)
-
-
-func is_holding() -> bool:
-	return mode != ""
 
 
 ## View3D.single_pointer handler (positions in the view's UI units).
@@ -139,6 +144,7 @@ func cancel(shake := false) -> void:
 func select(id: String) -> void:
 	selected_id = id
 	_handle_body = Transform3D()
+	_handle_surface = null
 	_update_handle()
 
 
@@ -171,9 +177,7 @@ func _move(position: Vector2) -> void:
 		if s == null:
 			return
 		var rule: Dictionary = rules[active_id]
-		var h := clampf(s - _grab_height - _lift, 0.0, rule.height_max)
-		if rule.height_step > 0.0:
-			h = roundf(h / rule.height_step) * rule.height_step
+		var h := _snap_height(rule, clampf(s - _grab_height - _lift, 0.0, rule.height_max))
 		if not is_equal_approx(h, height):
 			height = h
 			_body.global_transform = _surface.pose(_held, _lift + height)
@@ -228,12 +232,11 @@ func _begin(id: String, kind: String, position: Vector2) -> void:
 	var p := surface.to_plane(body.global_position)
 	var above := surface.height_of(body.global_position) - _lift
 	# Resting on (or held above) its surface, within the drag area: keep the finger's offset.
-	var on_surface: bool = above > -0.05 and above <= rule.height_max + 0.05 and surface.clamp_soft(p, SOFT_MARGIN).distance_to(p) < 0.001
+	var on_surface: bool = above > -ON_SURFACE_TOL and above <= rule.height_max + ON_SURFACE_TOL \
+		and surface.clamp_soft(p, SOFT_MARGIN).distance_to(p) < REGION_EPS
 	height = 0.0
 	if rule.height_max > 0.0 and on_surface:
-		height = clampf(above, 0.0, rule.height_max)
-		if rule.height_step > 0.0:
-			height = roundf(height / rule.height_step) * rule.height_step
+		height = _snap_height(rule, clampf(above, 0.0, rule.height_max))
 	var ray := _finger_ray(position)
 	if kind == "drag":
 		var finger: Variant = surface.project_ray(ray[0], ray[1], _lift + height)
@@ -269,6 +272,13 @@ func _finish() -> void:
 	mode = ""
 	active_id = ""
 	_target_set = false
+
+
+## `h` on the rule's height step (unchanged when the rule has none).
+func _snap_height(rule: Dictionary, h: float) -> float:
+	if rule.height_step > 0.0:
+		return roundf(h / rule.height_step) * rule.height_step
+	return h
 
 
 ## Recomputes the landing point and whether it is free; only when the grid point (or height) changed.
@@ -318,7 +328,7 @@ func _screen_distance(world: Vector3, position: Vector2) -> float:
 func _pick(position: Vector2) -> String:
 	var ray := _finger_ray(position)
 	_ray.from = ray[0]
-	_ray.to = ray[0] + ray[1] * 200.0
+	_ray.to = ray[0] + ray[1] * RAY_LENGTH
 	var hit := experiment.get_world_3d().direct_space_state.intersect_ray(_ray)
 	var best := ""
 	var best_distance := PICK_RADIUS
@@ -408,16 +418,16 @@ func _marker_pair(id: String) -> Array:
 	for color in [ArtPalette.WHITE, ArtPalette.INK]:
 		var b := ArtKit.builder()
 		b.ao_min = 1.0
-		var hx := e.x + 0.06
-		var hz := e.z + 0.06
+		var hx := e.x + MARKER_MARGIN
+		var hz := e.z + MARKER_MARGIN
 		var w := MARKER_WIDTH
 		for side in [-1.0, 1.0]:
-			b.add_rounded_box(Transform3D(Basis(), Vector3(0.0, 0.0, side * hz)), Vector3(hx * 2.0 + w, 0.02, w), 0.0, 1, color)
-			b.add_rounded_box(Transform3D(Basis(), Vector3(side * hx, 0.0, 0.0)), Vector3(w, 0.02, hz * 2.0 - w), 0.0, 1, color)
+			b.add_rounded_box(Transform3D(Basis(), Vector3(0.0, 0.0, side * hz)), Vector3(hx * 2.0 + w, MARKER_THICKNESS, w), 0.0, 1, color)
+			b.add_rounded_box(Transform3D(Basis(), Vector3(side * hx, 0.0, 0.0)), Vector3(w, MARKER_THICKNESS, hz * 2.0 - w), 0.0, 1, color)
 			if color == ArtPalette.INK:
 				# Blocked: a cross inside the ring as well as the dark colour.
 				var diagonal := Vector2(hx, hz).length() * 2.0
-				b.add_rounded_box(Transform3D(Basis(Vector3.UP, side * atan2(hz, hx)), Vector3.ZERO), Vector3(diagonal - w, 0.02, w), 0.0, 1, color)
+				b.add_rounded_box(Transform3D(Basis(Vector3.UP, side * atan2(hz, hx)), Vector3.ZERO), Vector3(diagonal - w, MARKER_THICKNESS, w), 0.0, 1, color)
 		var marker := ArtKit.instance(b.commit())
 		marker.name = "Footprint%s" % ("Ok" if color == ArtPalette.WHITE else "Blocked")
 		marker.visible = false
@@ -447,15 +457,15 @@ func _rod(id: String) -> MeshInstance3D:
 ## Places the height handle beside the selected object, on the camera's right (moved only when the
 ## object or the camera moved).
 func _update_handle() -> void:
-	for id in _rods:
-		_rods[id].visible = _rods[id].visible and id == selected_id
 	if selected_id == "" or rules[selected_id].height_max <= 0.0:
 		_knob.visible = false
 		for id in _rods:
 			_rods[id].visible = false
 		return
+	for id in _rods:
+		_rods[id].visible = _rods[id].visible and id == selected_id
 	var body := experiment.manipulation_body(selected_id)
-	var surface := _surface if mode == "height" else experiment.manipulation_surface(rules[selected_id].surface)
+	var surface := _surface if mode == "height" else _selected_surface()
 	if body == null or surface == null:
 		_knob.visible = false
 		return
@@ -475,6 +485,18 @@ func _update_handle() -> void:
 	_handle_camera = view.rig.global_transform
 
 
+## The selected object's surface (built again only after select() or an experiment state change).
+func _selected_surface() -> ManipSurface:
+	if _handle_surface == null:
+		_handle_surface = experiment.manipulation_surface(rules[selected_id].surface)
+	return _handle_surface
+
+
+func _forget_handle_surface() -> void:
+	_handle_surface = null
+	_handle_body = Transform3D()   # place the handle again on the next frame
+
+
 func _process(delta: float) -> void:
 	if selected_id != "" and mode != "drag":
 		var body := experiment.manipulation_body(selected_id)
@@ -488,7 +510,7 @@ func _process(delta: float) -> void:
 
 ## Drags the first manipulable object back and forth every `every` seconds through the same input
 ## path as a finger (press, moves over DEMO_DRAG_S, release), alternating between the far end of
-## its region and 40 % along it (--auto-drag, bench_device.sh).
+## its region and DEMO_NEAR_FRACTION along it (--auto-drag, bench_device.sh).
 func start_demo(every: float) -> void:
 	_demo_every = every
 	_demo_left = 1.0
@@ -513,7 +535,7 @@ func _demo_tick(delta: float) -> void:
 	if body == null or surface == null or view.rig.is_position_behind(body.global_position):
 		return
 	_demo_flip = not _demo_flip
-	var goal := surface.nearest_inside(surface.region_min.lerp(surface.region_max, 1.0 if _demo_flip else 0.4))
+	var goal := surface.nearest_inside(surface.region_min.lerp(surface.region_max, 1.0 if _demo_flip else DEMO_NEAR_FRACTION))
 	var lift := _half_extents(id).y
 	_demo_from = view.rig.unproject_position(body.global_position) / _pixels_per_unit()
 	_demo_to = view.rig.unproject_position(surface.pose(goal, lift).origin) / _pixels_per_unit()

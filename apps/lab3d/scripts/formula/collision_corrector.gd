@@ -108,7 +108,7 @@ static func _dot(v: Vector3, n: PackedFloat64Array) -> float:
 ## Velocity change of one step from the forces the engine adds besides contacts (fallback before a
 ## contact-free step was measured).
 static func _external_dv(body: RigidBody3D, dt: float) -> Vector3:
-	return (body.get_gravity() * body.gravity_scale + body.constant_force / body.mass) * dt
+	return (body.get_gravity() + body.constant_force / body.mass) * dt   # get_gravity() includes gravity_scale
 
 
 func step(dt: float) -> void:

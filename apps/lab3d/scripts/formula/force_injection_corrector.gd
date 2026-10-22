@@ -24,7 +24,7 @@ func _init() -> void:
 func reset(body: RigidBody3D) -> void:
 	reset_history()
 	mass = body.mass
-	engine_gravity = body.get_gravity() * body.gravity_scale
+	engine_gravity = body.get_gravity()   # already scaled by gravity_scale (Godot 4.7 + Jolt, measured)
 
 
 ## Formula force (N) on the body in its current state.

@@ -16,7 +16,8 @@ extends FormulaCorrector
 var origin := Vector3.ZERO
 var initial_velocity := Vector3.ZERO
 ## Field strength (m/s^2) and direction the formulas use. release() sets them to the engine field on
-## the body (get_gravity() * gravity_scale); a strength that equals the engine's to float32 rounding
+## the body (get_gravity(), which already includes gravity_scale and area gravity: Godot 4.7 + Jolt,
+## measured in tests/formula_checks.gd); a strength that equals the engine's to float32 rounding
 ## keeps its 64-bit value (the engine vector is 32-bit: 9.81 stays 9.81, not 9.8100004).
 var g := 9.81
 var field_direction := Vector3.DOWN
@@ -46,7 +47,7 @@ func release(body: RigidBody3D, velocity: Vector3) -> void:
 	offsets.clear()
 	origin = body.global_position
 	initial_velocity = velocity
-	_engine_field = body.get_gravity() * body.gravity_scale
+	_engine_field = body.get_gravity()
 	var strength := float(_engine_field.length())
 	if absf(strength - g) > 1e-6 * maxf(1.0, g):
 		g = strength

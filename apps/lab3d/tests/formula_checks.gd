@@ -277,6 +277,7 @@ func check_uniform_field() -> void:
 	await _check_moon_field()
 	await _check_throw_off_table_edge()
 	await _check_contact_monitor_off(target)
+	await _check_gravity_scale()
 
 
 ## A ball resting on the floor (touching it when released) and thrown up does not land at release:
@@ -370,6 +371,29 @@ func _check_throw_off_table_edge() -> void:
 	expect.call(resting > 0 and landed > 2 and absf(drop + 1.0) <= 0.1,
 		"uniform field: thrown off a table edge with v0 (3, -1) lands on the floor, not on the table at release",
 		"contacts at release %d, landed step %d, drop %.3f m" % [resting, landed, drop])
+	world.queue_free()
+	await tree.process_frame
+
+
+## A body whose gravity_scale is not 0 or 1 (the Task 4a labs choose the moon / jupiter field this
+## way): get_gravity() already includes the scale, so the formulas and the leapfrog start use
+## 0.165 x 9.81 = 1.62 m/s^2 (Task 3 multiplied by the scale once more).
+func _check_gravity_scale() -> void:
+	var world := _world()
+	var ball := _body(world, 1.0, Vector3(0.0, 10.0, 0.0), 0.25)
+	ball.freeze = true
+	ball.gravity_scale = 1.62 / 9.81
+	var corrector := UniformFieldCorrector.new()
+	corrector.g = 1.62
+	ball.corrector = corrector
+	await _steps(2)
+	corrector.release(ball, Vector3.ZERO)
+	await _steps(STEP_HZ + 1)
+	var drop := corrector.samples[STEP_HZ]
+	var want := PhysicsLaws.constant_acceleration_displacement(0.0, -1.62, 1.0)
+	expect.call(corrector.g == 1.62 and absf(drop - want) <= 1e-4,
+		"uniform field: gravity_scale 0.165 (moon) gives g 1.62 m/s^2 and s(1 s) = g t^2 / 2 (get_gravity() is already scaled)",
+		"g %.6f, s(1 s) %.6f vs %.6f m" % [corrector.g, drop, want])
 	world.queue_free()
 	await tree.process_frame
 

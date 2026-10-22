@@ -274,6 +274,9 @@ func check_uniform_field() -> void:
 	world.queue_free()
 	await tree.process_frame
 	await _check_throw_from_floor(target)
+	await _check_moon_field()
+	await _check_throw_off_table_edge()
+	await _check_contact_monitor_off(target)
 
 
 ## A ball resting on the floor (touching it when released) and thrown up does not land at release:
@@ -300,6 +303,102 @@ func _check_throw_from_floor(target: Dictionary) -> void:
 	expect.call(resting > 0 and midair > 0.4 and landed > 0 and absf(landed / float(STEP_HZ) - flight) <= 2.0 / STEP_HZ,
 		"uniform field: a throw from the floor lands after 2 v0y / g, not at release (±2 steps)",
 		"contacts at release %d, time at 0.5 s %.3f s, landed step %d (%.3f s), formula %.3f s" % [resting, midair, landed, landed / float(STEP_HZ), flight])
+	world.queue_free()
+	await tree.process_frame
+
+
+## The formulas use the field the engine applies (here an Area3D with moon gravity 1.62 m/s^2 along a
+## tilted direction), not the default 9.81 down: displayed values = engine motion.
+func _check_moon_field() -> void:
+	var world := _world()
+	var area := Area3D.new()
+	area.gravity_space_override = Area3D.SPACE_OVERRIDE_REPLACE
+	area.gravity = 1.62
+	var direction := Vector3(1.0, -2.0, 0.0).normalized()
+	area.gravity_direction = direction
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3.ONE * 60.0
+	shape.shape = box
+	area.add_child(shape)
+	world.add_child(area)
+	var ball := _body(world, 1.0, Vector3(0.0, 10.0, 0.0), 0.25)
+	ball.freeze = true
+	var corrector := UniformFieldCorrector.new()
+	ball.corrector = corrector
+	await _steps(3)   # the area registers the body
+	var v0 := Vector3(1.0, 2.0, 0.0)
+	corrector.release(ball, v0)
+	await _steps(STEP_HZ + 1)
+	var shown := corrector.formula_values()
+	var offset: Vector3 = corrector.offsets[-1]
+	var t := float(shown.time)
+	var want_y := PhysicsLaws.constant_acceleration_displacement(v0.y, float(direction.y) * 1.62, t)
+	var error := maxf(absf(float(shown.x) - offset.x), maxf(absf(float(shown.y) - offset.y), absf(float(shown.z) - offset.z)))
+	expect.call(absf(corrector.g - 1.62) <= 1e-6 and corrector.field_direction.is_equal_approx(direction) and absf(float(shown.y) - want_y) <= 1e-6 and error <= 1e-4,
+		"uniform field: formulas use the engine field (moon 1.62 m/s^2, tilted) and match the engine motion",
+		"g %.6f, direction %s, t %.3f s, shown (%.4f, %.4f) vs engine (%.4f, %.4f), max |diff| %s m" % [corrector.g, corrector.field_direction, t,
+			shown.x, shown.y, offset.x, offset.y, String.num_scientific(error)])
+	world.queue_free()
+	await tree.process_frame
+
+
+## A ball pushed off a table edge with a downward velocity component does not land on the table it
+## starts on: the flight ends on the floor 1 m below.
+func _check_throw_off_table_edge() -> void:
+	var world := _world()
+	_floor(world, 0.0)
+	var table := StaticBody3D.new()
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(2.0, 1.0, 2.0)
+	shape.shape = box
+	table.add_child(shape)
+	table.position = Vector3(-1.0, 0.5, 0.0)   # top at y = 1, edge at x = 0
+	world.add_child(table)
+	var ball := _body(world, 1.0, Vector3(-0.05, 1.25, 0.0), 0.25)
+	ball.contact_monitor = true
+	ball.max_contacts_reported = 4
+	await _steps(10)   # settle on the table, in contact
+	var resting := ball.get_contact_count()
+	var corrector := UniformFieldCorrector.new()
+	ball.corrector = corrector
+	corrector.release(ball, Vector3(3.0, -1.0, 0.0))
+	await _steps(STEP_HZ + 30)
+	var landed := corrector.landed_step
+	var drop: float = corrector.offsets[landed].y if landed >= 0 else 0.0
+	expect.call(resting > 0 and landed > 2 and absf(drop + 1.0) <= 0.1,
+		"uniform field: thrown off a table edge with v0 (3, -1) lands on the floor, not on the table at release",
+		"contacts at release %d, landed step %d, drop %.3f m" % [resting, landed, drop])
+	world.queue_free()
+	await tree.process_frame
+
+
+## release() turns the contact monitor on when it is off: a drop still lands on the floor, and a throw
+## from the floor (the first contact report seeds the release surfaces) does not land at release.
+func _check_contact_monitor_off(target: Dictionary) -> void:
+	var g: float = target.g
+	var world := _world()
+	_floor(world, 0.0)
+	var drop := _body(world, 1.0, Vector3(0.0, 3.0, 0.0), 0.25)
+	drop.freeze = true
+	var thrown := _body(world, 1.0, Vector3(3.0, 0.25, 0.0), 0.25)
+	await _steps(10)   # the thrown ball rests on the floor
+	var drop_corrector := UniformFieldCorrector.new()
+	drop.corrector = drop_corrector
+	var throw_corrector := UniformFieldCorrector.new()
+	thrown.corrector = throw_corrector
+	drop_corrector.release(drop, Vector3.ZERO)
+	throw_corrector.release(thrown, Vector3(0.0, 4.0, 0.0))
+	await _steps(STEP_HZ + 10)
+	var drop_time := sqrt(2.0 * (3.0 - 0.25) / g)
+	var flight := 2.0 * 4.0 / g
+	var dropped := drop_corrector.landed_step / float(STEP_HZ)
+	var landed := throw_corrector.landed_step / float(STEP_HZ)
+	expect.call(drop.contact_monitor and drop.max_contacts_reported > 0 and drop_corrector.landed_step > 0 and absf(dropped - drop_time) <= 2.0 / STEP_HZ
+		and throw_corrector.landed_step > 0 and absf(landed - flight) <= 2.0 / STEP_HZ,
+		"uniform field: release() turns contact_monitor on (drop lands ±2 steps, throw from the floor not at release)",
+		"monitor %s, drop %.3f s vs %.3f s, throw %.3f s vs %.3f s" % [drop.contact_monitor, dropped, drop_time, landed, flight])
 	world.queue_free()
 	await tree.process_frame
 

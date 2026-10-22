@@ -1,8 +1,10 @@
 ## Headless checks of the shell's object manipulation (Phase 1 Task 2b), run by run_tests.gd:
 ## surface projection and snap (ManipSurface), the camera assist, registry rules, and the real
-## input path (View3D touches -> Manipulator -> experiment) on the development scene: floor drag
-## with grid snap, places that cannot be used, cancel (second finger), the height handle and
-## overlap with other objects.
+## input path (View3D touches -> Manipulator -> experiment) on the incline experiment and the
+## development scene: drag along the incline with grid snap, places that cannot be used, cancel
+## (second finger, system cancel), the height handle and overlap with other objects.
+## The displayed numbers after a new start position are checked against the TS-core vectors
+## (tests/incline_vectors.json "runs").
 extends RefCounted
 
 const EXPERIMENT_SCREEN := "res://scripts/shell/experiment_screen.gd"
@@ -24,6 +26,8 @@ func run(definition: Dictionary) -> void:
 	check_surface()
 	check_registry(definition)
 	check_assist(definition)
+	await check_incline_drag(definition)
+	await check_incline_runs(definition)
 	await check_dev_scene()
 
 
@@ -56,11 +60,10 @@ func check_surface() -> void:
 		"nearest grid point inside the region", str(line.nearest_inside(Vector2(3.9, 0.0))))
 
 
-func check_registry(_definition: Dictionary) -> void:
-	var dev_definition := ExperimentRegistry.find("manipulation-dev")
-	expect.call(ExperimentRegistry.validate(dev_definition).is_empty() and dev_definition.has("manipulation"), "the development scene declares its manipulation rules", "")
-	var broken := dev_definition.duplicate(true)
-	broken.manipulation.objects.append({"id": "red", "surface": "floor"})
+func check_registry(definition: Dictionary) -> void:
+	expect.call(ExperimentRegistry.validate(definition).is_empty() and definition.has("manipulation"), "incline declares its manipulation rules", "")
+	var broken := definition.duplicate(true)
+	broken.manipulation.objects.append({"id": "box", "surface": "incline"})
 	broken.manipulation.objects.append({"id": "x", "surface": "floor", "height": {"max": 0}})
 	broken.manipulation.objects.append({"id": "y", "surface": "floor", "snap": -1})
 	broken.manipulation.objects.append({"id": "z"})
@@ -116,7 +119,7 @@ func check_assist(definition: Dictionary) -> void:
 	holder.queue_free()
 
 
-# --- helpers ----------------------------------------------------------------------------------
+# --- incline: the real input path ------------------------------------------------------------------
 
 func _open(definition: Dictionary) -> Control:
 	var host := Control.new()
@@ -164,6 +167,140 @@ func _swipe(screen: Control, from: Vector2, to: Vector2, steps := 8) -> void:
 	_touch(screen, 0, from, true)
 	for i in range(1, steps + 1):
 		_drag(screen, 0, from.lerp(to, float(i) / steps))
+
+
+## Screen point of the incline box centre at run length `run` (m from the lower end).
+func _run_point(screen: Control, run: float) -> Vector2:
+	var lab: Experiment = screen.experiment
+	return _at(screen, lab._pivot.global_transform * Vector3(run - lab.INCLINE_LENGTH * 0.5, lab.BOX * 0.5, 0.0))
+
+
+func check_incline_drag(definition: Dictionary) -> void:
+	var screen: Control = await _open(definition)
+	var lab: Experiment = screen.experiment
+	var m: Manipulator = screen.manipulator
+	var box: RigidBody3D = lab.box
+	expect.call(m != null and m.rules.has("box"), "incline screen has a manipulator for the box", "")
+	# Drag the box from its default start (run 7.5 m) to run 4.0 m.
+	_swipe(screen, _at(screen, box.global_position), _run_point(screen, 4.0))
+	var held_lift: float = lab.props.juice._lift_goal
+	var markers: Array = m._markers.get("box", [])
+	var ok_marker_shown: bool = markers.size() == 2 and markers[0].visible and not markers[1].visible
+	expect.call(m.mode == "drag" and box.freeze and held_lift > 0.0 and ok_marker_shown and m.valid,
+		"picking the box freezes it, lifts its mesh and shows the white footprint", "mode %s, lift %.2f" % [m.mode, held_lift])
+	_touch(screen, 0, _run_point(screen, 4.0), false)
+	expect.call(m.mode == "" and is_equal_approx(lab.run_length(), 4.0) and box.freeze and lab.status() == "ready"
+		and absf(lab._pivot.to_local(box.global_position).x - 0.0) < 1e-4 and is_equal_approx(lab.observations().run, 4.0),
+		"putting the box down moves the start to run 4.0 m (box at rest on the incline)", "run %.3f, x %.3f" % [lab.run_length(), lab._pivot.to_local(box.global_position).x])
+	expect.call(absf(lab._mark.position.x - (0.0 - lab.BOX * 0.5)) < 1e-4 and not markers[0].visible, "start line follows the box; footprint hidden after", "")
+	# Snap: 5.2 m -> 5.0, 5.3 m -> 5.5.
+	for pair in [[5.2, 5.0], [5.3, 5.5]]:
+		_swipe(screen, _at(screen, box.global_position), _run_point(screen, pair[0]), 6)
+		_touch(screen, 0, _run_point(screen, pair[0]), false)
+		expect.call(is_equal_approx(lab.run_length(), pair[1]), "start snaps to the 0.5 m ticks (%.1f -> %.1f m)" % pair, "%.3f" % lab.run_length())
+	# Below the shortest run (and past the lower end): blocked, shakes, puts the box back.
+	_swipe(screen, _at(screen, box.global_position), _run_point(screen, 0.6), 8)
+	var blocked_marker: bool = markers[1].visible and not markers[0].visible
+	var wobbling: bool = absf(lab.props.juice._wobble_v) > 0.0 or absf(lab.props.juice._wobble) > 0.0
+	var held_inside: float = lab._pivot.to_local(box.global_position).x
+	expect.call(not m.valid and blocked_marker and wobbling and held_inside >= -3.0 - m.SOFT_MARGIN - 1e-4,
+		"a place off the allowed part of the incline shows the dark footprint and wobbles; the box stays near it", "x %.2f" % held_inside)
+	_touch(screen, 0, _run_point(screen, 0.6), false)
+	expect.call(is_equal_approx(lab.run_length(), 5.5) and m.mode == "" and lab.status() == "ready", "letting go there puts the box back at its start", "run %.2f" % lab.run_length())
+	# Far past the lower end (3 m beyond the incline): the box stops at the soft margin.
+	var far := _run_point(screen, -3.0)
+	_swipe(screen, _at(screen, box.global_position), far, 4)
+	var x: float = lab._pivot.to_local(box.global_position).x
+	expect.call(absf(x - (-3.0 - m.SOFT_MARGIN)) < 1e-3 and not m.valid, "dragging far past the incline keeps the box at the soft margin", "x %.2f" % x)
+	_touch(screen, 0, far, false)
+	# Second finger: cancel, box back at the start, no camera jump.
+	var start := box.global_transform
+	_swipe(screen, _at(screen, box.global_position), _run_point(screen, 2.0), 6)
+	_touch(screen, 1, Vector2(600, 200), true)
+	expect.call(m.mode == "" and box.global_transform.is_equal_approx(start) and is_equal_approx(lab.run_length(), 5.5) and not screen.view.rig.is_assisting(),
+		"a second finger cancels the drag (box back at its start)", "run %.2f" % lab.run_length())
+	_touch(screen, 1, Vector2(600, 200), false)
+	_touch(screen, 0, _run_point(screen, 2.0), false)
+	expect.call(is_equal_approx(lab.run_length(), 5.5), "lifting the fingers after a cancelled drag does not place it", "run %.2f" % lab.run_length())
+	# System cancel (the touch is cancelled): same as the second finger.
+	_swipe(screen, _at(screen, box.global_position), _run_point(screen, 2.0), 6)
+	_touch(screen, 0, _run_point(screen, 2.0), false, true)
+	expect.call(m.mode == "" and box.global_transform.is_equal_approx(start), "a cancelled touch puts the box back", "")
+	# Mouse: left drag works like one finger.
+	var mouse_from := _at(screen, box.global_position)
+	var mouse_to := _run_point(screen, 3.0)
+	screen.view._gui_input(_mouse(MOUSE_BUTTON_LEFT, true, mouse_from))
+	var motion := InputEventMouseMotion.new()
+	motion.position = mouse_to
+	motion.button_mask = MOUSE_BUTTON_MASK_LEFT
+	screen.view._gui_input(motion)
+	screen.view._gui_input(_mouse(MOUSE_BUTTON_LEFT, false, mouse_to))
+	expect.call(is_equal_approx(lab.run_length(), 3.0), "left mouse drag moves the box like a finger", "run %.2f" % lab.run_length())
+	# A sliding box can be picked up: the run stops, it waits at rest.
+	lab.set_control("angle", 40.0)
+	screen.experiment_action("release")
+	for i in 20:
+		await tree.physics_frame
+	var sliding_status: String = lab.status()
+	_swipe(screen, _at(screen, box.global_position), _run_point(screen, 2.5), 4)
+	expect.call(sliding_status == "sliding" and lab.status() == "ready" and not lab.released and box.freeze and box.linear_velocity == Vector3.ZERO,
+		"picking up a sliding box stops the run", "%s -> %s" % [sliding_status, lab.status()])
+	_touch(screen, 0, _run_point(screen, 2.5), false)
+	expect.call(is_equal_approx(lab.run_length(), 2.5), "the stopped box is put down at the new start", "run %.2f" % lab.run_length())
+	# A control change while holding puts the box back first.
+	_swipe(screen, _at(screen, box.global_position), _run_point(screen, 6.0), 4)
+	screen._set_control("angle", 30.0)
+	expect.call(m.mode == "" and is_equal_approx(lab.run_length(), 2.5), "changing a condition while holding cancels the drag", "run %.2f" % lab.run_length())
+	_touch(screen, 0, _run_point(screen, 6.0), false)
+	# The screen rebuild keeps the placed start.
+	var state: Dictionary = screen.capture_state()
+	var host: Control = screen.get_parent()
+	var again: Control = load(EXPERIMENT_SCREEN).new()
+	again.setup(definition, state)
+	host.add_child(again)
+	await tree.process_frame
+	expect.call(is_equal_approx(again.experiment.run_length(), 2.5) and is_equal_approx(again.experiment.angle_deg, 30.0), "a rebuilt screen keeps the placed start", "run %.2f" % again.experiment.run_length())
+	await _close(screen)
+
+
+func _mouse(button: int, pressed: bool, position: Vector2) -> InputEventMouseButton:
+	var event := InputEventMouseButton.new()
+	event.button_index = button
+	event.pressed = pressed
+	event.position = position
+	return event
+
+
+## The displayed numbers after a new start follow the TS-core vectors: s(t) = a t^2 / 2 until the
+## run length, the distance shown stops at the run length (the cap that was 7.5 m), the formula
+## curve ends there, and the box leaves the incline when s reaches it.
+func check_incline_runs(definition: Dictionary) -> void:
+	var screen: Control = await _open(definition)
+	var lab: Experiment = screen.experiment
+	for run in vectors.get("runs", []):
+		lab.set_material(run.material)
+		lab.set_angle(run.theta_deg)
+		lab.set_run_length(run.run_length)
+		lab.release()
+		var left_step := -1
+		var limit := int(ceil(float(run.t_leave) * STEP_HZ)) + 30
+		while lab.corrector.steps <= limit:
+			await tree.physics_frame
+			if left_step < 0 and lab.status() == "left":
+				left_step = lab.corrector.steps
+		var samples_ok := true
+		for row in run.displacement:
+			var k := int(roundf(float(row.t) * STEP_HZ))
+			samples_ok = samples_ok and k < lab.corrector.samples.size() and absf(lab.corrector.samples[k] - float(row.s)) <= float(row.s) * 0.01 + 1e-4
+		var shown: float = lab.observations().distance
+		var formula: PackedVector2Array = lab.graph_series().formula
+		var curve_ok := formula.size() > 2 and formula[-1].y <= float(run.run_length) + 1e-9
+		var left_t := left_step / float(STEP_HZ)
+		expect.call(samples_ok and is_equal_approx(shown, float(run.run_length)) and curve_ok and absf(left_t - float(run.t_leave)) <= 3.0 / STEP_HZ
+			and is_equal_approx(lab.observations().run, float(run.run_length)),
+			"run %.1f m (%s, %.0f deg): s(t) ±1%%, distance stops at the run, curve ends there, leaves at %.3f s" % [run.run_length, run.material, run.theta_deg, run.t_leave],
+			"shown %.4f m, left at %.3f s, curve end %.3f m" % [shown, left_t, formula[-1].y if formula.size() > 0 else -1.0])
+	await _close(screen)
 
 
 # --- development scene: floor plane, height handle, overlap ------------------------------------

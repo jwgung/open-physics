@@ -45,6 +45,21 @@ func start_line_mesh(width: float) -> Mesh:
 	return b.commit()
 
 
+## Scale ticks along the front edge of the incline's top face (incline-local, the pivot frame):
+## a short mark every `step` m from the lower end, a longer one every metre. Visual only.
+func ticks_mesh(length: float, width: float, step: float) -> Mesh:
+	var b := ArtKit.builder()
+	b.ao_min = 1.0
+	var count := int(roundf(length / step))
+	for i in range(1, count):
+		var x := -length * 0.5 + i * step
+		var whole := is_equal_approx(fmod(i * step, 1.0), 0.0)
+		var depth := 0.34 if whole else 0.18
+		b.add_rounded_box(Transform3D(Basis(), Vector3(x, 0.005, width * 0.5 - 0.06 - depth * 0.5)),
+			Vector3(0.05, 0.02, depth), 0.0, 1, ArtPalette.WHITE)   # flat marks: no bevel (36 vertices each)
+	return b.commit()
+
+
 ## Round foot on the ground (the post is a separate mesh that leans, see post_pose).
 func foot_mesh() -> Mesh:
 	var b := ArtKit.builder()

@@ -38,9 +38,15 @@ func angle_of(p: Vector2) -> float:
 	return rad_to_deg(atan2(p.x, p.y))
 
 
+## `deg` on the grid of `step` degrees (whole steps; no grid when step <= 0). The one snapping both the
+## drag surface and the experiment's angle_at use.
+static func snap_deg(deg: float, step: float) -> float:
+	return roundf(deg / step) * step if step > 0.0 else deg
+
+
 ## The angle of `p` on the grid (not clamped).
 func snapped_angle(p: Vector2) -> float:
-	return roundf(angle_of(p) / angle_step) * angle_step if angle_step > 0.0 else angle_of(p)
+	return snap_deg(angle_of(p), angle_step)
 
 
 func snap_point(p: Vector2) -> Vector2:

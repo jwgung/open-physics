@@ -42,7 +42,10 @@ func _init() -> void:
 func set_control(id: String, value: Variant) -> void:
 	match id:
 		"mass":
-			mass = _clamp_to_control(id, float(value))
+			var clamped := _clamp_to_control(id, float(value))
+			if is_nan(clamped):
+				return
+			mass = clamped
 		"volume":
 			if _find_option(id, str(value)).is_empty():
 				push_warning("buoyancy: unknown volume %s" % value)

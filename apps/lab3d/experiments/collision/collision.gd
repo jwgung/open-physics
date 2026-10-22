@@ -61,13 +61,25 @@ func _init() -> void:
 func set_control(id: String, value: Variant) -> void:
 	match id:
 		"mass_a":
-			mass_a = _clamp_to_control(id, float(value))
+			var clamped := _clamp_to_control(id, float(value))
+			if is_nan(clamped):
+				return
+			mass_a = clamped
 		"mass_b":
-			mass_b = _clamp_to_control(id, float(value))
+			var clamped := _clamp_to_control(id, float(value))
+			if is_nan(clamped):
+				return
+			mass_b = clamped
 		"velocity_a":
-			velocity_a = _clamp_to_control(id, float(value))
+			var clamped := _clamp_to_control(id, float(value))
+			if is_nan(clamped):
+				return
+			velocity_a = clamped
 		"velocity_b":
-			velocity_b = _clamp_to_control(id, float(value))
+			var clamped := _clamp_to_control(id, float(value))
+			if is_nan(clamped):
+				return
+			velocity_b = clamped
 		"material_a", "material_b":
 			if _find_option(id, str(value)).is_empty():
 				push_warning("collision: unknown material %s" % value)

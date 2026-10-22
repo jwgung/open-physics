@@ -163,15 +163,11 @@ func _find_option(control_id: String, option_id: String) -> Dictionary:
 
 
 ## `value` limited to the min / max of the slider control `id` in definition.controls (a bound
-## the control does not declare stays open). A NaN or infinite `value` is refused: the control's
-## current value (its default if that is no number) comes back, so a bad input changes nothing.
+## the control does not declare stays open). A NaN or infinite `value` is refused: NaN comes back
+## and the caller (set_control) changes nothing, so a bad input leaves the run and the graph alone.
 func _clamp_to_control(id: String, value: float) -> float:
 	if not is_finite(value):
-		var current: Variant = control_value(id)
-		if current is float or current is int:
-			return float(current)
-		var fallback: Variant = _find_control(id).get("default")
-		return float(fallback) if fallback is float or fallback is int else 0.0
+		return NAN
 	for control in definition.get("controls", []):
 		if control.id == id:
 			return clampf(value, float(control.get("min", -INF)), float(control.get("max", INF)))

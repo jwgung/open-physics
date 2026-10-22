@@ -51,7 +51,10 @@ func set_control(id: String, value: Variant) -> void:
 			gravity_id = str(value)
 			g = float(option.g)
 		"length":
-			length = _clamp_to_control(id, float(value))
+			var clamped := _clamp_to_control(id, float(value))
+			if is_nan(clamped):
+				return
+			length = clamped
 		"damping":
 			if _find_option(id, str(value)).is_empty():
 				push_warning("constraints: unknown damping %s" % value)
@@ -208,9 +211,7 @@ func _main_body() -> RigidBody3D:
 func angle_at(i: int, world: Vector3) -> float:
 	var d := world - anchor(i)
 	var deg := rad_to_deg(atan2(d.x, -d.y))
-	var step := _grid_step(IDS[i])
-	if step > 0.0:
-		deg = roundi(deg / step) * step
+	deg = PendulumArcSurface.snap_deg(deg, _grid_step(IDS[i]))
 	return deg_to_rad(clampf(deg, -MAX_DEG, MAX_DEG))
 
 

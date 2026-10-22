@@ -18,6 +18,8 @@ var load_body: RigidBody3D
 var clock_steps := 0
 var _press: PressLineSurface      # the held handle's line (origin = its rest point when picked up)
 var _press_step := 0.02           # its grid step (m per cell)
+var _line: PressLineSurface       # the last press line built (reused while its top, reach, step and lift are the same)
+var _line_key := []
 
 
 # --- the lab fills these in -----------------------------------------------------------------
@@ -77,6 +79,16 @@ func _add_graph_point() -> void:
 func _restart_clock() -> void:
 	clock_steps = 0
 	graph.clear()
+
+
+## The press line down from `top` (the manipulator asks for it at every pick-up and the lab again to
+## count the cells): built once per top / reach / step / lift and reused.
+func _press_line(top: Vector3, reach: float, step: float, lift: float) -> PressLineSurface:
+	var key := [top, reach, step, lift]
+	if _line == null or _line_key != key:
+		_line = PressLineSurface.new(top, reach, step, lift)
+		_line_key = key
+	return _line
 
 
 ## The handle's press line starts at the surface `surface`, counted in the handle rule's grid.

@@ -73,8 +73,9 @@ func check_registry(definition: Dictionary) -> void:
 	broken.manipulation.objects.append({"id": "y", "surface": "floor", "snap": -1})
 	broken.manipulation.objects.append({"id": "z"})
 	broken.manipulation.objects.append({"id": "w", "surface": "floor", "height": {"max": 1.0, "step": 0.4}})
+	broken.manipulation.objects.append({"id": "v", "surface": "floor", "height": {"max": 5, "step": 2}})  # ints: no integer division
 	var problems := ExperimentRegistry.validate(broken)
-	expect.call(problems.size() == 5, "registry rejects bad manipulation rules (duplicate, height, snap, surface, max not a step multiple)", ", ".join(problems))
+	expect.call(problems.size() == 6, "registry rejects bad manipulation rules (duplicate, height, snap, surface, max not a step multiple, int max/step)", ", ".join(problems))
 	var listed := ExperimentRegistry.load_all().map(func(d: Dictionary) -> String: return d.id)
 	var dev := ExperimentRegistry.find("manipulation-dev")
 	expect.call(not dev.is_empty() and "manipulation-dev" not in listed, "the development scene opens by id but is not listed", str(listed))

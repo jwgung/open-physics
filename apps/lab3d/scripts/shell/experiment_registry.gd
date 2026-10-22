@@ -136,7 +136,7 @@ static func _validate_manipulation(manipulation: Variant) -> PackedStringArray:
 			var step: Variant = height.get("step", 0.0)
 			if not (top is float or top is int) or top <= 0.0 or not (step is float or step is int) or step < 0.0:
 				problems.append("manipulation %s.height needs max > 0 and step >= 0" % object.id)
-			elif step > 0.0 and absf(top / step - roundf(top / step)) > 1e-6:
+			elif step > 0.0 and absf(float(top) / float(step) - roundf(float(top) / float(step))) > 1e-6:
 				problems.append("manipulation %s.height.max must be a multiple of step" % object.id)
 		elif height != false:
 			problems.append("manipulation %s.height must be false or {max, step}" % object.id)

@@ -204,7 +204,7 @@ npm test                           # 루트: TS 테스트 + apps/lab3d/tools/{in
 
 ### 테스트와 CI
 
-`.github/workflows/ci.yml`이 모든 PR과 dev·main push에서 돈다(Pages 배포 `pages.yml`은 따로).
+`.github/workflows/ci.yml`이 모든 PR과 dev·main push에서 돌고, 수동 실행(workflow_dispatch)도 된다(Pages 배포 `pages.yml`은 따로). checkout은 토큰을 남기지 않는다(`persist-credentials: false`). Jolt 조사용 `spikes/jolt-probes/`는 CI에 넣지 않았고 `run.sh`로 수동 실행한다.
 
 | 잡 | 단계 |
 |---|---|
@@ -214,7 +214,7 @@ npm test                           # 루트: TS 테스트 + apps/lab3d/tools/{in
 로컬에서 같은 단계를 재현한다(작업 트리를 건드리지 않게 깨끗한 사본에서):
 
 ```bash
-git archive HEAD | tar -x -C /tmp/ci-ws && cd /tmp/ci-ws
+mkdir -p /tmp/ci-ws && git archive HEAD | tar -x -C /tmp/ci-ws && cd /tmp/ci-ws
 npm ci && npm test && npm run test:spikes && npm run build
 export GODOT=$(.github/scripts/install-godot.sh "$PWD/.godot-bin")
 apps/lab3d/tools/build.sh test && spikes/godot/tools/build.sh test

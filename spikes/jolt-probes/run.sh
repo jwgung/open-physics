@@ -9,5 +9,5 @@ probes=("$@")
   custom_integrator.gd contact_report.gd restitution_combine.gd joint_pin_pendulum.gd joint_6dof_spring.gd)
 for probe in "${probes[@]}"; do
   echo "== $probe"
-  timeout 120 "$GODOT" --headless --path . --fixed-fps 60 -s "res://$probe" 2>&1 | grep -v '^Godot Engine\|^$'
+  timeout 120 "$GODOT" --headless --path . --fixed-fps 60 -s "res://$probe" 2>&1 | { grep -v '^Godot Engine\|^$' || true; }
 done

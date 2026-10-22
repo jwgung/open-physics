@@ -41,8 +41,9 @@ func apply(body: RigidBody3D, step_dt: float) -> void:
 	dt = step_dt
 	record(sample(body))
 	var force := formula_force(body)
-	if steps == 0 and leapfrog_start:
-		force = 0.5 * force - 0.5 * mass * engine_gravity   # net (F + m g) / 2 on the first step
+	var factor := start_factor(steps == 0)
+	if factor != 1.0:
+		force = factor * force - (1.0 - factor) * mass * engine_gravity   # net (F + m g) / 2 on the first step
 	body.apply_central_force(force)
 	steps += 1
 

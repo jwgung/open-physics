@@ -55,8 +55,9 @@ func apply(body: RigidBody3D, step_dt: float) -> void:
 	if in_flight and body.contact_monitor and body.get_contact_count() > 0:
 		in_flight = false
 		landed_step = steps
-	if steps == 0 and leapfrog_start:
-		body.apply_central_force(-0.5 * mass * _engine_field)   # net force m g / 2 on the first step
+	var factor := start_factor(steps == 0)
+	if factor != 1.0:
+		body.apply_central_force((factor - 1.0) * mass * _engine_field)   # net force m g / 2 on the first step
 	steps += 1
 
 

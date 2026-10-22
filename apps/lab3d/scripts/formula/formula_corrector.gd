@@ -15,6 +15,7 @@
 class_name FormulaCorrector
 extends RefCounted
 
+## Every `method` id (the table above; tests check each corrector's id is one of these).
 const METHODS := ["contact_force", "uniform_field", "collision", "force_injection", "kinematic_model"]
 
 var method := ""
@@ -25,9 +26,14 @@ var steps := 0
 var samples: PackedFloat64Array = PackedFloat64Array()
 var history_steps := 600
 var last_sample := 0.0
+## Optional second series recorded with the sample (record(value, velocity)): velocities[k] is the
+## velocity after k steps, same bound as samples. Correctors without a velocity leave it empty.
+var velocities: PackedFloat64Array = PackedFloat64Array()
+var last_velocity := 0.0
 ## Leapfrog start: on the first released step only half of the net force acts, so Jolt's
 ## symplectic Euler (v += a dt, then x += v dt) places the body on the step points of the
 ## velocity Verlet / exact constant-acceleration solution instead of a (t^2 + t dt) / 2.
+## Every corrector that starts a motion takes the factor from start_factor().
 var leapfrog_start := true
 
 
@@ -36,13 +42,20 @@ func reset_history() -> void:
 	steps = 0
 	samples.clear()
 	last_sample = 0.0
+	velocities.clear()
+	last_velocity = 0.0
 
 
-## Stores the sample of this step (bounded history).
-func record(value: float) -> void:
+## Stores the sample of this step (bounded history), and the velocity when one is given.
+func record(value: float, velocity := NAN) -> void:
 	last_sample = value
+	var has_velocity := not is_nan(velocity)
+	if has_velocity:
+		last_velocity = velocity
 	if samples.size() < history_steps:
 		samples.append(value)
+		if has_velocity:
+			velocities.append(velocity)
 
 
 ## One fixed step before the physics server steps. Body-bound correctors also accept apply().
@@ -65,6 +78,8 @@ func engine_values() -> Dictionary:
 	return {}
 
 
-## Net-force factor for the current step: 0.5 on the first released step when leapfrog_start.
+## Net-force factor for the current step (the leapfrog start rule, shared by every corrector):
+## 0.5 on the first released step when leapfrog_start, else 1. The caller decides what its first
+## step is (steps == 0 after a release, or the step that leaves rest) and scales the net force.
 func start_factor(first_step: bool) -> float:
 	return 0.5 if leapfrog_start and first_step else 1.0

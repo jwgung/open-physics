@@ -35,9 +35,7 @@ var status := "holding"
 ## per step in apply(); a brief loss of contact does not set it.
 var past_end := false
 var origin := Vector3.ZERO
-## velocities[k] = tangential velocity after k steps (same bound as samples).
-var velocities: PackedFloat64Array = PackedFloat64Array()
-var last_velocity := 0.0
+## samples[k] / velocities[k] (base record()) = tangential displacement / velocity after k steps.
 var max_offset := 0.0          # largest |displacement| (any direction) seen since release, m
 
 
@@ -50,8 +48,6 @@ func reset(release_origin: Vector3) -> void:
 	past_end = false
 	origin = release_origin
 	reset_history()
-	velocities.clear()
-	last_velocity = 0.0
 	max_offset = 0.0
 
 
@@ -66,11 +62,7 @@ func apply(body: RigidBody3D, dt: float) -> void:
 	var velocity := body.linear_velocity
 	var mass := body.mass
 	var direction := tangent()
-	last_sample = (position - origin).dot(direction)
-	last_velocity = velocity.dot(direction)
-	if samples.size() < history_steps:
-		samples.append(last_sample)
-		velocities.append(last_velocity)
+	record((position - origin).dot(direction), velocity.dot(direction))
 	max_offset = maxf(max_offset, (position - origin).length())
 	steps += 1
 	var local := surface.global_transform.affine_inverse() * position
@@ -93,8 +85,7 @@ func apply(body: RigidBody3D, dt: float) -> void:
 		corrected = PhysicsLaws.corrected_tangential_force(
 			engine_tangential + applied_force, tangential_speed, normal_load, mu_s, mu_k, mass, dt)
 		holding = absf(tangential_speed) < REST_SPEED and corrected == 0.0
-	if leapfrog_start and status == "holding" and not holding and absf(tangential_speed) < REST_SPEED:
-		corrected *= 0.5
+	corrected *= start_factor(status == "holding" and not holding and absf(tangential_speed) < REST_SPEED)
 	status = "holding" if holding else "sliding"
 	body.apply_central_force(direction * (corrected - engine_tangential))
 

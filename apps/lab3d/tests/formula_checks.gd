@@ -25,6 +25,7 @@ func _init(scene_tree: SceneTree, expect_fn: Callable) -> void:
 
 func run() -> void:
 	check_parity()
+	check_layer_contract()
 	await check_uniform_field()
 	await check_contact_force()
 	await check_collision()
@@ -109,6 +110,32 @@ func _error(actual: Variant, expected: Variant) -> float:
 				worst = maxf(worst, error)
 			return worst
 	return -1.0
+
+
+## The shared parts of the base class: method ids, the leapfrog start factor, record().
+func check_layer_contract() -> void:
+	var ids := []
+	for corrector: FormulaCorrector in [ContactFrictionCorrector.new(), UniformFieldCorrector.new(), CollisionCorrector.new(),
+			SpringInjector.new(), BuoyancyInjector.new(), PointGravityInjector.new(), PendulumModelDriver.new(),
+			LeverModelDriver.new(), PulleyModelDriver.new()]:
+		if not ids.has(corrector.method):
+			ids.append(corrector.method)
+	ids.sort()
+	var methods := FormulaCorrector.METHODS.duplicate()
+	methods.sort()
+	expect.call(ids == methods, "formula layer: every corrector's method id is one of METHODS (all 5 used)", str(ids))
+	var base := FormulaCorrector.new()
+	var factors := [base.start_factor(true), base.start_factor(false)]
+	base.leapfrog_start = false
+	factors.append(base.start_factor(true))
+	expect.call(factors == [0.5, 1.0, 1.0], "formula layer: start_factor = 1/2 only on the first step with leapfrog_start", str(factors))
+	base.history_steps = 2
+	base.record(1.0)
+	base.record(2.0, -3.0)
+	base.record(4.0, 5.0)
+	expect.call(base.samples == PackedFloat64Array([1.0, 2.0]) and base.velocities == PackedFloat64Array([-3.0])
+		and base.last_sample == 4.0 and base.last_velocity == 5.0, "formula layer: record() keeps bounded samples and optional velocities",
+		"%s / %s" % [base.samples, base.velocities])
 
 
 # --- 2. representative scenes -------------------------------------------------------------------

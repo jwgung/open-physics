@@ -160,9 +160,11 @@ func status() -> String:
 		return "ready"
 	if absf(model.vy) >= SETTLED_SPEED:
 		return "moving"
-	if model.bottom() <= FLOOR_Y + 1e-9 and model.net_force() <= 0.0:
-		return "sunk"
+	# The densities decide what the drum is (a neutral one that touches the floor is not "sunk").
 	match model.judgement():
+		"sinks":
+			if model.bottom() <= FLOOR_Y + 1e-9 and model.net_force() <= 0.0:
+				return "sunk"
 		"floats":
 			if absf(model.depth() - model.floating_depth()) < SETTLED_DEPTH:
 				return "floating"

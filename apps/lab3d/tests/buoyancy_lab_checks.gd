@@ -304,6 +304,12 @@ func check_archimedes() -> void:
 	await _until(lab, 12 * STEP_HZ)
 	expect.call(absf(lab.drum.global_position.y - y0) <= ENGINE_TOLERANCE and lab.status() == "staying" and absf(float(lab.observations().net)) < 1e-9,
 		"buoyancy: a drum as dense as water released under water stays where it is (no net force)", "moved %s m" % String.num_scientific(absf(lab.drum.global_position.y - y0)))
+	# Touching the tank floor does not make it "sunk": the judgement (the densities) decides, so a neutral drum
+	# on the floor is staying.
+	await _settle(lab, 100.0, "big", lab.FLOOR_Y, 6 * STEP_HZ)
+	var floor_bottom: float = lab.drum.global_position.y - 0.25
+	expect.call(absf(floor_bottom - lab.FLOOR_Y) <= ENGINE_TOLERANCE and lab.model.judgement() == "neutral" and lab.status() == "staying",
+		"buoyancy: a drum as dense as water resting on the tank floor is staying, not sunk (the densities decide)", "status %s, bottom %.6f m" % [lab.status(), floor_bottom])
 	await _free(lab)
 
 

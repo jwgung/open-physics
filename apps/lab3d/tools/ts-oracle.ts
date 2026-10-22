@@ -17,6 +17,7 @@ function bisect(f: (t: number) => number, lo: number, hi: number): number {
 
 /** First t > 0 with constantAccelerationDisplacement(v0, a, t) = -drop (a < 0), from the TS function. */
 export function tsLandingTime(v0: number, a: number, drop: number): number {
+  if (!(a < 0)) throw new RangeError(`tsLandingTime needs a < 0 (got ${a}): the body never comes down`);
   const s = (t: number) => constantAccelerationDisplacement({ x: 0, y: v0 }, { x: 0, y: a }, t).y + drop;
   let hi = 1;
   while (s(hi) > 0) hi *= 2;
@@ -26,6 +27,7 @@ export function tsLandingTime(v0: number, a: number, drop: number): number {
 
 /** t with constantAccelerationVelocity(v0, a, t) = 0 for a rising body (a < 0), from the TS function. */
 export function tsApexTime(v0: number, a: number): number {
+  if (!(a < 0)) throw new RangeError(`tsApexTime needs a < 0 (got ${a}): the body never stops rising`);
   const v = (t: number) => constantAccelerationVelocity({ x: 0, y: v0 }, { x: 0, y: a }, t).y;
   let hi = 1;
   while (v(hi) > 0) hi *= 2;

@@ -84,6 +84,15 @@
 | 궤도 (`orbit`) | 공식 힘 주입 | `PointGravity`(a = GM/r²), `circularOrbitSpeed/Period`, `escapeSpeed`, `OrbitChallenge.analyze`(충돌·공전·이탈 예측) | 궤도 반지름, 원 궤도 속력·주기, 탈출 속력, 예측 결과 | 원 궤도 한 바퀴 시간 = 2π√(r³/GM) ±0.1%, 반지름 ±0.1% | Area3D 점 중력 대신 주입: 법칙·G·M을 TS와 같게. 도약 출발 없이는 반지름이 0.7% 흔들림 |
 | 부력 (`buoyancy`) | 공식 힘 주입 | `BuoyancyRegionLaw`(잠긴 비율 선형, 끌림), `buoyantForce`, `floatingSubmergedFraction`, `buoyancyNetForce` | 잠긴 깊이(측정), 부력 ρgV_sub, 무게, 뜨는 비율 ρ물체/ρ유체, 판정 뜸/중성/가라앉음(비율이 1에서 1e-9 이내면 중성) | 상자가 비율 m/m_displaced에 뜸 ±0.5%, 더 무거우면 바닥까지 가라앉음, 같으면 중성(가라앉음 아님) | Jolt에 유체 없음 |
 
+### 실험 구현 (Task 4a: 균일장)
+
+자유 낙하·던지기 실험(`experiments/free_fall/`, `experiments/projectile/`, 공용 `experiments/uniform_field/uniform_field_lab.gd`)이 위 표의 방식을 그대로 쓴다.
+
+- 중력 선택(무중력·달·지구·목성)은 공의 `gravity_scale`로 엔진 장을 정하고 보정기에 64비트 g를 준다. 이때 `get_gravity()`가 이미 `gravity_scale`을 포함한다는 것을 확인했고(배율 0.165에서 −1.62 반환), Task 3 보정기 네 개가 배율을 한 번 더 곱하던 것을 고쳤다(2절 한계 항목, 회귀 검사 `uniform field: gravity_scale 0.165`).
+- 표시: 놓은 뒤 고정 스텝 시계를 공식 착지 시간 `landing_time(v0y, −g, h₀)`에서 멈추고 그 시각의 `PhysicsLaws` 값을 보인다. 엔진 착지 보고(±2스텝)가 오면 공식 착지 값을 보인다. 착지 시간·최고점(`landing_time`, `apex_time`, `apex_rise`)은 TS 코어에 닫힌 식이 없어, 벡터 생성기가 TS `constantAccelerationDisplacement/Velocity`의 근을 이분법으로 구한다(`tools/ts-oracle.ts`, parity 상대 오차 0).
+- 던지기 발사 속도는 64비트 스칼라(`launch_vx`·`launch_vy`)로 공식에 넣는다. `Vector3`에 담으면 32비트로 반올림돼 표시가 1e-7만큼 어긋난다(측정).
+- 테스트: `tests/uniform_lab_checks.gd`(1·2·3절 기준을 실험 자체에 적용, 기대값은 `tests/uniform_labs_vectors.json`). 결과는 앱 README "테스트".
+
 ## 5. 테스트 파이프라인
 
 1. **TS → 벡터**: `tools/formula-vectors.test.ts`(루트 `npm test`)가 TS 함수·클래스를 직접 불러 `tests/formula_vectors.json`을 만들고 커밋된 파일과 대조한다. 내용: 실험 id → 쓰는 `PhysicsLaws` 함수 목록(10개 실험 전부), 사례 583개(`law`, SI 단위 `args`, `expect`. 밀기 마찰은 TS 법칙이 px 단위라 SI 인자 × 48을 넣고 힘 ÷ 48을 받는다), 대표 장면 목표값(`scenes`). 다시 만들기: `UPDATE_FORMULA_VECTORS=1 npx vitest run apps/lab3d`. 빗면은 기존 `tools/incline-vectors.test.ts` → `tests/incline_vectors.json`.

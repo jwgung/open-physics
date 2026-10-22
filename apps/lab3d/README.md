@@ -1,6 +1,6 @@
 # Open Physics 3D (apps/lab3d)
 
-역학 3D 실험 앱이다. Godot 4.7.2 + Jolt, GDScript. Phase 1 Task 2a에서 셸 뼈대(실험 등록, 카메라·제스처, 2D 패널, 품질 설정)와 첫 실험(빗면 마찰)을 만들었고, Task 2c에서 시각 스타일(잔디 섬: 선명한 원색, 각진 로우폴리, 하늘에 뜬 잔디 섬)과 연출을 정했다. Task 2b에서 한 손가락으로 물체를 집어 정해진 면 위로 옮기는 조작(조작 평면·스냅·높이 손잡이·보조 시점)을 더했다. Task 3에서 역학 안내형 10개 실험이 쓸 공식 보정 계층(`scripts/formula/`)과 TS↔GDScript parity, CI를 만들었다([공식 보정](docs/formula-correction.md)). 기준은 [아트 디렉션](docs/art-direction.md)이다. 계획과 진행은 [Phase 1 문서](../../docs/3d-phase1/README.md), 스택 결정은 [ADR 0001](../../docs/adr/0001-3d-app-stack.md)에 있다.
+역학 3D 실험 앱이다. Godot 4.7.2 + Jolt, GDScript. Phase 1 Task 2a에서 셸 뼈대(실험 등록, 카메라·제스처, 2D 패널, 품질 설정)와 첫 실험(빗면 마찰)을 만들었고, Task 2c에서 시각 스타일(잔디 섬: 선명한 원색, 각진 로우폴리, 하늘에 뜬 잔디 섬)과 연출을 정했다. Task 2b에서 한 손가락으로 물체를 집어 정해진 면 위로 옮기는 조작(조작 평면·스냅·높이 손잡이·보조 시점)을 더했다. Task 3에서 역학 안내형 10개 실험이 쓸 공식 보정 계층(`scripts/formula/`)과 TS↔GDScript parity, CI를 만들었다([공식 보정](docs/formula-correction.md)). Task 4a에서 실험 문구를 웹 2D와 공유하는 JSON으로 빼고(1절 "콘텐츠 공유"), 균일장 실험 두 개(자유 낙하, 던지기)를 더했다(1절 "실험 목록"). 기준은 [아트 디렉션](docs/art-direction.md)이다. 계획과 진행은 [Phase 1 문서](../../docs/3d-phase1/README.md), 스택 결정은 [ADR 0001](../../docs/adr/0001-3d-app-stack.md)에 있다.
 
 - Android: arm64-v8a release APK(디버그 키스토어 서명, 배포용 아님). 렌더러는 품질 단계가 정한다(low = Compatibility, medium·high = Mobile).
 - 모든 작업은 헤드리스 CLI(`godot --headless`)로 한다. 에디터 GUI를 쓰지 않는다.
@@ -22,6 +22,9 @@ apps/lab3d/
                                       View3D(3D 뷰·제스처), CameraRig(카메라 6모드·보조 시점), GraphView,
                                       Manipulator(물체 조작), ManipSurface(조작 평면)
   experiments/incline_friction/       빗면 마찰 실험(장면, InclineFrictionCorrector = 접촉 힘 보정 설정, InclineProps 소품)
+  experiments/uniform_field/          균일장 실험 공용 기반 UniformFieldLab(중력 선택, 공, 바닥, 보정기 연결)
+  experiments/free_fall/              자유 낙하 실험(장면, FreeFallProps 소품)
+  experiments/projectile/             던지기 실험(장면, ProjectileProps 소품, ArrowSurface = 화살표 손잡이 평면)
   experiments/manipulation_dev/       조작 확인용 개발 장면(목록에 없음, --experiment=manipulation-dev)
   content/mechanics-labs.json         역학 실험 문구(웹 2D와 공유, "콘텐츠 공유")
   content/experiments/                실험 정의 JSON(index.json + 실험별 파일: 3D 전용 필드)
@@ -50,6 +53,23 @@ apps/lab3d/
 | 한 손가락 조작: 집기·끌기·스냅·미리보기·높이 손잡이·취소·보조 시점(`Manipulator`) | JSON `manipulation`의 규칙, `manipulation_body`·`manipulation_surface`·`manipulation_juice`, 결과 통보(`manipulation_started`·`_placed`·`_cancelled`), 추가 규칙 `placement_allowed`, 화면 재구성 때 유지할 `placements()` |
 
 콘텐츠(문구·조건·관찰값·그래프·시점)는 JSON 데이터다. 문구는 웹 2D와 같은 파일을 쓴다(아래 "콘텐츠 공유").
+
+### 실험 목록
+
+목록 화면 순서는 `content/experiments/index.json`이다. 문구는 모두 `content/mechanics-labs.json`(웹 2D와 공유)에서 온다.
+
+| 실험 (id) | 웹 2D | 보정 방식 | 조건 | 조작 | 관찰값(공식) · 시뮬레이션 | 그래프 | Task |
+|---|---|---|---|---|---|---|---|
+| 자유 낙하 (`free-fall`) | 같은 실험(`free-fall`) | 균일장 출발 보정 | 중력(무중력·달 1.62·지구 9.81·목성 24.79, 웹 버튼), 세 공의 출발 높이(0.5–8 m), 빨간 공 무게(0.5·1·3 kg, 웹 무게 버튼) | 공을 바닥 선(x −3…3 m, z 0) 위로 0.5 m 눈금으로 끌기, 공마다 높이 손잡이(0–8 m, 0.5 m) | g, 시간, 상태, 빨간 공 바닥까지 √(2h₀/g), 세 공 높이, 빨간 공 속력·운동량·운동·위치 에너지 · 세 공의 착지 시각(시뮬레이션) | 바닥까지 남은 높이(세 공 공식 선 + 시뮬레이션 점) | 4a |
+| 던지기 (`projectile`) | 같은 실험(`projectile`) | 균일장 출발 보정 | 중력(같음), 각도(0–90°, 15°), 빠르기(1–9 m/s, 0.5) | 보라색 화살표 끝 노란 손잡이를 던지는 세로 평면에서 끌기(각도 15°·빠르기 0.5 m/s로 스냅, 웹 화살표와 같은 규칙), 공을 발사 선(x −8…−3 m) 위로 끌기, 발사 높이 손잡이(0–3 m, 0.25 m) | g, 시간, 상태, 던지는 높이, 날아가는 거리 R·비행 시간 T·최고점 H, 지금 x·y·옆/위아래 속도 · 착지 거리(시뮬레이션) | 발사체의 높이(공식 y(t) + 시뮬레이션 점) | 4a |
+| 빗면 마찰 (`incline-friction`) | 3D 전용(`app_labs`. 웹 마찰 실험(밀기)은 4b) | 접촉 힘 보정 | 빗면 각도, 표면 재질 | 상자를 빗면 위 출발 위치로 끌기 | 2a 그대로 | 놓은 뒤 이동 거리 | 2a·2b |
+
+- 균일장 실험은 `UniformFieldLab`(`experiments/uniform_field/`)를 잇는다. 중력 선택지는 공의 `gravity_scale`(= g / 프로젝트 중력 9.81)로 엔진 장을 바꾸고, 보정기에는 64비트 g를 준다. 공은 `FormulaBody` + `UniformFieldCorrector`(놓는 첫 스텝 도약 출발, 엔진 접촉 보고로 착지), 반지름 0.25 m, 감쇠 0, 회전 잠금.
+- 화면 수치는 모두 `PhysicsLaws`다: 놓은 뒤 시계(고정 스텝)를 공식 착지 시간(`landing_time`)에서 멈추고 그 시각의 위치·속도·에너지를 보여 준다. 엔진이 착지를 보고하면 공식 착지 값(t = T, h = 0)을 보여 준다. 엔진 값은 "시뮬레이션"이 붙은 착지 시각·착지 거리와 그래프 점뿐이다.
+- 무중력: 자유 낙하는 공이 제자리에 떠 있고("무중력: 떠 있어요", 바닥까지 "닿지 않아요"), 던지기는 곧게 날아가 섬(x 12.5 m, 높이 30 m)을 벗어나면 멈추고 숨긴다("섬 밖으로 날아감"). 달처럼 멀리 가는 던지기도 같다(공식 거리·시간은 그대로 표시).
+- 놓기 연출: 대기 중인 공 아래 노란 받침판이 놓을 때 아래로 젖혀지며 사라지고 공이 늘어난다(`stretch`). 처음으로·조건 변경 때 공이 다시 나타난다(`pop`). 착지는 ArtJuice 자동 반응(납작·먼지·카메라)이다.
+- 던지기 궤적: 공식 경로 점 28개(MultiMesh 1개)와 공식 착지 고리를 조건·출발점이 바뀔 때만 다시 놓는다. 화살표 손잡이·공을 끄는 동안 그 자리에서의 화살표·경로를 미리 보여 준다.
+- 끄는 동안 공은 바닥 선을 따라 움직인다(자유 낙하). 5 m 높이에 든 공을 바닥과 나란한 평면으로 끌면 카메라 높이와 거의 같아 평면을 옆에서 보게 되기 때문이다. 높이는 손잡이로 바꾼다.
 
 ### 콘텐츠 공유 (Task 4a)
 
@@ -212,9 +232,11 @@ npm test                           # 루트: TS 테스트 + apps/lab3d/tools/{in
 | 공식 벡터 생성·감시 (Task 3) | `tools/formula-vectors.test.ts`(루트 `npm test`) | TS 코어 함수·클래스(`src/physics/laws`, `world.ts` 충돌, `PendulumModel`, `Lever`·`Pulley`·`OrbitChallenge`)로 10개 실험의 법칙 사례 583개와 대표 장면 목표값을 만들어 `tests/formula_vectors.json`과 비교. 10개 실험이 모두 법칙을 갖는지 |
 | 공식 parity (Task 3) | `tests/formula_checks.gd`(`run_tests.gd`가 부름) | 실험마다 그 실험이 쓰는 `PhysicsLaws` 함수가 벡터와 상대 오차 1e-9 이내(측정 최대 3e-13), 벡터의 법칙에 포트가 모두 있음 |
 | 보정 방식별 대표 장면 (Task 3) | `tests/formula_checks.gd` | 실제 Jolt 바디로: 자유 낙하·던지기 위치 = ½at²(≤ 1e-4 m, 질량 무관), 밀기 정지·s(t), 던지기·테이블 가장자리 출발 접촉은 착지 아님, 표시 공식은 엔진 장(달 중력·기울어진 장), 접촉 모니터가 꺼져 있어도 착지, 탄성·고무 충돌 뒤 속도(재질 반발 0·0.88, 느린 접근, 깊은 겹침, 중력 하 공중 충돌)·운동량, 충돌 보정이 재질·바닥 반발을 바꾸지 않음, 벽에 튕기는 옆 공·`apply_central_force` 접근·눌린 쌍·세 공 동시 접촉은 충돌 아님, 접촉 중 `apply_*` 힘 유지, 용수철 주기 ±0.1%·에너지 ±0.5%·감쇠 시 현재 상태 에너지·출발 속도 포함 전체 에너지, 원 궤도 주기·반지름 ±0.1%, 부력 평형 깊이 ±0.5%·가라앉음·중성 판정, 진자 각도 = TS 모델(≤ 1e-5 rad, 기본 감쇠 포함)·길이·주기·다른 바디 밀기, 도르래 높이·힘, 지렛대 들림. 기준은 [공식 보정 4절](docs/formula-correction.md#4-실험별-보정-방식) |
+| 콘텐츠 공유 (Task 4a) | `src/app/mechanics-labs.test.ts`(루트 `npm test`), `tests/run_tests.gd` | 웹이 읽은 10개 실험·조작 팁의 SHA-256이 옮기기 전 TS 리터럴과 같음, 잘못된 공유 항목(없는 실험·분류, 단계 2개, 모르는 조건) 거부. 앱: 목록의 실험은 문구를 모두 공유 파일에서 가져오고 실험 파일에 쓰지 않음, 빗면 문구 불변, `content`와 문구를 같이 쓰거나 없는 id면 거부, 글꼴(대체 글꼴 포함)이 모든 글자를 덮음 |
+| 균일장 실험 (Task 4a) | `tools/uniform-labs-vectors.test.ts` → `tests/uniform_labs_vectors.json`, `tests/uniform_lab_checks.gd`(`run_tests.gd`가 부름), 착지 시간·최고점 parity는 `formula_vectors.json` | 자유 낙하 6가지(달·지구·목성 × 높이): 고정 스텝의 표시 t·세 공 높이·v·p·K·U = TS(1e-9), 공 위치 = h₀ − gt²/2(1e-4 m), 0.5·1·3 kg가 같이 떨어짐(1e-6 m), 엔진 착지 = TS 착지 시간 ±2스텝, 착지 뒤 표시 = 공식 착지 값, 빨간 공 무게를 바꿔도 같은 운동, 무중력이면 그대로 떠 있음, 그래프 점이 공식 선 위. 던지기 6가지(45°·30°·60°·15°·90°·0°, 높이 0–3 m): 표시 R·T·H와 x·y·속도 = TS(1e-9), 위치 = TS(1e-4 m), 착지 ±2스텝, 착지 거리 ±2스텝 이동, 최고점 ±2 mm, 착지 뒤 표시, 무중력 섬 밖 정지, 다음 던지기 같은 비행. 아트는 보이는 것만(충돌 객체, 연출 끈 실행과 같음), 3D 노드 16개 이하, 경로 점 = 공식. 실제 입력 경로: 공 끌기(선·0.5 m)·높이 손잡이·떨어진 공 집기, 화살표 손잡이(15°·0.5 m/s 스냅, 끄는 동안 미리보기, 슬라이더 동기화, 0–90° 밖은 막힘), 발사 선·높이. 돌연변이 9종(도약 출발 끔, 착지 시간 기준점, `gravity_scale` 미적용·이중 적용, 거리 식, 화살표 스냅 10°, 착지 표시, 집을 때 리셋, 미리보기) 실패 확인 |
 | 새 출발 위치의 표시 수치 | `tools/incline-vectors.test.ts` → `tests/incline_vectors.json` `runs`, `manipulation_checks.gd` | 재질·각도·출발 위치 4가지(1–6 m)에서 s(t) ±1%, 표시 `이동 거리`가 출발점에서 빗면 끝까지 거리에서 멈춤, 공식 곡선이 그 거리에서 끝남, 상자가 빗면을 떠나는 시각이 TS 공식 √(2L/a)와 3 step 안 |
 
-- TS 공식을 바꾸면 vitest가 먼저 깨진다. `UPDATE_INCLINE_VECTORS=1 UPDATE_FORMULA_VECTORS=1 npx vitest run apps/lab3d`로 벡터를 다시 만든 뒤 Godot 테스트로 GDScript 쪽 불일치를 확인한다.
+- TS 공식을 바꾸면 vitest가 먼저 깨진다. `UPDATE_INCLINE_VECTORS=1 UPDATE_FORMULA_VECTORS=1 UPDATE_UNIFORM_VECTORS=1 npx vitest run apps/lab3d`로 벡터를 다시 만든 뒤 Godot 테스트로 GDScript 쪽 불일치를 확인한다.
 - UI 문구를 바꾸면 `apps/lab3d/tools/subset_font.sh`로 글꼴을 다시 만든다(fonttools가 없으면 `uvx`로 실행). 빠진 글자는 테스트가 잡는다. Noto Sans CJK에 없는 아래·위 첨자(ₛ, ₖ, ⁻¹)는 쓰지 않는다.
 - `build.sh test`(앱·스파이크 둘 다)는 `SCRIPT ERROR`(스크립트 컴파일·실행 오류)나 `ERROR`로 시작하는 줄이 로그에 있으면 PASS여도 실패로 본다. 코루틴 안 오류로 멈춘 실행은 `GODOT_TEST_TIMEOUT`(기본 900초) 뒤 실패한다. Godot 경로는 `GODOT`로 바꾼다(기본 `~/.local/share/godot-spike/godot`).
 - `-s`로 실행하는 테스트에서는 autoload 이름이 컴파일 시점에 없어서, `Quality`·`Bench`를 쓰는 스크립트는 테스트에서 `load()`로 불러 쓴다.
@@ -248,6 +270,7 @@ OPBENCH_PACKAGE=org.openphysics.lab3d OPBENCH_VARIANT_DIR=<dir> \
 python3 -I apps/lab3d/tools/device_gesture.py orbit  # orbit | pinch | pinch-fixed | pan | one-finger | drag-cancel
 ```
 
+- 다른 실험: `OPBENCH_EXPERIMENT=free-fall OPBENCH_SCENE=FF OPBENCH_CTL= OPBENCH_SUSTAINED=0 apps/lab3d/tools/bench_device.sh low 3 90 60`(던지기는 `projectile`·`PJ`). `--auto-drag=4`가 실험의 첫 조작 물체(자유 낙하 빨간 공, 던지기 공)를 4초마다 끌어 놓고 0.4초 뒤 `demo_action`(공 놓기)을 누른다. Task 4a 결과는 [phase1-task4a](../../spikes/bench/results/phase1-task4a/README.md).
 - `bench_device.sh`는 패널을 관찰값·그래프 위치로 스크롤하고(`--scroll-to=observations`), 각도 30°에서 4초마다 상자를 손가락 입력 경로로 끌어 새 출발 위치에 놓고 0.4초 뒤 놓기를 눌러(`--auto-drag=4`) 끌기·보조 시점·물리·관찰값·그래프가 계속 바뀌는 상태로 잰다. Task 2a·2c는 `OPBENCH_PLAY=--auto-release=4`(4초마다 다시 놓기만)로 쟀다. OPBENCH 장면 이름은 `S3`(측정 기준의 안내형 빗면)다.
 - 한 손가락 끌기는 `adb shell input swipe x1 y1 x2 y2 <ms>`로 재생한다. `device_gesture.py drag-cancel`은 빗면 상자(20°, 기본 시점)를 끄는 중 두 번째 손가락을 대 취소를 재생한다.
 - `device_gesture.py`는 Android `hid` 명령으로 2점 가상 멀티터치 화면을 등록해 두 손가락 제스처를 재생한다. `adb shell input`은 한 손가락만 되고, 실제 터치스크린 노드 쓰기는 SELinux가 막는다. 좌표는 세로 기준 SM-P200 화면 픽셀이다.
@@ -278,3 +301,5 @@ python3 -I apps/lab3d/tools/device_gesture.py orbit  # orbit | pinch | pinch-fix
 - 공식 보정 계층은 알려진 면 하나 위의 마찰, 알려진 두 구의 충돌, 실험이 정한 힘·모델만 다룬다. 빈 실험실(Task 5)의 일반 다접촉 마찰·조인트는 따로 설계한다([공식 보정 2절 한계](docs/formula-correction.md#한계)).
 - Web export와 iOS는 아직 만들지 않았다.
 - 가로 모드에서는 패널이 조건 카드까지만 한 화면에 보이고 관찰값·그래프는 스크롤해야 한다.
+- 균일장 실험(Task 4a): 그래프 가로축이 3초로 고정이라 달에서 길게 나는 운동(던지기 T 최대 약 11초)은 앞부분만 그려진다. 공식 값(거리·시간·최고점)은 패널에 그대로 나온다. 실험 정의의 웹 2D 조건 중 웹 캔버스 크기에 따라 달라지는 출발 높이(웹 약 7.8 m)는 3D에서 0.5–8 m 조건으로 바꿨고, 던지기 출발 높이(웹 0.42 m)는 기본 0.5 m(손잡이 0.25 m 눈금)다.
+- 공은 회전을 잠갔다(착지 뒤 굴러가지 않고 미끄러진다). 자유 비행에는 회전이 없어 공식 운동과 무관하다.

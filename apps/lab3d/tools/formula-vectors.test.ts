@@ -172,21 +172,30 @@ function spring(): Case[] {
   return cases;
 }
 
+/**
+ * PushFrictionLaw runs in the web app's px units (normalAcceleration = g * 48, "nearly stopped" below
+ * 0.01 px/s). Unit rule for these cases: the SI args (N, m/s, m/s^2) go into the TS law multiplied by
+ * PX (lengths in px, mass in kg), and the TS force comes back divided by PX. The speeds include both
+ * sides of the 0.01 px/s boundary (0.004 and 0.02 px/s) and SI speeds that only a px-unaware port
+ * (threshold 0.01 m/s) would treat as stopped.
+ */
 function friction(): Case[] {
   const cases: Case[] = [];
+  const boundary = [0.004 / PX, 0.02 / PX, -0.004 / PX];
   for (const material of ["wood", "rubber", "steel", "clay"] as PlaygroundMaterial[]) {
     const muK = MATERIALS[material].friction;
     const muS = muK + 0.18; // physics-playground: staticFriction = friction + 0.18
     for (const mass of [1, 8]) {
-      for (const [applied, speed] of [[10, 0], [40, 0], [80, 0], [80, 0.5], [0, 0.5], [-30, -0.2], [5, 0.004], [0, 0.02]]) {
-        const law = new PushFrictionLaw({ bodyId: "box", surfaceY: 0, staticCoefficient: muS, kineticCoefficient: muK, normalAcceleration: G });
-        law.setAppliedForce(applied);
-        const body = state(0, 0, speed, 0, mass);
-        cases.push({ law: "push_friction_force", args: [applied, speed, mass, muS, muK, G, DT], expect: law.force(body, { time: 0, dt: DT }).vector.x });
+      const pairs = [[10, 0], [40, 0], [80, 0], [80, 0.5], [0, 0.5], [-30, -0.2], [5, 0.004], [0, 0.02], ...boundary.map((speed) => [5, speed]), [0, boundary[1]]];
+      for (const [applied, speed] of pairs) {
+        const law = new PushFrictionLaw({ bodyId: "box", surfaceY: 0, staticCoefficient: muS, kineticCoefficient: muK, normalAcceleration: G * PX });
+        law.setAppliedForce(applied * PX);
+        const body = state(0, 0, speed * PX, 0, mass);
+        cases.push({ law: "push_friction_force", args: [applied, speed, mass, muS, muK, G, DT], expect: law.force(body, { time: 0, dt: DT }).vector.x / PX });
         cases.push({ law: "push_friction_holding", args: [applied, speed, mass, muS, G], expect: law.status(body) === "holding" });
       }
-      const law = new PushFrictionLaw({ bodyId: "box", surfaceY: 0, staticCoefficient: muS, kineticCoefficient: muK, normalAcceleration: G });
-      cases.push({ law: "push_max_static_force", args: [muS, mass, G], expect: law.maximumStaticForce(state(0, 0, 0, 0, mass)) });
+      const law = new PushFrictionLaw({ bodyId: "box", surfaceY: 0, staticCoefficient: muS, kineticCoefficient: muK, normalAcceleration: G * PX });
+      cases.push({ law: "push_max_static_force", args: [muS, mass, G], expect: law.maximumStaticForce(state(0, 0, 0, 0, mass)) / PX });
     }
   }
   return cases;

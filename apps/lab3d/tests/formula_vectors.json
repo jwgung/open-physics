@@ -1932,7 +1932,7 @@
         9.81,
         0.016666666666666666
       ],
-      "expect": 7.841799999999999
+      "expect": 7.8418
     },
     {
       "experiment": "friction",
@@ -1984,7 +1984,7 @@
         9.81,
         0.016666666666666666
       ],
-      "expect": 77.8418
+      "expect": 77.84179999999999
     },
     {
       "experiment": "friction",
@@ -2010,7 +2010,7 @@
         9.81,
         0.016666666666666666
       ],
-      "expect": 77.8418
+      "expect": 77.84179999999999
     },
     {
       "experiment": "friction",
@@ -2036,7 +2036,7 @@
         9.81,
         0.016666666666666666
       ],
-      "expect": -2.1582000000000003
+      "expect": -2.1582
     },
     {
       "experiment": "friction",
@@ -2062,7 +2062,7 @@
         9.81,
         0.016666666666666666
       ],
-      "expect": -27.8418
+      "expect": -27.841800000000003
     },
     {
       "experiment": "friction",
@@ -2088,7 +2088,7 @@
         9.81,
         0.016666666666666666
       ],
-      "expect": 2.8417999999999997
+      "expect": 2.8418000000000005
     },
     {
       "experiment": "friction",
@@ -2130,13 +2130,117 @@
     },
     {
       "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        5,
+        0.00008333333333333333,
+        1,
+        0.4,
+        0.22,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 2.8418000000000005
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        5,
+        0.00008333333333333333,
+        1,
+        0.4,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        5,
+        0.0004166666666666667,
+        1,
+        0.4,
+        0.22,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 2.8418000000000005
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        5,
+        0.0004166666666666667,
+        1,
+        0.4,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        5,
+        -0.00008333333333333333,
+        1,
+        0.4,
+        0.22,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 0.005
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        5,
+        -0.00008333333333333333,
+        1,
+        0.4,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        0,
+        0.0004166666666666667,
+        1,
+        0.4,
+        0.22,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": -0.024999999999999998
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        0,
+        0.0004166666666666667,
+        1,
+        0.4,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
       "law": "push_max_static_force",
       "args": [
         0.4,
         1,
         9.81
       ],
-      "expect": 3.9240000000000004
+      "expect": 3.924
     },
     {
       "experiment": "friction",
@@ -2176,7 +2280,7 @@
         9.81,
         0.016666666666666666
       ],
-      "expect": 22.734399999999997
+      "expect": 22.734400000000004
     },
     {
       "experiment": "friction",
@@ -2202,7 +2306,7 @@
         9.81,
         0.016666666666666666
       ],
-      "expect": 62.734399999999994
+      "expect": 62.7344
     },
     {
       "experiment": "friction",
@@ -2228,7 +2332,7 @@
         9.81,
         0.016666666666666666
       ],
-      "expect": 62.734399999999994
+      "expect": 62.7344
     },
     {
       "experiment": "friction",
@@ -2254,7 +2358,7 @@
         9.81,
         0.016666666666666666
       ],
-      "expect": -17.265600000000003
+      "expect": -17.2656
     },
     {
       "experiment": "friction",
@@ -2280,7 +2384,7 @@
         9.81,
         0.016666666666666666
       ],
-      "expect": -12.734399999999997
+      "expect": -12.7344
     },
     {
       "experiment": "friction",
@@ -2306,7 +2410,7 @@
         9.81,
         0.016666666666666666
       ],
-      "expect": 0
+      "expect": -1.92
     },
     {
       "experiment": "friction",
@@ -2318,7 +2422,7 @@
         0.4,
         9.81
       ],
-      "expect": true
+      "expect": false
     },
     {
       "experiment": "friction",
@@ -2348,13 +2452,117 @@
     },
     {
       "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        5,
+        0.00008333333333333333,
+        8,
+        0.4,
+        0.22,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 0
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        5,
+        0.00008333333333333333,
+        8,
+        0.4,
+        9.81
+      ],
+      "expect": true
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        5,
+        0.0004166666666666667,
+        8,
+        0.4,
+        0.22,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": -0.19999999999999998
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        5,
+        0.0004166666666666667,
+        8,
+        0.4,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        5,
+        -0.00008333333333333333,
+        8,
+        0.4,
+        0.22,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 0
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        5,
+        -0.00008333333333333333,
+        8,
+        0.4,
+        9.81
+      ],
+      "expect": true
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        0,
+        0.0004166666666666667,
+        8,
+        0.4,
+        0.22,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": -0.19999999999999998
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        0,
+        0.0004166666666666667,
+        8,
+        0.4,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
       "law": "push_max_static_force",
       "args": [
         0.4,
         8,
         9.81
       ],
-      "expect": 31.392000000000003
+      "expect": 31.392
     },
     {
       "experiment": "friction",
@@ -2394,7 +2602,7 @@
         9.81,
         0.016666666666666666
       ],
-      "expect": 35.8798
+      "expect": 35.879799999999996
     },
     {
       "experiment": "friction",
@@ -2524,7 +2732,7 @@
         9.81,
         0.016666666666666666
       ],
-      "expect": 0
+      "expect": 0.8798
     },
     {
       "experiment": "friction",
@@ -2536,7 +2744,7 @@
         0.6,
         9.81
       ],
-      "expect": true
+      "expect": false
     },
     {
       "experiment": "friction",
@@ -2566,13 +2774,117 @@
     },
     {
       "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        5,
+        0.00008333333333333333,
+        1,
+        0.6,
+        0.42,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 0
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        5,
+        0.00008333333333333333,
+        1,
+        0.6,
+        9.81
+      ],
+      "expect": true
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        5,
+        0.0004166666666666667,
+        1,
+        0.6,
+        0.42,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 0.8798
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        5,
+        0.0004166666666666667,
+        1,
+        0.6,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        5,
+        -0.00008333333333333333,
+        1,
+        0.6,
+        0.42,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 0
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        5,
+        -0.00008333333333333333,
+        1,
+        0.6,
+        9.81
+      ],
+      "expect": true
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        0,
+        0.0004166666666666667,
+        1,
+        0.6,
+        0.42,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": -0.024999999999999998
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        0,
+        0.0004166666666666667,
+        1,
+        0.6,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
       "law": "push_max_static_force",
       "args": [
         0.6,
         1,
         9.81
       ],
-      "expect": 5.886
+      "expect": 5.885999999999999
     },
     {
       "experiment": "friction",
@@ -2716,7 +3028,7 @@
         9.81,
         0.016666666666666666
       ],
-      "expect": 2.961599999999997
+      "expect": 2.9615999999999993
     },
     {
       "experiment": "friction",
@@ -2742,7 +3054,7 @@
         9.81,
         0.016666666666666666
       ],
-      "expect": 0
+      "expect": -1.92
     },
     {
       "experiment": "friction",
@@ -2754,7 +3066,7 @@
         0.6,
         9.81
       ],
-      "expect": true
+      "expect": false
     },
     {
       "experiment": "friction",
@@ -2784,13 +3096,117 @@
     },
     {
       "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        5,
+        0.00008333333333333333,
+        8,
+        0.6,
+        0.42,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 0
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        5,
+        0.00008333333333333333,
+        8,
+        0.6,
+        9.81
+      ],
+      "expect": true
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        5,
+        0.0004166666666666667,
+        8,
+        0.6,
+        0.42,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": -0.19999999999999998
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        5,
+        0.0004166666666666667,
+        8,
+        0.6,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        5,
+        -0.00008333333333333333,
+        8,
+        0.6,
+        0.42,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 0
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        5,
+        -0.00008333333333333333,
+        8,
+        0.6,
+        9.81
+      ],
+      "expect": true
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        0,
+        0.0004166666666666667,
+        8,
+        0.6,
+        0.42,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": -0.19999999999999998
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        0,
+        0.0004166666666666667,
+        8,
+        0.6,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
       "law": "push_max_static_force",
       "args": [
         0.6,
         8,
         9.81
       ],
-      "expect": 47.088
+      "expect": 47.087999999999994
     },
     {
       "experiment": "friction",
@@ -2804,7 +3220,7 @@
         9.81,
         0.016666666666666666
       ],
-      "expect": 9.2152
+      "expect": 9.215200000000001
     },
     {
       "experiment": "friction",
@@ -3002,6 +3418,110 @@
     },
     {
       "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        5,
+        0.00008333333333333333,
+        1,
+        0.26,
+        0.08,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 4.2152
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        5,
+        0.00008333333333333333,
+        1,
+        0.26,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        5,
+        0.0004166666666666667,
+        1,
+        0.26,
+        0.08,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 4.2152
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        5,
+        0.0004166666666666667,
+        1,
+        0.26,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        5,
+        -0.00008333333333333333,
+        1,
+        0.26,
+        0.08,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 0.005
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        5,
+        -0.00008333333333333333,
+        1,
+        0.26,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        0,
+        0.0004166666666666667,
+        1,
+        0.26,
+        0.08,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": -0.024999999999999998
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        0,
+        0.0004166666666666667,
+        1,
+        0.26,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
       "law": "push_max_static_force",
       "args": [
         0.26,
@@ -3074,7 +3594,7 @@
         9.81,
         0.016666666666666666
       ],
-      "expect": 73.7216
+      "expect": 73.72160000000001
     },
     {
       "experiment": "friction",
@@ -3100,7 +3620,7 @@
         9.81,
         0.016666666666666666
       ],
-      "expect": 73.7216
+      "expect": 73.72160000000001
     },
     {
       "experiment": "friction",
@@ -3178,7 +3698,7 @@
         9.81,
         0.016666666666666666
       ],
-      "expect": 0
+      "expect": -1.2784000000000002
     },
     {
       "experiment": "friction",
@@ -3190,7 +3710,7 @@
         0.26,
         9.81
       ],
-      "expect": true
+      "expect": false
     },
     {
       "experiment": "friction",
@@ -3220,6 +3740,110 @@
     },
     {
       "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        5,
+        0.00008333333333333333,
+        8,
+        0.26,
+        0.08,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 0
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        5,
+        0.00008333333333333333,
+        8,
+        0.26,
+        9.81
+      ],
+      "expect": true
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        5,
+        0.0004166666666666667,
+        8,
+        0.26,
+        0.08,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": -0.19999999999999998
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        5,
+        0.0004166666666666667,
+        8,
+        0.26,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        5,
+        -0.00008333333333333333,
+        8,
+        0.26,
+        0.08,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 0
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        5,
+        -0.00008333333333333333,
+        8,
+        0.26,
+        9.81
+      ],
+      "expect": true
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        0,
+        0.0004166666666666667,
+        8,
+        0.26,
+        0.08,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": -0.19999999999999998
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        0,
+        0.0004166666666666667,
+        8,
+        0.26,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
       "law": "push_max_static_force",
       "args": [
         0.26,
@@ -3240,7 +3864,7 @@
         9.81,
         0.016666666666666666
       ],
-      "expect": 4.3102
+      "expect": 4.310200000000001
     },
     {
       "experiment": "friction",
@@ -3344,7 +3968,7 @@
         9.81,
         0.016666666666666666
       ],
-      "expect": -5.6898
+      "expect": -5.689799999999999
     },
     {
       "experiment": "friction",
@@ -3370,7 +3994,7 @@
         9.81,
         0.016666666666666666
       ],
-      "expect": -24.310200000000002
+      "expect": -24.3102
     },
     {
       "experiment": "friction",
@@ -3396,7 +4020,7 @@
         9.81,
         0.016666666666666666
       ],
-      "expect": 0
+      "expect": -0.24
     },
     {
       "experiment": "friction",
@@ -3408,7 +4032,7 @@
         0.76,
         9.81
       ],
-      "expect": true
+      "expect": false
     },
     {
       "experiment": "friction",
@@ -3430,6 +4054,110 @@
       "args": [
         0,
         0.02,
+        1,
+        0.76,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        5,
+        0.00008333333333333333,
+        1,
+        0.76,
+        0.58,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 0
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        5,
+        0.00008333333333333333,
+        1,
+        0.76,
+        9.81
+      ],
+      "expect": true
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        5,
+        0.0004166666666666667,
+        1,
+        0.76,
+        0.58,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": -0.024999999999999998
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        5,
+        0.0004166666666666667,
+        1,
+        0.76,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        5,
+        -0.00008333333333333333,
+        1,
+        0.76,
+        0.58,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 0
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        5,
+        -0.00008333333333333333,
+        1,
+        0.76,
+        9.81
+      ],
+      "expect": true
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        0,
+        0.0004166666666666667,
+        1,
+        0.76,
+        0.58,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": -0.024999999999999998
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        0,
+        0.0004166666666666667,
         1,
         0.76,
         9.81
@@ -3510,7 +4238,7 @@
         9.81,
         0.016666666666666666
       ],
-      "expect": 34.4816
+      "expect": 34.48160000000001
     },
     {
       "experiment": "friction",
@@ -3536,7 +4264,7 @@
         9.81,
         0.016666666666666666
       ],
-      "expect": 34.4816
+      "expect": 34.48160000000001
     },
     {
       "experiment": "friction",
@@ -3562,7 +4290,7 @@
         9.81,
         0.016666666666666666
       ],
-      "expect": -45.5184
+      "expect": -45.51839999999999
     },
     {
       "experiment": "friction",
@@ -3588,7 +4316,7 @@
         9.81,
         0.016666666666666666
       ],
-      "expect": 15.5184
+      "expect": 15.518399999999994
     },
     {
       "experiment": "friction",
@@ -3614,7 +4342,7 @@
         9.81,
         0.016666666666666666
       ],
-      "expect": 0
+      "expect": -1.92
     },
     {
       "experiment": "friction",
@@ -3626,7 +4354,7 @@
         0.76,
         9.81
       ],
-      "expect": true
+      "expect": false
     },
     {
       "experiment": "friction",
@@ -3648,6 +4376,110 @@
       "args": [
         0,
         0.02,
+        8,
+        0.76,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        5,
+        0.00008333333333333333,
+        8,
+        0.76,
+        0.58,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 0
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        5,
+        0.00008333333333333333,
+        8,
+        0.76,
+        9.81
+      ],
+      "expect": true
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        5,
+        0.0004166666666666667,
+        8,
+        0.76,
+        0.58,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": -0.19999999999999998
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        5,
+        0.0004166666666666667,
+        8,
+        0.76,
+        9.81
+      ],
+      "expect": false
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        5,
+        -0.00008333333333333333,
+        8,
+        0.76,
+        0.58,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": 0
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        5,
+        -0.00008333333333333333,
+        8,
+        0.76,
+        9.81
+      ],
+      "expect": true
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_force",
+      "args": [
+        0,
+        0.0004166666666666667,
+        8,
+        0.76,
+        0.58,
+        9.81,
+        0.016666666666666666
+      ],
+      "expect": -0.19999999999999998
+    },
+    {
+      "experiment": "friction",
+      "law": "push_friction_holding",
+      "args": [
+        0,
+        0.0004166666666666667,
         8,
         0.76,
         9.81

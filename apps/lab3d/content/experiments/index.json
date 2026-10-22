@@ -10,6 +10,7 @@
     "orbit.json",
     "buoyancy.json",
     "constraints.json",
+    "pulley.json",
     "incline-friction.json"
   ],
   "hidden": [

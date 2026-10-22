@@ -34,6 +34,9 @@
 ## 13. lever lab (Task 4e, tests/rotation_lab_checks.gd): the lever model and the engine beam and load
 ##    step by step against the TS-core vectors (tests/rotation_lab_vectors.json), the torque balance
 ##    at the lift from the engine beam, panel, art, the handle / load / fulcrum input path, the demo.
+## 14. pulley lab (Task 4e, tests/pulley_lab_checks.gd): the pulley model and the engine load step by
+##    step against the TS-core vectors (tests/pulley_lab_vectors.json), lift = rope / n, the rope
+##    length and F d = m g h from the engine bodies, panel, art, hand-over-hand input, the demo.
 ## Times are engine fixed steps (60 Hz), independent of rendering FPS.
 extends SceneTree
 
@@ -137,6 +140,11 @@ func _run() -> void:
 	_expect(rotation != null and rotation.can_instantiate(), "rotation lab checks compile", "")
 	if rotation != null and rotation.can_instantiate():
 		await rotation.new(self, _expect).run()
+	print("== pulley lab (Task 4e) ==")
+	var pulley: GDScript = load("res://tests/pulley_lab_checks.gd")
+	_expect(pulley != null and pulley.can_instantiate(), "pulley lab checks compile", "")
+	if pulley != null and pulley.can_instantiate():
+		await pulley.new(self, _expect).run()
 	print("RESULT: %s (%d failure(s))" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
 

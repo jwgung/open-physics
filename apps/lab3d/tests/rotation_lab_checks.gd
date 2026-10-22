@@ -323,9 +323,15 @@ func check_input_path() -> void:
 	var lifted: bool = lab.status() == "lifted" and absf(lab.driver.engine_angle() + 0.18) < 1e-6
 	var shown: Dictionary = lab.observations()
 	var clock: int = lab.clock_steps
-	for i in 12:
+	# Hold it lifted for 13 s (past the 10 s graph window): the engine beam stays at the lift angle
+	# every step and the graph window slides.
+	var worst_hold := 0.0
+	for i in 13 * STEP_HZ:
 		await tree.physics_frame
-	var clock_runs: bool = lab.clock_steps == clock + 12 and lab.graph.size() >= 3
+		worst_hold = maxf(worst_hold, absf(lab.driver.engine_angle() + 0.18))
+	var series: Dictionary = lab.graph_series()
+	var slid: bool = series.applied.size() >= 95 and series.applied[0].x >= -1e-6 and absf(series.applied[-1].x - 10.0) < 0.2 and lab.clock_time() > 13.0
+	var clock_runs: bool = lab.clock_steps == clock + 13 * STEP_HZ and slid and worst_hold <= 1e-6 and absf(series.applied[-1].y - float(shown.required)) < 1e-3
 	_touch(screen, _at(screen, rest + Vector3(0.0, -0.9, 0.0)), false)
 	await tree.physics_frame
 	await tree.physics_frame
@@ -334,7 +340,7 @@ func check_input_path() -> void:
 	await tree.physics_frame
 	expect.call(waiting.state == "힘점을 골라 빨간 손잡이를 아래로 눌러 보세요" and held and cells == 45 and lifted
 		and absf(float(shown.applied) - float(shown.required)) < 1e-12 and absf(float(shown.net_torque)) < 1e-9 and clock_runs and level and lab.clock_steps == still,
-		"rotation (fresh screen): pressing the handle 0.9 m down (225 N) lifts the beam at the required force; the graph clock runs only while held; letting go puts it back level",
+		"rotation (fresh screen): pressing the handle 0.9 m down (225 N) lifts the beam at the required force and holds it there 13 s (graph window slides); the graph clock runs only while held; letting go puts it back level",
 		"cells %d, F %.2f N, held %s, lifted %s, clock %s, level %s (%s, %s, %s, %s), still %s, waiting %s" % [cells, shown.applied, held, lifted, clock_runs, level, lab.status(), lab.driver.engine_angle(), lab.model.cells, handle.global_position.distance_to(rest), lab.clock_steps == still, waiting.state])
 	# Drag the load right (0.25 m grid) and the fulcrum left; the fulcrum cannot pass the load + 0.5 m.
 	var load_body: RigidBody3D = lab.load_body

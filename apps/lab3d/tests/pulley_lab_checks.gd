@@ -315,6 +315,13 @@ func check_input_path() -> void:
 		worst_rope = maxf(worst_rope, absf(_rope_length(lab) - rope0))
 	var held: bool = m.mode == "drag" and m.active_id == "handle" and lab.status() == "pulling"
 	var pull_shown: float = lab.observations().applied
+	# Hold the load there 12 s (past the 10 s graph window): the engine load stays put every step.
+	var worst_hold := 0.0
+	for i in 12 * STEP_HZ:
+		await tree.physics_frame
+		worst_hold = maxf(worst_hold, absf(lab.driver.engine_lift() - 0.5))
+	var series: Dictionary = lab.graph_series()
+	held = held and worst_hold <= 1e-5 and series.applied.size() >= 95 and absf(series.applied[-1].x - 10.0) < 0.2 and absf(series.applied[-1].y - 98.1) < 1e-3
 	var grip_low: float = handle.global_position.y
 	_touch(screen, _at(screen, top + Vector3(0.0, -1.0, 0.0)), false)
 	travel += top.y - grip_low
@@ -338,7 +345,7 @@ func check_input_path() -> void:
 	var shown: Dictionary = lab.observations()
 	expect.call(waiting.state == "빨간 손잡이를 아래로 당겨 짐을 올려요" and held and absf(pull_shown - 20.0 * 9.81 / 2.0) < 1e-9 and ratchet
 		and absf(travel - 1.6) < 1e-5 and absf(lift * 2.0 - travel) < 1e-4 and absf(float(shown.pulled) - 1.6) < 1e-12,
-		"pulley (fresh screen, 2 strands): two strokes of the grip (1.0 m + 0.6 m) lift the engine load 0.8 m = 1/2 of the rope; the ratchet holds it between strokes and the grip goes back up",
+		"pulley (fresh screen, 2 strands): two strokes of the grip (1.0 m + 0.6 m) lift the engine load 0.8 m = 1/2 of the rope (held 12 s at 0.5 m, the graph window slides); the ratchet holds it between strokes and the grip goes back up",
 		"travel %.4f m, lift %.4f m, held %s, ratchet %s" % [travel, lift, held, ratchet])
 	var energy_ok: bool = absf(float(shown.work_in) - 20.0 * 9.81 * lift) < 1e-3 and absf(float(shown.work_in) - float(shown.work_out)) < 1e-9
 	expect.call(worst_rope <= 1e-4 and energy_ok,

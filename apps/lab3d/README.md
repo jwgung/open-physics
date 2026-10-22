@@ -16,13 +16,13 @@ apps/lab3d/
   scripts/formula/                    공식 보정 계층: FormulaCorrector(공통)·FormulaBody·FormulaDriver, 방식별 보정기
   scripts/app/                        App(화면 전환·fps 표시), 목록·설정 화면, UiTheme(섬 스타일 2D), Ui(위젯 헬퍼),
                                       IslandBanner(목록 머리 그림)
-  scripts/art/                        셸 공용 아트: ArtPalette, ArtMeshBuilder(로우폴리 메시), art_lit 셰이더(구운 조명),
+  scripts/art/                        셸 공용 아트: ArtPalette, PadProps(받침판 뒤집기·소품 공통), ArtMeshBuilder(로우폴리 메시), art_lit 셰이더(구운 조명),
                                       ArtKit(재질·환경·떠 있는 섬), ArtJuice(연출·블롭 그림자)
   scripts/shell/                      Experiment(실험 기반 클래스), ExperimentRegistry, ExperimentScreen,
                                       View3D(3D 뷰·제스처), CameraRig(카메라 6모드·보조 시점), GraphView,
                                       Manipulator(물체 조작), ManipSurface(조작 평면)
   experiments/incline_friction/       빗면 마찰 실험(장면, InclineFrictionCorrector = 접촉 힘 보정 설정, InclineProps 소품)
-  experiments/uniform_field/          균일장 실험 공용 기반 UniformFieldLab(중력 선택, 공, 바닥, 보정기 연결)
+  experiments/uniform_field/          균일장 실험 공용 기반 UniformFieldLab(중력 선택, 공, 바닥, 보정기 연결, 실행 상태·그래프 샘플·release/reset 공통)
   experiments/free_fall/              자유 낙하 실험(장면, FreeFallProps 소품)
   experiments/projectile/             던지기 실험(장면, ProjectileProps 소품, ArrowSurface = 화살표 손잡이 평면)
   experiments/manipulation_dev/       조작 확인용 개발 장면(목록에 없음, --experiment=manipulation-dev)

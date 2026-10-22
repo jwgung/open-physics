@@ -15,6 +15,10 @@ signal impact(strength: float)
 
 ## Parsed content JSON (see ExperimentRegistry). Read-only for the experiment.
 var definition: Dictionary = {}
+## The project's engine gravity (m/s^2): labs whose formulas use g read it here, never a copy.
+var engine_g: float = ProjectSettings.get_setting("physics/3d/default_gravity", 9.81)
+## status() as of the last _update_status().
+var _last_status := ""
 
 
 ## Adds a box collision shape of `size` to a body (floors, blocks, boxes of the experiments).
@@ -24,6 +28,58 @@ func _add_box_shape(body: CollisionObject3D, size: Vector3) -> void:
 	box_shape.size = size
 	shape.shape = box_shape
 	body.add_child(shape)
+
+
+## A physics material without friction or bounce: the labs' bodies slide on it and the formula
+## correction supplies the friction.
+func _frictionless_material() -> PhysicsMaterial:
+	var material := PhysicsMaterial.new()
+	material.friction = 0.0
+	material.bounce = 0.0
+	return material
+
+
+## The collision floor: the island's top surface at y = 0 (the island mesh is ArtKit's, no
+## collision), named "Floor". `material` null = frictionless.
+func _add_floor(material: PhysicsMaterial = null, size := Vector3(30.0, 0.4, 12.0)) -> StaticBody3D:
+	var floor_body := StaticBody3D.new()
+	floor_body.name = "Floor"
+	floor_body.physics_material_override = material if material != null else _frictionless_material()
+	_add_box_shape(floor_body, size)
+	floor_body.position = Vector3(0.0, -size.y * 0.5, 0.0)
+	add_child(floor_body)
+	return floor_body
+
+
+## The settings of a formula-corrected body: never sleeps, no damping (the corrector and the
+## formulas own the motion), frozen bodies stay static.
+func _setup_free_body(body: RigidBody3D) -> void:
+	body.can_sleep = false
+	body.linear_damp_mode = RigidBody3D.DAMP_MODE_REPLACE
+	body.angular_damp_mode = RigidBody3D.DAMP_MODE_REPLACE
+	body.linear_damp = 0.0
+	body.angular_damp = 0.0
+	body.freeze_mode = RigidBody3D.FREEZE_MODE_STATIC
+
+
+## The state that decides the panels' texts (changes emit state_changed through _update_status).
+func status() -> String:
+	return ""
+
+
+## Records status(), tells the UI and calls _status_changed when it changed (`quiet`: the change was
+## made by the user's hand, no reaction).
+func _update_status(quiet := false) -> void:
+	var previous := _last_status
+	_last_status = status()
+	state_changed.emit()
+	if _last_status != previous and not quiet:
+		_status_changed(previous, _last_status)
+
+
+## Reaction to a status change (props); the labs override it.
+func _status_changed(_previous: String, _current: String) -> void:
+	pass
 
 
 ## Sets a control declared in definition.controls. `value` is a float for sliders and the option

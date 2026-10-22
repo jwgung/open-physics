@@ -272,6 +272,18 @@ func check_state_is_formula() -> void:
 	expect.call(lab.status() == "sliding" and engine_status == "holding" and shown.state == "움직여요 · 주는 힘이 마찰을 이겼어요" and lab.model.displacement > 0.0,
 		"friction: the state is the formula's (engine box held still: the panel still says sliding)", "engine %s" % engine_status)
 	lab.set_applied_force(0.0)
+	# The same gravity as the engine's (the formulas' g is the project setting, not a copy).
+	expect.call(lab.model.g == lab.engine_g and lab.engine_g == float(vectors.get("g", lab.engine_g)),
+		"friction: the model's g is the engine's gravity (and the TS vectors' g)", "%s vs %s" % [lab.model.g, lab.engine_g])
+	# A reset while the handle is held keeps the handle in the finger and counts the force from there.
+	lab.manipulation_started("handle")
+	lab.handle.global_position.x += 0.8
+	var held_x: float = lab.handle.global_position.x
+	var before: float = lab.applied_force()
+	lab.reset_box()
+	expect.call(before == 16.0 and lab.holding_handle and lab.handle.global_position.x == held_x and lab.applied_force() == 0.0,
+		"friction: a reset while the handle is held keeps the handle and restarts the force at 0 N", "before %.1f N, after %.1f N, handle x %.3f (was %.3f)" % [before, lab.applied_force(), lab.handle.global_position.x, held_x])
+	lab.manipulation_cancelled("handle")
 	await _free(lab)
 
 
@@ -302,6 +314,28 @@ func check_track_end() -> void:
 	await _until(lab, start + 30)
 	expect.call(freed and lab.status() == "sliding" and lab.box.global_position.x < engine_x - 0.01,
 		"friction: picking the handle frees a box at the end; a pull back moves it", "x %.3f" % lab.box.global_position.x)
+	lab.set_applied_force(0.0)
+	await _free(lab)
+	# Picked up in the very step the end was reached (the freeze is still pending): nothing freezes
+	# the engine box afterwards, it follows the formula again.
+	lab = await _lab()
+	lab.set_control("material", "steel")
+	lab.set_control("mass", "light")
+	lab.set_applied_force(80.0)
+	k = 0
+	while not lab.ended and k < 3 * STEP_HZ:
+		k += 1
+		await _until(lab, k)
+	var pending: bool = lab.ended and lab._freeze_next
+	lab.manipulation_started("handle")
+	lab.manipulation_placed("handle", Transform3D())
+	lab.set_applied_force(-3.0)
+	start = lab.frames
+	await _until(lab, start + 30)
+	expect.call(pending and not lab._freeze_next and not lab.box.freeze and lab.status() == "sliding"
+		and absf(lab.box.global_position.x - lab.formula_x()) <= 1e-3,
+		"friction: picking the handle in the step the end is reached leaves no pending freeze (engine box follows the formula)",
+		"freeze %s, engine %.4f formula %.4f" % [lab.box.freeze, lab.box.global_position.x, lab.formula_x()])
 	lab.set_applied_force(0.0)
 	await _free(lab)
 

@@ -12,7 +12,6 @@
 ## stop, the bumpers are visual).
 extends Experiment
 
-const G := 9.81
 const BOX := 0.7
 const START_X := -3.0
 ## Box centres beyond these x stop the box (the yellow track ends at +-TRACK_HALF, bumpers outside).
@@ -50,10 +49,10 @@ var frames := 0
 var _clock_steps := 0           # steps with a force or a moving box since the reset (the graph's time)
 var _graph: Array[Vector4] = []  # (t, |F|, max static, |friction|) samples, the last graph window
 var _graph_revision := 0
-var _last_status := ""
 
 
 func _ready() -> void:
+	model.g = engine_g   # the formulas use the engine's gravity (the project setting)
 	_build_world()
 	for control in definition.get("controls", []):
 		set_control(control.id, control.default)
@@ -129,10 +128,8 @@ static func handle_force(offset: float, snap: float) -> float:
 
 ## Box back at the start, at rest; the run, the heat and the graph start again.
 func reset_box() -> void:
-	ended = false
-	_freeze_next = false
+	_release_end()
 	_forced = 0.0
-	box.freeze = false
 	box.linear_velocity = Vector3.ZERO
 	box.angular_velocity = Vector3.ZERO
 	box.global_position = Vector3(START_X, BOX * 0.5, 0.0)
@@ -143,9 +140,26 @@ func reset_box() -> void:
 	_clock_steps = 0
 	_graph.clear()
 	_graph_revision += 1
-	_place_handle()
+	if holding_handle:
+		# The finger keeps the handle where it is: the force counts from here again (0 N), no jump.
+		_pull = _pull_line(handle.global_position.x)
+		_pull.snap = Vector2.ONE * _pull_snap
+	else:
+		_place_handle()
 	props.reset()
 	_update_status(true)
+
+
+## Lets a box waiting at a track end go: not ended, not frozen (also the freeze still pending for
+## the next step), shared by reset_box and picking up the handle.
+func _release_end() -> void:
+	if _freeze_next:
+		# The freeze did not happen yet: stop the engine box at the bumper like it would have.
+		box.linear_velocity = Vector3.ZERO
+		box.global_position.x = formula_x()
+	ended = false
+	_freeze_next = false
+	box.freeze = false
 
 
 ## "holding" (the law holds the box, also with no force), "sliding", or "end" (stopped at a track end).
@@ -213,8 +227,11 @@ func _process(_delta: float) -> void:
 
 ## The handle waits HANDLE_GAP beside the box's right face, on the floor.
 func _place_handle() -> void:
-	if handle != null:
-		handle.global_position = handle_rest()
+	if handle == null:
+		return
+	var rest := handle_rest()
+	if handle.global_position != rest:
+		handle.global_position = rest
 
 
 func handle_rest() -> Vector3:
@@ -234,12 +251,8 @@ func graph_x_max() -> float:
 	return float(definition.get("graph", {}).get("x", {}).get("max", 10.0))
 
 
-func _update_status(quiet := false) -> void:
-	var previous := _last_status
-	_last_status = status()
-	state_changed.emit()
-	if not quiet and previous != _last_status:
-		props.status_changed(previous, _last_status)
+func _status_changed(previous: String, current: String) -> void:
+	props.status_changed(previous, current)
 
 
 func observations() -> Dictionary:
@@ -288,20 +301,13 @@ func follow_point() -> Vector3:
 
 
 func _build_world() -> void:
-	var frictionless := PhysicsMaterial.new()
-	frictionless.friction = 0.0
-	frictionless.bounce = 0.0
-	_floor = StaticBody3D.new()
-	_floor.name = "Floor"
-	_floor.physics_material_override = frictionless
-	_add_box_shape(_floor, Vector3(30.0, 0.4, 12.0))
-	_floor.position = Vector3(0.0, -0.2, 0.0)
-	add_child(_floor)
+	var frictionless := _frictionless_material()
+	_floor = _add_floor(frictionless)
 	# The surface frame of the corrector: the floor's top face (y = 0), +x along the track.
 	_track = Node3D.new()
 	_track.name = "Track"
 	add_child(_track)
-	var track_visual := ArtKit.instance(props.track_mesh(TRACK_HALF * 2.0))
+	var track_visual := ArtKit.instance(props.track_mesh(TRACK_HALF * 2.0, START_X))
 	track_visual.name = "TrackVisual"
 	_track.add_child(track_visual)
 
@@ -309,13 +315,8 @@ func _build_world() -> void:
 	box.name = "Box"
 	box.mass = model.mass
 	box.physics_material_override = frictionless
-	box.can_sleep = false
+	_setup_free_body(box)
 	box.lock_rotation = true
-	box.linear_damp_mode = RigidBody3D.DAMP_MODE_REPLACE
-	box.angular_damp_mode = RigidBody3D.DAMP_MODE_REPLACE
-	box.linear_damp = 0.0
-	box.angular_damp = 0.0
-	box.freeze_mode = RigidBody3D.FREEZE_MODE_STATIC
 	_add_box_shape(box, Vector3.ONE * BOX)
 	var box_visual := ArtKit.instance(props.box_mesh(BOX))
 	box_visual.name = "Visual"
@@ -357,7 +358,12 @@ func manipulation_body(id: String) -> PhysicsBody3D:
 func manipulation_surface(surface_id: String) -> ManipSurface:
 	if surface_id != "pull":
 		return null
-	var line := ManipSurface.new(Transform3D(Basis(), Vector3(handle_rest().x, 0.0, 0.0)),
+	return _pull_line(handle_rest().x)
+
+
+## The pull line along the floor with its origin (zero force) at `origin_x`.
+func _pull_line(origin_x: float) -> ManipSurface:
+	var line := ManipSurface.new(Transform3D(Basis(), Vector3(origin_x, 0.0, 0.0)),
 		Vector2(-REACH, 0.0), Vector2(REACH, 0.0))
 	line.exclude = [_floor.get_rid(), box.get_rid()]
 	return line
@@ -371,8 +377,7 @@ func manipulation_started(_id: String) -> void:
 	holding_handle = true
 	_forced = 0.0
 	if ended:
-		ended = false
-		box.freeze = false
+		_release_end()
 		corrector.status = "holding"
 		_update_status(true)
 	props.grab(true)

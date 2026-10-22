@@ -26,8 +26,9 @@ var _rod_holding := true
 
 
 ## Yellow track on the island top (its top face 2 mm above y = 0, under the box's collision bottom
-## at y = 0 only by its bevel), ticks every metre, start line at the box's start (x = -3 m).
-func track_mesh(length: float) -> Mesh:
+## at y = 0 only by its bevel), ticks every metre, start line at the box's start (`start_x`, the
+## lab's START_X).
+func track_mesh(length: float, start_x: float) -> Mesh:
 	var b := ArtKit.builder()
 	b.ao_min = 0.9
 	b.add_rounded_box(Transform3D(Basis(), Vector3(0.0, -0.028, 0.0)), Vector3(length, 0.06, TRACK_WIDTH), 0.02, 1, ArtPalette.YELLOW, ArtPalette.YELLOW_TOP)
@@ -35,7 +36,7 @@ func track_mesh(length: float) -> Mesh:
 	var half := int(floorf(length * 0.5))
 	for i in range(-half + 1, half):
 		b.add_rounded_box(Transform3D(Basis(), Vector3(i, 0.006, TRACK_WIDTH * 0.5 - 0.2)), Vector3(0.05, 0.02, 0.3), 0.0, 1, ArtPalette.WHITE)
-	b.add_rounded_box(Transform3D(Basis(), Vector3(-3.0, 0.006, 0.0)), Vector3(0.07, 0.02, TRACK_WIDTH - 0.3), 0.0, 1, ArtPalette.WHITE)
+	b.add_rounded_box(Transform3D(Basis(), Vector3(start_x, 0.006, 0.0)), Vector3(0.07, 0.02, TRACK_WIDTH - 0.3), 0.0, 1, ArtPalette.WHITE)
 	# Bumpers just beyond both ends (the box stops before them; visual only).
 	b.ao_min = 0.85
 	b.ao_height = 0.4

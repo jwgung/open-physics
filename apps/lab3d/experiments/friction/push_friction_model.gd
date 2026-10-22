@@ -23,7 +23,7 @@ var friction := 0.0
 var velocity := 0.0       # m/s after the last step
 var displacement := 0.0   # m from the start
 var heat := 0.0           # J, friction work turned into heat since the start
-var path := 0.0           # m slid (sum of |step displacement|)
+var path := 0.0           # m slid (test-only: heat = mu_k m g x path) (sum of |step displacement|)
 var steps := 0
 
 
@@ -69,5 +69,6 @@ func kinetic_friction() -> float:
 	return PhysicsLaws.kinetic_friction_force(mu_k, PhysicsLaws.uniform_gravity_force(mass, g))
 
 
+## Test-only (friction_lab_checks.gd); the panel does not show it.
 func kinetic_energy() -> float:
 	return PhysicsLaws.kinetic_energy(mass, absf(velocity))

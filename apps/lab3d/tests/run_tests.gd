@@ -13,6 +13,8 @@
 ##    guided mechanics experiments and one representative Jolt scene per correction method.
 ## 6. uniform-field labs (Task 4a, tests/uniform_lab_checks.gd): free fall and projectile displays and
 ##    motion against the TS-core vectors (tests/uniform_labs_vectors.json), art, manipulation.
+## 7. push friction lab (Task 4b, tests/friction_lab_checks.gd): displays and motion against the TS-core
+##    vectors (tests/friction_lab_vectors.json), threshold, heat, track end, art, the handle input path.
 ## Times are engine fixed steps (60 Hz), independent of rendering FPS.
 extends SceneTree
 
@@ -81,6 +83,11 @@ func _run() -> void:
 	_expect(uniform != null and uniform.can_instantiate(), "uniform lab checks compile", "")
 	if uniform != null and uniform.can_instantiate():
 		await uniform.new(self, _expect).run()
+	print("== push friction lab (Task 4b) ==")
+	var friction: GDScript = load("res://tests/friction_lab_checks.gd")
+	_expect(friction != null and friction.can_instantiate(), "friction lab checks compile", "")
+	if friction != null and friction.can_instantiate():
+		await friction.new(self, _expect).run()
 	print("RESULT: %s (%d failure(s))" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
 

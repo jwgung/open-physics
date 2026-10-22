@@ -1,0 +1,74 @@
+{
+  "id": "friction",
+  "version": 1,
+  "content": "friction",
+  "scene": "res://experiments/friction/friction.gd",
+  "bench_id": "FR",
+  "camera": {
+    "target": [-0.6, 0.7, 0.0],
+    "distance": 10.5,
+    "distance_range": [3.0, 22.0],
+    "yaw_range_deg": [-100.0, 100.0],
+    "pitch_range_deg": [-89.0, -2.0],
+    "pan_radius": 6.0,
+    "default_mode": "three_quarter",
+    "views": {
+      "front": { "yaw_deg": 0.0, "pitch_deg": -8.0, "distance": 11.5 },
+      "three_quarter": { "yaw_deg": 28.0, "pitch_deg": -26.0 },
+      "top": { "yaw_deg": 0.0, "pitch_deg": -89.0, "distance": 14.0 },
+      "side": { "yaw_deg": 90.0, "pitch_deg": -12.0, "distance": 12.0 },
+      "follow": { "yaw_deg": 20.0, "pitch_deg": -18.0, "distance": 5.0 }
+    }
+  },
+  "controls": [
+    {
+      "id": "material", "type": "choice", "label": "재질", "default": "wood",
+      "note": "상자와 바닥이 같은 재질이에요.",
+      "options": [
+        { "id": "rubber", "label": "고무", "mu_s": 0.60, "mu_k": 0.42 },
+        { "id": "wood", "label": "나무", "mu_s": 0.40, "mu_k": 0.22 },
+        { "id": "steel", "label": "금속", "mu_s": 0.26, "mu_k": 0.08 },
+        { "id": "clay", "label": "점토", "mu_s": 0.76, "mu_k": 0.58 }
+      ]
+    },
+    {
+      "id": "mass", "type": "choice", "label": "무게", "default": "start",
+      "options": [
+        { "id": "light", "label": "가벼움", "kg": 0.5, "note": "0.5 kg" },
+        { "id": "normal", "label": "보통", "kg": 1.0, "note": "1 kg" },
+        { "id": "heavy", "label": "무거움", "kg": 3.0, "note": "3 kg" },
+        { "id": "start", "label": "처음 상자", "kg": 8.0, "note": "8 kg · 처음에 놓인 상자" }
+      ]
+    }
+  ],
+  "actions": [
+    { "id": "reset", "label": "처음으로", "style": "primary" }
+  ],
+  "observations": [
+    { "id": "state", "label": "상자 상태" },
+    { "id": "applied", "label": "내가 주는 힘 F", "unit": "N", "digits": 1 },
+    { "id": "max_static", "label": "최대 정지 마찰력 μs·mg", "unit": "N", "digits": 2 },
+    { "id": "friction", "label": "지금 마찰력", "unit": "N", "digits": 2 },
+    { "id": "kinetic", "label": "운동 마찰력 μk·mg", "unit": "N", "digits": 2 },
+    { "id": "speed", "label": "속력 v", "unit": "m/s", "digits": 2 },
+    { "id": "heat", "label": "열에너지 (마찰이 한 일)", "unit": "J", "digits": 2 },
+    { "id": "distance", "label": "처음 자리에서 간 거리", "unit": "m", "digits": 2 },
+    { "id": "measured", "label": "간 거리 (시뮬레이션)", "unit": "m", "digits": 2 }
+  ],
+  "manipulation": {
+    "objects": [
+      { "id": "handle", "surface": "pull", "snap": 0.05, "height": false }
+    ],
+    "demo_action": "reset"
+  },
+  "graph": {
+    "title": "미는 힘과 버티는 힘",
+    "x": { "label": "시간 t", "unit": "s", "max": 10.0 },
+    "y": { "label": "힘", "unit": "N", "min_max": 10.0 },
+    "series": [
+      { "id": "applied", "label": "내가 주는 힘", "color": "#ff3b3b", "style": "line" },
+      { "id": "max_static", "label": "최대 정지 마찰력", "color": "#2d7cf6", "style": "line" },
+      { "id": "friction", "label": "마찰력", "color": "#ff7a1a", "style": "line" }
+    ]
+  }
+}

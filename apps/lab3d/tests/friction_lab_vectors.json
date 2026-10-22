@@ -1,0 +1,712 @@
+{
+  "source": "src/physics/laws/world-mechanics.ts PushFrictionLaw, src/physics/laws/mechanics.ts work / kineticEnergy",
+  "tolerance": 1e-9,
+  "step_hz": 60,
+  "g": 9.81,
+  "masses": {
+    "light": 0.5,
+    "normal": 1,
+    "heavy": 3,
+    "start": 8
+  },
+  "push": [
+    {
+      "material": "wood",
+      "mass_id": "start",
+      "mass": 8,
+      "mu_s": 0.4,
+      "mu_k": 0.22,
+      "max_static": 31.392,
+      "kinetic_friction": 17.265600000000003,
+      "schedule": [
+        [
+          31,
+          30
+        ],
+        [
+          32,
+          60
+        ],
+        [
+          0,
+          90
+        ]
+      ],
+      "samples": [
+        {
+          "step": 15,
+          "applied": 31,
+          "state": "holding",
+          "friction": -31,
+          "speed": 0,
+          "displacement": 0,
+          "heat": 0,
+          "path": 0,
+          "kinetic": 0
+        },
+        {
+          "step": 30,
+          "applied": 31,
+          "state": "holding",
+          "friction": -31,
+          "speed": 0,
+          "displacement": 0,
+          "heat": 0,
+          "path": 0,
+          "kinetic": 0
+        },
+        {
+          "step": 45,
+          "applied": 32,
+          "state": "sliding",
+          "friction": -17.2656,
+          "speed": 0.44510166666666673,
+          "displacement": 0.05755625,
+          "heat": 0.99374319,
+          "path": 0.05755625,
+          "kinetic": 0.792461974677778
+        },
+        {
+          "step": 60,
+          "applied": 32,
+          "state": "sliding",
+          "friction": -17.2656,
+          "speed": 0.9055516666666662,
+          "displacement": 0.23022499999999999,
+          "heat": 3.974972759999999,
+          "path": 0.230225,
+          "kinetic": 3.2800952840111077
+        },
+        {
+          "step": 75,
+          "applied": 32,
+          "state": "sliding",
+          "friction": -17.2656,
+          "speed": 1.366001666666665,
+          "displacement": 0.5180062499999997,
+          "heat": 8.943688709999995,
+          "path": 0.5180062499999997,
+          "kinetic": 7.463842213344426
+        },
+        {
+          "step": 90,
+          "applied": 32,
+          "state": "sliding",
+          "friction": -17.2656,
+          "speed": 1.826451666666664,
+          "displacement": 0.9208999999999992,
+          "heat": 15.899891039999984,
+          "path": 0.920899999999999,
+          "kinetic": 13.343702762677738
+        },
+        {
+          "step": 105,
+          "applied": 0,
+          "state": "sliding",
+          "friction": -17.2656,
+          "speed": 1.2869016666666624,
+          "displacement": 1.305572916666665,
+          "heat": 22.54149974999997,
+          "path": 1.3055729166666645,
+          "kinetic": 6.624463598677734
+        },
+        {
+          "step": 120,
+          "applied": 0,
+          "state": "sliding",
+          "friction": -17.2656,
+          "speed": 0.7473516666666625,
+          "displacement": 1.5553583333333307,
+          "heat": 26.854194839999952,
+          "path": 1.55535833333333,
+          "kinetic": 2.234138054677753
+        },
+        {
+          "step": 135,
+          "applied": 0,
+          "state": "sliding",
+          "friction": -17.2656,
+          "speed": 0.2078016666666628,
+          "displacement": 1.6702562499999962,
+          "heat": 28.837976309999934,
+          "path": 1.6702562499999958,
+          "kinetic": 0.17272613067777134
+        },
+        {
+          "step": 150,
+          "applied": 0,
+          "state": "holding",
+          "friction": 0,
+          "speed": 0,
+          "displacement": 1.6785805555555517,
+          "heat": 28.98170043999993,
+          "path": 1.678580555555551,
+          "kinetic": 0
+        },
+        {
+          "step": 165,
+          "applied": 0,
+          "state": "holding",
+          "friction": 0,
+          "speed": 0,
+          "displacement": 1.6785805555555517,
+          "heat": 28.98170043999993,
+          "path": 1.678580555555551,
+          "kinetic": 0
+        },
+        {
+          "step": 180,
+          "applied": 0,
+          "state": "holding",
+          "friction": 0,
+          "speed": 0,
+          "displacement": 1.6785805555555517,
+          "heat": 28.98170043999993,
+          "path": 1.678580555555551,
+          "kinetic": 0
+        }
+      ]
+    },
+    {
+      "material": "steel",
+      "mass_id": "light",
+      "mass": 0.5,
+      "mu_s": 0.26,
+      "mu_k": 0.08,
+      "max_static": 1.2753,
+      "kinetic_friction": 0.3924,
+      "schedule": [
+        [
+          1,
+          30
+        ],
+        [
+          2,
+          30
+        ],
+        [
+          0,
+          150
+        ]
+      ],
+      "samples": [
+        {
+          "step": 15,
+          "applied": 1,
+          "state": "holding",
+          "friction": -1,
+          "speed": 0,
+          "displacement": 0,
+          "heat": 0,
+          "path": 0,
+          "kinetic": 0
+        },
+        {
+          "step": 30,
+          "applied": 1,
+          "state": "holding",
+          "friction": -1,
+          "speed": 0,
+          "displacement": 0,
+          "heat": 0,
+          "path": 0,
+          "kinetic": 0
+        },
+        {
+          "step": 45,
+          "applied": 2,
+          "state": "sliding",
+          "friction": -0.3924,
+          "speed": 0.7770066666666665,
+          "displacement": 0.100475,
+          "heat": 0.03942639,
+          "path": 0.100475,
+          "kinetic": 0.15093484001111104
+        },
+        {
+          "step": 60,
+          "applied": 2,
+          "state": "sliding",
+          "friction": -0.3924,
+          "speed": 1.5808066666666656,
+          "displacement": 0.40189999999999976,
+          "heat": 0.15770555999999988,
+          "path": 0.4018999999999998,
+          "kinetic": 0.6247374293444435
+        },
+        {
+          "step": 75,
+          "applied": 0,
+          "state": "sliding",
+          "friction": -0.3924,
+          "speed": 1.3846066666666637,
+          "displacement": 0.7709416666666659,
+          "heat": 0.30251750999999966,
+          "path": 0.770941666666666,
+          "kinetic": 0.4792839053444424
+        },
+        {
+          "step": 90,
+          "applied": 0,
+          "state": "sliding",
+          "friction": -0.3924,
+          "speed": 1.1884066666666635,
+          "displacement": 1.0909333333333315,
+          "heat": 0.42808223999999934,
+          "path": 1.090933333333332,
+          "kinetic": 0.35307760134444255
+        },
+        {
+          "step": 105,
+          "applied": 0,
+          "state": "sliding",
+          "friction": -0.3924,
+          "speed": 0.9922066666666637,
+          "displacement": 1.3618749999999975,
+          "heat": 0.5343997499999991,
+          "path": 1.3618749999999977,
+          "kinetic": 0.24611851734444296
+        },
+        {
+          "step": 120,
+          "applied": 0,
+          "state": "sliding",
+          "friction": -0.3924,
+          "speed": 0.796006666666664,
+          "displacement": 1.5837666666666632,
+          "heat": 0.6214700399999987,
+          "path": 1.5837666666666639,
+          "kinetic": 0.15840665334444337
+        },
+        {
+          "step": 135,
+          "applied": 0,
+          "state": "sliding",
+          "friction": -0.3924,
+          "speed": 0.5998066666666643,
+          "displacement": 1.756608333333329,
+          "heat": 0.6892931099999985,
+          "path": 1.7566083333333298,
+          "kinetic": 0.08994200934444373
+        },
+        {
+          "step": 150,
+          "applied": 0,
+          "state": "sliding",
+          "friction": -0.3924,
+          "speed": 0.4036066666666646,
+          "displacement": 1.8803999999999954,
+          "heat": 0.7378689599999982,
+          "path": 1.880399999999996,
+          "kinetic": 0.04072458534444403
+        },
+        {
+          "step": 165,
+          "applied": 0,
+          "state": "sliding",
+          "friction": -0.3924,
+          "speed": 0.20740666666666488,
+          "displacement": 1.9551416666666617,
+          "heat": 0.767197589999998,
+          "path": 1.9551416666666621,
+          "kinetic": 0.01075438134444426
+        },
+        {
+          "step": 180,
+          "applied": 0,
+          "state": "sliding",
+          "friction": -0.3924,
+          "speed": 0.011206666666664958,
+          "displacement": 1.980833333333328,
+          "heat": 0.7772789999999978,
+          "path": 1.9808333333333283,
+          "kinetic": 0.00003139734444443487
+        },
+        {
+          "step": 195,
+          "applied": 0,
+          "state": "holding",
+          "friction": 0,
+          "speed": 0,
+          "displacement": 1.980833333333328,
+          "heat": 0.7772789999999978,
+          "path": 1.9808333333333283,
+          "kinetic": 0
+        },
+        {
+          "step": 210,
+          "applied": 0,
+          "state": "holding",
+          "friction": 0,
+          "speed": 0,
+          "displacement": 1.980833333333328,
+          "heat": 0.7772789999999978,
+          "path": 1.9808333333333283,
+          "kinetic": 0
+        }
+      ]
+    },
+    {
+      "material": "rubber",
+      "mass_id": "normal",
+      "mass": 1,
+      "mu_s": 0.6,
+      "mu_k": 0.42,
+      "max_static": 5.885999999999999,
+      "kinetic_friction": 4.1202,
+      "schedule": [
+        [
+          5,
+          30
+        ],
+        [
+          6,
+          30
+        ],
+        [
+          0,
+          30
+        ],
+        [
+          -8,
+          30
+        ],
+        [
+          0,
+          60
+        ]
+      ],
+      "samples": [
+        {
+          "step": 15,
+          "applied": 5,
+          "state": "holding",
+          "friction": -5,
+          "speed": 0,
+          "displacement": 0,
+          "heat": 0,
+          "path": 0,
+          "kinetic": 0
+        },
+        {
+          "step": 30,
+          "applied": 5,
+          "state": "holding",
+          "friction": -5,
+          "speed": 0,
+          "displacement": 0,
+          "heat": 0,
+          "path": 0,
+          "kinetic": 0
+        },
+        {
+          "step": 45,
+          "applied": 6,
+          "state": "sliding",
+          "friction": -4.1202,
+          "speed": 0.45428500000000005,
+          "displacement": 0.05874374999999999,
+          "heat": 0.24203599874999998,
+          "path": 0.05874375,
+          "kinetic": 0.10318743061250002
+        },
+        {
+          "step": 60,
+          "applied": 6,
+          "state": "sliding",
+          "friction": -4.1202,
+          "speed": 0.9242349999999995,
+          "displacement": 0.23497499999999993,
+          "heat": 0.9681439949999999,
+          "path": 0.234975,
+          "kinetic": 0.4271051676124995
+        },
+        {
+          "step": 75,
+          "applied": 0,
+          "state": "holding",
+          "friction": 0,
+          "speed": 0,
+          "displacement": 0.3310764166666665,
+          "heat": 1.3641010519499992,
+          "path": 0.33107641666666654,
+          "kinetic": 0
+        },
+        {
+          "step": 90,
+          "applied": 0,
+          "state": "holding",
+          "friction": 0,
+          "speed": 0,
+          "displacement": 0.3310764166666665,
+          "heat": 1.3641010519499992,
+          "path": 0.33107641666666654,
+          "kinetic": 0
+        },
+        {
+          "step": 105,
+          "applied": -8,
+          "state": "sliding",
+          "friction": 4.1202,
+          "speed": 0.937618333333333,
+          "displacement": 0.20983266666666647,
+          "heat": 1.863649550699999,
+          "path": 0.45232016666666647,
+          "kinetic": 0.4395640695013886
+        },
+        {
+          "step": 120,
+          "applied": -8,
+          "state": "sliding",
+          "friction": 4.1202,
+          "speed": 1.9075683333333338,
+          "displacement": -0.15389858333333348,
+          "heat": 3.3622950469499986,
+          "path": 0.8160514166666665,
+          "kinetic": 1.8194084731680564
+        },
+        {
+          "step": 135,
+          "applied": 0,
+          "state": "sliding",
+          "friction": 4.1202,
+          "speed": 0.8775183333333336,
+          "displacement": -0.4934506666666669,
+          "heat": 4.761317540699999,
+          "path": 1.1556034999999998,
+          "kinetic": 0.38501921266805583
+        },
+        {
+          "step": 150,
+          "applied": 0,
+          "state": "holding",
+          "friction": 0,
+          "speed": 0,
+          "displacement": -0.5796833333333337,
+          "heat": 5.116613373900002,
+          "path": 1.2418361666666664,
+          "kinetic": 0
+        },
+        {
+          "step": 165,
+          "applied": 0,
+          "state": "holding",
+          "friction": 0,
+          "speed": 0,
+          "displacement": -0.5796833333333337,
+          "heat": 5.116613373900002,
+          "path": 1.2418361666666664,
+          "kinetic": 0
+        },
+        {
+          "step": 180,
+          "applied": 0,
+          "state": "holding",
+          "friction": 0,
+          "speed": 0,
+          "displacement": -0.5796833333333337,
+          "heat": 5.116613373900002,
+          "path": 1.2418361666666664,
+          "kinetic": 0
+        }
+      ]
+    },
+    {
+      "material": "clay",
+      "mass_id": "heavy",
+      "mass": 3,
+      "mu_s": 0.76,
+      "mu_k": 0.58,
+      "max_static": 22.3668,
+      "kinetic_friction": 17.069399999999998,
+      "schedule": [
+        [
+          22,
+          30
+        ],
+        [
+          23,
+          60
+        ],
+        [
+          0,
+          60
+        ]
+      ],
+      "samples": [
+        {
+          "step": 15,
+          "applied": 22,
+          "state": "holding",
+          "friction": -22,
+          "speed": 0,
+          "displacement": 0,
+          "heat": 0,
+          "path": 0,
+          "kinetic": 0
+        },
+        {
+          "step": 30,
+          "applied": 22,
+          "state": "holding",
+          "friction": -22,
+          "speed": 0,
+          "displacement": 0,
+          "heat": 0,
+          "path": 0,
+          "kinetic": 0
+        },
+        {
+          "step": 45,
+          "applied": 23,
+          "state": "sliding",
+          "friction": -17.069399999999998,
+          "speed": 0.477742777777778,
+          "displacement": 0.061777083333333364,
+          "heat": 1.0544977462500003,
+          "path": 0.061777083333333364,
+          "kinetic": 0.34235724257824107
+        },
+        {
+          "step": 60,
+          "applied": 23,
+          "state": "sliding",
+          "friction": -17.069399999999998,
+          "speed": 0.9719594444444449,
+          "displacement": 0.24710833333333346,
+          "heat": 4.217990985000001,
+          "path": 0.24710833333333349,
+          "kinetic": 1.4170577424671311
+        },
+        {
+          "step": 75,
+          "applied": 23,
+          "state": "sliding",
+          "friction": -17.069399999999998,
+          "speed": 1.4661761111111113,
+          "displacement": 0.5559937500000002,
+          "heat": 9.490479716250004,
+          "path": 0.5559937500000003,
+          "kinetic": 3.224508583189353
+        },
+        {
+          "step": 90,
+          "applied": 23,
+          "state": "sliding",
+          "friction": -17.069399999999998,
+          "speed": 1.960392777777776,
+          "displacement": 0.9884333333333334,
+          "heat": 16.87196394,
+          "path": 0.9884333333333333,
+          "kinetic": 5.7647097647448975
+        },
+        {
+          "step": 105,
+          "applied": 0,
+          "state": "sliding",
+          "friction": -17.069399999999998,
+          "speed": 0.5379427777777765,
+          "displacement": 1.2888715277777774,
+          "heat": 22.00026365624999,
+          "path": 1.2888715277777774,
+          "kinetic": 0.43407364824490546
+        },
+        {
+          "step": 120,
+          "applied": 0,
+          "state": "holding",
+          "friction": 0,
+          "speed": 9.25185853854297e-18,
+          "displacement": 1.3099925925925922,
+          "heat": 22.36078755999999,
+          "path": 1.3099925925925922,
+          "kinetic": 1.2839532962581572e-34
+        },
+        {
+          "step": 135,
+          "applied": 0,
+          "state": "holding",
+          "friction": 0,
+          "speed": 9.25185853854297e-18,
+          "displacement": 1.3099925925925922,
+          "heat": 22.36078755999999,
+          "path": 1.3099925925925922,
+          "kinetic": 1.2839532962581572e-34
+        },
+        {
+          "step": 150,
+          "applied": 0,
+          "state": "holding",
+          "friction": 0,
+          "speed": 9.25185853854297e-18,
+          "displacement": 1.3099925925925922,
+          "heat": 22.36078755999999,
+          "path": 1.3099925925925922,
+          "kinetic": 1.2839532962581572e-34
+        }
+      ]
+    }
+  ],
+  "thresholds": [
+    {
+      "material": "wood",
+      "mass_id": "start",
+      "max_static": 31.392,
+      "forces": [
+        31.381999999999998,
+        31.392,
+        31.402
+      ],
+      "holding": [
+        true,
+        true,
+        false
+      ]
+    },
+    {
+      "material": "steel",
+      "mass_id": "light",
+      "max_static": 1.2753,
+      "forces": [
+        1.2653,
+        1.2753,
+        1.2853
+      ],
+      "holding": [
+        true,
+        true,
+        false
+      ]
+    },
+    {
+      "material": "rubber",
+      "mass_id": "normal",
+      "max_static": 5.885999999999999,
+      "forces": [
+        5.8759999999999994,
+        5.885999999999999,
+        5.895999999999999
+      ],
+      "holding": [
+        true,
+        true,
+        false
+      ]
+    },
+    {
+      "material": "clay",
+      "mass_id": "heavy",
+      "max_static": 22.3668,
+      "forces": [
+        22.3568,
+        22.3668,
+        22.376800000000003
+      ],
+      "holding": [
+        true,
+        true,
+        false
+      ]
+    }
+  ]
+}

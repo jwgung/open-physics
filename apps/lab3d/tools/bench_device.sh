@@ -3,7 +3,7 @@
 # procedure (docs/3d-phase0/benchmark-spec.md section 5, as used in Phase 1 Task 1):
 # shader-cache run, then <runs> x (app restart, 30 s warm-up, <seconds> s capture), then one
 # 600 s sustained capture. The panel shows the observations and the graph (--scroll-to), and the
-# box is re-released every 4 s so the physics, observations and graph keep updating.
+# box is dragged and released every 4 s so the drag, physics, observations and graph keep updating.
 # Usage: apps/lab3d/tools/bench_device.sh <tier> [runs] [seconds] [rest_s]   e.g. low 3 90 60
 # Output: $OPBENCH_RESULTS_DIR (default spikes/bench/results/phase1-task2a)/lab3d-<tier>-S3-*.jsonl
 # plus gpu-clock-<tier>.log ("<unix s> <Mali kHz> <AP °C>" every 5 s). Summarise with
@@ -17,7 +17,10 @@ here=$(cd "$(dirname "$0")" && pwd)
 repo=$(cd "$here/../../.." && pwd)
 export OPBENCH_RESULTS_DIR=${OPBENCH_RESULTS_DIR:-$repo/spikes/bench/results/phase1-task2a}
 package=org.openphysics.lab3d
-args="--experiment=incline-friction,--quality=$tier,--orientation=portrait,--scroll-to=observations,--auto-release=4,--ctl-angle=30"
+# Task 2b: every 4 s the box is dragged to a new start through the finger input path (1 s drag,
+# put down) and released 0.4 s later. Task 2a/2c measured OPBENCH_PLAY=--auto-release=4 (re-release only).
+play=${OPBENCH_PLAY:---auto-drag=4}
+args="--experiment=incline-friction,--quality=$tier,--orientation=portrait,--scroll-to=observations,$play,--ctl-angle=30"
 mkdir -p "$OPBENCH_RESULTS_DIR"
 
 adb_ready() { adb start-server >/dev/null 2>&1; adb wait-for-device; }

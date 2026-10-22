@@ -6,7 +6,7 @@ touchscreen node, so this registers a 2-contact HID digitizer with Android's `hi
 reports through it.
 
 Usage (device in portrait, app in front):
-  python3 -I apps/lab3d/tools/device_gesture.py orbit|pinch|pinch-fixed|pan|one-finger
+  python3 -I apps/lab3d/tools/device_gesture.py orbit|pinch|pinch-fixed|pan|one-finger|drag-cancel
 Coordinates are screen pixels in the device's natural (portrait) orientation (SM-P200 1200x1920).
 """
 import argparse
@@ -27,7 +27,12 @@ GESTURES = {
     "pinch-fixed": [[(520, 560), (220, 560)], [(680, 560), (680, 560)]],              # finger 1 held still, only 0 moves -> zoom in
     "pan": [[(560, 480), (520, 480), (520, 760)], [(640, 480), (680, 480), (680, 760)]],  # small spread, then move
     "one-finger": [[(400, 600), (900, 600)]],                                          # empty-view drag
+    # Task 2b: drag the incline box (default start, 3/4 view) and land a second finger halfway:
+    # the drag is cancelled and the box goes back to its start.
+    "drag-cancel": [[(865, 405), (700, 450), (560, 490)], [(250, 800), (250, 800), (250, 800)]],
 }
+# Fraction of the gesture after which each finger touches down (default: from the start).
+STARTS = {"drag-cancel": [0.0, 0.5]}
 
 FINGER = [
     0x05, 0x0D, 0x09, 0x22, 0xA1, 0x02,                    # Digitizer: Finger, logical collection
@@ -64,14 +69,14 @@ def point_at(waypoints, t):
     return x0 + (x1 - x0) * local, y0 + (y1 - y0) * local
 
 
-def commands(paths):
+def commands(paths, starts):
     lines = [{"id": 1, "command": "register", "name": "Open Physics test touch", "vid": 0x18D1, "pid": 0x7A01,
               "bus": "usb", "descriptor": DESCRIPTOR}, {"id": 1, "command": "delay", "duration": 1500}]
     for step in range(STEPS + 1):
         t = step / STEPS
         contacts = []
         for slot in range(2):
-            if slot < len(paths):
+            if slot < len(paths) and t >= starts[slot]:
                 contacts.append((True, slot, *point_at(paths[slot], t)))
             else:
                 contacts.append((False, slot, 0, 0))
@@ -87,7 +92,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("gesture", choices=sorted(GESTURES))
     args = parser.parse_args()
-    script = "\n".join(json.dumps(line) for line in commands(GESTURES[args.gesture])) + "\n"
+    script = "\n".join(json.dumps(line) for line in commands(GESTURES[args.gesture], STARTS.get(args.gesture, [0.0, 0.0]))) + "\n"
     with tempfile.NamedTemporaryFile("w", suffix=".json", delete=False) as handle:
         handle.write(script)
         local = handle.name

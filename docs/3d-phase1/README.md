@@ -25,7 +25,7 @@ Notion Story·Task와 GitHub Issue는 발행하지 않는다. 이 문서가 Phas
 | 2b | 3D 앱 셸 조작 | 조작 평면(바닥·면 위 드래그), 스냅, 자동 안착, 보조 시점, 높이 손잡이 | 2a | 완료 | `feat/manipulation-plane`, [#7](https://github.com/jwgung/open-physics/pull/7) |
 | 2c | 아트 디렉션·연출 | 장난감·로우폴리 스타일(시안 중 B 잔디 섬으로 확정: 선명한 원색, 각진 로우폴리, 구운 조명·발밑 그림자, 통통 튀는 연출)을 정하고 빗면 실험에 적용한다. SM-P200 low 60 fps 유지. 이후 실험은 이 스타일로 만든다 | 2a | 완료 | `feat/art-direction`, [#6](https://github.com/jwgung/open-physics/pull/6) |
 | 3 | 공식 보정 계층과 parity 파이프라인 | 일반 접촉에 쓸 보정 설계(Jolt 접촉 콜백 범위 조사 포함), TS↔GDScript 벡터 테스트, CI(Node + Godot 헤드리스) | 1 | 완료 | `feat/formula-correction-layer`, [#8](https://github.com/jwgung/open-physics/pull/8) |
-| 4 | 역학 안내형 10개 3D 이식 | 실험별로 나눠 진행한다. 실험 콘텐츠는 JSON으로 빼서 웹 2D와 공유한다. 빗면 마찰은 2a에서 먼저 옮긴다 | 2a, 2b, 2c, 3 | 진행 중 (4a·4b 완료, 4c 진행) | 4a [#9](https://github.com/jwgung/open-physics/pull/9), 4b [#10](https://github.com/jwgung/open-physics/pull/10), 4c `feat/labs-collision` |
+| 4 | 역학 안내형 10개 3D 이식 | 실험별로 나눠 진행한다. 실험 콘텐츠는 JSON으로 빼서 웹 2D와 공유한다. 빗면 마찰은 2a에서 먼저 옮긴다 | 2a, 2b, 2c, 3 | 진행 중 (4a·4b 완료, 4c 완료(검토 대기)) | 4a [#9](https://github.com/jwgung/open-physics/pull/9), 4b [#10](https://github.com/jwgung/open-physics/pull/10), 4c `feat/labs-collision` |
 | 5 | 역학 빈 실험실 3D | 고정 블록·줄·용수철·지렛대·도르래·힘·중력원·물 | 2a, 2b, 2c, 3 | 대기 | |
 | 6 | 출시 준비 | 서명, 스토어 자료, 개인정보처리방침(수집 없음), Kids/Families 정책, 모바일 CI, iOS 실기기 확인 | 4, 5 | 대기 | |
 
@@ -205,3 +205,4 @@ Notion Story·Task와 GitHub Issue는 발행하지 않는다. 이 문서가 Phas
 - 2026-10-22: Task 4a PR #9 머지(코드 리뷰 2회 반영 — 착지 판정을 공식 소유로). 낙하 높이 기본 5 m(0.5–8 m)·발사 높이 0.5 m·공 크기 유지(사용자 확인). 4b 접촉 힘(마찰 밀기) 착수.
 - 2026-10-22: Task 4b 마찰 밀기 구현·헤드리스 검증·SM-P200 실측 완료(검토 대기). low 90초 × 3회 평균 59.8 fps(1% low 41.0, p95 18.1 ms), 스크린샷·화면 기록은 [4b 결과](../../spikes/bench/results/phase1-task4b/README.md). 실험 설명은 [앱 README "실험 목록"](../../apps/lab3d/README.md#실험-목록), 보정은 [공식 보정 4절 Task 4b](../../apps/lab3d/docs/formula-correction.md#실험-구현-task-4b-마찰-밀기).
 - 2026-10-22: Task 4b PR #10 머지(SM-P200 low 59.8 fps). 웹과 다르게 정한 점(8 kg 기본, 1 N 눈금·최대 80 N, 마찰력 선, 조건 변경 시 출발선)은 유지. 4c 충돌 착수.
+- 2026-10-22: Task 4c 충돌 구현·헤드리스 검증·SM-P200 실측 완료(검토 대기). 공 움직임을 공식 모델이 구동해 엔진 공 위치가 TS 공식과 2.4e-7 m 이내(스텝 속도 2.8e-5 m/s)다. low 90초 × 3회 평균 59.7 fps(1% low 37.2, p95 18.1 ms), 스크린샷·화면 기록은 [4c 결과](../../spikes/bench/results/phase1-task4c/README.md). 보정은 [공식 보정 4절 Task 4c](../../apps/lab3d/docs/formula-correction.md#실험-구현-task-4c-충돌).

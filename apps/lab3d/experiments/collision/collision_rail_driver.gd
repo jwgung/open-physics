@@ -69,17 +69,20 @@ func step(dt: float) -> void:
 		engine_b.append(xb)
 	record(xb - xa)
 	steps += 1
-	_step_v = PackedFloat64Array([model.va, model.vb])
-	var from := _posed
+	_step_v[0] = model.va
+	_step_v[1] = model.vb
+	var from_a := _posed[0]
+	var from_b := _posed[1]
 	model.step(dt)
 	# A step that moved both balls by their velocity only (no push-out, no wall): x' = x + v dt.
-	_free_step = absf(model.xa - (from[0] + _step_v[0] * dt)) < 1e-12 and absf(model.xb - (from[1] + _step_v[1] * dt)) < 1e-12
+	_free_step = absf(model.xa - (from_a + _step_v[0] * dt)) < 1e-12 and absf(model.xb - (from_b + _step_v[1] * dt)) < 1e-12
 	_pose()
 
 
 ## Puts the balls on the model's centres (rail axis x; y and z stay).
 func _pose() -> void:
-	_posed = PackedFloat64Array([model.xa, model.xb])
+	_posed[0] = model.xa
+	_posed[1] = model.xb
 	ball_a.global_position = Vector3(model.xa, ball_a.global_position.y, ball_a.global_position.z)
 	ball_b.global_position = Vector3(model.xb, ball_b.global_position.y, ball_b.global_position.z)
 

@@ -37,6 +37,8 @@ var last_collision_step := -1
 ## The first collision (the web's collisionResult; here also below the threshold, with e = 0):
 ## velocities just before / after it (m/s) and the restitution it used.
 var collided := false
+var _bound_x := 0.0
+var _bound_v := 0.0
 var first_step := -1
 var before := PackedFloat64Array([0.0, 0.0])
 var after := PackedFloat64Array([0.0, 0.0])
@@ -66,12 +68,12 @@ func step(dt: float) -> void:
 	var k := exp(-damping * dt)
 	va = _damped(va, k)
 	vb = _damped(vb, k)
-	var bounded_a := _bounded(xa, va, radius_a, restitution_a)
-	xa = bounded_a[0]
-	va = bounded_a[1]
-	var bounded_b := _bounded(xb, vb, radius_b, restitution_b)
-	xb = bounded_b[0]
-	vb = bounded_b[1]
+	_bound(xa, va, radius_a, restitution_a)
+	xa = _bound_x
+	va = _bound_v
+	_bound(xb, vb, radius_b, restitution_b)
+	xb = _bound_x
+	vb = _bound_v
 
 
 ## world.ts resolveCollisions for the pair (A first, then B: the normal points from A to B).
@@ -110,16 +112,19 @@ func _damped(v: float, k: float) -> float:
 	return 0.0 if absf(damped) < sleep_speed else damped
 
 
-## physics-playground resolveWorldBounds along the rail: [x, v] after the walls (64-bit: a Vector2
-## would round them to 32 bits).
-func _bounded(x: float, v: float, radius: float, restitution: float) -> PackedFloat64Array:
+## physics-playground resolveWorldBounds along the rail: (_bound_x, _bound_v) after the walls
+## (64-bit floats, no per-step array).
+func _bound(x: float, v: float, radius: float, restitution: float) -> void:
 	var low := -wall + radius
 	var high := wall - radius
+	_bound_x = x
+	_bound_v = v
 	if x < low:
-		return PackedFloat64Array([low, v * -restitution if v < 0.0 else v])
-	if x > high:
-		return PackedFloat64Array([high, v * -restitution if v > 0.0 else v])
-	return PackedFloat64Array([x, v])
+		_bound_x = low
+		_bound_v = v * -restitution if v < 0.0 else v
+	elif x > high:
+		_bound_x = high
+		_bound_v = v * -restitution if v > 0.0 else v
 
 
 func at_rest() -> bool:

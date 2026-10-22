@@ -19,6 +19,7 @@ extends RefCounted
 const LANE_WIDTH := 1.4
 const MOMENTUM_SCALE := 0.25     # m of arrow per kg m/s
 const MOMENTUM_MAX := 3.0        # m
+const ARROW_LIFT := 0.35         # m from a ball's top to its arrow and knob
 const LENGTH_STEP := 0.02        # m: arrow lengths are rounded to this (the mesh is rebuilt rarely)
 const FORCE_LENGTH := 0.9        # m, each arrow of the force pair
 const FORCE_SHOW_S := 0.5
@@ -138,8 +139,8 @@ func spin(moved_a: float, moved_b: float) -> void:
 ## Waiting: purple velocity arrows from above each ball to its knob, signed lengths `la` / `lb` (m,
 ## up to the knob's near face; too short = hidden, the knob covers it).
 func show_velocity(at_a: Vector3, radius_a: float, la: float, at_b: Vector3, radius_b: float, lb: float) -> void:
-	for arrow in [arrow_a, arrow_b]:
-		arrow.set_colors(ArtPalette.PURPLE, ArtPalette.PURPLE_TOP)
+	arrow_a.set_colors(ArtPalette.PURPLE, ArtPalette.PURPLE_TOP)
+	arrow_b.set_colors(ArtPalette.PURPLE, ArtPalette.PURPLE_TOP)
 	_place(arrow_a, at_a, radius_a, la)
 	_place(arrow_b, at_b, radius_b, lb)
 
@@ -152,12 +153,17 @@ func show_momentum(at_a: Vector3, radius_a: float, pa: float, at_b: Vector3, rad
 	_place(arrow_b, at_b, radius_b, clampf(pb * MOMENTUM_SCALE, -MOMENTUM_MAX, MOMENTUM_MAX))
 
 
+## Height of a ball's arrow and knob centre above the floor.
+static func arrow_height(radius: float) -> float:
+	return 2.0 * radius + ARROW_LIFT
+
+
 ## An arrow above the ball at `at` with signed length `length` (+ = to the right; too short = hidden).
 func _place(arrow: VelocityArrow, at: Vector3, radius: float, length: float) -> void:
 	var l := snappedf(absf(length), LENGTH_STEP)
 	arrow.visible = l >= VelocityArrow.MIN_LENGTH
 	if arrow.visible:
-		arrow.point(Vector3(at.x, 2.0 * radius + 0.35, 0.0), 0.0 if length > 0.0 else 180.0, l)
+		arrow.point(Vector3(at.x, arrow_height(radius), 0.0), 0.0 if length > 0.0 else 180.0, l)
 
 
 ## A hit at x = `contact_x` with strength 0..1: both balls squash along the rail, the force pair shows.

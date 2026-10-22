@@ -8,8 +8,8 @@
 ## Motion and every displayed number: CollisionModel (the web's collision preset on the TS world:
 ## explicit Euler, world.ts collision with push-out, the preset's damping 0.15/s and stop below
 ## 2 px/s, wall bounces with the ball's e), stepped in 64 bit. CollisionRailDriver poses the engine
-## balls on it every step (method "kinematic_model"); the engine gives the "운동량 합 (시뮬레이션)"
-## readout (momentum of its balls' last step). See docs/formula-correction.md (Task 4c).
+## balls on it every step (method "kinematic_model"), so the panel has no engine measurement: the
+## balls stand where the formula puts them. See docs/formula-correction.md (Task 4c).
 extends Experiment
 
 const RADIUS_A := 0.4
@@ -20,13 +20,16 @@ const START_B := 4.0
 const LANE_A := Vector2(-6.5, -0.5)     # where each ball's centre may start (its half of the rail)
 const LANE_B := Vector2(0.5, 6.5)
 const KNOB_SIZE := 0.3
+const KNOB_HALF := KNOB_SIZE * 0.5
 const ARROW_SCALE := 0.4                # m of arrow per m/s (the knob sits v * ARROW_SCALE beside the ball)
-const ARROW_LIFT := 0.35                # m from the ball's top to the arrow
 const ARROW_STEP := 0.5                 # m/s grid of the knob (the web arrow has none; 0.5 like the projectile's)
 const SPEED_MAX := 9.0                  # m/s (the web arrow: 96 px / 0.22 = 9.09 m/s)
 const BALL_LAYER := 3                   # pickable; the balls touch nothing in the engine (mask 0)
 const KNOB_LAYER := 2
 const GRAPH_EVERY_STEPS := 6            # 10 Hz graph samples
+const HIT_CLOSING_MAX := 8.0            # m/s closing speed that gives the full hit strength
+const HIT_STRENGTH_MIN := 0.25          # weakest hit reaction
+const HIT_CLOSING_LATER := 3.0          # m/s assumed for hits after the first (only the first one's speeds are kept)
 const IMPACT_STEPS := 30                # "충돌!" is shown this many steps after a hit (the web's 0.4 s flash)
 
 var model := CollisionModel.new()
@@ -146,8 +149,10 @@ func reset_run() -> void:
 func release() -> void:
 	if released:
 		reset_run()
-	_load_model()
-	driver.reset()
+	else:
+		# The conditions (and a test's restitution_override) may have changed since the last reset.
+		_load_model()
+		driver.reset()
 	released = true
 	_graph.clear()
 	_graph.append(Vector3(0.0, model.momentum_a(), model.momentum_b()))
@@ -177,8 +182,8 @@ func _clock() -> float:
 
 ## The model's balls just hit: visual reactions along the normal and the camera nudge.
 func _hit() -> void:
-	var closing := absf(model.before[0] - model.before[1]) if model.collisions == 1 else 3.0
-	var strength := clampf(closing / 8.0, 0.25, 1.0)
+	var closing := absf(model.before[0] - model.before[1]) if model.collisions == 1 else HIT_CLOSING_LATER
+	var strength := clampf(closing / HIT_CLOSING_MAX, HIT_STRENGTH_MIN, 1.0)
 	props.hit(model.xa + RADIUS_A if model.xa < model.xb else model.xa - RADIUS_A, strength)
 	impact.emit(strength)
 
@@ -222,8 +227,7 @@ func observations() -> Dictionary:
 		"impulse_a": "—",
 		"impulse_b": "—",
 		"restitution": "—",
-		"measured": driver.engine_values().momentum if released else "—",
-	}
+		}
 	if model.collided:
 		result.after_a = model.after[0]
 		result.after_b = model.after[1]
@@ -261,11 +265,6 @@ func follow_point() -> Vector3:
 
 # --- arrows -------------------------------------------------------------------------------------
 
-## Height of a ball's arrow and knob centre above the floor.
-static func arrow_height(radius: float) -> float:
-	return 2.0 * radius + ARROW_LIFT
-
-
 ## Velocity (m/s) of a knob `offset` m beside its ball: on the ARROW_STEP grid (counted in whole grid
 ## steps, 64-bit), within +-SPEED_MAX.
 static func knob_velocity(offset: float) -> float:
@@ -296,12 +295,11 @@ func _show_arrows() -> void:
 	if key == _shown and holding == "":
 		return
 	if holding != "arrow_a":
-		knob_a.global_position = Vector3(ball_a.global_position.x + va * ARROW_SCALE, arrow_height(RADIUS_A), 0.0)
+		knob_a.global_position = Vector3(ball_a.global_position.x + va * ARROW_SCALE, CollisionProps.arrow_height(RADIUS_A), 0.0)
 	if holding != "arrow_b":
-		knob_b.global_position = Vector3(ball_b.global_position.x + vb * ARROW_SCALE, arrow_height(RADIUS_B), 0.0)
-	var half := KNOB_SIZE * 0.5
-	props.show_velocity(ball_a.global_position, RADIUS_A, va * ARROW_SCALE - signf(va) * half,
-		ball_b.global_position, RADIUS_B, vb * ARROW_SCALE - signf(vb) * half)
+		knob_b.global_position = Vector3(ball_b.global_position.x + vb * ARROW_SCALE, CollisionProps.arrow_height(RADIUS_B), 0.0)
+	props.show_velocity(ball_a.global_position, RADIUS_A, va * ARROW_SCALE - signf(va) * KNOB_HALF,
+		ball_b.global_position, RADIUS_B, vb * ARROW_SCALE - signf(vb) * KNOB_HALF)
 	_shown = Vector4(ball_a.global_position.x, ball_b.global_position.x, knob_a.global_position.x, knob_b.global_position.x)
 
 
@@ -374,7 +372,7 @@ func manipulation_surface(surface_id: String) -> ManipSurface:
 		"arrow_a", "arrow_b":
 			var a := surface_id == "arrow_a"
 			var ball := ball_a if a else ball_b
-			var height := arrow_height(RADIUS_A if a else RADIUS_B) - KNOB_SIZE * 0.5
+			var height := CollisionProps.arrow_height(RADIUS_A if a else RADIUS_B) - KNOB_HALF
 			var reach := SPEED_MAX * ARROW_SCALE
 			surface = ManipSurface.new(Transform3D(Basis(), Vector3(ball.global_position.x, height, 0.0)),
 				Vector2(-reach, 0.0), Vector2(reach, 0.0), Vector2(ARROW_STEP * ARROW_SCALE, 0.0))

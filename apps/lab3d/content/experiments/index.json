@@ -6,6 +6,7 @@
     "collision.json",
     "spring.json",
     "friction.json",
+    "orbit.json",
     "buoyancy.json",
     "incline-friction.json"
   ],

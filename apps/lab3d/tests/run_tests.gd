@@ -24,6 +24,9 @@
 ## 10. buoyancy lab (Task 4d, tests/buoyancy_lab_checks.gd): the model and the engine drum step by step
 ##    against the TS-core vectors (tests/buoyancy_lab_vectors.json), floating depth / sinking /
 ##    neutral from the engine drum, panel, art, a fresh screen, the input path, the demo.
+## 11. orbit lab (Task 4d, tests/orbit_lab_checks.gd): the model and the engine planet step by step
+##    against the TS-core vectors (tests/orbit_lab_vectors.json), Kepler periods, escape and crash
+##    from the engine planet, panel, art, a fresh screen, the input path, the demo.
 ## Times are engine fixed steps (60 Hz), independent of rendering FPS.
 extends SceneTree
 
@@ -112,6 +115,11 @@ func _run() -> void:
 	_expect(buoyancy != null and buoyancy.can_instantiate(), "buoyancy lab checks compile", "")
 	if buoyancy != null and buoyancy.can_instantiate():
 		await buoyancy.new(self, _expect).run()
+	print("== orbit lab (Task 4d) ==")
+	var orbit: GDScript = load("res://tests/orbit_lab_checks.gd")
+	_expect(orbit != null and orbit.can_instantiate(), "orbit lab checks compile", "")
+	if orbit != null and orbit.can_instantiate():
+		await orbit.new(self, _expect).run()
 	print("RESULT: %s (%d failure(s))" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
 

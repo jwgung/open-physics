@@ -1,0 +1,70 @@
+{
+  "id": "orbit",
+  "version": 1,
+  "content": "orbit",
+  "scene": "res://experiments/orbit/orbit.gd",
+  "bench_id": "OR",
+  "camera": {
+    "target": [0.0, 1.6, 0.0],
+    "distance": 15.0,
+    "distance_range": [4.0, 30.0],
+    "yaw_range_deg": [-100.0, 100.0],
+    "pitch_range_deg": [-89.0, -2.0],
+    "pan_radius": 7.0,
+    "default_mode": "three_quarter",
+    "views": {
+      "front": { "yaw_deg": 0.0, "pitch_deg": -10.0, "distance": 16.0 },
+      "three_quarter": { "yaw_deg": 26.0, "pitch_deg": -38.0 },
+      "top": { "yaw_deg": 0.0, "pitch_deg": -89.0, "distance": 17.0 },
+      "side": { "yaw_deg": 90.0, "pitch_deg": -14.0, "distance": 16.0 },
+      "follow": { "yaw_deg": 20.0, "pitch_deg": -30.0, "distance": 7.0 }
+    }
+  },
+  "controls": [
+    {
+      "id": "speed", "type": "slider", "label": "발사 속력", "unit": " m/s",
+      "min": 0.0, "max": 6.0, "step": 0.1, "default": 3.0, "digits": 1
+    },
+    {
+      "id": "direction", "type": "slider", "label": "발사 방향 (90° = 반시계 방향 옆, 0° = 별 바깥쪽)", "unit": "°",
+      "min": 0.0, "max": 355.0, "step": 5.0, "default": 90.0, "digits": 0
+    },
+    {
+      "id": "radius", "type": "slider", "label": "출발 반지름 (별 중심에서)", "unit": " m",
+      "min": 2.0, "max": 5.0, "step": 0.5, "default": 3.0, "digits": 1
+    }
+  ],
+  "actions": [
+    { "id": "launch", "label": "발사", "style": "primary" },
+    { "id": "circular", "label": "원 궤도 속력으로" },
+    { "id": "reset", "label": "처음으로" }
+  ],
+  "observations": [
+    { "id": "state", "label": "상태" },
+    { "id": "predicted", "label": "예상 결과" },
+    { "id": "launch_speed", "label": "발사 속력", "unit": "m/s", "digits": 2 },
+    { "id": "circular_speed", "label": "원 궤도 속력 √(GM/r) · 출발 반지름", "unit": "m/s", "digits": 2 },
+    { "id": "escape_speed", "label": "탈출 속력 √(2GM/r) · 출발 반지름", "unit": "m/s", "digits": 2 },
+    { "id": "radius", "label": "지금 궤도 반지름 r", "unit": "m", "digits": 2 },
+    { "id": "period", "label": "원 궤도 예상 주기 2π√(r³/GM)", "unit": "s", "digits": 2 },
+    { "id": "speed", "label": "지금 속력", "unit": "m/s", "digits": 2 },
+    { "id": "lap", "label": "한 바퀴 걸린 시간", "unit": "s", "digits": 2 }
+  ],
+  "manipulation": {
+    "objects": [
+      { "id": "planet", "surface": "radius_line", "snap": 0.5, "height": false },
+      { "id": "arrow", "surface": "arrow", "snap": 0.1, "height": false }
+    ],
+    "demo_action": "launch"
+  },
+  "graph": {
+    "title": "발사 속력과 궤도 기준",
+    "x": { "label": "시간 t", "unit": "s", "max": 20.0 },
+    "y": { "label": "속력", "unit": "m/s", "min_max": 5.0 },
+    "series": [
+      { "id": "speed", "label": "지금 속력", "color": "#2d7cf6", "style": "line" },
+      { "id": "circular", "label": "원 궤도 속력 (지금 r)", "color": "#1fae4b", "style": "line" },
+      { "id": "escape", "label": "탈출 속력 (지금 r)", "color": "#ff3b3b", "style": "line" }
+    ]
+  }
+}

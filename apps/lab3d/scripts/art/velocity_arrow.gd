@@ -39,6 +39,18 @@ func point(origin: Vector3, angle_deg: float, length: float) -> void:
 	mesh = arrow_mesh(l, color, top_color)
 
 
+## Points the arrow from `origin` along the world direction `direction` (any direction, e.g. level:
+## the orbit lab's arrows), `length` as in point().
+func point_along(origin: Vector3, direction: Vector3, length: float) -> void:
+	point(origin, 0.0, length)
+	var d := direction.normalized()
+	if d == Vector3.ZERO:
+		return
+	var up := Vector3.UP if absf(d.y) < 0.99 else Vector3.BACK
+	var y := (up - d * d.dot(up)).normalized()
+	basis = Basis(d, y, d.cross(y))
+
+
 ## Colours for the next point() (rebuilds the mesh only when they differ from the built ones, the top too).
 func set_colors(arrow_color: Color, arrow_top: Color) -> void:
 	color = arrow_color

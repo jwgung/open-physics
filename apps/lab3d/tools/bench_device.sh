@@ -6,15 +6,17 @@
 # box is dragged (put down, released 0.4 s later) every 4 s so the drag, physics, observations and
 # graph keep updating. OPBENCH_PLAY=--auto-release=4 re-releases only (the Task 2a/2c measurement:
 # the experiment's own release action, no UI work besides what the experiment emits).
-# Other experiments (Task 4a): OPBENCH_EXPERIMENT=<id> (default incline-friction), OPBENCH_SCENE=<bench
-# id> (default S3), OPBENCH_CTL=<comma-separated launch args> (default --ctl-angle=30, the incline's
-# measured angle; "" for the defaults); OPBENCH_SUSTAINED=0 skips the 600 s sustained capture.
+# Other experiments (Task 4a): OPBENCH_EXPERIMENT=<id> (default incline-friction). The scene name is
+# the experiment definition's bench_id (content/experiments/<id>.json, the name the app logs; the id
+# when it has none). OPBENCH_CTL=<comma-separated launch args> (default: --ctl-angle=30, the
+# incline's measured angle, for incline-friction only; none for the others; "" for the defaults);
+# OPBENCH_SUSTAINED=0 skips the 600 s sustained capture.
 # Usage: apps/lab3d/tools/bench_device.sh <tier> [runs] [seconds] [rest_s]   e.g. low 3 90 60
-# Output: $OPBENCH_RESULTS_DIR/lab3d-<tier>-<scene>-*.jsonl. The default follows the play mode so a drag
-# measurement never overwrites the 2a baseline: spikes/bench/results/phase1-task2b for --auto-drag,
-# phase1-task2a for --auto-release.
-# plus gpu-clock-<tier>.log ("<unix s> <Mali kHz> <AP °C>" every 5 s). Summarise with
-# node spikes/bench/summarize.mjs <dir>.
+# Output: $OPBENCH_RESULTS_DIR/lab3d-<tier>-<scene>-*.jsonl, plus gpu-clock-<tier>.log ("<unix s>
+# <Mali kHz> <AP °C>" every 5 s). The default folder is per experiment and play mode,
+# spikes/bench/results/lab3d-<experiment>-<drag|release>, never a recorded baseline (phase1-task*):
+# a folder that already holds lab3d-<tier>-<scene>-* results is refused (OPBENCH_OVERWRITE=1 to
+# replace them). Summarise with node spikes/bench/summarize.mjs <dir>.
 set -uo pipefail
 tier=${1:?tier}
 runs=${2:-3}
@@ -27,13 +29,27 @@ package=org.openphysics.lab3d
 # put down) and released 0.4 s later. Task 2a/2c measured OPBENCH_PLAY=--auto-release=4 (re-release only).
 play=${OPBENCH_PLAY:---auto-drag=4}
 case $play in
-  *auto-drag*) default_dir=phase1-task2b ;;
-  *) default_dir=phase1-task2a ;;
+  *auto-drag*) mode=drag ;;
+  *) mode=release ;;
 esac
-export OPBENCH_RESULTS_DIR=${OPBENCH_RESULTS_DIR:-$repo/spikes/bench/results/$default_dir}
 experiment=${OPBENCH_EXPERIMENT:-incline-friction}
-scene=${OPBENCH_SCENE:-S3}
-ctl=${OPBENCH_CTL---ctl-angle=30}
+definition="$here/../content/experiments/$experiment.json"
+if [[ ! -f $definition ]]; then
+  echo "bench_device: no experiment definition $definition" >&2
+  exit 2
+fi
+scene=$(sed -n 's/.*"bench_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$definition" | head -n 1)
+scene=${scene:-$experiment}
+if [[ $experiment == incline-friction ]]; then
+  ctl=${OPBENCH_CTL---ctl-angle=30}
+else
+  ctl=${OPBENCH_CTL-}
+fi
+export OPBENCH_RESULTS_DIR=${OPBENCH_RESULTS_DIR:-$repo/spikes/bench/results/lab3d-$experiment-$mode}
+if [[ ${OPBENCH_OVERWRITE:-0} != 1 ]] && compgen -G "$OPBENCH_RESULTS_DIR/lab3d-$tier-$scene-*" >/dev/null; then
+  echo "bench_device: $OPBENCH_RESULTS_DIR already holds lab3d-$tier-$scene-* results (OPBENCH_OVERWRITE=1 replaces them)" >&2
+  exit 2
+fi
 args="--experiment=$experiment,--quality=$tier,--orientation=portrait,--scroll-to=observations,$play${ctl:+,$ctl}"
 mkdir -p "$OPBENCH_RESULTS_DIR"
 

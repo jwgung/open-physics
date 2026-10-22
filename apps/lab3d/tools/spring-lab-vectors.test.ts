@@ -24,7 +24,6 @@ import {
   periodFromAngularFrequency,
 } from "../../../src/physics/laws/oscillation";
 import type { BodyState, PhysicsContext } from "../../../src/physics/core";
-import { vectorMismatch } from "./ts-oracle";
 
 const STEP_HZ = 60;
 const DT = 1 / STEP_HZ;
@@ -162,7 +161,7 @@ describe("spring lab vectors", () => {
       writeFileSync(vectorsPath, `${JSON.stringify(vectors, null, 2)}\n`);
     }
     const committed = JSON.parse(readFileSync(vectorsPath, "utf8"));
-    expect(vectorMismatch(committed, JSON.parse(JSON.stringify(vectors)))).toBeNull();
+    expect(committed).toEqual(JSON.parse(JSON.stringify(vectors)));
   });
 
   it("are the TS law's motion (RK4 of AnchoredSpringLaw.force) and keep energy without damping", () => {

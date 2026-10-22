@@ -19,7 +19,6 @@ import { floatingSubmergedFraction } from "../../../src/physics/laws/fluid";
 import { UniformGravity } from "../../../src/physics/laws/gravity";
 import { BuoyancyRegionLaw } from "../../../src/physics/laws/world-mechanics";
 import type { Body } from "../../../src/physics/world";
-import { vectorMismatch } from "./ts-oracle";
 
 const STEP_HZ = 60;
 const DT = 1 / STEP_HZ;
@@ -209,7 +208,7 @@ describe("buoyancy lab vectors", () => {
       writeFileSync(vectorsPath, `${JSON.stringify(vectors, null, 2)}\n`);
     }
     const committed = JSON.parse(readFileSync(vectorsPath, "utf8"));
-    expect(vectorMismatch(committed, JSON.parse(JSON.stringify(vectors)))).toBeNull();
+    expect(committed).toEqual(JSON.parse(JSON.stringify(vectors)));
   });
 
   it("float, sink and stay as Archimedes says", () => {

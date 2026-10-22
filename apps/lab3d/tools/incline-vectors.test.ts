@@ -15,7 +15,6 @@ import { MATERIALS, type PlaygroundMaterial } from "../../../src/app/physics-pla
 import { constantAccelerationDisplacement } from "../../../src/physics/laws/mechanics";
 import { SurfaceContactFrictionModifier } from "../../../src/physics/laws/world-mechanics";
 import type { Body } from "../../../src/physics/world";
-import { vectorMismatch } from "./ts-oracle";
 
 const G = 9.81;
 const MASS = 1;
@@ -116,7 +115,7 @@ describe("incline friction parity vectors for the 3D app", () => {
       writeFileSync(vectorsPath, `${JSON.stringify(vectors, null, 2)}\n`);
     }
     const committed = JSON.parse(readFileSync(vectorsPath, "utf8"));
-    expect(vectorMismatch(committed, JSON.parse(JSON.stringify(vectors)))).toBeNull();
+    expect(committed).toEqual(vectors);
     const spec = vectors.sets[0];
     expect(spec.critical_angle_deg).toBeCloseTo(26.565, 3);
     expect(spec.accel_35).toBeCloseTo(2.412, 3);

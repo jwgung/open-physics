@@ -6,7 +6,7 @@
   "bench_id": "OR",
   "camera": {
     "target": [0.0, 1.6, 0.0],
-    "distance": 15.0,
+    "distance": 12.5,
     "distance_range": [4.0, 30.0],
     "yaw_range_deg": [-100.0, 100.0],
     "pitch_range_deg": [-89.0, -2.0],
@@ -14,7 +14,7 @@
     "default_mode": "three_quarter",
     "views": {
       "front": { "yaw_deg": 0.0, "pitch_deg": -10.0, "distance": 16.0 },
-      "three_quarter": { "yaw_deg": 26.0, "pitch_deg": -38.0 },
+      "three_quarter": { "yaw_deg": 26.0, "pitch_deg": -42.0 },
       "top": { "yaw_deg": 0.0, "pitch_deg": -89.0, "distance": 17.0 },
       "side": { "yaw_deg": 90.0, "pitch_deg": -14.0, "distance": 16.0 },
       "follow": { "yaw_deg": 20.0, "pitch_deg": -30.0, "distance": 7.0 }

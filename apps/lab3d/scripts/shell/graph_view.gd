@@ -76,10 +76,12 @@ func _draw() -> void:
 			draw_polyline(screen, color, 3.0, true)
 
 
-## The top value of the y axis: the data (with 8 % headroom) rounded up to a nice number, at least
-## graph.y.min_max.
+## The top value of the y axis: graph.y.max when the axis has a fixed top (a share in %), else the
+## data (with 8 % headroom) rounded up to a nice number, at least graph.y.min_max.
 static func y_top(graph_spec: Dictionary, data: Dictionary) -> float:
 	var y_spec: Dictionary = graph_spec.get("y", {})
+	if y_spec.has("max"):
+		return float(y_spec.max)
 	var signed: bool = y_spec.get("signed", false)
 	var top: float = y_spec.get("min_max", 1.0)
 	for id in data:

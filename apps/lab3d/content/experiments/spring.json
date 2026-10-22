@@ -5,8 +5,8 @@
   "scene": "res://experiments/spring/spring.gd",
   "bench_id": "SP",
   "camera": {
-    "target": [-1.0, 0.9, 0.0],
-    "distance": 10.5,
+    "target": [-0.4, 0.9, 0.0],
+    "distance": 9.0,
     "distance_range": [3.0, 22.0],
     "yaw_range_deg": [-100.0, 100.0],
     "pitch_range_deg": [-89.0, -2.0],
@@ -57,7 +57,7 @@
   "graph": {
     "title": "에너지가 바뀌는 모습",
     "x": { "label": "시간 t", "unit": "s", "max": 10.0 },
-    "y": { "label": "에너지 비율", "unit": "%", "min_max": 100.0 },
+    "y": { "label": "에너지 비율", "unit": "%", "max": 100.0 },
     "series": [
       { "id": "kinetic", "label": "움직임 (운동 에너지)", "color": "#2d7cf6", "style": "line" },
       { "id": "spring", "label": "용수철 (탄성 에너지)", "color": "#7a5cf0", "style": "line" }

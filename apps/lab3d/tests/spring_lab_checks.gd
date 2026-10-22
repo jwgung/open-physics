@@ -405,8 +405,8 @@ func check_first_release_screen() -> void:
 		sums_ok = sums_ok and absf(series.kinetic[i].y + series.spring[i].y - 100.0) < 1e-4   # float32 points
 		top_kinetic = maxf(top_kinetic, series.kinetic[i].y)
 	expect.call(series.kinetic.size() >= 40 and series.spring[0].y == 100.0 and series.kinetic[0].y == 0.0 and sums_ok
-		and top_kinetic > 99.0,
-		"spring: the graph shows the kinetic and spring shares (%) over time: 100 % spring at the release, they trade and add to 100 %", "%d points" % series.kinetic.size())
+		and top_kinetic > 99.0 and GraphView.y_top(lab.definition.graph, series) == 100.0,
+		"spring: the graph shows the kinetic and spring shares (%) over time on a fixed 0-100 % axis: 100 % spring at the release, they trade and add to 100 %", "%d points" % series.kinetic.size())
 	await _close(screen)
 
 

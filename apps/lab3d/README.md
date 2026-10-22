@@ -192,14 +192,14 @@ npm test                           # 루트: TS 테스트 + apps/lab3d/tools/{in
 | 아트는 보이는 것만 | `tests/run_tests.gd` | 아트가 충돌 객체를 더하지 않음, 연출은 상자 메시만 바꾸고 충돌 모양은 그대로, 연출을 끈 실행과 운동·그래프·표시 값이 같음, 카메라 착지 반응이 모드·목표를 바꾸지 않음 |
 | 셸 | `tests/run_tests.gd` | 레지스트리 검증, 글꼴 서브셋이 쓰는 글자를 모두 포함, 카메라 모드 전환·제한·정면으로·따라가기, 제스처 분류(한 손가락은 카메라 불변), 세로·가로 레이아웃 |
 | 조작 | `tests/manipulation_checks.gd`(`run_tests.gd`가 부름) | 투영(바로 아래, 물체 중심 높이, 스치는 광선·뒤쪽 광선은 무시, 선 위 가장 가까운 점), 격자 스냅·영역·여유 0.6 m, 레지스트리의 `manipulation` 검사와 숨은 개발 장면, 보조 시점(필요할 때만 돌고 되돌아옴, 따라가기 대상 고정). 실제 입력 경로(View3D 터치 → Manipulator → 실험)로: 빗면 끌어 놓기·0.5 m 눈금 스냅·놓을 수 없는 곳(남색 표시·흔들림·제자리 복귀)·두 번째 손가락과 시스템 취소·마우스·미끄러지는 상자 집기·조작 중 조건 변경·화면 재구성 유지. 개발 장면: 바닥 격자, 높이 손잡이(높이만, 0.25 m 단위), 높이 조작 중 두 손가락 취소, 다른 상자·블록과 겹침 금지, 블록 위 높이에 놓기, 영역 밖 금지, 빈 곳 탭으로 선택 해제, 떨어뜨리기. 리뷰 반영: 착지한 상자를 끌어 놓은 뒤 다시 착지 반응, 자동 놓기 타이머의 조작 취소, 높이 상한 초과 금지, 액션 때 손잡이 숨김, 떨어지는 상자 미저장, 손잡이 막대 기준 높이 끌기, 조작 중 사용자가 돌린 시점 유지, 보조 시점 탐색 횟수. 3차 리뷰 반영: 블록 위 상자 집기 높이 유지, 첫 목표가 막힌 곳이면 흔들지 않음, 눈금=스냅 격자·규칙 한 곳에서 읽기, 캡슐 축소, 놓기·취소 때 패널 갱신 1회, 데모 후속 액션 선언 |
-| 공식 벡터 생성·감시 (Task 3) | `tools/formula-vectors.test.ts`(루트 `npm test`) | TS 코어 함수·클래스(`src/physics/laws`, `world.ts` 충돌, `PendulumModel`, `Lever`·`Pulley`·`OrbitChallenge`)로 10개 실험의 법칙 사례 519개와 대표 장면 목표값을 만들어 `tests/formula_vectors.json`과 비교. 10개 실험이 모두 법칙을 갖는지 |
+| 공식 벡터 생성·감시 (Task 3) | `tools/formula-vectors.test.ts`(루트 `npm test`) | TS 코어 함수·클래스(`src/physics/laws`, `world.ts` 충돌, `PendulumModel`, `Lever`·`Pulley`·`OrbitChallenge`)로 10개 실험의 법칙 사례 583개와 대표 장면 목표값을 만들어 `tests/formula_vectors.json`과 비교. 10개 실험이 모두 법칙을 갖는지 |
 | 공식 parity (Task 3) | `tests/formula_checks.gd`(`run_tests.gd`가 부름) | 실험마다 그 실험이 쓰는 `PhysicsLaws` 함수가 벡터와 상대 오차 1e-9 이내(측정 최대 3e-13), 벡터의 법칙에 포트가 모두 있음 |
-| 보정 방식별 대표 장면 (Task 3) | `tests/formula_checks.gd` | 실제 Jolt 바디로: 자유 낙하·던지기 위치 = ½at²(≤ 1e-4 m, 질량 무관), 밀기 정지·s(t), 탄성·고무 충돌 뒤 속도(재질 안 맞춘 경우 포함)·운동량, 용수철 주기 ±0.1%·에너지 ±0.5%, 원 궤도 주기·반지름 ±0.1%, 부력 평형 깊이 ±0.5%·가라앉음, 진자 각도 = TS 모델(≤ 1e-5 rad)·길이·주기·다른 바디 밀기, 도르래 높이·힘, 지렛대 들림. 기준은 [공식 보정 4절](docs/formula-correction.md#4-실험별-보정-방식) |
+| 보정 방식별 대표 장면 (Task 3) | `tests/formula_checks.gd` | 실제 Jolt 바디로: 자유 낙하·던지기 위치 = ½at²(≤ 1e-4 m, 질량 무관), 밀기 정지·s(t), 던지기 출발 접촉은 착지 아님, 탄성·고무 충돌 뒤 속도(재질 반발 0·0.88, 느린 접근, 깊은 겹침, 중력 하 공중 충돌)·운동량, 충돌 보정이 재질·바닥 반발을 바꾸지 않음, 용수철 주기 ±0.1%·에너지 ±0.5%·감쇠 시 현재 상태 에너지, 원 궤도 주기·반지름 ±0.1%, 부력 평형 깊이 ±0.5%·가라앉음·중성 판정, 진자 각도 = TS 모델(≤ 1e-5 rad)·길이·주기·다른 바디 밀기, 도르래 높이·힘, 지렛대 들림. 기준은 [공식 보정 4절](docs/formula-correction.md#4-실험별-보정-방식) |
 | 새 출발 위치의 표시 수치 | `tools/incline-vectors.test.ts` → `tests/incline_vectors.json` `runs`, `manipulation_checks.gd` | 재질·각도·출발 위치 4가지(1–6 m)에서 s(t) ±1%, 표시 `이동 거리`가 출발점에서 빗면 끝까지 거리에서 멈춤, 공식 곡선이 그 거리에서 끝남, 상자가 빗면을 떠나는 시각이 TS 공식 √(2L/a)와 3 step 안 |
 
 - TS 공식을 바꾸면 vitest가 먼저 깨진다. `UPDATE_INCLINE_VECTORS=1 UPDATE_FORMULA_VECTORS=1 npx vitest run apps/lab3d`로 벡터를 다시 만든 뒤 Godot 테스트로 GDScript 쪽 불일치를 확인한다.
 - UI 문구를 바꾸면 `apps/lab3d/tools/subset_font.sh`로 글꼴을 다시 만든다(fonttools가 없으면 `uvx`로 실행). 빠진 글자는 테스트가 잡는다. Noto Sans CJK에 없는 아래·위 첨자(ₛ, ₖ, ⁻¹)는 쓰지 않는다.
-- `build.sh test`는 `SCRIPT ERROR`(스크립트 컴파일·실행 오류)가 로그에 있으면 PASS여도 실패로 본다. 코루틴 안 오류로 멈춘 실행은 `GODOT_TEST_TIMEOUT`(기본 900초) 뒤 실패한다. Godot 경로는 `GODOT`로 바꾼다(기본 `~/.local/share/godot-spike/godot`).
+- `build.sh test`(앱·스파이크 둘 다)는 `SCRIPT ERROR`(스크립트 컴파일·실행 오류)나 `ERROR`로 시작하는 줄이 로그에 있으면 PASS여도 실패로 본다. 코루틴 안 오류로 멈춘 실행은 `GODOT_TEST_TIMEOUT`(기본 900초) 뒤 실패한다. Godot 경로는 `GODOT`로 바꾼다(기본 `~/.local/share/godot-spike/godot`).
 - `-s`로 실행하는 테스트에서는 autoload 이름이 컴파일 시점에 없어서, `Quality`·`Bench`를 쓰는 스크립트는 테스트에서 `load()`로 불러 쓴다.
 
 ### 테스트와 CI

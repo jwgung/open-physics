@@ -103,7 +103,7 @@ func release() -> void:
 	apply_field(ball)
 	(ball.corrector as UniformFieldCorrector).release(ball, launch_velocity())
 	_knob_visual.visible = false
-	_mark_released(PackedVector2Array([Vector2(0.0, start.y)]))
+	_mark_released(PackedVector2Array([Vector2(0.0, launch_height())]))
 
 
 func projectile_props() -> ProjectileProps:
@@ -149,7 +149,13 @@ func shown_time() -> float:
 	if not released:
 		return 0.0
 	var landing := flight_time()
-	return landing if corrector().landed_step >= 0 else minf(clock(), landing)
+	return landing if has_landed() else minf(clock(), landing)
+
+
+## The engine reported the landing, or the ball was let go on the floor in a field without rising
+## (flight time 0, e.g. a level throw from the floor: it slides, it does not fly).
+func has_landed() -> bool:
+	return has_landed_by(corrector(), flight_time())
 
 
 ## Formula offset (x, height of the bottom above the floor) at time t.
@@ -166,13 +172,10 @@ func formula_y(t: float) -> float:
 	return maxf(0.0, launch_height() + PhysicsLaws.constant_acceleration_displacement(launch_vy(), -g, t))
 
 
-## Launch height (ball bottom above the floor, m), kept on the 1 mm grid of the handle's steps.
+## Launch height (ball bottom above the floor, m): start.y, kept on the 1 mm grid (snapped_height)
+## where it is set, so the engine start, the graph points and the formulas use the same value.
 func launch_height() -> float:
-	return snapped_height(start.y)
-
-
-static func snapped_height(bottom_y: float) -> float:
-	return snappedf(bottom_y, 0.001)
+	return start.y
 
 
 func status() -> String:
@@ -180,7 +183,7 @@ func status() -> String:
 		return "ready"
 	if out_of_bounds:
 		return "out"
-	if corrector().landed_step >= 0:
+	if has_landed():
 		return "landed"
 	return "floating" if g <= 0.0 else "flying"
 
@@ -190,8 +193,8 @@ func _released_step() -> void:
 		_out_steps += 1
 		return
 	var steps := corrector().steps - 1
-	if _graph_sample_time(steps) >= 0.0 and _append_sample(corrector(), steps, start.y):
-		_graph_revision += 1
+	if _graph_sample_time(steps) >= 0.0:
+		_append_sample(corrector(), steps, launch_height(), flight_time())
 	_check_bounds()
 
 
@@ -202,7 +205,7 @@ func _check_bounds() -> void:
 		return
 	var p := ball.global_position
 	if p.x < BOUNDS_X.x or p.x > BOUNDS_X.y or p.y < BOUNDS_Y.x or p.y > BOUNDS_Y.y:
-		out_of_bounds = corrector().landed_step < 0
+		out_of_bounds = not has_landed()
 		ball.freeze = true
 		ball.linear_velocity = Vector3.ZERO
 		_ball_visual.visible = false
@@ -245,16 +248,7 @@ func measured_range() -> Variant:
 
 
 func graph_series() -> Dictionary:
-	var line := PackedVector2Array()
-	var x_max := graph_x_max()
-	var landing := flight_time()
-	for i in 61:
-		var t := x_max * i / 60.0
-		if t >= landing:
-			line.append(Vector2(landing, 0.0))
-			break
-		line.append(Vector2(t, formula_y(t)))
-	return {"formula": line, "measured": _measured.duplicate()}
+	return {"formula": _formula_line(formula_y, flight_time()), "measured": _measured.duplicate()}
 
 
 func follow_point() -> Vector3:
@@ -391,6 +385,7 @@ func manipulation_placed(id: String, transform: Transform3D) -> void:
 	_placed = true
 	if id == "ball":
 		start = transform.origin - Vector3.UP * BALL_RADIUS
+		start.y = snapped_height(start.y)
 	else:
 		var surface := ArrowSurface.new(ball_center(), KNOB_SIZE * 0.5)
 		var q := ArrowSurface.snap_polar(surface.to_plane(transform.origin))

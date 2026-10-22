@@ -15,6 +15,10 @@ extends Experiment
 
 const BALL_RADIUS := 0.25     # m (0.5 m balls, about the web's 24 px radius at 48 px = 1 m)
 const GRAPH_EVERY_STEPS := 6  # graph sample every 6 fixed steps (10 Hz), like the incline
+## The balls' own collision layer; their mask is the world's layer 1 only, so balls never touch each
+## other (each falls as its own formula says; a neighbour's contact also delayed the engine's floor
+## report by a step). Picking and the free-place query still see them (all layers).
+const BALL_LAYER := 3
 
 ## Field the balls feel (m/s^2, downwards) and the selected gravity option id.
 var g := 9.81
@@ -135,14 +139,43 @@ func _graph_sample_time(steps: int) -> float:
 	return t if t <= graph_x_max() + 0.001 else -1.0
 
 
-## Appends the engine's height of one ball at `steps` to the graph points, unless it landed
-## earlier (true when a point was added).
-func _append_sample(c: UniformFieldCorrector, steps: int, start_y: float) -> bool:
+## Appends the engine's height of one ball at `steps` to the graph points and moves the graph
+## revision on, unless the ball landed earlier or at the release (formula `landing` 0; true when a
+## point was added).
+func _append_sample(c: UniformFieldCorrector, steps: int, start_y: float, landing: float) -> bool:
 	var landed_before := c.landed_step >= 0 and c.landed_step < steps
-	if steps >= c.samples.size() or landed_before:
+	if landing <= 0.0 or steps >= c.samples.size() or landed_before:
 		return false
 	_measured.append(Vector2(steps * step_dt(), maxf(0.0, start_y + c.samples[steps])))
+	_graph_revision += 1
 	return true
+
+
+## The formula line of one ball for the graph: (t, height(t)) at 61 points over the graph window,
+## ending with (landing, 0) at the formula `landing` (INF: no landing, the whole window).
+func _formula_line(height: Callable, landing: float) -> PackedVector2Array:
+	var line := PackedVector2Array()
+	var x_max := graph_x_max()
+	for i in 61:
+		var t := x_max * i / 60.0
+		if t >= landing:
+			line.append(Vector2(landing, 0.0))
+			break
+		line.append(Vector2(t, height.call(t)))
+	return line
+
+
+## A ball has landed: the engine reported its landing, or its formula landing time is 0 (let go on
+## the floor in a field and not thrown upwards: nothing to fall). Without a field a ball on the
+## floor never lands (landing INF).
+static func has_landed_by(c: UniformFieldCorrector, landing: float) -> bool:
+	return c.landed_step >= 0 or landing <= 0.0
+
+
+## Start height (ball bottom above the floor, m) kept on the 1 mm grid of the handles' steps, so the
+## engine start, the graph points and the formulas use one value.
+static func snapped_height(bottom_y: float) -> float:
+	return snappedf(bottom_y, 0.001)
 
 
 ## Selects a gravity option ({id, g} in the "gravity" control). False for an unknown id.
@@ -188,7 +221,8 @@ func make_floor(size: Vector3) -> StaticBody3D:
 
 ## A ball for the uniform-field correction: sphere of BALL_RADIUS, no damping, no rotation (a toy
 ## ball that slides after landing; the free flight has no rotation anyway, and ArtJuice squashes
-## along the surface normal), frozen until released, contact reports on (landing).
+## along the surface normal), frozen until released, contact reports on (landing: on the floor made
+## by make_floor before, which a lab can add its own surfaces to).
 func make_ball(ball_name: String, mass: float, bounce: float) -> FormulaBody:
 	var ball := FormulaBody.new()
 	ball.name = ball_name
@@ -203,7 +237,8 @@ func make_ball(ball_name: String, mass: float, bounce: float) -> FormulaBody:
 	ball.freeze = true
 	ball.contact_monitor = true
 	ball.max_contacts_reported = 4
-	ball.collision_mask = 1   # the world (floor, other balls); handles on other layers are not hit
+	ball.collision_layer = 1 << (BALL_LAYER - 1)
+	ball.collision_mask = 1   # the world (floor); other balls and handles are on other layers
 	var material := PhysicsMaterial.new()
 	material.friction = 0.6
 	material.bounce = bounce
@@ -214,6 +249,8 @@ func make_ball(ball_name: String, mass: float, bounce: float) -> FormulaBody:
 	shape.shape = sphere
 	ball.add_child(shape)
 	var corrector := UniformFieldCorrector.new()
+	if floor_body:
+		corrector.surfaces.assign([floor_body])   # landing on the ground only, not on another ball
 	# The graph window (+ a sample at its end) is all the lab reads from the history.
 	corrector.history_steps = int(graph_x_max() * Engine.physics_ticks_per_second) + 2
 	ball.corrector = corrector

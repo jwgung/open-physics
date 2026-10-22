@@ -8,6 +8,10 @@
 ##    / range / apex = TS (1e-9), engine landing time +-2 steps and distance +-2 steps of travel,
 ##    highest measured point = apex; no field: the ball leaves the island and is stopped.
 ## 3. the art is visual only (collision objects, juice on the mesh, same run without the reactions).
+## 5. landing rules (review of PR #9): the release contacts come from the first released step (a
+##    fresh lab's first throw / drop from the floor), landings on the floor only, a ball let go on
+##    the floor in a field has landed (no field: it has not, the time runs), one drop line per ball,
+##    one launch height for the engine, the graph and the formulas.
 ## 4. manipulation through the real input path: free fall ball drag + height handle, projectile ball
 ##    on its launch line + height, the arrow knob's polar snap (15 deg, 0.5 m/s), blocked directions.
 extends RefCounted
@@ -42,6 +46,12 @@ func run() -> void:
 	await check_projectile_landed_roll_off()
 	await check_projectile_unknown_control()
 	await check_free_fall_height_clamp()
+	await check_first_release_from_floor()
+	await check_free_fall_neighbours()
+	await check_free_fall_zero_g_on_floor()
+	await check_free_fall_drop_lines()
+	await check_projectile_level_from_floor()
+	await check_projectile_height_grid()
 	await check_projectile_art()
 	check_arrow_surface()
 	await check_free_fall_manipulation()
@@ -429,6 +439,161 @@ func check_free_fall_height_clamp() -> void:
 	lab.set_control("height", 3.0)
 	expect.call(low == 0.5 and high == 8.0 and low_starts and lab.height == 3.0 and lab.control_value("height") == 3.0,
 		"free fall: the height condition is limited to the slider's range (0.5..8 m)", "low %.1f, high %.1f" % [low, high])
+	await _free(lab)
+
+
+# --- landing rules ------------------------------------------------------------------------------
+
+## A lab opened fresh (no earlier run, so no contact report to reuse): the first throw from the
+## floor (height 0, 45 deg) flies its formula time, and a ball let go on the floor is not an engine
+## landing on the first step while the others drop and land on it at their formula times.
+func check_first_release_from_floor() -> void:
+	var lab: Experiment = await _lab("projectile")
+	lab.set_control("angle", 45.0)
+	_place_launch(lab, 0.0)
+	lab.release()
+	var c: UniformFieldCorrector = lab.corrector()
+	await _until_step(c, 10)
+	var early: int = c.landed_step
+	for i in 3 * STEP_HZ:
+		if c.landed_step >= 0:
+			break
+		await tree.physics_frame
+	var flight: float = lab.flight_time()
+	expect.call(early < 0 and c.landed_step > 2 and absi(c.landed_step - roundi(flight * STEP_HZ)) <= 2,
+		"landing: a fresh projectile lab's first throw from the floor (45 deg) lands at its flight time, not on the first step",
+		"landed step %d (at step 10: %d), formula %.3f s" % [c.landed_step, early, flight])
+	await _free(lab)
+	lab = await _lab("free-fall")
+	lab.manipulation_placed("red", Transform3D(Basis(), Vector3(1.5, lab.BALL_RADIUS, 0.0)))
+	lab.release()
+	var orange: UniformFieldCorrector = lab.corrector_of("orange")
+	for i in 2 * STEP_HZ:
+		if orange.landed_step >= 0:
+			break
+		await tree.physics_frame
+	var want := roundi(PhysicsLaws.landing_time(0.0, -9.81, 5.0) * STEP_HZ)
+	expect.call(lab.corrector_of("red").landed_step < 0 and lab.has_landed("red") and absi(orange.landed_step - want) <= 2,
+		"landing: a fresh free-fall lab with a ball on the floor reports no engine landing for it; the dropped ones land at their formula time",
+		"red %d, orange %d (formula %d)" % [lab.corrector_of("red").landed_step, orange.landed_step, want])
+	await _free(lab)
+
+
+## Balls side by side (touching at the release, one beside a higher one) land on the floor at their
+## own formula times and fall as the formula says: balls do not collide with each other, and their
+## landings are on the floor (corrector.surfaces) only.
+func check_free_fall_neighbours() -> void:
+	var lab: Experiment = await _lab("free-fall")
+	lab.manipulation_placed("pink", Transform3D(Basis(), Vector3(-0.5, 5.0 + lab.BALL_RADIUS, 0.0)))
+	lab.manipulation_placed("red", Transform3D(Basis(), Vector3(0.5, 3.0 + lab.BALL_RADIUS, 0.0)))
+	lab.release()
+	var ball_contacts := 0   # balls are on their own layer, out of each other's mask
+	for i in 3 * STEP_HZ:
+		if lab.status() == "landed":
+			break
+		await tree.physics_frame
+		for id in lab.ORDER:
+			for other in lab.balls[id].get_colliding_bodies():
+				ball_contacts += 1 if lab.balls.values().has(other) else 0
+	var worst_landing := 0
+	var worst_motion := 0.0
+	var ground := true
+	var detail := []
+	for id in lab.ORDER:
+		var c: UniformFieldCorrector = lab.corrector_of(id)
+		var landing: float = lab.landing_time(id)
+		worst_landing = maxi(worst_landing, absi(c.landed_step - roundi(landing * STEP_HZ)) if c.landed_step >= 0 else 999)
+		for k in mini(c.samples.size(), int(landing * STEP_HZ) - 2):
+			worst_motion = maxf(worst_motion, absf(c.samples[k] - PhysicsLaws.constant_acceleration_displacement(0.0, -9.81, k / float(STEP_HZ))))
+		ground = ground and c.surfaces == [lab.floor_body]
+		detail.append("%s %d" % [id, c.landed_step])
+	expect.call(ground and ball_contacts == 0 and worst_landing <= 2 and worst_motion <= 1e-4,
+		"landing: balls side by side never touch each other, land on the floor only, at their formula times (±2 steps)",
+		"ball contacts %d, worst %d steps, motion %s m; %s" % [ball_contacts, worst_landing, String.num_scientific(worst_motion), ", ".join(detail)])
+	await _free(lab)
+
+
+## No field, every ball on the floor: nobody lands, the shown time is the clock (not INF).
+func check_free_fall_zero_g_on_floor() -> void:
+	var lab: Experiment = await _lab("free-fall")
+	lab.set_control("gravity", "zero")
+	for id in lab.ORDER:
+		lab.manipulation_placed(id, Transform3D(Basis(), Vector3(lab.BALLS[id].x, lab.BALL_RADIUS, 0.0)))
+	lab.release()
+	await _until_step(lab.corrector_of("red"), STEP_HZ)
+	var shown: Dictionary = lab.observations()
+	expect.call(absf(float(shown.time) - 1.0) < 1e-9 and shown.state == "무중력: 떠 있어요" and shown.fall_time == "닿지 않아요",
+		"landing: no field with every ball on the floor, the time is the clock (1 s after 60 steps), not INF", str(shown.time))
+	# In a field the same balls have landed at the release: time 0, the graph stops at once.
+	lab.set_control("gravity", "earth")
+	lab.release()
+	await _until_step(lab.corrector_of("red"), 2 * lab.GRAPH_EVERY_STEPS)
+	var revision: int = lab.graph_revision()
+	await _until_step(lab.corrector_of("red"), 4 * lab.GRAPH_EVERY_STEPS)
+	shown = lab.observations()
+	expect.call(float(shown.time) == 0.0 and shown.state == "모두 바닥에 닿음" and lab.graph_revision() == revision and lab.graph_series().measured.size() == 3,
+		"landing: in a field balls let go on the floor have landed (time 0); the graph revision stays while no point is added",
+		"time %s, state %s, revision %d -> %d" % [str(shown.time), shown.state, revision, lab.graph_revision()])
+	await _free(lab)
+
+
+## One ball per drop line: a ball cannot be put straight above or below another (they would collide
+## in the air); the next 0.5 m grid point (sides touching) is allowed.
+func check_free_fall_drop_lines() -> void:
+	var screen: Control = await _open(ExperimentRegistry.find("free-fall"))
+	var lab: Experiment = screen.experiment
+	var m: Manipulator = screen.manipulator
+	var pink: RigidBody3D = lab.balls.pink
+	var above_orange := Vector3(0.0, pink.global_position.y, 0.0)
+	lab.manipulation_placed("orange", Transform3D(Basis(), Vector3(0.0, 2.0 + lab.BALL_RADIUS, 0.0)))
+	_swipe(screen, _at(screen, pink.global_position), _at(screen, above_orange))
+	var blocked: bool = m.active_id == "pink" and not m.valid
+	var beside := Vector3(-0.5, pink.global_position.y, 0.0)
+	var event := InputEventScreenDrag.new()   # the same finger moves on (no new press)
+	event.index = 0
+	event.position = _at(screen, beside)
+	screen.view._gui_input(event)
+	var allowed: bool = m.active_id == "pink" and m.valid
+	_touch(screen, 0, _at(screen, beside), false)
+	expect.call(blocked and allowed and is_equal_approx(lab.starts.pink.x, -0.5)
+		and not lab.placement_allowed("red", Transform3D(Basis(), Vector3(0.0, 6.0, 0.0))),
+		"landing: a ball cannot be placed on another ball's drop line (above or below); beside it is allowed", "blocked %s, allowed %s, pink x %.2f, selected %s" % [blocked, allowed, lab.starts.pink.x, m.selected_id])
+	await _close(screen)
+
+
+## A level throw from the floor (height 0, angle 0) has flight time 0: it has landed at the release
+## (it slides on the floor) instead of "flying" for ever.
+func check_projectile_level_from_floor() -> void:
+	var lab: Experiment = await _lab("projectile")
+	lab.set_control("angle", 0.0)
+	_place_launch(lab, 0.0)
+	lab.release()
+	await _until_step(lab.corrector(), 30)
+	var shown: Dictionary = lab.observations()
+	expect.call(lab.status() == "landed" and shown.state == "바닥에 닿음" and float(shown.time) == 0.0 and float(shown.flight_time) == 0.0
+		and lab.graph_series().measured.size() == 1,
+		"landing: a level throw from the floor has landed at the release (time 0), not '날아가는 중'", str(shown))
+	await _free(lab)
+
+
+## A launch height off the 1 mm grid is snapped where it is set: the engine start, the graph's
+## points and the formulas use the same height.
+func check_projectile_height_grid() -> void:
+	var lab: Experiment = await _lab("projectile")
+	_place_launch(lab, 1.2504)
+	var height: float = lab.launch_height()
+	var engine_bottom: float = lab.ball.global_position.y - lab.BALL_RADIUS
+	lab.release()
+	var c: UniformFieldCorrector = lab.corrector()
+	await _until_step(c, 30)
+	var series: Dictionary = lab.graph_series()
+	var worst := 0.0
+	for p in series.measured:
+		worst = maxf(worst, absf(p.y - lab.formula_y(p.x)))
+	expect.call(lab.start.y == 1.25 and height == 1.25 and absf(engine_bottom - 1.25) < 1e-6 and series.measured[0].y == height
+		and series.measured.size() > 2 and worst <= 1e-4,
+		"projectile: an off-grid launch height (1.2504 m) is snapped to 1.250 m for the engine, the graph and the formulas",
+		"start %.4f, engine %.6f, graph vs formula %s m" % [lab.start.y, engine_bottom, String.num_scientific(worst)])
 	await _free(lab)
 
 

@@ -114,9 +114,9 @@ func clock() -> float:
 	return maxi(0, corrector_of("red").steps - 1) * step_dt()
 
 
-## The engine reported the ball's landing (a ball standing on the floor has nothing to fall).
+## The engine reported the ball's landing, or it was let go on the floor in a field (has_landed_by).
 func has_landed(id: String) -> bool:
-	return corrector_of(id).landed_step >= 0 or starts[id].y <= 1e-6
+	return has_landed_by(corrector_of(id), landing_time(id))
 
 
 ## Formula time of one ball: the clock, but never past its landing.
@@ -131,7 +131,8 @@ func formula_height(id: String, t: float) -> float:
 	return maxf(0.0, starts[id].y + PhysicsLaws.constant_acceleration_displacement(0.0, -g, t))
 
 
-## The time shown: the clock while a ball is still falling, the last formula landing once all landed.
+## The time shown: the clock while a ball is still falling, the last formula landing once all landed
+## (without a field no ball lands, also not one on the floor: the clock).
 func shown_time() -> float:
 	if not released:
 		return 0.0
@@ -160,9 +161,7 @@ func _released_step() -> void:
 	if _graph_sample_time(steps) < 0.0:
 		return
 	for id in ORDER:
-		if starts[id].y > 1e-6:
-			_append_sample(corrector_of(id), steps, starts[id].y)
-	_graph_revision += 1
+		_append_sample(corrector_of(id), steps, starts[id].y, landing_time(id))
 
 
 func observations() -> Dictionary:
@@ -206,17 +205,8 @@ func measured_landings() -> String:
 
 func graph_series() -> Dictionary:
 	var series := {"measured": _measured.duplicate()}
-	var x_max := graph_x_max()
 	for id in ORDER:
-		var line := PackedVector2Array()
-		var land := landing_time(id)
-		for i in 61:
-			var t := x_max * i / 60.0
-			if t >= land:
-				line.append(Vector2(land, 0.0))
-				break
-			line.append(Vector2(t, formula_height(id, t)))
-		series[id] = line
+		series[id] = _formula_line(func(t: float) -> float: return formula_height(id, t), landing_time(id))
 	return series
 
 
@@ -269,11 +259,22 @@ func manipulation_started(id: String) -> void:
 	fall_props().juices[id].rearm()
 
 
+## A ball's drop line is its own: no other ball straight above or below it (the two would collide
+## in the air, which the per-ball formula does not describe). Neighbours on the 0.5 m grid (sides
+## touching) fall side by side and stay allowed.
+func placement_allowed(id: String, transform: Transform3D) -> bool:
+	for other in ORDER:
+		if other != id and absf(transform.origin.x - starts[other].x) < BALL_RADIUS * 2.0 - 0.001:
+			return false
+	return true
+
+
 func manipulation_placed(id: String, transform: Transform3D) -> void:
 	_placed = true
 	starts[id] = transform.origin - Vector3.UP * BALL_RADIUS
+	starts[id].y = snapped_height(starts[id].y)
 	var ball: FormulaBody = balls[id]
-	hold_ball(ball, transform.origin)
+	hold_ball(ball, starts[id] + Vector3.UP * BALL_RADIUS)
 	apply_field(ball)
 	fall_props().place_pad(id, starts[id])
 	_graph_revision += 1

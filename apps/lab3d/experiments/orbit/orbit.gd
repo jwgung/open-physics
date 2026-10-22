@@ -22,7 +22,6 @@ const DEFAULT_SPEED := 3.0
 const DEFAULT_DIRECTION := 90.0
 const RADIUS_MIN := 2.0
 const RADIUS_MAX := 5.0
-const RADIUS_CELLS := 2.0         # grid cells per metre (0.5 m)
 const KNOB_SIZE := 0.3
 const KNOB_LAYER := 2
 const PLANET_LAYER := 3
@@ -77,7 +76,7 @@ func control_value(id: String) -> Variant:
 func run_action(id: String) -> void:
 	match id:
 		"launch":
-			launch()
+			release()
 		"circular":
 			speed = PhysicsLaws.circular_orbit_speed(MU, start_radius, 1.0)
 			direction = DEFAULT_DIRECTION
@@ -114,11 +113,6 @@ func reset_run() -> void:
 	_preview.clear()
 	_show_waiting()
 	_update_status(true)
-
-
-## Launches the planet (a flight in progress starts again from the start).
-func launch() -> void:
-	release()
 
 
 func _notify_released() -> void:
@@ -238,9 +232,9 @@ func _main_body() -> RigidBody3D:
 	return planet
 
 
-## Start radius for a planet centre at world x on the 0.5 m grid (whole cells), RADIUS_MIN..RADIUS_MAX.
-static func radius_at(world_x: float) -> float:
-	return clampf(roundi(world_x * RADIUS_CELLS) / RADIUS_CELLS, RADIUS_MIN, RADIUS_MAX)
+## Start radius for a planet centre at world x on the planet's grid (manipulation snap, whole cells), RADIUS_MIN..RADIUS_MAX.
+func radius_at(world_x: float) -> float:
+	return _snap_to_grid("planet", world_x, RADIUS_MIN, RADIUS_MAX)
 
 
 # --- world --------------------------------------------------------------------------------------
@@ -293,7 +287,7 @@ func manipulation_surface(surface_id: String) -> ManipSurface:
 	match surface_id:
 		"radius_line":
 			surface = ManipSurface.new(Transform3D(Basis(), Vector3(0.0, ORBIT_Y - PLANET_RADIUS, 0.0)),
-				Vector2(RADIUS_MIN, 0.0), Vector2(RADIUS_MAX, 0.0), Vector2(1.0 / RADIUS_CELLS, 0.0))
+				Vector2(RADIUS_MIN, 0.0), Vector2(RADIUS_MAX, 0.0), Vector2(_grid_step("planet"), 0.0))
 		"arrow":
 			surface = _arrow_surface()
 		_:
@@ -308,7 +302,7 @@ func manipulation_juice(id: String) -> ArtJuice:
 
 ## Picked up: a flight stops (a planet picked up in flight jumps under the finger onto its start line).
 func manipulation_started(id: String) -> void:
-	props.hide_gravity()
+	props.picked_up()
 	super(id)
 
 

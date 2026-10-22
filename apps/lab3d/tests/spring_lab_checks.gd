@@ -327,7 +327,12 @@ func check_conditions() -> void:
 	lab.set_control("damping", "honey")
 	lab.set_control("nope", 1.0)
 	var shown: Dictionary = lab.observations()
-	expect.call(moved and back and absf(period - TAU * sqrt(3.0 / 5.0)) < 1e-12 and damped and lab.damping_id == "web" and lab.status() == "ready"
+	# Damped (web, b = 0.45): the labelled natural period T0 = 2 pi sqrt(m / k) is unchanged, the real period is 2 pi / wd.
+	var w0 := sqrt(5.0 / 3.0)
+	var wd := sqrt(w0 * w0 - pow(0.45 / (2.0 * 3.0), 2.0))
+	expect.call(absf(float(shown.natural_period) - TAU * sqrt(3.0 / 5.0)) < 1e-12 and absf(float(shown.period) - TAU / wd) < 1e-12 and float(shown.period) > float(shown.natural_period),
+		"spring: with damping the panel shows the natural period 2 pi sqrt(m / k) and the longer damped period 2 pi / wd on separate rows", "T0 %.4f s, T %.4f s" % [shown.natural_period, shown.period])
+	expect.call(moved and back and absf(period - TAU * sqrt(3.0 / 5.0)) < 1e-12 and absf(float(lab.observations().natural_period) - period) < 1e-12 and damped and lab.damping_id == "web" and lab.status() == "ready"
 		and absf(float(shown.total) - 3.6) < 1e-12 and absf(float(shown.force) + 6.0) < 1e-12,
 		"spring: mass and damping change the conditions and put the ball back at its pull; unknown ids are ignored", "T %.4f s" % period)
 	var labels_ok := true

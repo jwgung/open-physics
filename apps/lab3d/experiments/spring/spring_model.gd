@@ -73,9 +73,14 @@ func total_energy() -> float:
 	return kinetic_energy() + spring_energy()
 
 
-## Period of the oscillation: 2 pi sqrt(m / k) (oscillation.ts), 2 pi / wd with damping.
+## Natural period 2 pi sqrt(m / k) (oscillation.ts periodFromAngularFrequency of omega0): without damping.
+func natural_period() -> float:
+	return PhysicsLaws.period_from_angular_frequency(omega0())
+
+
+## Period of the oscillation actually happening: the natural period, or 2 pi / wd with damping
+## (wd = sqrt(w0^2 - gamma^2), the damped angular frequency the TS model integrates with).
 func period() -> float:
 	if damping == 0.0:
-		return PhysicsLaws.period_from_angular_frequency(omega0())
+		return natural_period()
 	return TAU / PhysicsLaws.damped_angular_frequency(omega0(), gamma())
-

@@ -176,6 +176,14 @@ func launched() -> void:
 	juice.stretch()
 
 
+## Picked up (in flight or waiting): the waiting look again, the yellow knob back and no gravity arrow.
+func picked_up() -> void:
+	if juice == null:
+		return
+	knob_visual.visible = true
+	hide_gravity()
+
+
 func reset() -> void:
 	if juice == null:
 		return

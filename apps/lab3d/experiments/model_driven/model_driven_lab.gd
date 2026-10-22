@@ -121,6 +121,22 @@ func placements() -> Dictionary:
 	return _placement_transforms() if _placed else {}
 
 
+## Grid step (m) of the manipulation object `id`: the one value, from the definition's rule, the
+## lab's surface and its snapping both use.
+func _grid_step(id: String) -> float:
+	return float(Manipulator.parse_rules(definition).get(id, {}).get("snap", 0.0))
+
+
+## `offset` (m from the grid's origin) on the grid of object `id`, in whole cells (64-bit), kept
+## within lo..hi (the same bounds the lab's surface has).
+func _snap_to_grid(id: String, offset: float, lo: float, hi: float) -> float:
+	var step := _grid_step(id)
+	if step <= 0.0:
+		return clampf(offset, lo, hi)
+	var cells := roundf(1.0 / step)
+	return clampf(roundi(offset * cells) / cells, lo, hi)
+
+
 ## The put-down bodies' transforms (id -> Transform3D), for placements().
 func _placement_transforms() -> Dictionary:
 	return {}

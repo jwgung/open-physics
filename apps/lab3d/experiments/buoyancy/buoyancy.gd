@@ -14,7 +14,6 @@ const WATERLINE := 1.5
 const FLOOR_Y := 0.2
 const TANK_TOP := 2.1
 const HOLD_ABOVE := 1.0           # m: the drum's bottom may be held this far above the water
-const GRID_CELLS := 20.0          # grid cells per metre (0.05 m), counted in whole cells (64-bit)
 const START_ABOVE := 0.3          # m: the drum's bottom above the water at the start
 const WATER_DENSITY := 1000.0     # kg/m^3
 const DRUM_LAYER := 3             # pickable; the drum touches nothing in the engine (mask 0)
@@ -212,11 +211,10 @@ func _main_body() -> RigidBody3D:
 	return drum
 
 
-## Height of the drum's bottom for a centre at world y on the 0.05 m grid (whole cells, 64-bit),
+## Height of the drum's bottom for a centre at world y on the drum's grid (manipulation snap, whole cells),
 ## between the tank floor and HOLD_ABOVE over the water.
 func bottom_at(centre_y: float) -> float:
-	var cells := roundi((centre_y - drum_height() * 0.5) * GRID_CELLS)
-	return clampf(cells / GRID_CELLS, FLOOR_Y, WATERLINE + HOLD_ABOVE)
+	return _snap_to_grid("drum", centre_y - drum_height() * 0.5, FLOOR_Y, WATERLINE + HOLD_ABOVE)
 
 
 # --- world --------------------------------------------------------------------------------------
@@ -231,7 +229,7 @@ func _build_world() -> void:
 	add_child(_tank_floor)
 	_shape = CylinderShape3D.new()
 	drum = _make_driven_body("Drum", _shape, DRUM_LAYER)
-	drum.position = Vector3(0.0, start_bottom + 0.25, 0.0)
+	drum.position = Vector3(0.0, start_bottom + drum_height() * 0.5, 0.0)
 	add_child(drum)
 	props.dress(self, drum, drum_radius(), drum_height(), FLOOR_Y, WATERLINE, TANK_TOP)
 	_resize()
@@ -253,7 +251,7 @@ func manipulation_surface(surface_id: String) -> ManipSurface:
 	if surface_id != "tank":
 		return null
 	var half := drum_height() * 0.5
-	var surface := UprightLineSurface.new(Vector3.ZERO, FLOOR_Y + half, WATERLINE + HOLD_ABOVE + half, 1.0 / GRID_CELLS, half)
+	var surface := UprightLineSurface.new(Vector3.ZERO, FLOOR_Y + half, WATERLINE + HOLD_ABOVE + half, _grid_step("drum"), half)
 	surface.exclude = [_floor.get_rid(), _tank_floor.get_rid(), drum.get_rid()]
 	return surface
 

@@ -96,7 +96,7 @@ func _start(lab: Experiment, c: Dictionary) -> void:
 	lab.end_batch()
 	lab.speed = float(c.speed)   # 64-bit (the 5 m case's circular speed is not on the slider's grid)
 	lab.reset_run()
-	lab.launch()
+	lab.release()
 
 
 func _model_for(c: Dictionary) -> OrbitModel:
@@ -260,7 +260,7 @@ func _engine_run(lab: Experiment, radius: float, launch_speed: float, direction:
 	lab.end_batch()
 	lab.speed = launch_speed
 	lab.reset_run()
-	lab.launch()
+	lab.release()
 	var points := PackedVector2Array([Vector2(lab.planet.global_position.x, lab.planet.global_position.z)])
 	while lab.model.steps < steps:
 		await tree.physics_frame
@@ -332,7 +332,7 @@ func check_kepler() -> void:
 
 func check_conditions() -> void:
 	var lab: Experiment = await _lab()
-	lab.launch()
+	lab.release()
 	await _until(lab, 40)
 	var moved: bool = absf(lab.planet.global_position.z) > 0.5
 	lab.set_control("speed", 1.5)
@@ -370,7 +370,7 @@ func check_art() -> void:
 	var runs := []
 	for with_juice in [true, false]:
 		lab.props.juice.process_mode = Node.PROCESS_MODE_INHERIT if with_juice else Node.PROCESS_MODE_DISABLED
-		lab.launch()
+		lab.release()
 		await _until(lab, 150)
 		runs.append({"p": lab.planet.global_position, "basis": lab.planet.global_basis, "obs": str(lab.observations())})
 	lab.props.juice.process_mode = Node.PROCESS_MODE_INHERIT
@@ -470,9 +470,11 @@ func check_input_path() -> void:
 	var planet: RigidBody3D = lab.planet
 	_swipe(screen, _at(screen, planet.global_position), _at(screen, Vector3(4.1, planet.global_position.y, 0.0)), 8)
 	var stopped: bool = not lab.released
+	var knob_back: bool = lab.props.knob_visual.visible and not lab.props.gravity_arrow.visible
 	_touch(screen, _at(screen, Vector3(4.1, planet.global_position.y, 0.0)), false)
 	await tree.process_frame
 	await tree.process_frame
+	expect.call(knob_back, "orbit: picking the planet up in flight shows the yellow launch knob again (waiting look)", "knob %s, gravity arrow %s" % [lab.props.knob_visual.visible, lab.props.gravity_arrow.visible])
 	expect.call(stopped and lab.start_radius == 4.0 and is_equal_approx(planet.global_position.x, 4.0) and screen._control_widgets.radius.slider.value == 4.0
 		and is_equal_approx(knob.global_position.x, 4.0) and lab.radius_at(9.0) == 5.0 and lab.radius_at(0.0) == 2.0,
 		"orbit: dragging the planet sets the start radius on the 0.5 m grid (2-5 m); the knob follows; picking it up stops a flight", "r %.2f" % lab.start_radius)

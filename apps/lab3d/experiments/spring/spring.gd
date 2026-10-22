@@ -15,7 +15,6 @@ const ROD_Y := 1.0
 const BALL_RADIUS := 0.35
 const EXT_MIN := -1.5             # m: the most the ball may be pushed in / pulled out
 const EXT_MAX := 2.5
-const PULL_CELLS := 10.0          # grid cells per metre (0.1 m), counted in whole cells (64-bit)
 const DEFAULT_PULL := 1.2
 const END_X := ANCHOR_X + REST_LENGTH + EXT_MAX + 0.6   # the rod's end stand
 const BALL_LAYER := 3             # pickable; the ball touches nothing in the engine (mask 0)
@@ -162,6 +161,7 @@ func observations() -> Dictionary:
 		"kinetic": model.kinetic_energy(),
 		"spring": model.spring_energy(),
 		"total": model.total_energy(),
+		"natural_period": model.natural_period(),
 		"period": model.period(),
 	}
 
@@ -180,10 +180,9 @@ func _main_body() -> RigidBody3D:
 	return ball
 
 
-## Extension (m) of a ball centre at world x on the 0.1 m grid (whole cells, 64-bit), within EXT_MIN..EXT_MAX.
-static func extension_at(world_x: float) -> float:
-	var cells := roundi((world_x - (ANCHOR_X + REST_LENGTH)) * PULL_CELLS)
-	return clampf(cells / PULL_CELLS, EXT_MIN, EXT_MAX)
+## Extension (m) of a ball centre at world x on the rod's grid (manipulation snap, whole cells), within EXT_MIN..EXT_MAX.
+func extension_at(world_x: float) -> float:
+	return _snap_to_grid("ball", world_x - (ANCHOR_X + REST_LENGTH), EXT_MIN, EXT_MAX)
 
 
 # --- world --------------------------------------------------------------------------------------
@@ -214,7 +213,7 @@ func manipulation_surface(surface_id: String) -> ManipSurface:
 		return null
 	var rest_x := ANCHOR_X + REST_LENGTH
 	var surface := ManipSurface.new(Transform3D(Basis(), Vector3(0.0, ROD_Y - BALL_RADIUS, 0.0)),
-		Vector2(rest_x + EXT_MIN, 0.0), Vector2(rest_x + EXT_MAX, 0.0), Vector2(1.0 / PULL_CELLS, 0.0))
+		Vector2(rest_x + EXT_MIN, 0.0), Vector2(rest_x + EXT_MAX, 0.0), Vector2(_grid_step("ball"), 0.0))
 	surface.exclude = [_floor.get_rid(), ball.get_rid()]
 	return surface
 

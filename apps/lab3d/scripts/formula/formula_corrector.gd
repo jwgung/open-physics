@@ -10,8 +10,12 @@
 ##   contact_force   ContactFrictionCorrector   engine friction 0, formula friction force per step
 ##   uniform_field   UniformFieldCorrector      engine gravity, leapfrog start, flight samples
 ##   collision       CollisionCorrector         engine contact detection, formula outcome velocities
-##   force_injection ForceInjectionCorrector    formula force (spring, buoyancy, point gravity)
+##   force_injection ForceInjectionCorrector    formula force (spring, buoyancy, point gravity); the
+##                                              representative scenes and the empty lab, not the
+##                                              guided spring, buoyancy and orbit labs
 ##   kinematic_model KinematicModelCorrector    kinematic bodies posed from a stepped formula model
+##                                              (pendulum, lever, pulley; BodyModelDriver of the guided
+##                                              spring, buoyancy and orbit labs; the collision lab's rail)
 class_name FormulaCorrector
 extends RefCounted
 

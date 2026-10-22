@@ -63,8 +63,8 @@
 | 접촉 힘 보정 (`contact_force`) | `ContactFrictionCorrector`(빗면: `InclineFrictionCorrector`, `incline`은 `surface`의 다른 이름) | 엔진 마찰 0, 공식 마찰력(정지·운동, 법칙 `surface`·`push`)과 학습자가 주는 힘을 접선 방향으로 주입, 도약 출발 |
 | 균일장 출발 보정 (`uniform_field`) | `UniformFieldCorrector` | 엔진 중력으로 적분, 첫 스텝 −mg/2(도약 출발). 표시 공식은 놓을 때의 엔진 장(크기·방향). 출발 면이 아닌 첫 접촉까지 자유 비행 기록 |
 | 충돌 결과 보정 (`collision`) | `CollisionCorrector` | 엔진이 바디 재질 그대로 접촉을 감지·해결. A–B 접촉 보고가 시작된 스텝 직전 속도를 접촉이 끝날 때까지 보관하고, 끝나면 속도 = 보관 속도 + 접촉 스텝의 외력 Δv(마지막 비접촉 스텝의 실제 속도 변화) + 법선 방향 `world_collision_velocities` 결과(엔진 법선·마찰 충격량만 버림). 제3 바디 동시 접촉·지속 접촉은 엔진 결과 |
-| 공식 힘 주입 (`force_injection`) | `ForceInjectionCorrector` → `SpringInjector`, `BuoyancyInjector`, `PointGravityInjector` | 엔진에 없는(또는 다른) 힘을 매 스텝 공식으로 계산해 주입, 도약 출발 |
-| 해석 모델 구동 (`kinematic_model`) | `KinematicModelCorrector` → `PendulumModelDriver`, `LeverModelDriver`, `PulleyModelDriver`; 충돌 실험의 `CollisionRailDriver`(두 공, Task 4c) | TS 모델을 고정 스텝으로 진행하고 바디를 키네마틱으로 그 자세에 놓음(엔진은 충돌만. 충돌 실험은 두 공끼리의 접촉도 공식) |
+| 공식 힘 주입 (`force_injection`) | `ForceInjectionCorrector` → `SpringInjector`, `BuoyancyInjector`, `PointGravityInjector` | 엔진에 없는(또는 다른) 힘을 매 스텝 공식으로 계산해 주입, 도약 출발. 대표 장면·빈 실험실(Task 5)용이고 안내형 용수철·부력·궤도는 아래 공식 모델 구동 |
+| 해석 모델 구동 (`kinematic_model`) | `KinematicModelCorrector` → `PendulumModelDriver`, `LeverModelDriver`, `PulleyModelDriver`; 안내형 용수철·부력·궤도의 `BodyModelDriver`(Task 4d); 충돌 실험의 `CollisionRailDriver`(두 공, Task 4c) | TS 모델을 고정 스텝으로 진행하고 바디를 키네마틱으로 그 자세에 놓음(엔진은 충돌만. 충돌 실험은 두 공끼리의 접촉도 공식) |
 
 ## 4. 실험별 보정 방식
 

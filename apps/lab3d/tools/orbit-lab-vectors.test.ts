@@ -77,9 +77,9 @@ class Planet {
       if (turned > Math.PI) turned -= 2 * Math.PI;
       else if (turned < -Math.PI) turned += 2 * Math.PI;
       this.swept += turned;
-      // The first full turn: interpolated within the substep where the swept angle passes 2 pi.
-      if (this.firstLap < 0 && this.swept >= 2 * Math.PI) {
-        this.firstLap = (this.steps - 1) * DT + (i + (2 * Math.PI - (this.swept - turned)) / turned) * h;
+      // The first full turn (either way round): interpolated within the substep where the swept angle passes 2 pi.
+      if (this.firstLap < 0 && Math.abs(this.swept) >= 2 * Math.PI) {
+        this.firstLap = (this.steps - 1) * DT + (i + (2 * Math.PI - Math.abs(this.swept - turned)) / Math.abs(turned)) * h;
       }
       const r = this.radius();
       if (r <= CRASH) {
@@ -240,6 +240,7 @@ describe("orbit lab vectors", () => {
       for (const value of l) expect(Math.abs(value - l[0])).toBeLessThan(1e-9 * Math.abs(l[0]));
     }
     expect(byName.clockwise.samples.at(-1).swept).toBeLessThan(-2 * Math.PI);
+    expect(byName.clockwise.first_lap).toBeGreaterThan(0);
   });
 
   it("show why the lab does not copy the web's explicit Euler stepping", () => {

@@ -326,15 +326,19 @@ static func point_gravity_acceleration(central_mass: float, distance: float, gra
 
 ## fields.ts PointGravityField.forceAt with core.ts accelerationFromForce (a = F / m): the acceleration
 ## [ax, ay] of a body of `mass` towards a source (G = 1, source mass mu) at (dx, dy) = source -
-## position; the same operations in the same order as the TS (orbit lab, Task 4d).
-static func point_gravity_field_acceleration(mu: float, mass: float, dx: float, dy: float) -> PackedFloat64Array:
+## position; the same operations in the same order as the TS (orbit lab, Task 4d). Written into
+## `out` (size 2): it runs every substep, so it allocates nothing.
+static func point_gravity_field_acceleration(mu: float, mass: float, dx: float, dy: float, out: PackedFloat64Array) -> void:
 	var distance_squared := dx * dx + dy * dy
 	if distance_squared == 0.0:
-		return PackedFloat64Array([0.0, 0.0])
+		out[0] = 0.0
+		out[1] = 0.0
+		return
 	var distance := sqrt(distance_squared)
 	var magnitude := 1.0 * mu * mass / distance_squared
 	var inverse_mass := 1.0 / mass
-	return PackedFloat64Array([magnitude * dx / distance * inverse_mass, magnitude * dy / distance * inverse_mass])
+	out[0] = magnitude * dx / distance * inverse_mass
+	out[1] = magnitude * dy / distance * inverse_mass
 
 ## OrbitChallenge.analyze: predicted outcome of a launch around a centre with GM = mu.
 ## Returns {outcome: "crash"|"orbit"|"escape", speed, circular_speed, escape_speed,

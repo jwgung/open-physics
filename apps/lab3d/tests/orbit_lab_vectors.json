@@ -13239,7 +13239,7 @@
       "vz": 2.5,
       "steps": 1200,
       "outcome": "",
-      "first_lap": -1,
+      "first_lap": 8.690343644454517,
       "predicted": {
         "outcome": "orbit",
         "speed": 2.5,

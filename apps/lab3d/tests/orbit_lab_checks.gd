@@ -195,6 +195,20 @@ func check_model_cases() -> void:
 		"max rel err %s" % String.num_scientific(worst))
 	expect.call(outcomes_ok and predicted_worst <= tolerance, "orbit model: outcomes (crash, far), first lap times and the OrbitChallenge prediction (outcome, speeds, path) = TS",
 		"max rel err %s" % String.num_scientific(predicted_worst))
+	# A clockwise launch (swept < 0) times its first lap too: the circular orbit's lap = the formula period.
+	var cw := OrbitModel.new()
+	var orbit_script: GDScript = load("res://experiments/orbit/orbit.gd")
+	var cw_v: PackedFloat64Array = orbit_script.launch_velocity(270.0, 3.0)
+	cw.reset(3.0, cw_v[0], cw_v[1])
+	var ccw := OrbitModel.new()
+	var ccw_v: PackedFloat64Array = orbit_script.launch_velocity(90.0, 3.0)
+	ccw.reset(3.0, ccw_v[0], ccw_v[1])
+	for k in 600:
+		cw.step(1.0 / float(STEP_HZ))
+		ccw.step(1.0 / float(STEP_HZ))
+	expect.call(cw.swept < -TAU and cw.first_lap_time > 0.0 and absf(cw.first_lap_time - cw.circular_period()) < 1e-5 and absf(cw.first_lap_time - ccw.first_lap_time) < 1e-9,
+		"orbit model: a clockwise launch gets its first lap time = the formula period (like the counter-clockwise one)",
+		"%s s, period %s s, ccw %s s" % [cw.first_lap_time, cw.circular_period(), ccw.first_lap_time])
 
 
 # --- 3. engine = TS ---------------------------------------------------------------------------

@@ -11,12 +11,15 @@
 ## See docs/formula-correction.md (Task 4d).
 extends ModelDrivenLab
 
-const ORBIT_Y := 2.0
-const MU := 27.0                  # G M (m^3/s^2): 3 m/s circular speed at 3 m
-const STAR_RADIUS := 0.9
-const PLANET_RADIUS := 0.3
-const CRASH_RADIUS := STAR_RADIUS + PLANET_RADIUS
-const FAR_RADIUS := 12.0
+const ORBIT_Y := OrbitModel.DEFAULT_PLANE_Y
+const MU := OrbitModel.DEFAULT_MU
+const STAR_RADIUS := OrbitModel.STAR_RADIUS
+const PLANET_RADIUS := OrbitModel.PLANET_RADIUS
+const CRASH_RADIUS := OrbitModel.DEFAULT_CRASH_RADIUS
+const FAR_RADIUS := OrbitModel.DEFAULT_FAR_RADIUS
+const DEFAULT_RADIUS := 3.0       # the TS circular case: 3 m from the star at 3 m/s, counter-clockwise
+const DEFAULT_SPEED := 3.0
+const DEFAULT_DIRECTION := 90.0
 const RADIUS_MIN := 2.0
 const RADIUS_MAX := 5.0
 const RADIUS_CELLS := 2.0         # grid cells per metre (0.5 m)
@@ -31,9 +34,9 @@ var planet: RigidBody3D
 var knob: StaticBody3D
 ## Conditions (64-bit): start radius (m), launch speed (m/s), direction (deg from outwards,
 ## counter-clockwise seen from above: 90 = the counter-clockwise tangent).
-var start_radius := 3.0
-var speed := 3.0
-var direction := 90.0
+var start_radius := DEFAULT_RADIUS
+var speed := DEFAULT_SPEED
+var direction := DEFAULT_DIRECTION
 ## OrbitChallenge prediction of the launch (PhysicsLaws.orbit_analyze).
 var prediction: Dictionary = {}
 var crashes := 0
@@ -71,12 +74,12 @@ func run_action(id: String) -> void:
 			launch()
 		"circular":
 			speed = PhysicsLaws.circular_orbit_speed(MU, start_radius, 1.0)
-			direction = 90.0
+			direction = DEFAULT_DIRECTION
 			reset_run()
 		"reset":
-			start_radius = 3.0
-			speed = 3.0
-			direction = 90.0
+			start_radius = DEFAULT_RADIUS
+			speed = DEFAULT_SPEED
+			direction = DEFAULT_DIRECTION
 			reset_run()
 
 
@@ -89,10 +92,6 @@ static func launch_velocity(direction_deg: float, launch_speed: float) -> Packed
 func _load_model() -> void:
 	model.cx = 0.0
 	model.cz = 0.0
-	model.plane_y = ORBIT_Y
-	model.mu = MU
-	model.crash_radius = CRASH_RADIUS
-	model.far_radius = FAR_RADIUS
 	var v := launch_velocity(direction, speed)
 	model.reset(start_radius, v[0], v[1])
 	prediction = PhysicsLaws.orbit_analyze(start_radius, 0.0, v[0], v[1], 0.0, 0.0, MU, CRASH_RADIUS)
@@ -131,7 +130,7 @@ func _physics_process(_delta: float) -> void:
 	driver.step(1.0 / float(Engine.physics_ticks_per_second))
 	if model.outcome == "crash" and was == "":
 		crashes += 1
-		props.crashed(Vector3(-model.x, 0.0, -model.z))
+		props.crashed(Vector3(model.cx - model.x, 0.0, model.cz - model.z))
 		impact.emit(0.6)
 	if model.outcome == "" and _graph_due(model.steps, model.time()):
 		_add_graph_point()

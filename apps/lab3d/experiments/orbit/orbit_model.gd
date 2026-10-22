@@ -11,22 +11,28 @@ class_name OrbitModel
 extends BodyModel
 
 const SUBSTEPS := 8
+## The lab's scene (one place: Orbit takes them from here; a model made without a lab uses them too).
+const DEFAULT_MU := 27.0                  # G M (m^3/s^2): 3 m/s circular speed at 3 m
+const STAR_RADIUS := 0.9
+const PLANET_RADIUS := 0.3
+const DEFAULT_CRASH_RADIUS := STAR_RADIUS + PLANET_RADIUS
+const DEFAULT_FAR_RADIUS := 12.0
+const DEFAULT_PLANE_Y := 2.0
 
 var cx := 0.0                  # star centre (x, z) and the orbit plane's height
 var cz := 0.0
-var plane_y := 1.6
-var mu := 27.0                 # G M (m^3/s^2)
+var plane_y := DEFAULT_PLANE_Y
+var mu := DEFAULT_MU                 # G M (m^3/s^2)
 var mass := 1.0
-var crash_radius := 1.2
-var far_radius := 12.0
+var crash_radius := DEFAULT_CRASH_RADIUS
+var far_radius := DEFAULT_FAR_RADIUS
 ## "", "crash" or "far" once the run ended.
 var outcome := ""
 ## Angle swept around the star since the launch (rad, counter-clockwise seen from above) and the
 ## time of the first full turn (s; -1 before it).
 var swept := 0.0
 var first_lap_time := -1.0
-var _ax := 0.0
-var _az := 0.0
+var _a := PackedFloat64Array([0.0, 0.0])   # acceleration (x, z) now, rewritten every substep
 
 
 ## The planet `start_radius` east of the star (+x) with the launch velocity (vx0, vz0) (m/s, plane axes).
@@ -46,31 +52,29 @@ func reset(start_radius: float, vx0: float, vz0: float) -> void:
 
 
 func _acceleration() -> void:
-	var a := PhysicsLaws.point_gravity_field_acceleration(mu, mass, cx - x, cz - z)
-	_ax = a[0]
-	_az = a[1]
+	PhysicsLaws.point_gravity_field_acceleration(mu, mass, cx - x, cz - z, _a)
 
 
 func advance(step_dt: float) -> void:
 	var h := step_dt / SUBSTEPS
 	for i in SUBSTEPS:
 		var before := atan2(-(z - cz), x - cx)
-		vx += _ax * (h * 0.5)
-		vz += _az * (h * 0.5)
+		vx += _a[0] * (h * 0.5)
+		vz += _a[1] * (h * 0.5)
 		x += vx * h
 		z += vz * h
 		_acceleration()
-		vx += _ax * (h * 0.5)
-		vz += _az * (h * 0.5)
+		vx += _a[0] * (h * 0.5)
+		vz += _a[1] * (h * 0.5)
 		var turned := atan2(-(z - cz), x - cx) - before
 		if turned > PI:
 			turned -= TAU
 		elif turned < -PI:
 			turned += TAU
 		swept += turned
-		if first_lap_time < 0.0 and swept >= TAU:
-			# Interpolated within the substep where the swept angle passes 2 pi.
-			first_lap_time = (steps - 1) * step_dt + (i + (TAU - (swept - turned)) / turned) * h
+		if first_lap_time < 0.0 and absf(swept) >= TAU:
+			# Interpolated within the substep where the swept angle (either way round) passes 2 pi.
+			first_lap_time = (steps - 1) * step_dt + (i + (TAU - absf(swept - turned)) / absf(turned)) * h
 		var r := radius()
 		if r <= crash_radius:
 			outcome = "crash"

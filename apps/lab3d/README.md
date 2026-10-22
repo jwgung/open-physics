@@ -1,6 +1,6 @@
 # Open Physics 3D (apps/lab3d)
 
-역학 3D 실험 앱이다. Godot 4.7.2 + Jolt, GDScript. Phase 1 Task 2a에서 셸 뼈대(실험 등록, 카메라·제스처, 2D 패널, 품질 설정)와 첫 실험(빗면 마찰)을 만들었고, Task 2c에서 시각 스타일(잔디 섬: 선명한 원색, 각진 로우폴리, 하늘에 뜬 잔디 섬)과 연출을 정했다. Task 2b에서 한 손가락으로 물체를 집어 정해진 면 위로 옮기는 조작(조작 평면·스냅·높이 손잡이·보조 시점)을 더했다. Task 3에서 역학 안내형 10개 실험이 쓸 공식 보정 계층(`scripts/formula/`)과 TS↔GDScript parity, CI를 만들었다([공식 보정](docs/formula-correction.md)). Task 4a에서 실험 문구를 웹 2D와 공유하는 JSON으로 빼고(1절 "콘텐츠 공유"), 균일장 실험 두 개(자유 낙하, 던지기)를 더했다(1절 "실험 목록"). 기준은 [아트 디렉션](docs/art-direction.md)이다. 계획과 진행은 [Phase 1 문서](../../docs/3d-phase1/README.md), 스택 결정은 [ADR 0001](../../docs/adr/0001-3d-app-stack.md)에 있다.
+역학 3D 실험 앱이다. Godot 4.7.2 + Jolt, GDScript. Phase 1 Task 2a에서 셸 뼈대(실험 등록, 카메라·제스처, 2D 패널, 품질 설정)와 첫 실험(빗면 마찰)을 만들었고, Task 2c에서 시각 스타일(잔디 섬: 선명한 원색, 각진 로우폴리, 하늘에 뜬 잔디 섬)과 연출을 정했다. Task 2b에서 한 손가락으로 물체를 집어 정해진 면 위로 옮기는 조작(조작 평면·스냅·높이 손잡이·보조 시점)을 더했다. Task 3에서 역학 안내형 10개 실험이 쓸 공식 보정 계층(`scripts/formula/`)과 TS↔GDScript parity, CI를 만들었다([공식 보정](docs/formula-correction.md)). Task 4a에서 실험 문구를 웹 2D와 공유하는 JSON으로 빼고(1절 "콘텐츠 공유"), 균일장 실험 두 개(자유 낙하, 던지기)를 더했다(1절 "실험 목록"). Task 4b에서 접촉 힘 실험 마찰 밀기를 더했다. 기준은 [아트 디렉션](docs/art-direction.md)이다. 계획과 진행은 [Phase 1 문서](../../docs/3d-phase1/README.md), 스택 결정은 [ADR 0001](../../docs/adr/0001-3d-app-stack.md)에 있다.
 
 - Android: arm64-v8a release APK(디버그 키스토어 서명, 배포용 아님). 렌더러는 품질 단계가 정한다(low = Compatibility, medium·high = Mobile).
 - 모든 작업은 헤드리스 CLI(`godot --headless`)로 한다. 에디터 GUI를 쓰지 않는다.
@@ -25,6 +25,7 @@ apps/lab3d/
   experiments/uniform_field/          균일장 실험 공용 기반 UniformFieldLab(중력 선택, 공, 바닥, 보정기 연결, 실행 상태·그래프 샘플·release/reset 공통)
   experiments/free_fall/              자유 낙하 실험(장면, FreeFallProps 소품)
   experiments/projectile/             던지기 실험(장면, ProjectileProps 소품, ArrowSurface = 화살표 손잡이 평면)
+  experiments/friction/               마찰 밀기 실험(장면, PushFrictionModel = 표시 수치의 공식 모델, FrictionProps 소품)
   experiments/manipulation_dev/       조작 확인용 개발 장면(목록에 없음, --experiment=manipulation-dev)
   content/mechanics-labs.json         역학 실험 문구(웹 2D와 공유, "콘텐츠 공유")
   content/experiments/                실험 정의 JSON(index.json + 실험별 파일: 3D 전용 필드)
@@ -62,13 +63,15 @@ apps/lab3d/
 |---|---|---|---|---|---|---|---|
 | 자유 낙하 (`free-fall`) | 같은 실험(`free-fall`) | 균일장 출발 보정 | 중력(무중력·달 1.62·지구 9.81·목성 24.79, 웹 버튼), 세 공의 출발 높이(0.5–8 m), 빨간 공 무게(0.5·1·3 kg, 웹 무게 버튼) | 공을 바닥 선(x −3…3 m, z 0) 위로 0.5 m 눈금으로 끌기, 공마다 높이 손잡이(0–8 m, 0.5 m) | g, 시간, 상태, 빨간 공 바닥까지 √(2h₀/g), 세 공 높이, 빨간 공 속력·운동량·운동·위치 에너지 · 세 공의 착지 시각(시뮬레이션) | 바닥까지 남은 높이(세 공 공식 선 + 시뮬레이션 점) | 4a |
 | 던지기 (`projectile`) | 같은 실험(`projectile`) | 균일장 출발 보정 | 중력(같음), 각도(0–90°, 15°), 빠르기(1–9 m/s, 0.5) | 보라색 화살표 끝 노란 손잡이를 던지는 세로 평면에서 끌기(각도 15°·빠르기 0.5 m/s로 스냅, 웹 화살표와 같은 규칙), 공을 발사 선(x −8…−3 m) 위로 끌기, 발사 높이 손잡이(0–3 m, 0.25 m) | g, 시간, 상태, 던지는 높이, 날아가는 거리 R·비행 시간 T·최고점 H, 지금 x·y·옆/위아래 속도 · 착지 거리(시뮬레이션) | 발사체의 높이(공식 y(t) + 시뮬레이션 점) | 4a |
-| 빗면 마찰 (`incline-friction`) | 3D 전용(`app_labs`. 웹 마찰 실험(밀기)은 4b) | 접촉 힘 보정 | 빗면 각도, 표면 재질 | 상자를 빗면 위 출발 위치로 끌기 | 2a 그대로 | 놓은 뒤 이동 거리 | 2a·2b |
+| 마찰 밀기 (`friction`) | 같은 실험(`friction`) | 접촉 힘 보정(`push`) | 재질(고무·나무·금속·점토, 웹 MATERIALS: μs = 마찰 + 0.18, μk = 마찰), 무게(가벼움 0.5·보통 1·무거움 3 kg = 웹 무게 버튼, 처음 상자 8 kg = 웹 시작 상자, 기본) | 빨간 손잡이를 바닥 선(집은 자리 ±4 m)을 따라 끌기: 집은 자리에서 5 cm 눈금마다 1 N(±80 N), 놓으면 0 N(손잡이는 상자 옆으로 돌아감) | 상태(멈춤·버팀·움직임·바닥 끝), 주는 힘, 최대 정지 마찰력 μs·mg, 지금 마찰력, 운동 마찰력 μk·mg, 속력, 열에너지(마찰이 한 일), 처음 자리에서 간 거리 · 간 거리(시뮬레이션) | 미는 힘과 버티는 힘(주는 힘·최대 정지 마찰력·마찰력, 최근 10초) | 4b |
+| 빗면 마찰 (`incline-friction`) | 3D 전용(`app_labs`) | 접촉 힘 보정 | 빗면 각도, 표면 재질 | 상자를 빗면 위 출발 위치로 끌기 | 2a 그대로 | 놓은 뒤 이동 거리 | 2a·2b |
 
 - 균일장 실험은 `UniformFieldLab`(`experiments/uniform_field/`)를 잇는다. 중력 선택지는 공의 `gravity_scale`(= g / 프로젝트 중력 9.81)로 엔진 장을 바꾸고, 보정기에는 64비트 g를 준다. 공은 `FormulaBody` + `UniformFieldCorrector`(놓는 첫 스텝 도약 출발, 엔진 접촉 보고로 엔진 착지 기록), 반지름 0.25 m, 감쇠 0, 회전 잠금. 착지는 바닥에 닿을 때만이다(출발 접촉은 놓은 뒤 첫 스텝 보고, 공끼리는 충돌하지 않는 층). 공식 착지 시간이 0인 공(장 안에서 바닥에 놓음, 바닥에서 수평 던지기)은 놓는 순간 착지다(공식 시계 0 = 착지 시간). 자유 낙하는 한 공의 낙하선 위·아래에 다른 공을 놓을 수 없다. 규칙: [공식 보정 4절 실험 구현](docs/formula-correction.md#실험-구현-task-4a-균일장).
 - 화면 수치는 모두 `PhysicsLaws`다: 놓은 뒤 시계(고정 스텝)를 공식 착지 시간(`landing_time`)에서 멈추고 그 시각의 위치·속도·에너지를 보여 준다. "착지됨" 상태도 공식이 정한다: 시계가 공식 착지 시간에 닿았거나(반올림 여유 1e-9 s) 그 전에 엔진이 착지를 보고하면 착지이고, 그때부터 공식 착지 값(t = T, h = 0)을 보여 준다. 엔진 값은 "시뮬레이션"이 붙은 착지 시각·착지 거리와 그래프 점뿐이다. 측정 착지는 엔진 착지 보고의 스텝이고, 보고가 없으면(바닥 몇 mm 위 낙하, 바닥에서 짧은 튐처럼 출발 바닥 접촉이 끝나지 않는 경우) 공식 착지 시각에 가장 가까운 스텝의 엔진 값(그 스텝 시각, 그 스텝의 엔진 x)이다. 그래프 시뮬레이션 점은 공식 착지 시각까지만 더한다.
 - 무중력: 자유 낙하는 공이 제자리에 떠 있고("무중력: 떠 있어요", 바닥까지 "닿지 않아요"), 던지기는 곧게 날아가 섬(x 12.5 m, 높이 30 m)을 벗어나면 멈추고 숨긴다("섬 밖으로 날아감"). 달처럼 멀리 가는 던지기도 같다(공식 거리·시간은 그대로 표시).
 - 놓기 연출: 대기 중인 공 아래 노란 받침판이 놓을 때 아래로 젖혀지며 사라지고 공이 늘어난다(`stretch`). 처음으로·조건 변경 때 공이 다시 나타난다(`pop`). 착지는 ArtJuice 자동 반응(납작·먼지·카메라)이다.
 - 던지기 궤적: 공식 경로 점 28개(MultiMesh 1개)와 공식 착지 고리를 조건·출발점이 바뀔 때만 다시 놓는다. 화살표 손잡이·공을 끄는 동안 그 자리에서의 화살표·경로를 미리 보여 준다.
+- 마찰 밀기: 상자(0.7 m, 회전 잠금)는 `FormulaBody` + `ContactFrictionCorrector`(법칙 `push`, 엔진 마찰 0)로 움직인다. 화면 수치·상태·그래프는 `PushFrictionModel`(같은 `PushFrictionLaw` 포트를 같은 스텝 규칙으로 64비트 진행: 떠나는 스텝 절반 힘, v += F/m dt, x += v dt)이 내고, 엔진 상자는 "간 거리(시뮬레이션)"뿐이다. 열에너지 = −Σ work(마찰력, 스텝 변위) = μk·mg × 미끄러진 거리. 손잡이를 쥐고 있는 동안 힘 = 손잡이 격자 칸 수 × 1 N(손잡이 위치를 매 스텝 읽음). 상자가 트랙 끝(±6 m)에 닿으면 공식이 멈추고(범퍼, 상태 "바닥 끝에 닿았어요") 엔진 상자를 그 자리에 얼린다. 다시 손잡이를 집으면 풀린다. 조건을 바꾸거나 `처음으로`를 누르면 상자가 출발선(x −3 m)으로 돌아가고 열에너지·그래프가 0부터 다시 시작한다. 그래프 시간은 힘이 있거나 상자가 움직이는 스텝만 센다. 규칙: [공식 보정 4절 실험 구현(Task 4b)](docs/formula-correction.md#실험-구현-task-4b-마찰-밀기).
 - 끄는 동안 공은 바닥 선을 따라 움직인다(자유 낙하). 5 m 높이에 든 공을 바닥과 나란한 평면으로 끌면 카메라 높이와 거의 같아 평면을 옆에서 보게 되기 때문이다. 높이는 손잡이로 바꾼다.
 
 ### 콘텐츠 공유 (Task 4a)
@@ -270,7 +273,7 @@ OPBENCH_PACKAGE=org.openphysics.lab3d OPBENCH_VARIANT_DIR=<dir> \
 python3 -I apps/lab3d/tools/device_gesture.py orbit  # orbit | pinch | pinch-fixed | pan | one-finger | drag-cancel
 ```
 
-- 다른 실험: `OPBENCH_EXPERIMENT=free-fall OPBENCH_SUSTAINED=0 apps/lab3d/tools/bench_device.sh low 3 90 60`(던지기는 `projectile`). 장면 이름은 실험 정의의 `bench_id`(`FF`·`PJ`·`S3`, 앱이 기록하는 이름)에서 읽고, 빗면 전용 `--ctl-angle=30`은 `incline-friction`일 때만 기본으로 붙는다(`OPBENCH_CTL`로 바꿈). 기본 결과 폴더는 실험·조작 방식별 `spikes/bench/results/lab3d-<실험>-<drag|release>`이고, 이미 같은 등급·장면 결과가 있는 폴더(기록된 기준선 `phase1-task*` 포함)에는 쓰지 않는다(`OPBENCH_OVERWRITE=1`일 때만 덮어씀). `--auto-drag=4`가 실험의 첫 조작 물체(자유 낙하 빨간 공, 던지기 공)를 4초마다 끌어 놓고 0.4초 뒤 `demo_action`(공 놓기)을 누른다. Task 4a 결과는 [phase1-task4a](../../spikes/bench/results/phase1-task4a/README.md).
+- 다른 실험: `OPBENCH_EXPERIMENT=free-fall OPBENCH_SUSTAINED=0 apps/lab3d/tools/bench_device.sh low 3 90 60`(던지기는 `projectile`, 마찰 밀기는 `friction`). 장면 이름은 실험 정의의 `bench_id`(`FF`·`PJ`·`FR`·`S3`, 앱이 기록하는 이름)에서 읽고, 빗면 전용 `--ctl-angle=30`은 `incline-friction`일 때만 기본으로 붙는다(`OPBENCH_CTL`로 바꿈). 기본 결과 폴더는 실험·조작 방식별 `spikes/bench/results/lab3d-<실험>-<drag|release>`이고, 이미 같은 등급·장면 결과가 있는 폴더(기록된 기준선 `phase1-task*` 포함)에는 쓰지 않는다(`OPBENCH_OVERWRITE=1`일 때만 덮어씀). `--auto-drag=4`가 실험의 첫 조작 물체(자유 낙하 빨간 공, 던지기 공, 마찰 밀기 손잡이)를 4초마다 끌어 놓고 0.4초 뒤 `demo_action`(공 놓기, 마찰 밀기는 `처음으로`)을 누른다. 마찰 밀기는 손잡이를 끝(+4 m, 80 N: 상자가 미끄러짐)과 40% 지점(−0.8 m, −16 N: 버팀)으로 번갈아 끈다. Task 4a 결과는 [phase1-task4a](../../spikes/bench/results/phase1-task4a/README.md).
 - `bench_device.sh`는 패널을 관찰값·그래프 위치로 스크롤하고(`--scroll-to=observations`), 각도 30°에서 4초마다 상자를 손가락 입력 경로로 끌어 새 출발 위치에 놓고 0.4초 뒤 놓기를 눌러(`--auto-drag=4`) 끌기·보조 시점·물리·관찰값·그래프가 계속 바뀌는 상태로 잰다. Task 2a·2c는 `OPBENCH_PLAY=--auto-release=4`(4초마다 다시 놓기만)로 쟀다. 빗면의 OPBENCH 장면 이름은 `S3`(측정 기준의 안내형 빗면)다.
 - 한 손가락 끌기는 `adb shell input swipe x1 y1 x2 y2 <ms>`로 재생한다. `device_gesture.py drag-cancel`은 빗면 상자(20°, 기본 시점)를 끄는 중 두 번째 손가락을 대 취소를 재생한다.
 - `device_gesture.py`는 Android `hid` 명령으로 2점 가상 멀티터치 화면을 등록해 두 손가락 제스처를 재생한다. `adb shell input`은 한 손가락만 되고, 실제 터치스크린 노드 쓰기는 SELinux가 막는다. 좌표는 세로 기준 SM-P200 화면 픽셀이다.
@@ -287,7 +290,7 @@ python3 -I apps/lab3d/tools/device_gesture.py orbit  # orbit | pinch | pinch-fix
    - `observations`: `id`·`label`·`unit`·`digits`(문자열 값이면 단위 없음)
    - `graph`: `title`, `x`(`label`·`unit`·`max`), `y`(`label`·`unit`·`min_max`), `series`(`id`·`label`·`color`·`style: line|points`)
 2. `content/experiments/index.json`의 `experiments`에 파일 이름을 더한다. 목록 화면은 이 순서와 `category`로 묶어 보여준다.
-3. `experiments/<이름>/<이름>.gd`에 `extends Experiment` 스크립트를 만든다. `_ready()`에서 3D 월드를 만들고 `definition.controls`의 기본값으로 `set_control()`을 부른다. 보이는 소품·환경·연출은 `<이름>_props.gd`로 나눠 [아트 디렉션 9절](docs/art-direction.md#9-새-실험-소품-만드는-법)을 따른다. 화면 숫자는 공식(`PhysicsLaws`)에서 내고, 엔진 측정값은 따로 표시한다(공식 보정 원칙, [CONTEXT](../../CONTEXT.md)).
+3. `experiments/<이름>/<이름>.gd`에 `extends Experiment` 스크립트를 만든다. `_ready()`에서 3D 월드를 만들고 `definition.controls`의 기본값으로 `set_control()`을 부른다. 보이는 소품·환경·연출은 `<이름>_props.gd`로 나눠 [아트 디렉션 9절](docs/art-direction.md#9-새-실험-소품-만드는-법)을 따른다. 바닥·마찰 없는 재질·보정 바디 설정과 상태 변화 알림은 `Experiment` 베이스의 `_add_floor()`·`_frictionless_material()`·`_setup_free_body()`·`_update_status()`(반응은 `_status_changed()`를 재정의)를 쓰고, 공식의 중력은 베이스의 `engine_g`에서 읽는다. 화면 숫자는 공식(`PhysicsLaws`)에서 내고, 엔진 측정값은 따로 표시한다(공식 보정 원칙, [CONTEXT](../../CONTEXT.md)).
 4. 움직임은 [공식 보정](docs/formula-correction.md) 4절 표의 방식으로 보정한다(보정기를 붙이고 화면 숫자는 `formula_values()`에서). 새 법칙은 `tools/formula-vectors.test.ts`의 실험 그룹에 TS 사례를 더하고 `PhysicsLaws`에 포트한다(parity는 자동). 문구를 바꿨으면 글꼴 서브셋을 다시 만든다.
 5. `tools/build.sh`로 테스트·APK를 만들고 `bench_device.sh`로 low 60 fps를 확인한다.
 

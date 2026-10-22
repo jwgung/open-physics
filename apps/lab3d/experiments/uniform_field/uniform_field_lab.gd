@@ -26,8 +26,6 @@ const LANDING_SLACK := 1e-9
 ## Field the balls feel (m/s^2, downwards) and the selected gravity option id.
 var g := 9.81
 var gravity_id := "earth"
-## The project's engine gravity; gravity_scale = g / engine_g.
-var engine_g: float = ProjectSettings.get_setting("physics/3d/default_gravity", 9.81)
 var floor_body: StaticBody3D
 ## True from the release until the next reset (the balls are in the field, not held).
 var released := false
@@ -38,7 +36,6 @@ var _placed := false
 ## Engine samples for the graph: (time, height of the ball's bottom above the floor).
 var _measured := PackedVector2Array()
 var _graph_revision := 0
-var _last_status := ""
 
 
 func _ready() -> void:
@@ -99,12 +96,6 @@ func _physics_process(_delta: float) -> void:
 	_released_step()
 	if status() != _last_status:
 		_update_status()
-
-
-func _update_status(quiet := false) -> void:
-	_last_status = status()
-	if not quiet:
-		state_changed.emit()
 
 
 func graph_revision() -> int:
@@ -226,15 +217,10 @@ func graph_x_max() -> float:
 
 ## Collision floor: the island's top surface at y = 0 (the island mesh is ArtKit's, no collision).
 func make_floor(size: Vector3) -> StaticBody3D:
-	floor_body = StaticBody3D.new()
-	floor_body.name = "Floor"
 	var material := PhysicsMaterial.new()
 	material.friction = 0.6
 	material.bounce = 0.0
-	floor_body.physics_material_override = material
-	_add_box_shape(floor_body, Vector3(size.x, 0.4, size.z))
-	floor_body.position = Vector3(0.0, -0.2, 0.0)
-	add_child(floor_body)
+	floor_body = _add_floor(material, Vector3(size.x, 0.4, size.z))
 	return floor_body
 
 
@@ -246,13 +232,8 @@ func make_ball(ball_name: String, mass: float, bounce: float) -> FormulaBody:
 	var ball := FormulaBody.new()
 	ball.name = ball_name
 	ball.mass = mass
-	ball.can_sleep = false
+	_setup_free_body(ball)
 	ball.lock_rotation = true
-	ball.linear_damp_mode = RigidBody3D.DAMP_MODE_REPLACE
-	ball.angular_damp_mode = RigidBody3D.DAMP_MODE_REPLACE
-	ball.linear_damp = 0.0
-	ball.angular_damp = 0.0
-	ball.freeze_mode = RigidBody3D.FREEZE_MODE_STATIC
 	ball.freeze = true
 	ball.contact_monitor = true
 	ball.max_contacts_reported = 4

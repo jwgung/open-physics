@@ -97,6 +97,15 @@ static func push_friction_force(applied_force: float, speed: float, mass: float,
 	return net
 
 
+## basic.ts KineticFriction.force (magnitude): F = mu N on a moving body (Task 4b: the friction lab's
+## "운동 마찰력" readout, N = m g on the level floor).
+static func kinetic_friction_force(mu_k: float, normal_load: float) -> float:
+	return mu_k * normal_load
+
+## mechanics.ts work (1D): W = F d (Task 4b: friction work turned into heat, step by step).
+static func work_1d(force: float, displacement: float) -> float:
+	return force * displacement
+
 # --- free fall, projectile (mechanics.ts, gravity.ts) -------------------------------------------
 
 ## gravity.ts UniformGravity.force (magnitude): F = m g

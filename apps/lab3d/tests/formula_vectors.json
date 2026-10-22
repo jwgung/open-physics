@@ -40,7 +40,9 @@
     "friction": [
       "push_friction_force",
       "push_friction_holding",
-      "push_max_static_force"
+      "push_max_static_force",
+      "kinetic_friction_force",
+      "work_1d"
     ],
     "rotation": [
       "lever_required_force",
@@ -3012,6 +3014,15 @@
     },
     {
       "experiment": "friction",
+      "law": "kinetic_friction_force",
+      "args": [
+        0.22,
+        9.81
+      ],
+      "expect": 2.1582000000000003
+    },
+    {
+      "experiment": "friction",
       "law": "push_friction_force",
       "args": [
         10,
@@ -3331,6 +3342,15 @@
         9.81
       ],
       "expect": 31.392
+    },
+    {
+      "experiment": "friction",
+      "law": "kinetic_friction_force",
+      "args": [
+        0.22,
+        78.48
+      ],
+      "expect": 17.265600000000003
     },
     {
       "experiment": "friction",
@@ -3656,6 +3676,15 @@
     },
     {
       "experiment": "friction",
+      "law": "kinetic_friction_force",
+      "args": [
+        0.42,
+        9.81
+      ],
+      "expect": 4.1202
+    },
+    {
+      "experiment": "friction",
       "law": "push_friction_force",
       "args": [
         10,
@@ -3975,6 +4004,15 @@
         9.81
       ],
       "expect": 47.087999999999994
+    },
+    {
+      "experiment": "friction",
+      "law": "kinetic_friction_force",
+      "args": [
+        0.42,
+        78.48
+      ],
+      "expect": 32.9616
     },
     {
       "experiment": "friction",
@@ -4300,6 +4338,15 @@
     },
     {
       "experiment": "friction",
+      "law": "kinetic_friction_force",
+      "args": [
+        0.08,
+        9.81
+      ],
+      "expect": 0.7848
+    },
+    {
+      "experiment": "friction",
       "law": "push_friction_force",
       "args": [
         10,
@@ -4619,6 +4666,15 @@
         9.81
       ],
       "expect": 20.4048
+    },
+    {
+      "experiment": "friction",
+      "law": "kinetic_friction_force",
+      "args": [
+        0.08,
+        78.48
+      ],
+      "expect": 6.2784
     },
     {
       "experiment": "friction",
@@ -4944,6 +5000,15 @@
     },
     {
       "experiment": "friction",
+      "law": "kinetic_friction_force",
+      "args": [
+        0.58,
+        9.81
+      ],
+      "expect": 5.689800000000001
+    },
+    {
+      "experiment": "friction",
       "law": "push_friction_force",
       "args": [
         10,
@@ -5263,6 +5328,42 @@
         9.81
       ],
       "expect": 59.644800000000004
+    },
+    {
+      "experiment": "friction",
+      "law": "kinetic_friction_force",
+      "args": [
+        0.58,
+        78.48
+      ],
+      "expect": 45.51840000000001
+    },
+    {
+      "experiment": "friction",
+      "law": "work_1d",
+      "args": [
+        -17.2656,
+        0.0123
+      ],
+      "expect": -0.21236687999999998
+    },
+    {
+      "experiment": "friction",
+      "law": "work_1d",
+      "args": [
+        4.12,
+        -0.004
+      ],
+      "expect": -0.01648
+    },
+    {
+      "experiment": "friction",
+      "law": "work_1d",
+      "args": [
+        0,
+        0.5
+      ],
+      "expect": 0
     },
     {
       "experiment": "rotation",

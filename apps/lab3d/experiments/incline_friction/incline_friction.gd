@@ -42,7 +42,6 @@ var _incline_body: StaticBody3D
 var _mark: MeshInstance3D
 var _placed := false          # the user dragged the box to start_x (kept across a screen rebuild)
 var _graph_points := PackedVector2Array()
-var _last_status := ""
 var _graph_revision := 0
 
 
@@ -151,14 +150,8 @@ func release() -> void:
 	_update_status()
 
 
-## Records the current status, tells the UI and lets the props react to the change
-## (`quiet`: no reaction, the change was made by the user's hand).
-func _update_status(quiet := false) -> void:
-	var previous := _last_status
-	_last_status = status()
-	state_changed.emit()
-	if _last_status != previous and not quiet:
-		props.status_changed(previous, _last_status)
+func _status_changed(previous: String, current: String) -> void:
+	props.status_changed(previous, current)
 
 
 func formula_acceleration() -> float:
@@ -248,16 +241,8 @@ func follow_point() -> Vector3:
 
 
 func _build_world() -> void:
-	var frictionless := PhysicsMaterial.new()
-	frictionless.friction = 0.0
-	frictionless.bounce = 0.0
-
-	# Collision floor (the island's top surface, y = 0); the island mesh is ArtKit's.
-	var floor_body := StaticBody3D.new()
-	floor_body.physics_material_override = frictionless
-	_add_box_shape(floor_body, Vector3(30.0, 0.4, 12.0))
-	floor_body.position = Vector3(0.0, -0.2, 0.0)
-	add_child(floor_body)
+	var frictionless := _frictionless_material()
+	_add_floor(frictionless)
 
 	_pivot = Node3D.new()
 	_pivot.position = Vector3(0.0, PIVOT_HEIGHT, 0.0)
@@ -292,12 +277,7 @@ func _build_world() -> void:
 	box = InclineBox.new()
 	box.mass = MASS
 	box.physics_material_override = frictionless
-	box.can_sleep = false
-	box.linear_damp_mode = RigidBody3D.DAMP_MODE_REPLACE
-	box.angular_damp_mode = RigidBody3D.DAMP_MODE_REPLACE
-	box.linear_damp = 0.0
-	box.angular_damp = 0.0
-	box.freeze_mode = RigidBody3D.FREEZE_MODE_STATIC
+	_setup_free_body(box)
 	box.freeze = true
 	_add_box_shape(box, Vector3.ONE * BOX)
 	var box_visual := ArtKit.instance(props.box_mesh(BOX))

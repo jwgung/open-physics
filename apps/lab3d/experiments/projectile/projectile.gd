@@ -195,11 +195,14 @@ func _released_step() -> void:
 	_check_bounds()
 
 
-## Beyond the island the ball is stopped and hidden (the formula values keep their meaning).
+## Beyond the island the ball is stopped and hidden (the formula values keep their meaning). Only
+## a ball still in flight counts as "섬 밖으로 날아감"; one that landed and rolled off keeps "landed".
 func _check_bounds() -> void:
+	if ball.freeze:
+		return
 	var p := ball.global_position
 	if p.x < BOUNDS_X.x or p.x > BOUNDS_X.y or p.y < BOUNDS_Y.x or p.y > BOUNDS_Y.y:
-		out_of_bounds = true
+		out_of_bounds = corrector().landed_step < 0
 		ball.freeze = true
 		ball.linear_velocity = Vector3.ZERO
 		_ball_visual.visible = false

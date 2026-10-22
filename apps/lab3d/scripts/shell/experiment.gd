@@ -52,6 +52,15 @@ func _find_option(control_id: String, option_id: String) -> Dictionary:
 	return {}
 
 
+## `value` limited to the min / max of the slider control `id` in definition.controls (a bound
+## the control does not declare stays open).
+func _clamp_to_control(id: String, value: float) -> float:
+	for control in definition.get("controls", []):
+		if control.id == id:
+			return clampf(value, float(control.get("min", -INF)), float(control.get("max", INF)))
+	return value
+
+
 ## Runs an action declared in definition.actions (buttons).
 func run_action(_id: String) -> void:
 	pass

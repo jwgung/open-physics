@@ -39,6 +39,9 @@ func run() -> void:
 	await check_projectile_cases()
 	await check_projectile_zero_g()
 	await check_projectile_settles()
+	await check_projectile_landed_roll_off()
+	await check_projectile_unknown_control()
+	await check_free_fall_height_clamp()
 	await check_projectile_art()
 	check_arrow_surface()
 	await check_free_fall_manipulation()
@@ -379,6 +382,53 @@ func check_projectile_settles() -> void:
 		diff = maxf(diff, (first[k] - again[k]).length())
 	expect.call(absf(rest.x - landed_x) < 3.0 and rest_speed < 0.2 and not lab.out_of_bounds and diff <= 1e-6,
 		"projectile: the landed ball rests near its landing point; the next throw flies the same", "landed x %.2f, rest x %.2f, v %.3f m/s, flight diff %s m (%d / %d samples)" % [landed_x, rest.x, rest_speed, str(diff), first.size(), again.size()])
+	await _free(lab)
+
+
+## A ball that landed and then rolls (or is carried) past the island's box is stopped and hidden, but
+## it did not "fly off the island": the status stays "landed" (only a ball still in flight is "out").
+func check_projectile_landed_roll_off() -> void:
+	var lab: Experiment = await _lab("projectile")
+	lab.release()
+	var c: UniformFieldCorrector = lab.corrector()
+	for i in 4 * STEP_HZ:
+		await tree.physics_frame
+	var landed_first: bool = c.landed_step >= 0 and lab.status() == "landed"
+	lab.ball.global_position = Vector3(lab.BOUNDS_X.y + 1.0, 0.25, 0.0)
+	for i in 5:
+		await tree.physics_frame
+	var shown: Dictionary = lab.observations()
+	expect.call(landed_first and lab.status() == "landed" and not lab.out_of_bounds and lab.ball.freeze and not lab._ball_visual.visible
+		and shown.state == "바닥에 닿음",
+		"projectile: a landed ball that leaves the island's box is stopped and hidden but stays 'landed' (not 'out')", str(shown.state))
+	await _free(lab)
+
+
+## A control id the lab does not know is ignored: it does not put a running throw back.
+func check_projectile_unknown_control() -> void:
+	var lab: Experiment = await _lab("projectile")
+	lab.release()
+	for i in 10:
+		await tree.physics_frame
+	lab.set_control("no_such_control", 1.0)
+	var kept: bool = lab.released
+	lab.set_control("angle", 30.0)
+	expect.call(kept and not lab.released, "projectile: an unknown control id leaves the throw alone; a known one puts the ball back", "released %s" % str(kept))
+	await _free(lab)
+
+
+## The free-fall height is limited to the slider's range (--ctl-height=-5 would otherwise start the
+## balls underground).
+func check_free_fall_height_clamp() -> void:
+	var lab: Experiment = await _lab("free-fall")
+	lab.set_control("height", -5.0)
+	var low: float = lab.height
+	var low_starts: bool = lab.starts.red.y == low and lab.starts.pink.y == low
+	lab.set_control("height", 99.0)
+	var high: float = lab.height
+	lab.set_control("height", 3.0)
+	expect.call(low == 0.5 and high == 8.0 and low_starts and lab.height == 3.0 and lab.control_value("height") == 3.0,
+		"free fall: the height condition is limited to the slider's range (0.5..8 m)", "low %.1f, high %.1f" % [low, high])
 	await _free(lab)
 
 

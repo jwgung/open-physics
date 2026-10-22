@@ -16,7 +16,7 @@ const BOX := 0.4
 const INCLINE_LENGTH := 8.0
 const START_X := 3.5          # default release point along the incline (pivot local x), uphill end is +x
 const MIN_RUN := 1.0          # shortest run (m) the box can be placed at (start to the lower end)
-const START_SNAP := 0.5       # start positions snap to this grid (m, from the lower end)
+const START_SNAP := 0.5       # tick spacing (m) when the JSON gives the box no snap; the grid itself is the box's `snap` rule
 const PIVOT_HEIGHT := 3.2
 const STAND_HEIGHT := PIVOT_HEIGHT - 0.15   # full height of the support post mesh
 const GRAPH_EVERY_STEPS := 6  # graph sample every 6 fixed steps (10 Hz)
@@ -279,7 +279,7 @@ func _build_world() -> void:
 	_mark.position = Vector3(start_x - BOX * 0.5, 0.0, 0.0)
 	_pivot.add_child(_mark)
 	# Scale ticks every 0.5 m from the lower end (the start-position grid), visual only.
-	_pivot.add_child(ArtKit.instance(props.ticks_mesh(INCLINE_LENGTH, incline_size.z, START_SNAP)))
+	_pivot.add_child(ArtKit.instance(props.ticks_mesh(INCLINE_LENGTH, incline_size.z, _start_snap())))
 
 	# Support post under the pivot (visual only, no collision).
 	_stand = ArtKit.instance(props.foot_mesh())
@@ -334,15 +334,24 @@ func manipulation_body(id: String) -> PhysicsBody3D:
 
 
 ## The incline's top face as a line: the box centre moves along pivot x between MIN_RUN and
-## START_X (its default, 0.3 m short of the upper end), snapped to START_SNAP from the lower end
-## (pivot x = -4 is on the grid, so pivot-x multiples of 0.5 are run lengths in 0.5 m steps).
+## START_X (its default, 0.3 m short of the upper end). The grid step is the box's `snap` rule in
+## the experiment JSON (the shell sets it on this surface), from the lower end (pivot x = -4 is on
+## the grid for 0.5 m steps).
 func manipulation_surface(surface_id: String) -> ManipSurface:
 	if surface_id != "incline":
 		return null
 	var surface := ManipSurface.new(_pivot.global_transform,
-		Vector2(MIN_RUN - INCLINE_LENGTH * 0.5, 0.0), Vector2(START_X, 0.0), Vector2(START_SNAP, 0.0))
+		Vector2(MIN_RUN - INCLINE_LENGTH * 0.5, 0.0), Vector2(START_X, 0.0))
 	surface.exclude = [_incline_body.get_rid()]
 	return surface
+
+
+## The box's grid step (m) from its manipulation rule, also the tick spacing on the incline.
+func _start_snap() -> float:
+	for object in definition.get("manipulation", {}).get("objects", []):
+		if object.id == "box" and float(object.get("snap", 0.0)) > 0.0:
+			return float(object.snap)
+	return START_SNAP
 
 
 func manipulation_juice(_id: String) -> ArtJuice:

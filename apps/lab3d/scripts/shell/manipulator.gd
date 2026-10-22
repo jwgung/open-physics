@@ -7,7 +7,9 @@
 ##   centre is within PICK_RADIUS UI units on screen (a 0.4 m box is ~36 units wide at the default
 ##   distance, smaller than a child's fingertip).
 ## - Drag: the finger ray is projected on the surface (ManipSurface.project_ray) at the object's
-##   centre height, keeping the offset between finger and object from the pick-up. A grazing ray
+##   centre height, keeping the offset between finger and object from the pick-up (an offset on
+##   the surface, so a turning camera does not change it; the object follows the finger on screen
+##   while the assist turns the view, see _follow_camera). A grazing ray
 ##   leaves the object where it is; the object never leaves the region by more than SOFT_MARGIN.
 ##   The object is frozen while held and follows the finger unsnapped; the footprint marker shows
 ##   the grid point it will land on (white) or that it cannot be placed there (dark + wobble).
@@ -61,8 +63,11 @@ var _body: PhysicsBody3D
 var _lift := 0.0                 # object centre above its base (half extent along the normal)
 var _start_xf := Transform3D.IDENTITY
 var _start_freeze := false
-var _grab := Vector2.ZERO        # object centre minus the finger's surface point at pick-up
-var _grab_height := 0.0          # knob point minus the finger's point on the knob line (height mode)
+var _grab := Vector2.ZERO        # object centre minus the finger's surface point at pick-up (plane coordinates: independent of the camera)
+var _grab_height := 0.0          # knob point minus the finger's point on the knob line (height mode; set again when the camera turns)
+var _finger := Vector2.ZERO      # last finger position (view UI units)
+var _finger_camera := Transform3D()   # camera the held object was last placed for
+var _placed_last := false        # the last release put the object down (not back)
 var _held := Vector2.ZERO        # unsnapped plane point of the held object
 var _target_set := false
 var _ray := PhysicsRayQueryParameters3D.new()
@@ -166,14 +171,11 @@ func _press(position: Vector2) -> void:
 
 
 func _move(position: Vector2) -> void:
+	if mode == "height" and view.rig.global_transform != _finger_camera:
+		_follow_camera()   # the camera turned since the last event: measure from the finger where it was
+	_finger = position
 	if mode == "drag":
-		var ray := _finger_ray(position)
-		var finger: Variant = _surface.project_ray(ray[0], ray[1], _lift + height)
-		if finger == null:
-			return   # grazing ray: keep the object where it is
-		_held = _surface.clamp_soft(finger + _grab, SOFT_MARGIN)
-		_body.global_transform = _surface.pose(_held, _lift + height)
-		_update_target()
+		_drag_to(position)
 	elif mode == "height":
 		var s: Variant = _knob_line_point(position)
 		if s == null:
@@ -188,7 +190,33 @@ func _move(position: Vector2) -> void:
 			_update_handle()
 
 
+## Places the dragged object under a finger at `position` (the finger point on the surface plus the
+## offset from the pick-up).
+func _drag_to(position: Vector2) -> void:
+	var ray := _finger_ray(position)
+	var finger: Variant = _surface.project_ray(ray[0], ray[1], _lift + height)
+	if finger == null:
+		return   # grazing ray: keep the object where it is
+	_held = _surface.clamp_soft(finger + _grab, SOFT_MARGIN)
+	_body.global_transform = _surface.pose(_held, _lift + height)
+	_update_target()
+
+
+## The camera turned while an object is held (the assist, or a mode button): a drag puts the object
+## under the unmoved finger again; a height drag measures the finger from the new view, so the
+## height stays the same until the finger moves.
+func _follow_camera() -> void:
+	_finger_camera = view.rig.global_transform
+	if mode == "drag":
+		_drag_to(_finger)
+	elif mode == "height":
+		var s: Variant = _knob_line_point(_finger)
+		if s != null:
+			_grab_height = s - (_lift + height)
+
+
 func _release() -> void:
+	_placed_last = false
 	if mode == "":
 		return
 	if not valid:
@@ -201,6 +229,7 @@ func _release() -> void:
 	var juice := experiment.manipulation_juice(id)
 	_finish()
 	experiment.manipulation_placed(id, xf)
+	_placed_last = true
 	if juice:
 		if was_drag:
 			juice.settle()
@@ -239,6 +268,8 @@ func _begin(id: String, kind: String, position: Vector2) -> void:
 	height = 0.0
 	if rule.height_max > 0.0 and on_surface:
 		height = _snap_height(rule, above)
+	_finger = position
+	_finger_camera = view.rig.global_transform
 	var ray := _finger_ray(position)
 	if kind == "drag":
 		var finger: Variant = surface.project_ray(ray[0], ray[1], _lift + height)
@@ -342,6 +373,9 @@ func _pick(position: Vector2) -> String:
 			continue
 		if not hit.is_empty() and hit.collider == body:
 			return id
+		# Near the object on screen counts, unless something else stands in front of it.
+		if not hit.is_empty() and ray[0].distance_to(hit.position) < ray[0].distance_to(body.global_position) - _half_extents(id).length():
+			continue
 		var d := _screen_distance(body.global_position, position)
 		if d <= best_distance:
 			best_distance = d
@@ -481,7 +515,8 @@ func _update_handle() -> void:
 	var e := _half_extents(selected_id)
 	var reach := absf(right.dot(surface.frame.basis.x)) * e.x + absf(right.dot(surface.frame.basis.z)) * e.z + HANDLE_GAP
 	var center := body.global_position
-	_handle_offset = right * reach
+	if mode != "height":
+		_handle_offset = right * reach   # fixed while the knob is held
 	var base := center - n * surface.height_of(center) + _handle_offset
 	rod.global_transform = Transform3D(surface.frame.basis, base)
 	_knob.global_transform = Transform3D(surface.frame.basis, base + n * surface.height_of(center))
@@ -504,6 +539,8 @@ func _forget_handle_surface() -> void:
 
 
 func _process(delta: float) -> void:
+	if mode != "" and view.rig.global_transform != _finger_camera:
+		_follow_camera()
 	if selected_id != "" and mode != "drag":
 		var body := experiment.manipulation_body(selected_id)
 		if body != null and (body.global_transform != _handle_body or view.rig.global_transform != _handle_camera):
@@ -529,7 +566,8 @@ func _demo_tick(delta: float) -> void:
 		if _demo_t >= 1.0:
 			_demo_t = -1.0
 			handle_pointer("release", _demo_to)
-			demo_placed.emit()
+			if _placed_last:
+				demo_placed.emit()
 		return
 	_demo_left -= delta
 	if _demo_left > 0.0 or rules.is_empty():

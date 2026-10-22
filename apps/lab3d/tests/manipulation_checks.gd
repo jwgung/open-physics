@@ -27,6 +27,7 @@ func run(definition: Dictionary) -> void:
 	check_registry(definition)
 	check_assist(definition)
 	check_assist_search(definition)
+	check_assist_limited_yaw(definition)
 	check_assist_user_turn(definition)
 	check_height_snap()
 	await check_incline_drag(definition)
@@ -34,6 +35,9 @@ func run(definition: Dictionary) -> void:
 	await check_incline_runs(definition)
 	await check_dev_scene()
 	await check_dev_review()
+	await check_follow_camera()
+	await check_review2()
+	await check_incline_snap_rule(definition)
 
 
 # --- pure parts -----------------------------------------------------------------------------------
@@ -171,9 +175,9 @@ func check_assist_search(definition: Dictionary) -> void:
 		var yaw := rig.goal_yaw
 		var pitch := rig.goal_pitch
 		var brute := _brute_assist_cost(rig, c[1], c[2])
-		CameraRig.assist_checks = 0
-		var turned := rig.begin_assist(c[1], c[2])
-		worst_checks = maxi(worst_checks, CameraRig.assist_checks)
+		var stats := {}
+		var turned := rig.begin_assist(c[1], c[2], stats)
+		worst_checks = maxi(worst_checks, stats.checks)
 		var cost := absf(angle_difference(yaw, rig.goal_yaw)) + absf(pitch - rig.goal_pitch)
 		if turned and not CameraRig.assist_ok(rig.goal_yaw, rig.goal_pitch, c[1], c[2]):
 			unsatisfied += " %s" % c[0]
@@ -182,6 +186,26 @@ func check_assist_search(definition: Dictionary) -> void:
 		rig.end_assist()
 	expect.call(unsatisfied == "" and worse == "", "assist search: the turn is never bigger than the full-grid search finds, and satisfies the limits", "unsatisfied:%s worse:%s" % [unsatisfied, worse])
 	expect.call(worst_checks <= 120, "assist search takes about a hundred checks at most, not the whole grid (~2800)", "worst %d checks" % worst_checks)
+	rig.get_parent().queue_free()
+
+
+## A limited yaw range is crossed directly: the refinement must not go the "short way round" out of it.
+func check_assist_limited_yaw(definition: Dictionary) -> void:
+	var rig := _rig_for(definition)
+	var pitch := deg_to_rad(-58.1203689575195)
+	rig.yaw_range = Vector2(deg_to_rad(-100.0), deg_to_rad(100.0))
+	rig.pitch_range = Vector2(pitch, pitch)
+	rig.goal_yaw = deg_to_rad(95.0)
+	rig.goal_pitch = pitch
+	# Only yaw -100..-90 deg satisfies these (found by search), 185 deg from the goal.
+	var normal := Vector3(-0.553838, 0.15916, -0.817271)
+	var axis := Vector3(-0.159272, -0.516561, 0.841307)
+	var turned := rig.begin_assist(normal, axis)
+	var yaw := rad_to_deg(rig.goal_yaw)
+	var ok := CameraRig.assist_ok(rig.goal_yaw, rig.goal_pitch, normal, axis)
+	rig.end_assist()
+	expect.call(turned and ok and yaw >= -100.001 and yaw <= -89.9 and is_equal_approx(rad_to_deg(rig.goal_yaw), 95.0),
+		"assist in a limited yaw range stays inside it (goal 95 deg, answer near -90 deg)", "yaw %.2f deg" % yaw)
 	rig.get_parent().queue_free()
 
 
@@ -571,4 +595,154 @@ func check_dev_review() -> void:
 	expect.call(lab.placements().is_empty(), "boxes that are falling are not saved as placed", str(lab.placements().keys()))
 	screen.experiment_action("reset")
 	expect.call(lab.placements().size() == 3, "frozen boxes are saved as placed", str(lab.placements().keys()))
+	await _close(screen)
+
+
+# --- second review: the object follows the finger while the camera turns, release/pick rules -----------
+
+## Frames until the camera has settled (the assist turns it with easing).
+func _settle(screen: Control, limit := 240) -> int:
+	var frames := 0
+	while frames < limit and not screen.view.rig.is_settled():
+		await tree.process_frame
+		frames += 1
+	return frames
+
+
+func check_follow_camera() -> void:
+	var definition := ExperimentRegistry.find("manipulation-dev")
+	var screen: Control = await _open(definition)
+	var lab: Experiment = screen.experiment
+	var m: Manipulator = screen.manipulator
+	var rig: CameraRig = screen.view.rig
+	var red: RigidBody3D = lab.bodies.red
+	rig.set_mode("front", true)
+	rig.orbit(Vector2(0.0, -40000.0))   # as flat as the limits allow
+	rig.snap()
+	await tree.process_frame
+	var flat_pitch := rig.goal_pitch
+	# Drag: pick the box in the flat view; the assist turns the camera over the next frames while the
+	# finger stays where it is. The box stays under the finger (no jump, no lag) and the next event
+	# at the same place does not move it.
+	var at := _at(screen, red.global_position)
+	_touch(screen, 0, at, true)
+	var turned: bool = m.mode == "drag" and rig.is_assisting() and not is_equal_approx(rig.goal_pitch, flat_pitch)
+	var last := red.global_position
+	var worst_step := 0.0
+	var worst_off := 0.0
+	var frames := 0
+	while frames < 240 and not rig.is_settled():
+		await tree.process_frame
+		frames += 1
+		worst_step = maxf(worst_step, red.global_position.distance_to(last))
+		last = red.global_position
+		worst_off = maxf(worst_off, _at(screen, red.global_position).distance_to(at))
+	await tree.process_frame
+	var rest := red.global_position
+	_drag(screen, 0, at)
+	var jump := red.global_position.distance_to(rest)
+	_touch(screen, 0, at, false)
+	expect.call(turned and frames > 3 and worst_step < 0.5 and worst_off < 40.0 and jump < 1e-3,
+		"a dragged box stays under the unmoved finger while the assist turns the camera (no jump at the next event)",
+		"turned %s, %d frames, step %.3f m, off %.1f units, jump %.4f m" % [turned, frames, worst_step, worst_off, jump])
+	# Height: grab the knob in the top view (the assist turns it to see the rod); with the finger still the
+	# height stays, also at the first event after the turn.
+	_swipe(screen, _at(screen, red.global_position), _at(screen, Vector3(-1.0, 0.25, 0.5)), 3)
+	_touch(screen, 0, _at(screen, Vector3(-1.0, 0.25, 0.5)), false)
+	var h0: float = m.height
+	rig.set_mode("top", true)
+	await tree.process_frame
+	m._update_handle()
+	var knob_at := _at(screen, m._knob.global_position)
+	var offset := m._handle_offset
+	_touch(screen, 0, knob_at, true)
+	var height_turned: bool = m.mode == "height" and rig.is_assisting()
+	var drift := 0.0
+	frames = 0
+	while frames < 240 and not rig.is_settled():
+		await tree.process_frame
+		frames += 1
+		drift = maxf(drift, absf(m.height - h0))
+	await tree.process_frame
+	_drag(screen, 0, knob_at)
+	drift = maxf(drift, absf(m.height - h0))
+	var offset_kept: bool = m._handle_offset.is_equal_approx(offset)
+	_touch(screen, 0, knob_at, false)
+	expect.call(m.mode == "" and height_turned and frames > 3 and drift < 1e-6 and offset_kept,
+		"the height stays while the camera turns under an unmoved finger (handle line fixed at the grab)",
+		"%d frames, height drift %.3f, offset kept %s" % [frames, drift, offset_kept])
+	await _close(screen)
+
+
+func check_review2() -> void:
+	var definition := ExperimentRegistry.find("manipulation-dev")
+	var screen: Control = await _open(definition)
+	var lab: Experiment = screen.experiment
+	var m: Manipulator = screen.manipulator
+	var red: RigidBody3D = lab.bodies.red
+	# manipulation_started re-arms the landing reaction (like the incline).
+	var juice: ArtJuice = lab.juices.red
+	juice._landed = true
+	juice._resting = true
+	_touch(screen, 0, _at(screen, red.global_position), true)
+	expect.call(m.mode == "drag" and not juice._landed and not juice._resting, "picking a box up re-arms its landing reaction", "")
+	_touch(screen, 0, _at(screen, red.global_position), false)
+	# A wall between the camera and a box: tapping the wall near the box does not pick the box behind it.
+	var wall := StaticBody3D.new()
+	var shape := CollisionShape3D.new()
+	var box_shape := BoxShape3D.new()
+	box_shape.size = Vector3(1.0, 1.0, 0.2)
+	shape.shape = box_shape
+	wall.add_child(shape)
+	lab.add_child(wall)
+	var eye: Vector3 = screen.view.rig.global_position
+	var orange: RigidBody3D = lab.bodies.orange
+	wall.global_position = orange.global_position.lerp(eye, 0.5)
+	await tree.physics_frame
+	await tree.physics_frame
+	var wall_at := _at(screen, wall.global_position)
+	_touch(screen, 0, wall_at, true)
+	var picked_behind: String = m.active_id
+	_touch(screen, 0, wall_at, false)
+	wall.queue_free()
+	await tree.physics_frame
+	await tree.physics_frame
+	# Without the wall, a finger a little beside the box (an empty floor hit) still picks it.
+	var beside := _at(screen, orange.global_position) + Vector2(20.0, 10.0)
+	_touch(screen, 0, beside, true)
+	var picked_near: String = m.active_id
+	_touch(screen, 0, beside, false)
+	expect.call(picked_behind == "" and picked_near == "orange", "a wall in front of a box is not picked through; a finger beside it on the floor still picks it", "behind '%s', near '%s'" % [picked_behind, picked_near])
+	# The auto-drag demo reports a put-down only when the box was put down: not when the place is refused.
+	var placed := [0]
+	m.demo_placed.connect(func() -> void: placed[0] += 1)
+	m.start_demo(100.0)
+	m._demo_left = 0.0
+	for i in 200:
+		m._process(1.0 / 60.0)
+	var accepted: int = placed[0]
+	var blocker: RigidBody3D = lab.bodies.pink   # pink goes to the demo's far stop: the place is taken
+	var surface: ManipSurface = lab.manipulation_surface("floor")
+	var goal := surface.nearest_inside(surface.region_max)
+	blocker.global_transform = surface.pose(goal, 0.3)
+	await tree.physics_frame
+	await tree.physics_frame
+	m._demo_flip = false   # the next run goes to the far stop again
+	m._demo_left = 0.0
+	for i in 200:
+		m._process(1.0 / 60.0)
+	expect.call(accepted == 1 and placed[0] == 1 and m.mode == "", "the demo reports a put-down only when the box was put down (a refused place does not count)", "accepted %d, total %d, mode %s" % [accepted, placed[0], m.mode])
+	await _close(screen)
+
+
+## The grid of the incline start comes from the JSON `snap` of the box (one source).
+func check_incline_snap_rule(definition: Dictionary) -> void:
+	var coarse := definition.duplicate(true)
+	coarse.manipulation.objects[0].snap = 1.0
+	var screen: Control = await _open(coarse)
+	var lab: Experiment = screen.experiment
+	_swipe(screen, _at(screen, lab.box.global_position), _run_point(screen, 5.6), 6)
+	_touch(screen, 0, _run_point(screen, 5.6), false)
+	var run: float = lab.run_length()
+	expect.call(is_equal_approx(run, 6.0), "the incline start snaps to the JSON snap of the box (1 m: 5.6 -> 6.0, not the 0.5 m grid)", "run %.2f" % run)
 	await _close(screen)

@@ -135,6 +135,11 @@ func manipulation_juice(id: String) -> ArtJuice:
 	return juices.get(id)
 
 
+## Picked up: the next landing reacts again (squash, dust, impact), like the incline.
+func manipulation_started(id: String) -> void:
+	juices[id].rearm()
+
+
 ## Placed boxes stay frozen where they were put (until "상자 떨어뜨리기").
 func manipulation_placed(id: String, transform: Transform3D) -> void:
 	var body: RigidBody3D = bodies[id]

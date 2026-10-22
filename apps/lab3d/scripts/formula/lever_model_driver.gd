@@ -4,7 +4,7 @@
 class_name LeverModelDriver
 extends KinematicModelCorrector
 
-const LIFT_ANGLE := 0.18           # rad, web LEVER_LIFT_ANGLE
+const LIFT_ANGLE := PhysicsLaws.LEVER_LIFT_ANGLE   # rad, web LEVER_LIFT_ANGLE
 
 var pivot := Transform3D.IDENTITY  # beam rotates about the pivot's local z; beam centre at the pivot
 var load_mass := 20.0

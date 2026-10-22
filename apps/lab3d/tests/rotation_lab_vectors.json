@@ -1,0 +1,4692 @@
+{
+  "source": "src/app/mechanics-challenges.ts LeverChallenge, src/physics/laws/rotation.ts torque, gravity.ts UniformGravity; physics-playground.ts LEVER_LIFT_ANGLE",
+  "tolerance": 1e-9,
+  "g": 9.81,
+  "beam_half": 3,
+  "pivot_y": 1.25,
+  "load_up": 0.46,
+  "lift_angle": 0.18,
+  "force_step": 5,
+  "cases": [
+    {
+      "name": "start",
+      "mass": 20,
+      "pivot": -0.5,
+      "load_x": -2.5,
+      "fraction": 0.6,
+      "load_arm": 2,
+      "effort_arm": 2.1,
+      "weight": 196.20000000000002,
+      "required": 186.85714285714286,
+      "advantage": 1.05,
+      "load_torque": 392.40000000000003,
+      "presses": [
+        {
+          "cells": 0,
+          "applied": 0,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": 0
+        },
+        {
+          "cells": 1,
+          "applied": 5,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -10.5
+        },
+        {
+          "cells": 2,
+          "applied": 10,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -21
+        },
+        {
+          "cells": 3,
+          "applied": 15,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -31.5
+        },
+        {
+          "cells": 4,
+          "applied": 20,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -42
+        },
+        {
+          "cells": 5,
+          "applied": 25,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -52.5
+        },
+        {
+          "cells": 6,
+          "applied": 30,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -63
+        },
+        {
+          "cells": 7,
+          "applied": 35,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -73.5
+        },
+        {
+          "cells": 8,
+          "applied": 40,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -84
+        },
+        {
+          "cells": 9,
+          "applied": 45,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -94.5
+        },
+        {
+          "cells": 10,
+          "applied": 50,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -105
+        },
+        {
+          "cells": 11,
+          "applied": 55,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -115.5
+        },
+        {
+          "cells": 12,
+          "applied": 60,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -126
+        },
+        {
+          "cells": 13,
+          "applied": 65,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -136.5
+        },
+        {
+          "cells": 14,
+          "applied": 70,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -147
+        },
+        {
+          "cells": 15,
+          "applied": 75,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -157.5
+        },
+        {
+          "cells": 16,
+          "applied": 80,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -168
+        },
+        {
+          "cells": 17,
+          "applied": 85,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -178.5
+        },
+        {
+          "cells": 18,
+          "applied": 90,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -189
+        },
+        {
+          "cells": 19,
+          "applied": 95,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -199.5
+        },
+        {
+          "cells": 20,
+          "applied": 100,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -210
+        },
+        {
+          "cells": 21,
+          "applied": 105,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -220.5
+        },
+        {
+          "cells": 22,
+          "applied": 110,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -231
+        },
+        {
+          "cells": 23,
+          "applied": 115,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -241.5
+        },
+        {
+          "cells": 24,
+          "applied": 120,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -252
+        },
+        {
+          "cells": 25,
+          "applied": 125,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -262.5
+        },
+        {
+          "cells": 26,
+          "applied": 130,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -273
+        },
+        {
+          "cells": 27,
+          "applied": 135,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -283.5
+        },
+        {
+          "cells": 28,
+          "applied": 140,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -294
+        },
+        {
+          "cells": 29,
+          "applied": 145,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -304.5
+        },
+        {
+          "cells": 30,
+          "applied": 150,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -315
+        },
+        {
+          "cells": 31,
+          "applied": 155,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -325.5
+        },
+        {
+          "cells": 32,
+          "applied": 160,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -336
+        },
+        {
+          "cells": 33,
+          "applied": 165,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -346.5
+        },
+        {
+          "cells": 34,
+          "applied": 170,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -357
+        },
+        {
+          "cells": 35,
+          "applied": 175,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -367.5
+        },
+        {
+          "cells": 36,
+          "applied": 180,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -378
+        },
+        {
+          "cells": 37,
+          "applied": 185,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -388.5
+        },
+        {
+          "cells": 38,
+          "applied": 186.85714285714286,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.3853337818003637,
+            2.0606272455341843
+          ],
+          "beam": [
+            -0.008078153605939276,
+            1.160485213287088
+          ],
+          "effort_torque": -392.40000000000003
+        },
+        {
+          "cells": 39,
+          "applied": 186.85714285714286,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.3853337818003637,
+            2.0606272455341843
+          ],
+          "beam": [
+            -0.008078153605939276,
+            1.160485213287088
+          ],
+          "effort_torque": -392.40000000000003
+        },
+        {
+          "cells": 40,
+          "applied": 186.85714285714286,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.3853337818003637,
+            2.0606272455341843
+          ],
+          "beam": [
+            -0.008078153605939276,
+            1.160485213287088
+          ],
+          "effort_torque": -392.40000000000003
+        },
+        {
+          "cells": 41,
+          "applied": 186.85714285714286,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.3853337818003637,
+            2.0606272455341843
+          ],
+          "beam": [
+            -0.008078153605939276,
+            1.160485213287088
+          ],
+          "effort_torque": -392.40000000000003
+        },
+        {
+          "cells": 42,
+          "applied": 186.85714285714286,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.3853337818003637,
+            2.0606272455341843
+          ],
+          "beam": [
+            -0.008078153605939276,
+            1.160485213287088
+          ],
+          "effort_torque": -392.40000000000003
+        },
+        {
+          "cells": 43,
+          "applied": 186.85714285714286,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.3853337818003637,
+            2.0606272455341843
+          ],
+          "beam": [
+            -0.008078153605939276,
+            1.160485213287088
+          ],
+          "effort_torque": -392.40000000000003
+        },
+        {
+          "cells": 44,
+          "applied": 186.85714285714286,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.3853337818003637,
+            2.0606272455341843
+          ],
+          "beam": [
+            -0.008078153605939276,
+            1.160485213287088
+          ],
+          "effort_torque": -392.40000000000003
+        },
+        {
+          "cells": 45,
+          "applied": 186.85714285714286,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.3853337818003637,
+            2.0606272455341843
+          ],
+          "beam": [
+            -0.008078153605939276,
+            1.160485213287088
+          ],
+          "effort_torque": -392.40000000000003
+        },
+        {
+          "cells": 46,
+          "applied": 186.85714285714286,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.3853337818003637,
+            2.0606272455341843
+          ],
+          "beam": [
+            -0.008078153605939276,
+            1.160485213287088
+          ],
+          "effort_torque": -392.40000000000003
+        },
+        {
+          "cells": 47,
+          "applied": 186.85714285714286,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.3853337818003637,
+            2.0606272455341843
+          ],
+          "beam": [
+            -0.008078153605939276,
+            1.160485213287088
+          ],
+          "effort_torque": -392.40000000000003
+        },
+        {
+          "cells": 48,
+          "applied": 186.85714285714286,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.3853337818003637,
+            2.0606272455341843
+          ],
+          "beam": [
+            -0.008078153605939276,
+            1.160485213287088
+          ],
+          "effort_torque": -392.40000000000003
+        },
+        {
+          "cells": 49,
+          "applied": 186.85714285714286,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.3853337818003637,
+            2.0606272455341843
+          ],
+          "beam": [
+            -0.008078153605939276,
+            1.160485213287088
+          ],
+          "effort_torque": -392.40000000000003
+        },
+        {
+          "cells": 50,
+          "applied": 186.85714285714286,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.3853337818003637,
+            2.0606272455341843
+          ],
+          "beam": [
+            -0.008078153605939276,
+            1.160485213287088
+          ],
+          "effort_torque": -392.40000000000003
+        }
+      ]
+    },
+    {
+      "name": "near",
+      "mass": 20,
+      "pivot": -0.5,
+      "load_x": -2.5,
+      "fraction": 0.35,
+      "load_arm": 2,
+      "effort_arm": 1.2249999999999999,
+      "weight": 196.20000000000002,
+      "required": 320.32653061224494,
+      "advantage": 0.6124999999999999,
+      "load_torque": 392.40000000000003,
+      "presses": [
+        {
+          "cells": 0,
+          "applied": 0,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": 0
+        },
+        {
+          "cells": 1,
+          "applied": 5,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -6.124999999999999
+        },
+        {
+          "cells": 2,
+          "applied": 10,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -12.249999999999998
+        },
+        {
+          "cells": 3,
+          "applied": 15,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -18.374999999999996
+        },
+        {
+          "cells": 4,
+          "applied": 20,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -24.499999999999996
+        },
+        {
+          "cells": 5,
+          "applied": 25,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -30.624999999999996
+        },
+        {
+          "cells": 6,
+          "applied": 30,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -36.74999999999999
+        },
+        {
+          "cells": 7,
+          "applied": 35,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -42.87499999999999
+        },
+        {
+          "cells": 8,
+          "applied": 40,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -48.99999999999999
+        },
+        {
+          "cells": 9,
+          "applied": 45,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -55.12499999999999
+        },
+        {
+          "cells": 10,
+          "applied": 50,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -61.24999999999999
+        },
+        {
+          "cells": 11,
+          "applied": 55,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -67.37499999999999
+        },
+        {
+          "cells": 12,
+          "applied": 60,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -73.49999999999999
+        },
+        {
+          "cells": 13,
+          "applied": 65,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -79.62499999999999
+        },
+        {
+          "cells": 14,
+          "applied": 70,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -85.74999999999999
+        },
+        {
+          "cells": 15,
+          "applied": 75,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -91.87499999999999
+        },
+        {
+          "cells": 16,
+          "applied": 80,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -97.99999999999999
+        },
+        {
+          "cells": 17,
+          "applied": 85,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -104.12499999999999
+        },
+        {
+          "cells": 18,
+          "applied": 90,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -110.24999999999999
+        },
+        {
+          "cells": 19,
+          "applied": 95,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -116.37499999999999
+        },
+        {
+          "cells": 20,
+          "applied": 100,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -122.49999999999999
+        },
+        {
+          "cells": 21,
+          "applied": 105,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -128.625
+        },
+        {
+          "cells": 22,
+          "applied": 110,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -134.74999999999997
+        },
+        {
+          "cells": 23,
+          "applied": 115,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -140.87499999999997
+        },
+        {
+          "cells": 24,
+          "applied": 120,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -146.99999999999997
+        },
+        {
+          "cells": 25,
+          "applied": 125,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -153.12499999999997
+        },
+        {
+          "cells": 26,
+          "applied": 130,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -159.24999999999997
+        },
+        {
+          "cells": 27,
+          "applied": 135,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -165.37499999999997
+        },
+        {
+          "cells": 28,
+          "applied": 140,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -171.49999999999997
+        },
+        {
+          "cells": 29,
+          "applied": 145,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -177.62499999999997
+        },
+        {
+          "cells": 30,
+          "applied": 150,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -183.74999999999997
+        },
+        {
+          "cells": 31,
+          "applied": 155,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -189.87499999999997
+        },
+        {
+          "cells": 32,
+          "applied": 160,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -195.99999999999997
+        },
+        {
+          "cells": 33,
+          "applied": 165,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -202.12499999999997
+        },
+        {
+          "cells": 34,
+          "applied": 170,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -208.24999999999997
+        },
+        {
+          "cells": 35,
+          "applied": 175,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -214.37499999999997
+        },
+        {
+          "cells": 36,
+          "applied": 180,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -220.49999999999997
+        },
+        {
+          "cells": 37,
+          "applied": 185,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -226.62499999999997
+        },
+        {
+          "cells": 38,
+          "applied": 190,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -232.74999999999997
+        },
+        {
+          "cells": 39,
+          "applied": 195,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -238.87499999999997
+        },
+        {
+          "cells": 40,
+          "applied": 200,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -244.99999999999997
+        },
+        {
+          "cells": 41,
+          "applied": 205,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -251.12499999999997
+        },
+        {
+          "cells": 42,
+          "applied": 210,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -257.25
+        },
+        {
+          "cells": 43,
+          "applied": 215,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -263.37499999999994
+        },
+        {
+          "cells": 44,
+          "applied": 220,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -269.49999999999994
+        },
+        {
+          "cells": 45,
+          "applied": 225,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -275.62499999999994
+        },
+        {
+          "cells": 46,
+          "applied": 230,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -281.74999999999994
+        },
+        {
+          "cells": 47,
+          "applied": 235,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -287.87499999999994
+        },
+        {
+          "cells": 48,
+          "applied": 240,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -293.99999999999994
+        },
+        {
+          "cells": 49,
+          "applied": 245,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -300.12499999999994
+        },
+        {
+          "cells": 50,
+          "applied": 250,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -306.24999999999994
+        }
+      ]
+    },
+    {
+      "name": "far",
+      "mass": 20,
+      "pivot": -0.5,
+      "load_x": -2.5,
+      "fraction": 0.9,
+      "load_arm": 2,
+      "effort_arm": 3.15,
+      "weight": 196.20000000000002,
+      "required": 124.57142857142858,
+      "advantage": 1.575,
+      "load_torque": 392.40000000000003,
+      "presses": [
+        {
+          "cells": 0,
+          "applied": 0,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": 0
+        },
+        {
+          "cells": 1,
+          "applied": 5,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -15.75
+        },
+        {
+          "cells": 2,
+          "applied": 10,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -31.5
+        },
+        {
+          "cells": 3,
+          "applied": 15,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -47.25
+        },
+        {
+          "cells": 4,
+          "applied": 20,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -63
+        },
+        {
+          "cells": 5,
+          "applied": 25,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -78.75
+        },
+        {
+          "cells": 6,
+          "applied": 30,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -94.5
+        },
+        {
+          "cells": 7,
+          "applied": 35,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -110.25
+        },
+        {
+          "cells": 8,
+          "applied": 40,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -126
+        },
+        {
+          "cells": 9,
+          "applied": 45,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -141.75
+        },
+        {
+          "cells": 10,
+          "applied": 50,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -157.5
+        },
+        {
+          "cells": 11,
+          "applied": 55,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -173.25
+        },
+        {
+          "cells": 12,
+          "applied": 60,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -189
+        },
+        {
+          "cells": 13,
+          "applied": 65,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -204.75
+        },
+        {
+          "cells": 14,
+          "applied": 70,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -220.5
+        },
+        {
+          "cells": 15,
+          "applied": 75,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -236.25
+        },
+        {
+          "cells": 16,
+          "applied": 80,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -252
+        },
+        {
+          "cells": 17,
+          "applied": 85,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -267.75
+        },
+        {
+          "cells": 18,
+          "applied": 90,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -283.5
+        },
+        {
+          "cells": 19,
+          "applied": 95,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -299.25
+        },
+        {
+          "cells": 20,
+          "applied": 100,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -315
+        },
+        {
+          "cells": 21,
+          "applied": 105,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -330.75
+        },
+        {
+          "cells": 22,
+          "applied": 110,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -346.5
+        },
+        {
+          "cells": 23,
+          "applied": 115,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -362.25
+        },
+        {
+          "cells": 24,
+          "applied": 120,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.5,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -378
+        },
+        {
+          "cells": 25,
+          "applied": 124.57142857142858,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.3853337818003637,
+            2.0606272455341843
+          ],
+          "beam": [
+            -0.008078153605939276,
+            1.160485213287088
+          ],
+          "effort_torque": -392.40000000000003
+        },
+        {
+          "cells": 26,
+          "applied": 124.57142857142858,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.3853337818003637,
+            2.0606272455341843
+          ],
+          "beam": [
+            -0.008078153605939276,
+            1.160485213287088
+          ],
+          "effort_torque": -392.40000000000003
+        },
+        {
+          "cells": 27,
+          "applied": 124.57142857142858,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.3853337818003637,
+            2.0606272455341843
+          ],
+          "beam": [
+            -0.008078153605939276,
+            1.160485213287088
+          ],
+          "effort_torque": -392.40000000000003
+        },
+        {
+          "cells": 28,
+          "applied": 124.57142857142858,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.3853337818003637,
+            2.0606272455341843
+          ],
+          "beam": [
+            -0.008078153605939276,
+            1.160485213287088
+          ],
+          "effort_torque": -392.40000000000003
+        },
+        {
+          "cells": 29,
+          "applied": 124.57142857142858,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.3853337818003637,
+            2.0606272455341843
+          ],
+          "beam": [
+            -0.008078153605939276,
+            1.160485213287088
+          ],
+          "effort_torque": -392.40000000000003
+        },
+        {
+          "cells": 30,
+          "applied": 124.57142857142858,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.3853337818003637,
+            2.0606272455341843
+          ],
+          "beam": [
+            -0.008078153605939276,
+            1.160485213287088
+          ],
+          "effort_torque": -392.40000000000003
+        },
+        {
+          "cells": 31,
+          "applied": 124.57142857142858,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.3853337818003637,
+            2.0606272455341843
+          ],
+          "beam": [
+            -0.008078153605939276,
+            1.160485213287088
+          ],
+          "effort_torque": -392.40000000000003
+        },
+        {
+          "cells": 32,
+          "applied": 124.57142857142858,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.3853337818003637,
+            2.0606272455341843
+          ],
+          "beam": [
+            -0.008078153605939276,
+            1.160485213287088
+          ],
+          "effort_torque": -392.40000000000003
+        },
+        {
+          "cells": 33,
+          "applied": 124.57142857142858,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.3853337818003637,
+            2.0606272455341843
+          ],
+          "beam": [
+            -0.008078153605939276,
+            1.160485213287088
+          ],
+          "effort_torque": -392.40000000000003
+        },
+        {
+          "cells": 34,
+          "applied": 124.57142857142858,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.3853337818003637,
+            2.0606272455341843
+          ],
+          "beam": [
+            -0.008078153605939276,
+            1.160485213287088
+          ],
+          "effort_torque": -392.40000000000003
+        },
+        {
+          "cells": 35,
+          "applied": 124.57142857142858,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.3853337818003637,
+            2.0606272455341843
+          ],
+          "beam": [
+            -0.008078153605939276,
+            1.160485213287088
+          ],
+          "effort_torque": -392.40000000000003
+        },
+        {
+          "cells": 36,
+          "applied": 124.57142857142858,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.3853337818003637,
+            2.0606272455341843
+          ],
+          "beam": [
+            -0.008078153605939276,
+            1.160485213287088
+          ],
+          "effort_torque": -392.40000000000003
+        },
+        {
+          "cells": 37,
+          "applied": 124.57142857142858,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.3853337818003637,
+            2.0606272455341843
+          ],
+          "beam": [
+            -0.008078153605939276,
+            1.160485213287088
+          ],
+          "effort_torque": -392.40000000000003
+        },
+        {
+          "cells": 38,
+          "applied": 124.57142857142858,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.3853337818003637,
+            2.0606272455341843
+          ],
+          "beam": [
+            -0.008078153605939276,
+            1.160485213287088
+          ],
+          "effort_torque": -392.40000000000003
+        },
+        {
+          "cells": 39,
+          "applied": 124.57142857142858,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.3853337818003637,
+            2.0606272455341843
+          ],
+          "beam": [
+            -0.008078153605939276,
+            1.160485213287088
+          ],
+          "effort_torque": -392.40000000000003
+        },
+        {
+          "cells": 40,
+          "applied": 124.57142857142858,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.3853337818003637,
+            2.0606272455341843
+          ],
+          "beam": [
+            -0.008078153605939276,
+            1.160485213287088
+          ],
+          "effort_torque": -392.40000000000003
+        },
+        {
+          "cells": 41,
+          "applied": 124.57142857142858,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.3853337818003637,
+            2.0606272455341843
+          ],
+          "beam": [
+            -0.008078153605939276,
+            1.160485213287088
+          ],
+          "effort_torque": -392.40000000000003
+        },
+        {
+          "cells": 42,
+          "applied": 124.57142857142858,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.3853337818003637,
+            2.0606272455341843
+          ],
+          "beam": [
+            -0.008078153605939276,
+            1.160485213287088
+          ],
+          "effort_torque": -392.40000000000003
+        },
+        {
+          "cells": 43,
+          "applied": 124.57142857142858,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.3853337818003637,
+            2.0606272455341843
+          ],
+          "beam": [
+            -0.008078153605939276,
+            1.160485213287088
+          ],
+          "effort_torque": -392.40000000000003
+        },
+        {
+          "cells": 44,
+          "applied": 124.57142857142858,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.3853337818003637,
+            2.0606272455341843
+          ],
+          "beam": [
+            -0.008078153605939276,
+            1.160485213287088
+          ],
+          "effort_torque": -392.40000000000003
+        },
+        {
+          "cells": 45,
+          "applied": 124.57142857142858,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.3853337818003637,
+            2.0606272455341843
+          ],
+          "beam": [
+            -0.008078153605939276,
+            1.160485213287088
+          ],
+          "effort_torque": -392.40000000000003
+        },
+        {
+          "cells": 46,
+          "applied": 124.57142857142858,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.3853337818003637,
+            2.0606272455341843
+          ],
+          "beam": [
+            -0.008078153605939276,
+            1.160485213287088
+          ],
+          "effort_torque": -392.40000000000003
+        },
+        {
+          "cells": 47,
+          "applied": 124.57142857142858,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.3853337818003637,
+            2.0606272455341843
+          ],
+          "beam": [
+            -0.008078153605939276,
+            1.160485213287088
+          ],
+          "effort_torque": -392.40000000000003
+        },
+        {
+          "cells": 48,
+          "applied": 124.57142857142858,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.3853337818003637,
+            2.0606272455341843
+          ],
+          "beam": [
+            -0.008078153605939276,
+            1.160485213287088
+          ],
+          "effort_torque": -392.40000000000003
+        },
+        {
+          "cells": 49,
+          "applied": 124.57142857142858,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.3853337818003637,
+            2.0606272455341843
+          ],
+          "beam": [
+            -0.008078153605939276,
+            1.160485213287088
+          ],
+          "effort_torque": -392.40000000000003
+        },
+        {
+          "cells": 50,
+          "applied": 124.57142857142858,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.3853337818003637,
+            2.0606272455341843
+          ],
+          "beam": [
+            -0.008078153605939276,
+            1.160485213287088
+          ],
+          "effort_torque": -392.40000000000003
+        }
+      ]
+    },
+    {
+      "name": "light",
+      "mass": 5,
+      "pivot": 1,
+      "load_x": -2.75,
+      "fraction": 0.9,
+      "load_arm": 3.75,
+      "effort_arm": 1.8,
+      "weight": 49.050000000000004,
+      "required": 102.18750000000001,
+      "advantage": 0.48000000000000004,
+      "load_torque": 183.93750000000003,
+      "presses": [
+        {
+          "cells": 0,
+          "applied": 0,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.75,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": 0
+        },
+        {
+          "cells": 1,
+          "applied": 5,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.75,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -9
+        },
+        {
+          "cells": 2,
+          "applied": 10,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.75,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -18
+        },
+        {
+          "cells": 3,
+          "applied": 15,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.75,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -27
+        },
+        {
+          "cells": 4,
+          "applied": 20,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.75,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -36
+        },
+        {
+          "cells": 5,
+          "applied": 25,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.75,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -45
+        },
+        {
+          "cells": 6,
+          "applied": 30,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.75,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -54
+        },
+        {
+          "cells": 7,
+          "applied": 35,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.75,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -63
+        },
+        {
+          "cells": 8,
+          "applied": 40,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.75,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -72
+        },
+        {
+          "cells": 9,
+          "applied": 45,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.75,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -81
+        },
+        {
+          "cells": 10,
+          "applied": 50,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.75,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -90
+        },
+        {
+          "cells": 11,
+          "applied": 55,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.75,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -99
+        },
+        {
+          "cells": 12,
+          "applied": 60,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.75,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -108
+        },
+        {
+          "cells": 13,
+          "applied": 65,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.75,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -117
+        },
+        {
+          "cells": 14,
+          "applied": 70,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.75,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -126
+        },
+        {
+          "cells": 15,
+          "applied": 75,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.75,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -135
+        },
+        {
+          "cells": 16,
+          "applied": 80,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.75,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -144
+        },
+        {
+          "cells": 17,
+          "applied": 85,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.75,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -153
+        },
+        {
+          "cells": 18,
+          "applied": 90,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.75,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -162
+        },
+        {
+          "cells": 19,
+          "applied": 95,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.75,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -171
+        },
+        {
+          "cells": 20,
+          "applied": 100,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2.75,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -180
+        },
+        {
+          "cells": 21,
+          "applied": 102.18750000000001,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.6070602441795763,
+            2.3739289990293764
+          ],
+          "beam": [
+            0.01615630721187855,
+            1.4290295734258243
+          ],
+          "effort_torque": -183.93750000000003
+        },
+        {
+          "cells": 22,
+          "applied": 102.18750000000001,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.6070602441795763,
+            2.3739289990293764
+          ],
+          "beam": [
+            0.01615630721187855,
+            1.4290295734258243
+          ],
+          "effort_torque": -183.93750000000003
+        },
+        {
+          "cells": 23,
+          "applied": 102.18750000000001,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.6070602441795763,
+            2.3739289990293764
+          ],
+          "beam": [
+            0.01615630721187855,
+            1.4290295734258243
+          ],
+          "effort_torque": -183.93750000000003
+        },
+        {
+          "cells": 24,
+          "applied": 102.18750000000001,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.6070602441795763,
+            2.3739289990293764
+          ],
+          "beam": [
+            0.01615630721187855,
+            1.4290295734258243
+          ],
+          "effort_torque": -183.93750000000003
+        },
+        {
+          "cells": 25,
+          "applied": 102.18750000000001,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.6070602441795763,
+            2.3739289990293764
+          ],
+          "beam": [
+            0.01615630721187855,
+            1.4290295734258243
+          ],
+          "effort_torque": -183.93750000000003
+        },
+        {
+          "cells": 26,
+          "applied": 102.18750000000001,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.6070602441795763,
+            2.3739289990293764
+          ],
+          "beam": [
+            0.01615630721187855,
+            1.4290295734258243
+          ],
+          "effort_torque": -183.93750000000003
+        },
+        {
+          "cells": 27,
+          "applied": 102.18750000000001,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.6070602441795763,
+            2.3739289990293764
+          ],
+          "beam": [
+            0.01615630721187855,
+            1.4290295734258243
+          ],
+          "effort_torque": -183.93750000000003
+        },
+        {
+          "cells": 28,
+          "applied": 102.18750000000001,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.6070602441795763,
+            2.3739289990293764
+          ],
+          "beam": [
+            0.01615630721187855,
+            1.4290295734258243
+          ],
+          "effort_torque": -183.93750000000003
+        },
+        {
+          "cells": 29,
+          "applied": 102.18750000000001,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.6070602441795763,
+            2.3739289990293764
+          ],
+          "beam": [
+            0.01615630721187855,
+            1.4290295734258243
+          ],
+          "effort_torque": -183.93750000000003
+        },
+        {
+          "cells": 30,
+          "applied": 102.18750000000001,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.6070602441795763,
+            2.3739289990293764
+          ],
+          "beam": [
+            0.01615630721187855,
+            1.4290295734258243
+          ],
+          "effort_torque": -183.93750000000003
+        },
+        {
+          "cells": 31,
+          "applied": 102.18750000000001,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.6070602441795763,
+            2.3739289990293764
+          ],
+          "beam": [
+            0.01615630721187855,
+            1.4290295734258243
+          ],
+          "effort_torque": -183.93750000000003
+        },
+        {
+          "cells": 32,
+          "applied": 102.18750000000001,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.6070602441795763,
+            2.3739289990293764
+          ],
+          "beam": [
+            0.01615630721187855,
+            1.4290295734258243
+          ],
+          "effort_torque": -183.93750000000003
+        },
+        {
+          "cells": 33,
+          "applied": 102.18750000000001,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.6070602441795763,
+            2.3739289990293764
+          ],
+          "beam": [
+            0.01615630721187855,
+            1.4290295734258243
+          ],
+          "effort_torque": -183.93750000000003
+        },
+        {
+          "cells": 34,
+          "applied": 102.18750000000001,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.6070602441795763,
+            2.3739289990293764
+          ],
+          "beam": [
+            0.01615630721187855,
+            1.4290295734258243
+          ],
+          "effort_torque": -183.93750000000003
+        },
+        {
+          "cells": 35,
+          "applied": 102.18750000000001,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.6070602441795763,
+            2.3739289990293764
+          ],
+          "beam": [
+            0.01615630721187855,
+            1.4290295734258243
+          ],
+          "effort_torque": -183.93750000000003
+        },
+        {
+          "cells": 36,
+          "applied": 102.18750000000001,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.6070602441795763,
+            2.3739289990293764
+          ],
+          "beam": [
+            0.01615630721187855,
+            1.4290295734258243
+          ],
+          "effort_torque": -183.93750000000003
+        },
+        {
+          "cells": 37,
+          "applied": 102.18750000000001,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.6070602441795763,
+            2.3739289990293764
+          ],
+          "beam": [
+            0.01615630721187855,
+            1.4290295734258243
+          ],
+          "effort_torque": -183.93750000000003
+        },
+        {
+          "cells": 38,
+          "applied": 102.18750000000001,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.6070602441795763,
+            2.3739289990293764
+          ],
+          "beam": [
+            0.01615630721187855,
+            1.4290295734258243
+          ],
+          "effort_torque": -183.93750000000003
+        },
+        {
+          "cells": 39,
+          "applied": 102.18750000000001,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.6070602441795763,
+            2.3739289990293764
+          ],
+          "beam": [
+            0.01615630721187855,
+            1.4290295734258243
+          ],
+          "effort_torque": -183.93750000000003
+        },
+        {
+          "cells": 40,
+          "applied": 102.18750000000001,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.6070602441795763,
+            2.3739289990293764
+          ],
+          "beam": [
+            0.01615630721187855,
+            1.4290295734258243
+          ],
+          "effort_torque": -183.93750000000003
+        },
+        {
+          "cells": 41,
+          "applied": 102.18750000000001,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.6070602441795763,
+            2.3739289990293764
+          ],
+          "beam": [
+            0.01615630721187855,
+            1.4290295734258243
+          ],
+          "effort_torque": -183.93750000000003
+        },
+        {
+          "cells": 42,
+          "applied": 102.18750000000001,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.6070602441795763,
+            2.3739289990293764
+          ],
+          "beam": [
+            0.01615630721187855,
+            1.4290295734258243
+          ],
+          "effort_torque": -183.93750000000003
+        },
+        {
+          "cells": 43,
+          "applied": 102.18750000000001,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.6070602441795763,
+            2.3739289990293764
+          ],
+          "beam": [
+            0.01615630721187855,
+            1.4290295734258243
+          ],
+          "effort_torque": -183.93750000000003
+        },
+        {
+          "cells": 44,
+          "applied": 102.18750000000001,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.6070602441795763,
+            2.3739289990293764
+          ],
+          "beam": [
+            0.01615630721187855,
+            1.4290295734258243
+          ],
+          "effort_torque": -183.93750000000003
+        },
+        {
+          "cells": 45,
+          "applied": 102.18750000000001,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.6070602441795763,
+            2.3739289990293764
+          ],
+          "beam": [
+            0.01615630721187855,
+            1.4290295734258243
+          ],
+          "effort_torque": -183.93750000000003
+        },
+        {
+          "cells": 46,
+          "applied": 102.18750000000001,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.6070602441795763,
+            2.3739289990293764
+          ],
+          "beam": [
+            0.01615630721187855,
+            1.4290295734258243
+          ],
+          "effort_torque": -183.93750000000003
+        },
+        {
+          "cells": 47,
+          "applied": 102.18750000000001,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.6070602441795763,
+            2.3739289990293764
+          ],
+          "beam": [
+            0.01615630721187855,
+            1.4290295734258243
+          ],
+          "effort_torque": -183.93750000000003
+        },
+        {
+          "cells": 48,
+          "applied": 102.18750000000001,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.6070602441795763,
+            2.3739289990293764
+          ],
+          "beam": [
+            0.01615630721187855,
+            1.4290295734258243
+          ],
+          "effort_torque": -183.93750000000003
+        },
+        {
+          "cells": 49,
+          "applied": 102.18750000000001,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.6070602441795763,
+            2.3739289990293764
+          ],
+          "beam": [
+            0.01615630721187855,
+            1.4290295734258243
+          ],
+          "effort_torque": -183.93750000000003
+        },
+        {
+          "cells": 50,
+          "applied": 102.18750000000001,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -2.6070602441795763,
+            2.3739289990293764
+          ],
+          "beam": [
+            0.01615630721187855,
+            1.4290295734258243
+          ],
+          "effort_torque": -183.93750000000003
+        }
+      ]
+    },
+    {
+      "name": "moved",
+      "mass": 13,
+      "pivot": 0.25,
+      "load_x": -1.25,
+      "fraction": 0.6,
+      "load_arm": 1.5,
+      "effort_arm": 1.65,
+      "weight": 127.53,
+      "required": 115.93636363636365,
+      "advantage": 1.0999999999999999,
+      "load_torque": 191.29500000000002,
+      "presses": [
+        {
+          "cells": 0,
+          "applied": 0,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -1.25,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": 0
+        },
+        {
+          "cells": 1,
+          "applied": 5,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -1.25,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -8.25
+        },
+        {
+          "cells": 2,
+          "applied": 10,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -1.25,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -16.5
+        },
+        {
+          "cells": 3,
+          "applied": 15,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -1.25,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -24.75
+        },
+        {
+          "cells": 4,
+          "applied": 20,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -1.25,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -33
+        },
+        {
+          "cells": 5,
+          "applied": 25,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -1.25,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -41.25
+        },
+        {
+          "cells": 6,
+          "applied": 30,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -1.25,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -49.5
+        },
+        {
+          "cells": 7,
+          "applied": 35,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -1.25,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -57.75
+        },
+        {
+          "cells": 8,
+          "applied": 40,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -1.25,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -66
+        },
+        {
+          "cells": 9,
+          "applied": 45,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -1.25,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -74.25
+        },
+        {
+          "cells": 10,
+          "applied": 50,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -1.25,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -82.5
+        },
+        {
+          "cells": 11,
+          "applied": 55,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -1.25,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -90.75
+        },
+        {
+          "cells": 12,
+          "applied": 60,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -1.25,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -99
+        },
+        {
+          "cells": 13,
+          "applied": 65,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -1.25,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -107.25
+        },
+        {
+          "cells": 14,
+          "applied": 70,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -1.25,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -115.5
+        },
+        {
+          "cells": 15,
+          "applied": 75,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -1.25,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -123.75
+        },
+        {
+          "cells": 16,
+          "applied": 80,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -1.25,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -132
+        },
+        {
+          "cells": 17,
+          "applied": 85,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -1.25,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -140.25
+        },
+        {
+          "cells": 18,
+          "applied": 90,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -1.25,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -148.5
+        },
+        {
+          "cells": 19,
+          "applied": 95,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -1.25,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -156.75
+        },
+        {
+          "cells": 20,
+          "applied": 100,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -1.25,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -165
+        },
+        {
+          "cells": 21,
+          "applied": 105,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -1.25,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -173.25
+        },
+        {
+          "cells": 22,
+          "applied": 110,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -1.25,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -181.5
+        },
+        {
+          "cells": 23,
+          "applied": 115,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -1.25,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -189.75
+        },
+        {
+          "cells": 24,
+          "applied": 115.93636363636365,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.143411935406303,
+            1.9711124588212723
+          ],
+          "beam": [
+            0.004039076802969638,
+            1.294757393356456
+          ],
+          "effort_torque": -191.29500000000002
+        },
+        {
+          "cells": 25,
+          "applied": 115.93636363636365,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.143411935406303,
+            1.9711124588212723
+          ],
+          "beam": [
+            0.004039076802969638,
+            1.294757393356456
+          ],
+          "effort_torque": -191.29500000000002
+        },
+        {
+          "cells": 26,
+          "applied": 115.93636363636365,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.143411935406303,
+            1.9711124588212723
+          ],
+          "beam": [
+            0.004039076802969638,
+            1.294757393356456
+          ],
+          "effort_torque": -191.29500000000002
+        },
+        {
+          "cells": 27,
+          "applied": 115.93636363636365,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.143411935406303,
+            1.9711124588212723
+          ],
+          "beam": [
+            0.004039076802969638,
+            1.294757393356456
+          ],
+          "effort_torque": -191.29500000000002
+        },
+        {
+          "cells": 28,
+          "applied": 115.93636363636365,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.143411935406303,
+            1.9711124588212723
+          ],
+          "beam": [
+            0.004039076802969638,
+            1.294757393356456
+          ],
+          "effort_torque": -191.29500000000002
+        },
+        {
+          "cells": 29,
+          "applied": 115.93636363636365,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.143411935406303,
+            1.9711124588212723
+          ],
+          "beam": [
+            0.004039076802969638,
+            1.294757393356456
+          ],
+          "effort_torque": -191.29500000000002
+        },
+        {
+          "cells": 30,
+          "applied": 115.93636363636365,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.143411935406303,
+            1.9711124588212723
+          ],
+          "beam": [
+            0.004039076802969638,
+            1.294757393356456
+          ],
+          "effort_torque": -191.29500000000002
+        },
+        {
+          "cells": 31,
+          "applied": 115.93636363636365,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.143411935406303,
+            1.9711124588212723
+          ],
+          "beam": [
+            0.004039076802969638,
+            1.294757393356456
+          ],
+          "effort_torque": -191.29500000000002
+        },
+        {
+          "cells": 32,
+          "applied": 115.93636363636365,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.143411935406303,
+            1.9711124588212723
+          ],
+          "beam": [
+            0.004039076802969638,
+            1.294757393356456
+          ],
+          "effort_torque": -191.29500000000002
+        },
+        {
+          "cells": 33,
+          "applied": 115.93636363636365,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.143411935406303,
+            1.9711124588212723
+          ],
+          "beam": [
+            0.004039076802969638,
+            1.294757393356456
+          ],
+          "effort_torque": -191.29500000000002
+        },
+        {
+          "cells": 34,
+          "applied": 115.93636363636365,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.143411935406303,
+            1.9711124588212723
+          ],
+          "beam": [
+            0.004039076802969638,
+            1.294757393356456
+          ],
+          "effort_torque": -191.29500000000002
+        },
+        {
+          "cells": 35,
+          "applied": 115.93636363636365,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.143411935406303,
+            1.9711124588212723
+          ],
+          "beam": [
+            0.004039076802969638,
+            1.294757393356456
+          ],
+          "effort_torque": -191.29500000000002
+        },
+        {
+          "cells": 36,
+          "applied": 115.93636363636365,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.143411935406303,
+            1.9711124588212723
+          ],
+          "beam": [
+            0.004039076802969638,
+            1.294757393356456
+          ],
+          "effort_torque": -191.29500000000002
+        },
+        {
+          "cells": 37,
+          "applied": 115.93636363636365,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.143411935406303,
+            1.9711124588212723
+          ],
+          "beam": [
+            0.004039076802969638,
+            1.294757393356456
+          ],
+          "effort_torque": -191.29500000000002
+        },
+        {
+          "cells": 38,
+          "applied": 115.93636363636365,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.143411935406303,
+            1.9711124588212723
+          ],
+          "beam": [
+            0.004039076802969638,
+            1.294757393356456
+          ],
+          "effort_torque": -191.29500000000002
+        },
+        {
+          "cells": 39,
+          "applied": 115.93636363636365,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.143411935406303,
+            1.9711124588212723
+          ],
+          "beam": [
+            0.004039076802969638,
+            1.294757393356456
+          ],
+          "effort_torque": -191.29500000000002
+        },
+        {
+          "cells": 40,
+          "applied": 115.93636363636365,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.143411935406303,
+            1.9711124588212723
+          ],
+          "beam": [
+            0.004039076802969638,
+            1.294757393356456
+          ],
+          "effort_torque": -191.29500000000002
+        },
+        {
+          "cells": 41,
+          "applied": 115.93636363636365,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.143411935406303,
+            1.9711124588212723
+          ],
+          "beam": [
+            0.004039076802969638,
+            1.294757393356456
+          ],
+          "effort_torque": -191.29500000000002
+        },
+        {
+          "cells": 42,
+          "applied": 115.93636363636365,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.143411935406303,
+            1.9711124588212723
+          ],
+          "beam": [
+            0.004039076802969638,
+            1.294757393356456
+          ],
+          "effort_torque": -191.29500000000002
+        },
+        {
+          "cells": 43,
+          "applied": 115.93636363636365,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.143411935406303,
+            1.9711124588212723
+          ],
+          "beam": [
+            0.004039076802969638,
+            1.294757393356456
+          ],
+          "effort_torque": -191.29500000000002
+        },
+        {
+          "cells": 44,
+          "applied": 115.93636363636365,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.143411935406303,
+            1.9711124588212723
+          ],
+          "beam": [
+            0.004039076802969638,
+            1.294757393356456
+          ],
+          "effort_torque": -191.29500000000002
+        },
+        {
+          "cells": 45,
+          "applied": 115.93636363636365,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.143411935406303,
+            1.9711124588212723
+          ],
+          "beam": [
+            0.004039076802969638,
+            1.294757393356456
+          ],
+          "effort_torque": -191.29500000000002
+        },
+        {
+          "cells": 46,
+          "applied": 115.93636363636365,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.143411935406303,
+            1.9711124588212723
+          ],
+          "beam": [
+            0.004039076802969638,
+            1.294757393356456
+          ],
+          "effort_torque": -191.29500000000002
+        },
+        {
+          "cells": 47,
+          "applied": 115.93636363636365,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.143411935406303,
+            1.9711124588212723
+          ],
+          "beam": [
+            0.004039076802969638,
+            1.294757393356456
+          ],
+          "effort_torque": -191.29500000000002
+        },
+        {
+          "cells": 48,
+          "applied": 115.93636363636365,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.143411935406303,
+            1.9711124588212723
+          ],
+          "beam": [
+            0.004039076802969638,
+            1.294757393356456
+          ],
+          "effort_torque": -191.29500000000002
+        },
+        {
+          "cells": 49,
+          "applied": 115.93636363636365,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.143411935406303,
+            1.9711124588212723
+          ],
+          "beam": [
+            0.004039076802969638,
+            1.294757393356456
+          ],
+          "effort_torque": -191.29500000000002
+        },
+        {
+          "cells": 50,
+          "applied": 115.93636363636365,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.143411935406303,
+            1.9711124588212723
+          ],
+          "beam": [
+            0.004039076802969638,
+            1.294757393356456
+          ],
+          "effort_torque": -191.29500000000002
+        }
+      ]
+    },
+    {
+      "name": "long arm",
+      "mass": 20,
+      "pivot": -1.5,
+      "load_x": -2,
+      "fraction": 0.9,
+      "load_arm": 0.5,
+      "effort_arm": 4.05,
+      "weight": 196.20000000000002,
+      "required": 24.222222222222225,
+      "advantage": 8.1,
+      "load_torque": 98.10000000000001,
+      "presses": [
+        {
+          "cells": 0,
+          "applied": 0,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": 0
+        },
+        {
+          "cells": 1,
+          "applied": 5,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -20.25
+        },
+        {
+          "cells": 2,
+          "applied": 10,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -40.5
+        },
+        {
+          "cells": 3,
+          "applied": 15,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -60.75
+        },
+        {
+          "cells": 4,
+          "applied": 20,
+          "lifting": false,
+          "angle": 0,
+          "load": [
+            -2,
+            1.71
+          ],
+          "beam": [
+            0,
+            1.25
+          ],
+          "effort_torque": -81
+        },
+        {
+          "cells": 5,
+          "applied": 24.222222222222225,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.9095682426181815,
+            1.7920828853954478
+          ],
+          "beam": [
+            -0.02423446081781777,
+            0.9814556398612637
+          ],
+          "effort_torque": -98.10000000000001
+        },
+        {
+          "cells": 6,
+          "applied": 24.222222222222225,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.9095682426181815,
+            1.7920828853954478
+          ],
+          "beam": [
+            -0.02423446081781777,
+            0.9814556398612637
+          ],
+          "effort_torque": -98.10000000000001
+        },
+        {
+          "cells": 7,
+          "applied": 24.222222222222225,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.9095682426181815,
+            1.7920828853954478
+          ],
+          "beam": [
+            -0.02423446081781777,
+            0.9814556398612637
+          ],
+          "effort_torque": -98.10000000000001
+        },
+        {
+          "cells": 8,
+          "applied": 24.222222222222225,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.9095682426181815,
+            1.7920828853954478
+          ],
+          "beam": [
+            -0.02423446081781777,
+            0.9814556398612637
+          ],
+          "effort_torque": -98.10000000000001
+        },
+        {
+          "cells": 9,
+          "applied": 24.222222222222225,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.9095682426181815,
+            1.7920828853954478
+          ],
+          "beam": [
+            -0.02423446081781777,
+            0.9814556398612637
+          ],
+          "effort_torque": -98.10000000000001
+        },
+        {
+          "cells": 10,
+          "applied": 24.222222222222225,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.9095682426181815,
+            1.7920828853954478
+          ],
+          "beam": [
+            -0.02423446081781777,
+            0.9814556398612637
+          ],
+          "effort_torque": -98.10000000000001
+        },
+        {
+          "cells": 11,
+          "applied": 24.222222222222225,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.9095682426181815,
+            1.7920828853954478
+          ],
+          "beam": [
+            -0.02423446081781777,
+            0.9814556398612637
+          ],
+          "effort_torque": -98.10000000000001
+        },
+        {
+          "cells": 12,
+          "applied": 24.222222222222225,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.9095682426181815,
+            1.7920828853954478
+          ],
+          "beam": [
+            -0.02423446081781777,
+            0.9814556398612637
+          ],
+          "effort_torque": -98.10000000000001
+        },
+        {
+          "cells": 13,
+          "applied": 24.222222222222225,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.9095682426181815,
+            1.7920828853954478
+          ],
+          "beam": [
+            -0.02423446081781777,
+            0.9814556398612637
+          ],
+          "effort_torque": -98.10000000000001
+        },
+        {
+          "cells": 14,
+          "applied": 24.222222222222225,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.9095682426181815,
+            1.7920828853954478
+          ],
+          "beam": [
+            -0.02423446081781777,
+            0.9814556398612637
+          ],
+          "effort_torque": -98.10000000000001
+        },
+        {
+          "cells": 15,
+          "applied": 24.222222222222225,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.9095682426181815,
+            1.7920828853954478
+          ],
+          "beam": [
+            -0.02423446081781777,
+            0.9814556398612637
+          ],
+          "effort_torque": -98.10000000000001
+        },
+        {
+          "cells": 16,
+          "applied": 24.222222222222225,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.9095682426181815,
+            1.7920828853954478
+          ],
+          "beam": [
+            -0.02423446081781777,
+            0.9814556398612637
+          ],
+          "effort_torque": -98.10000000000001
+        },
+        {
+          "cells": 17,
+          "applied": 24.222222222222225,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.9095682426181815,
+            1.7920828853954478
+          ],
+          "beam": [
+            -0.02423446081781777,
+            0.9814556398612637
+          ],
+          "effort_torque": -98.10000000000001
+        },
+        {
+          "cells": 18,
+          "applied": 24.222222222222225,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.9095682426181815,
+            1.7920828853954478
+          ],
+          "beam": [
+            -0.02423446081781777,
+            0.9814556398612637
+          ],
+          "effort_torque": -98.10000000000001
+        },
+        {
+          "cells": 19,
+          "applied": 24.222222222222225,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.9095682426181815,
+            1.7920828853954478
+          ],
+          "beam": [
+            -0.02423446081781777,
+            0.9814556398612637
+          ],
+          "effort_torque": -98.10000000000001
+        },
+        {
+          "cells": 20,
+          "applied": 24.222222222222225,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.9095682426181815,
+            1.7920828853954478
+          ],
+          "beam": [
+            -0.02423446081781777,
+            0.9814556398612637
+          ],
+          "effort_torque": -98.10000000000001
+        },
+        {
+          "cells": 21,
+          "applied": 24.222222222222225,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.9095682426181815,
+            1.7920828853954478
+          ],
+          "beam": [
+            -0.02423446081781777,
+            0.9814556398612637
+          ],
+          "effort_torque": -98.10000000000001
+        },
+        {
+          "cells": 22,
+          "applied": 24.222222222222225,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.9095682426181815,
+            1.7920828853954478
+          ],
+          "beam": [
+            -0.02423446081781777,
+            0.9814556398612637
+          ],
+          "effort_torque": -98.10000000000001
+        },
+        {
+          "cells": 23,
+          "applied": 24.222222222222225,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.9095682426181815,
+            1.7920828853954478
+          ],
+          "beam": [
+            -0.02423446081781777,
+            0.9814556398612637
+          ],
+          "effort_torque": -98.10000000000001
+        },
+        {
+          "cells": 24,
+          "applied": 24.222222222222225,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.9095682426181815,
+            1.7920828853954478
+          ],
+          "beam": [
+            -0.02423446081781777,
+            0.9814556398612637
+          ],
+          "effort_torque": -98.10000000000001
+        },
+        {
+          "cells": 25,
+          "applied": 24.222222222222225,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.9095682426181815,
+            1.7920828853954478
+          ],
+          "beam": [
+            -0.02423446081781777,
+            0.9814556398612637
+          ],
+          "effort_torque": -98.10000000000001
+        },
+        {
+          "cells": 26,
+          "applied": 24.222222222222225,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.9095682426181815,
+            1.7920828853954478
+          ],
+          "beam": [
+            -0.02423446081781777,
+            0.9814556398612637
+          ],
+          "effort_torque": -98.10000000000001
+        },
+        {
+          "cells": 27,
+          "applied": 24.222222222222225,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.9095682426181815,
+            1.7920828853954478
+          ],
+          "beam": [
+            -0.02423446081781777,
+            0.9814556398612637
+          ],
+          "effort_torque": -98.10000000000001
+        },
+        {
+          "cells": 28,
+          "applied": 24.222222222222225,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.9095682426181815,
+            1.7920828853954478
+          ],
+          "beam": [
+            -0.02423446081781777,
+            0.9814556398612637
+          ],
+          "effort_torque": -98.10000000000001
+        },
+        {
+          "cells": 29,
+          "applied": 24.222222222222225,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.9095682426181815,
+            1.7920828853954478
+          ],
+          "beam": [
+            -0.02423446081781777,
+            0.9814556398612637
+          ],
+          "effort_torque": -98.10000000000001
+        },
+        {
+          "cells": 30,
+          "applied": 24.222222222222225,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.9095682426181815,
+            1.7920828853954478
+          ],
+          "beam": [
+            -0.02423446081781777,
+            0.9814556398612637
+          ],
+          "effort_torque": -98.10000000000001
+        },
+        {
+          "cells": 31,
+          "applied": 24.222222222222225,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.9095682426181815,
+            1.7920828853954478
+          ],
+          "beam": [
+            -0.02423446081781777,
+            0.9814556398612637
+          ],
+          "effort_torque": -98.10000000000001
+        },
+        {
+          "cells": 32,
+          "applied": 24.222222222222225,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.9095682426181815,
+            1.7920828853954478
+          ],
+          "beam": [
+            -0.02423446081781777,
+            0.9814556398612637
+          ],
+          "effort_torque": -98.10000000000001
+        },
+        {
+          "cells": 33,
+          "applied": 24.222222222222225,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.9095682426181815,
+            1.7920828853954478
+          ],
+          "beam": [
+            -0.02423446081781777,
+            0.9814556398612637
+          ],
+          "effort_torque": -98.10000000000001
+        },
+        {
+          "cells": 34,
+          "applied": 24.222222222222225,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.9095682426181815,
+            1.7920828853954478
+          ],
+          "beam": [
+            -0.02423446081781777,
+            0.9814556398612637
+          ],
+          "effort_torque": -98.10000000000001
+        },
+        {
+          "cells": 35,
+          "applied": 24.222222222222225,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.9095682426181815,
+            1.7920828853954478
+          ],
+          "beam": [
+            -0.02423446081781777,
+            0.9814556398612637
+          ],
+          "effort_torque": -98.10000000000001
+        },
+        {
+          "cells": 36,
+          "applied": 24.222222222222225,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.9095682426181815,
+            1.7920828853954478
+          ],
+          "beam": [
+            -0.02423446081781777,
+            0.9814556398612637
+          ],
+          "effort_torque": -98.10000000000001
+        },
+        {
+          "cells": 37,
+          "applied": 24.222222222222225,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.9095682426181815,
+            1.7920828853954478
+          ],
+          "beam": [
+            -0.02423446081781777,
+            0.9814556398612637
+          ],
+          "effort_torque": -98.10000000000001
+        },
+        {
+          "cells": 38,
+          "applied": 24.222222222222225,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.9095682426181815,
+            1.7920828853954478
+          ],
+          "beam": [
+            -0.02423446081781777,
+            0.9814556398612637
+          ],
+          "effort_torque": -98.10000000000001
+        },
+        {
+          "cells": 39,
+          "applied": 24.222222222222225,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.9095682426181815,
+            1.7920828853954478
+          ],
+          "beam": [
+            -0.02423446081781777,
+            0.9814556398612637
+          ],
+          "effort_torque": -98.10000000000001
+        },
+        {
+          "cells": 40,
+          "applied": 24.222222222222225,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.9095682426181815,
+            1.7920828853954478
+          ],
+          "beam": [
+            -0.02423446081781777,
+            0.9814556398612637
+          ],
+          "effort_torque": -98.10000000000001
+        },
+        {
+          "cells": 41,
+          "applied": 24.222222222222225,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.9095682426181815,
+            1.7920828853954478
+          ],
+          "beam": [
+            -0.02423446081781777,
+            0.9814556398612637
+          ],
+          "effort_torque": -98.10000000000001
+        },
+        {
+          "cells": 42,
+          "applied": 24.222222222222225,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.9095682426181815,
+            1.7920828853954478
+          ],
+          "beam": [
+            -0.02423446081781777,
+            0.9814556398612637
+          ],
+          "effort_torque": -98.10000000000001
+        },
+        {
+          "cells": 43,
+          "applied": 24.222222222222225,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.9095682426181815,
+            1.7920828853954478
+          ],
+          "beam": [
+            -0.02423446081781777,
+            0.9814556398612637
+          ],
+          "effort_torque": -98.10000000000001
+        },
+        {
+          "cells": 44,
+          "applied": 24.222222222222225,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.9095682426181815,
+            1.7920828853954478
+          ],
+          "beam": [
+            -0.02423446081781777,
+            0.9814556398612637
+          ],
+          "effort_torque": -98.10000000000001
+        },
+        {
+          "cells": 45,
+          "applied": 24.222222222222225,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.9095682426181815,
+            1.7920828853954478
+          ],
+          "beam": [
+            -0.02423446081781777,
+            0.9814556398612637
+          ],
+          "effort_torque": -98.10000000000001
+        },
+        {
+          "cells": 46,
+          "applied": 24.222222222222225,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.9095682426181815,
+            1.7920828853954478
+          ],
+          "beam": [
+            -0.02423446081781777,
+            0.9814556398612637
+          ],
+          "effort_torque": -98.10000000000001
+        },
+        {
+          "cells": 47,
+          "applied": 24.222222222222225,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.9095682426181815,
+            1.7920828853954478
+          ],
+          "beam": [
+            -0.02423446081781777,
+            0.9814556398612637
+          ],
+          "effort_torque": -98.10000000000001
+        },
+        {
+          "cells": 48,
+          "applied": 24.222222222222225,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.9095682426181815,
+            1.7920828853954478
+          ],
+          "beam": [
+            -0.02423446081781777,
+            0.9814556398612637
+          ],
+          "effort_torque": -98.10000000000001
+        },
+        {
+          "cells": 49,
+          "applied": 24.222222222222225,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.9095682426181815,
+            1.7920828853954478
+          ],
+          "beam": [
+            -0.02423446081781777,
+            0.9814556398612637
+          ],
+          "effort_torque": -98.10000000000001
+        },
+        {
+          "cells": 50,
+          "applied": 24.222222222222225,
+          "lifting": true,
+          "angle": -0.18,
+          "load": [
+            -1.9095682426181815,
+            1.7920828853954478
+          ],
+          "beam": [
+            -0.02423446081781777,
+            0.9814556398612637
+          ],
+          "effort_torque": -98.10000000000001
+        }
+      ]
+    }
+  ]
+}

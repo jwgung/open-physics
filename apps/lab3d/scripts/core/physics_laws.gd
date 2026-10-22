@@ -116,6 +116,14 @@ static func uniform_gravity_force(mass: float, g: float) -> float:
 static func kinetic_energy(mass: float, speed: float) -> float:
 	return 0.5 * mass * (speed * speed)
 
+## mechanics.ts tangentialSpeed: v = r omega
+static func tangential_speed(radius: float, angular_velocity: float) -> float:
+	return radius * angular_velocity
+
+## mechanics.ts centripetalForce: F = m v^2 / r
+static func centripetal_force(mass: float, speed: float, radius: float) -> float:
+	return mass * (speed * speed / radius)
+
 ## mechanics.ts momentum (1D): p = m v
 static func momentum(mass: float, velocity: float) -> float:
 	return mass * velocity
@@ -257,6 +265,10 @@ static func damped_angular_frequency(omega0: float, gamma: float) -> float:
 
 # --- lever (mechanics-challenges.ts LeverChallenge, rotation.ts) ---------------------------------
 
+## physics-playground.ts LEVER_LIFT_ANGLE (rad): the angle the web's lever turns to when it lifts
+## (the single source of the lever labs' and LeverModelDriver's lift angle).
+const LEVER_LIFT_ANGLE := 0.18
+
 ## LeverChallenge.requiredForce: F = m g r_load / r_effort
 static func lever_required_force(load_mass: float, g: float, load_arm: float, effort_arm: float) -> float:
 	return load_mass * g * load_arm / effort_arm
@@ -285,9 +297,13 @@ static func pendulum_angular_frequency(length: float, g: float) -> float:
 	assert(length > 0.0 and g > 0.0)
 	return sqrt(g / length)
 
+## PendulumModel.step's angular acceleration: alpha = -(g / L) sin(angle) - damping * omega.
+static func pendulum_angular_acceleration(angle: float, angular_velocity: float, g: float, length: float, damping: float) -> float:
+	return -(g / length) * sin(angle) - damping * angular_velocity
+
 ## PendulumModel.step (semi-implicit Euler): returns [angle, angular_velocity, angular_acceleration].
 static func pendulum_step(angle: float, angular_velocity: float, dt: float, g: float, length: float, damping: float) -> PackedFloat64Array:
-	var angular_acceleration := -(g / length) * sin(angle) - damping * angular_velocity
+	var angular_acceleration := pendulum_angular_acceleration(angle, angular_velocity, g, length, damping)
 	var next_velocity := angular_velocity + angular_acceleration * dt
 	return PackedFloat64Array([angle + next_velocity * dt, next_velocity, angular_acceleration])
 

@@ -52,7 +52,10 @@ func control_value(id: String) -> Variant:
 
 ## All three balls start `h` metres above the floor (their bottoms), limited to the slider's range.
 func set_height(h: float) -> void:
-	height = _clamp_to_control("height", h)
+	var clamped := _clamp_to_control("height", h)
+	if is_nan(clamped):
+		return
+	height = clamped
 	for id in ORDER:
 		starts[id].y = height
 	reset_run()

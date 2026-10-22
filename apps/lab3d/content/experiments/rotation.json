@@ -1,0 +1,70 @@
+{
+  "id": "rotation",
+  "version": 1,
+  "content": "rotation",
+  "scene": "res://experiments/rotation/rotation.gd",
+  "bench_id": "RO",
+  "camera": {
+    "target": [0.0, 1.5, 0.0],
+    "distance": 9.5,
+    "distance_range": [3.5, 24.0],
+    "yaw_range_deg": [-100.0, 100.0],
+    "pitch_range_deg": [-89.0, -2.0],
+    "pan_radius": 6.0,
+    "default_mode": "three_quarter",
+    "views": {
+      "front": { "yaw_deg": 0.0, "pitch_deg": -6.0, "distance": 9.0 },
+      "three_quarter": { "yaw_deg": 24.0, "pitch_deg": -20.0 },
+      "top": { "yaw_deg": 0.0, "pitch_deg": -89.0, "distance": 13.0 },
+      "side": { "yaw_deg": 90.0, "pitch_deg": -12.0, "distance": 11.0 },
+      "follow": { "yaw_deg": 20.0, "pitch_deg": -16.0, "distance": 5.5 }
+    }
+  },
+  "controls": [
+    {
+      "id": "mass", "type": "slider", "label": "짐 질량", "unit": " kg",
+      "min": 1.0, "max": 20.0, "step": 1.0, "default": 20.0, "digits": 0
+    },
+    {
+      "id": "effort", "type": "choice", "label": "힘점", "default": "mid",
+      "note": "받침점에서 막대 오른쪽 끝까지 거리의 몇 %에서 누를지 골라요.",
+      "options": [
+        { "id": "near", "label": "가까이", "fraction": 0.35, "note": "받침점–오른쪽 끝의 35 %" },
+        { "id": "mid", "label": "중간", "fraction": 0.6, "note": "받침점–오른쪽 끝의 60 %" },
+        { "id": "far", "label": "멀리", "fraction": 0.9, "note": "받침점–오른쪽 끝의 90 %" }
+      ]
+    }
+  ],
+  "actions": [
+    { "id": "reset", "label": "처음으로", "style": "primary" }
+  ],
+  "observations": [
+    { "id": "state", "label": "상태" },
+    { "id": "weight", "label": "짐 무게 F₂ = mg", "unit": "N", "digits": 1 },
+    { "id": "load_arm", "label": "받침점–짐 거리 r₂", "unit": "m", "digits": 2 },
+    { "id": "effort_arm", "label": "받침점–힘점 거리 r₁", "unit": "m", "digits": 2 },
+    { "id": "required", "label": "들어 올리는 데 필요한 힘 F₂r₂/r₁", "unit": "N", "digits": 1 },
+    { "id": "applied", "label": "내가 누르는 힘 F₁", "unit": "N", "digits": 1 },
+    { "id": "force_step", "label": "손잡이 2 cm당 힘 (모자라면 자동으로 커져요)", "unit": "N", "digits": 0 },
+    { "id": "advantage", "label": "역학적 이득 r₁/r₂", "unit": "배", "digits": 2 },
+    { "id": "load_torque", "label": "짐 쪽 토크 F₂r₂ (반시계)", "unit": "N·m", "digits": 1 },
+    { "id": "effort_torque", "label": "내 쪽 토크 F₁r₁ (시계)", "unit": "N·m", "digits": 1 },
+    { "id": "net_torque", "label": "토크 합 F₂r₂ − F₁r₁ (들리면 0)", "unit": "N·m", "digits": 1 }
+  ],
+  "manipulation": {
+    "objects": [
+      { "id": "handle", "surface": "press", "snap": 0.02, "height": false },
+      { "id": "load", "surface": "beam_top", "snap": 0.25, "height": false },
+      { "id": "fulcrum", "surface": "floor_line", "snap": 0.25, "height": false }
+    ]
+  },
+  "graph": {
+    "title": "지렛대에 필요한 힘",
+    "x": { "label": "누른 시간 t", "unit": "s", "max": 10.0 },
+    "y": { "label": "힘", "unit": "N", "min_max": 50.0 },
+    "series": [
+      { "id": "applied", "label": "내가 누르는 힘", "color": "#ff3b3b", "style": "line" },
+      { "id": "required", "label": "들어 올리는 데 필요한 힘", "color": "#2d7cf6", "style": "line" }
+    ]
+  }
+}

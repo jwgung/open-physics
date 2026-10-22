@@ -52,10 +52,18 @@ func _init() -> void:
 func set_control(id: String, value: Variant) -> void:
 	match id:
 		"radius":
-			start_radius = _clamp_to_control(id, float(value))
+			var clamped := _clamp_to_control(id, float(value))
+			if is_nan(clamped):
+				return
+			start_radius = clamped
 		"speed":
-			speed = _clamp_to_control(id, float(value))
+			var clamped := _clamp_to_control(id, float(value))
+			if is_nan(clamped):
+				return
+			speed = clamped
 		"direction":
+			if not is_finite(float(value)):
+				return
 			direction = fposmod(float(value), 360.0)
 		_:
 			return

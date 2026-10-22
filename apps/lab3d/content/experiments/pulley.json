@@ -1,0 +1,68 @@
+{
+  "id": "pulley",
+  "version": 1,
+  "content": "pulley",
+  "scene": "res://experiments/pulley/pulley.gd",
+  "bench_id": "PU",
+  "camera": {
+    "target": [0.0, 2.3, 0.0],
+    "distance": 10.0,
+    "distance_range": [3.5, 24.0],
+    "yaw_range_deg": [-100.0, 100.0],
+    "pitch_range_deg": [-89.0, -2.0],
+    "pan_radius": 6.0,
+    "default_mode": "three_quarter",
+    "views": {
+      "front": { "yaw_deg": 0.0, "pitch_deg": -4.0, "distance": 10.5 },
+      "three_quarter": { "yaw_deg": 24.0, "pitch_deg": -14.0 },
+      "top": { "yaw_deg": 0.0, "pitch_deg": -89.0, "distance": 13.0 },
+      "side": { "yaw_deg": 90.0, "pitch_deg": -10.0, "distance": 11.0 },
+      "follow": { "yaw_deg": 20.0, "pitch_deg": -12.0, "distance": 6.0 }
+    }
+  },
+  "controls": [
+    {
+      "id": "strands", "type": "choice", "label": "짐을 받치는 줄", "default": "one",
+      "note": "줄 수를 바꾸면 짐이 바닥으로 내려가고 처음부터 당겨요.",
+      "options": [
+        { "id": "one", "label": "1줄", "n": 1, "note": "고정 도르래 1개: 방향만 바뀌어요" },
+        { "id": "two", "label": "2줄", "n": 2, "note": "움직도르래 1개: 힘은 절반, 당길 줄은 2배" },
+        { "id": "four", "label": "4줄", "n": 4, "note": "움직도르래 2개: 힘은 4분의 1, 당길 줄은 4배" }
+      ]
+    },
+    {
+      "id": "mass", "type": "slider", "label": "짐 질량", "unit": " kg",
+      "min": 1.0, "max": 20.0, "step": 1.0, "default": 20.0, "digits": 0
+    }
+  ],
+  "actions": [
+    { "id": "reset", "label": "처음으로", "style": "primary" }
+  ],
+  "observations": [
+    { "id": "state", "label": "상태" },
+    { "id": "strands", "label": "짐을 받치는 줄 n", "unit": "줄", "digits": 0 },
+    { "id": "weight", "label": "짐 무게 mg", "unit": "N", "digits": 1 },
+    { "id": "required", "label": "필요한 힘 F = mg/n", "unit": "N", "digits": 1 },
+    { "id": "applied", "label": "내가 당기는 힘", "unit": "N", "digits": 1 },
+    { "id": "pulled", "label": "당긴 줄 길이 d당김", "unit": "m", "digits": 2 },
+    { "id": "lift", "label": "짐이 올라간 높이 d상승 = d당김/n", "unit": "m", "digits": 2 },
+    { "id": "per_metre", "label": "1 m 올릴 때 당기는 줄 (n × 1 m)", "unit": "m", "digits": 0 },
+    { "id": "work_in", "label": "내가 한 일 F × d당김", "unit": "J", "digits": 1 },
+    { "id": "work_out", "label": "짐이 얻은 위치 에너지 mg × d상승", "unit": "J", "digits": 1 }
+  ],
+  "manipulation": {
+    "objects": [
+      { "id": "handle", "surface": "pull", "snap": 0.05, "height": false }
+    ],
+    "demo_action": "reset"
+  },
+  "graph": {
+    "title": "줄 수에 따른 필요한 힘",
+    "x": { "label": "당긴 시간 t", "unit": "s", "max": 10.0 },
+    "y": { "label": "힘", "unit": "N", "min_max": 50.0 },
+    "series": [
+      { "id": "applied", "label": "내가 당기는 힘", "color": "#ff3b3b", "style": "line" },
+      { "id": "required", "label": "필요한 힘", "color": "#2d7cf6", "style": "line" }
+    ]
+  }
+}

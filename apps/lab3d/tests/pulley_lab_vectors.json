@@ -1,0 +1,2451 @@
+{
+  "source": "src/app/mechanics-challenges.ts PulleyAdvantageChallenge, src/physics/laws/mechanics.ts work / gravitationalPotentialEnergy",
+  "tolerance": 1e-9,
+  "g": 9.81,
+  "cells_per_m": 20,
+  "max_lift": 2.4,
+  "cases": [
+    {
+      "name": "one",
+      "strands": 1,
+      "mass": 20,
+      "strokes": [
+        52,
+        52
+      ],
+      "required": 196.20000000000002,
+      "pull_per_metre": 1,
+      "weight": 196.20000000000002,
+      "samples": [
+        {
+          "stroke": 0,
+          "cells": 0,
+          "limit": 48,
+          "pulled": 0,
+          "lift": 0,
+          "work_in": 0,
+          "work_out": 0
+        },
+        {
+          "stroke": 0,
+          "cells": 2,
+          "limit": 48,
+          "pulled": 0.1,
+          "lift": 0.1,
+          "work_in": 19.620000000000005,
+          "work_out": 19.620000000000005
+        },
+        {
+          "stroke": 0,
+          "cells": 4,
+          "limit": 48,
+          "pulled": 0.2,
+          "lift": 0.2,
+          "work_in": 39.24000000000001,
+          "work_out": 39.24000000000001
+        },
+        {
+          "stroke": 0,
+          "cells": 6,
+          "limit": 48,
+          "pulled": 0.3,
+          "lift": 0.3,
+          "work_in": 58.86,
+          "work_out": 58.86
+        },
+        {
+          "stroke": 0,
+          "cells": 8,
+          "limit": 48,
+          "pulled": 0.4,
+          "lift": 0.4,
+          "work_in": 78.48000000000002,
+          "work_out": 78.48000000000002
+        },
+        {
+          "stroke": 0,
+          "cells": 10,
+          "limit": 48,
+          "pulled": 0.5,
+          "lift": 0.5,
+          "work_in": 98.10000000000001,
+          "work_out": 98.10000000000001
+        },
+        {
+          "stroke": 0,
+          "cells": 12,
+          "limit": 48,
+          "pulled": 0.6,
+          "lift": 0.6,
+          "work_in": 117.72,
+          "work_out": 117.72
+        },
+        {
+          "stroke": 0,
+          "cells": 14,
+          "limit": 48,
+          "pulled": 0.7,
+          "lift": 0.7,
+          "work_in": 137.34,
+          "work_out": 137.34
+        },
+        {
+          "stroke": 0,
+          "cells": 16,
+          "limit": 48,
+          "pulled": 0.8,
+          "lift": 0.8,
+          "work_in": 156.96000000000004,
+          "work_out": 156.96000000000004
+        },
+        {
+          "stroke": 0,
+          "cells": 18,
+          "limit": 48,
+          "pulled": 0.9,
+          "lift": 0.9,
+          "work_in": 176.58,
+          "work_out": 176.58
+        },
+        {
+          "stroke": 0,
+          "cells": 20,
+          "limit": 48,
+          "pulled": 1,
+          "lift": 1,
+          "work_in": 196.20000000000002,
+          "work_out": 196.20000000000002
+        },
+        {
+          "stroke": 0,
+          "cells": 22,
+          "limit": 48,
+          "pulled": 1.1,
+          "lift": 1.1,
+          "work_in": 215.82000000000005,
+          "work_out": 215.82000000000005
+        },
+        {
+          "stroke": 0,
+          "cells": 24,
+          "limit": 48,
+          "pulled": 1.2,
+          "lift": 1.2,
+          "work_in": 235.44,
+          "work_out": 235.44
+        },
+        {
+          "stroke": 0,
+          "cells": 26,
+          "limit": 48,
+          "pulled": 1.3,
+          "lift": 1.3,
+          "work_in": 255.06000000000003,
+          "work_out": 255.06000000000003
+        },
+        {
+          "stroke": 0,
+          "cells": 28,
+          "limit": 48,
+          "pulled": 1.4,
+          "lift": 1.4,
+          "work_in": 274.68,
+          "work_out": 274.68
+        },
+        {
+          "stroke": 0,
+          "cells": 30,
+          "limit": 48,
+          "pulled": 1.5,
+          "lift": 1.5,
+          "work_in": 294.3,
+          "work_out": 294.3
+        },
+        {
+          "stroke": 0,
+          "cells": 32,
+          "limit": 48,
+          "pulled": 1.6,
+          "lift": 1.6,
+          "work_in": 313.9200000000001,
+          "work_out": 313.9200000000001
+        },
+        {
+          "stroke": 0,
+          "cells": 34,
+          "limit": 48,
+          "pulled": 1.7,
+          "lift": 1.7,
+          "work_in": 333.54,
+          "work_out": 333.54
+        },
+        {
+          "stroke": 0,
+          "cells": 36,
+          "limit": 48,
+          "pulled": 1.8,
+          "lift": 1.8,
+          "work_in": 353.16,
+          "work_out": 353.16
+        },
+        {
+          "stroke": 0,
+          "cells": 38,
+          "limit": 48,
+          "pulled": 1.9,
+          "lift": 1.9,
+          "work_in": 372.78000000000003,
+          "work_out": 372.78000000000003
+        },
+        {
+          "stroke": 0,
+          "cells": 40,
+          "limit": 48,
+          "pulled": 2,
+          "lift": 2,
+          "work_in": 392.40000000000003,
+          "work_out": 392.40000000000003
+        },
+        {
+          "stroke": 0,
+          "cells": 42,
+          "limit": 48,
+          "pulled": 2.1,
+          "lift": 2.1,
+          "work_in": 412.02000000000004,
+          "work_out": 412.02000000000004
+        },
+        {
+          "stroke": 0,
+          "cells": 44,
+          "limit": 48,
+          "pulled": 2.2,
+          "lift": 2.2,
+          "work_in": 431.6400000000001,
+          "work_out": 431.6400000000001
+        },
+        {
+          "stroke": 0,
+          "cells": 46,
+          "limit": 48,
+          "pulled": 2.3,
+          "lift": 2.3,
+          "work_in": 451.26,
+          "work_out": 451.26
+        },
+        {
+          "stroke": 0,
+          "cells": 48,
+          "limit": 48,
+          "pulled": 2.4,
+          "lift": 2.4,
+          "work_in": 470.88,
+          "work_out": 470.88
+        },
+        {
+          "stroke": 1,
+          "cells": 0,
+          "limit": 0,
+          "pulled": 2.4,
+          "lift": 2.4,
+          "work_in": 470.88,
+          "work_out": 470.88
+        }
+      ]
+    },
+    {
+      "name": "two",
+      "strands": 2,
+      "mass": 20,
+      "strokes": [
+        52,
+        52,
+        52
+      ],
+      "required": 98.10000000000001,
+      "pull_per_metre": 2,
+      "weight": 196.20000000000002,
+      "samples": [
+        {
+          "stroke": 0,
+          "cells": 0,
+          "limit": 96,
+          "pulled": 0,
+          "lift": 0,
+          "work_in": 0,
+          "work_out": 0
+        },
+        {
+          "stroke": 0,
+          "cells": 2,
+          "limit": 96,
+          "pulled": 0.1,
+          "lift": 0.05,
+          "work_in": 9.810000000000002,
+          "work_out": 9.810000000000002
+        },
+        {
+          "stroke": 0,
+          "cells": 4,
+          "limit": 96,
+          "pulled": 0.2,
+          "lift": 0.1,
+          "work_in": 19.620000000000005,
+          "work_out": 19.620000000000005
+        },
+        {
+          "stroke": 0,
+          "cells": 6,
+          "limit": 96,
+          "pulled": 0.3,
+          "lift": 0.15,
+          "work_in": 29.43,
+          "work_out": 29.43
+        },
+        {
+          "stroke": 0,
+          "cells": 8,
+          "limit": 96,
+          "pulled": 0.4,
+          "lift": 0.2,
+          "work_in": 39.24000000000001,
+          "work_out": 39.24000000000001
+        },
+        {
+          "stroke": 0,
+          "cells": 10,
+          "limit": 96,
+          "pulled": 0.5,
+          "lift": 0.25,
+          "work_in": 49.050000000000004,
+          "work_out": 49.050000000000004
+        },
+        {
+          "stroke": 0,
+          "cells": 12,
+          "limit": 96,
+          "pulled": 0.6,
+          "lift": 0.3,
+          "work_in": 58.86,
+          "work_out": 58.86
+        },
+        {
+          "stroke": 0,
+          "cells": 14,
+          "limit": 96,
+          "pulled": 0.7,
+          "lift": 0.35,
+          "work_in": 68.67,
+          "work_out": 68.67
+        },
+        {
+          "stroke": 0,
+          "cells": 16,
+          "limit": 96,
+          "pulled": 0.8,
+          "lift": 0.4,
+          "work_in": 78.48000000000002,
+          "work_out": 78.48000000000002
+        },
+        {
+          "stroke": 0,
+          "cells": 18,
+          "limit": 96,
+          "pulled": 0.9,
+          "lift": 0.45,
+          "work_in": 88.29,
+          "work_out": 88.29
+        },
+        {
+          "stroke": 0,
+          "cells": 20,
+          "limit": 96,
+          "pulled": 1,
+          "lift": 0.5,
+          "work_in": 98.10000000000001,
+          "work_out": 98.10000000000001
+        },
+        {
+          "stroke": 0,
+          "cells": 22,
+          "limit": 96,
+          "pulled": 1.1,
+          "lift": 0.55,
+          "work_in": 107.91000000000003,
+          "work_out": 107.91000000000003
+        },
+        {
+          "stroke": 0,
+          "cells": 24,
+          "limit": 96,
+          "pulled": 1.2,
+          "lift": 0.6,
+          "work_in": 117.72,
+          "work_out": 117.72
+        },
+        {
+          "stroke": 0,
+          "cells": 26,
+          "limit": 96,
+          "pulled": 1.3,
+          "lift": 0.65,
+          "work_in": 127.53000000000002,
+          "work_out": 127.53000000000002
+        },
+        {
+          "stroke": 0,
+          "cells": 28,
+          "limit": 96,
+          "pulled": 1.4,
+          "lift": 0.7,
+          "work_in": 137.34,
+          "work_out": 137.34
+        },
+        {
+          "stroke": 0,
+          "cells": 30,
+          "limit": 96,
+          "pulled": 1.5,
+          "lift": 0.75,
+          "work_in": 147.15,
+          "work_out": 147.15
+        },
+        {
+          "stroke": 0,
+          "cells": 32,
+          "limit": 96,
+          "pulled": 1.6,
+          "lift": 0.8,
+          "work_in": 156.96000000000004,
+          "work_out": 156.96000000000004
+        },
+        {
+          "stroke": 0,
+          "cells": 34,
+          "limit": 96,
+          "pulled": 1.7,
+          "lift": 0.85,
+          "work_in": 166.77,
+          "work_out": 166.77
+        },
+        {
+          "stroke": 0,
+          "cells": 36,
+          "limit": 96,
+          "pulled": 1.8,
+          "lift": 0.9,
+          "work_in": 176.58,
+          "work_out": 176.58
+        },
+        {
+          "stroke": 0,
+          "cells": 38,
+          "limit": 96,
+          "pulled": 1.9,
+          "lift": 0.95,
+          "work_in": 186.39000000000001,
+          "work_out": 186.39000000000001
+        },
+        {
+          "stroke": 0,
+          "cells": 40,
+          "limit": 96,
+          "pulled": 2,
+          "lift": 1,
+          "work_in": 196.20000000000002,
+          "work_out": 196.20000000000002
+        },
+        {
+          "stroke": 0,
+          "cells": 42,
+          "limit": 96,
+          "pulled": 2.1,
+          "lift": 1.05,
+          "work_in": 206.01000000000002,
+          "work_out": 206.01000000000002
+        },
+        {
+          "stroke": 0,
+          "cells": 44,
+          "limit": 96,
+          "pulled": 2.2,
+          "lift": 1.1,
+          "work_in": 215.82000000000005,
+          "work_out": 215.82000000000005
+        },
+        {
+          "stroke": 0,
+          "cells": 46,
+          "limit": 96,
+          "pulled": 2.3,
+          "lift": 1.15,
+          "work_in": 225.63,
+          "work_out": 225.63
+        },
+        {
+          "stroke": 0,
+          "cells": 48,
+          "limit": 96,
+          "pulled": 2.4,
+          "lift": 1.2,
+          "work_in": 235.44,
+          "work_out": 235.44
+        },
+        {
+          "stroke": 0,
+          "cells": 50,
+          "limit": 96,
+          "pulled": 2.5,
+          "lift": 1.25,
+          "work_in": 245.25000000000003,
+          "work_out": 245.25000000000003
+        },
+        {
+          "stroke": 0,
+          "cells": 52,
+          "limit": 96,
+          "pulled": 2.6,
+          "lift": 1.3,
+          "work_in": 255.06000000000003,
+          "work_out": 255.06000000000003
+        },
+        {
+          "stroke": 1,
+          "cells": 0,
+          "limit": 44,
+          "pulled": 2.6,
+          "lift": 1.3,
+          "work_in": 255.06000000000003,
+          "work_out": 255.06000000000003
+        },
+        {
+          "stroke": 1,
+          "cells": 2,
+          "limit": 44,
+          "pulled": 2.7,
+          "lift": 1.35,
+          "work_in": 264.87000000000006,
+          "work_out": 264.87000000000006
+        },
+        {
+          "stroke": 1,
+          "cells": 4,
+          "limit": 44,
+          "pulled": 2.8,
+          "lift": 1.4,
+          "work_in": 274.68,
+          "work_out": 274.68
+        },
+        {
+          "stroke": 1,
+          "cells": 6,
+          "limit": 44,
+          "pulled": 2.9,
+          "lift": 1.45,
+          "work_in": 284.49,
+          "work_out": 284.49
+        },
+        {
+          "stroke": 1,
+          "cells": 8,
+          "limit": 44,
+          "pulled": 3,
+          "lift": 1.5,
+          "work_in": 294.3,
+          "work_out": 294.3
+        },
+        {
+          "stroke": 1,
+          "cells": 10,
+          "limit": 44,
+          "pulled": 3.1,
+          "lift": 1.55,
+          "work_in": 304.11,
+          "work_out": 304.11
+        },
+        {
+          "stroke": 1,
+          "cells": 12,
+          "limit": 44,
+          "pulled": 3.2,
+          "lift": 1.6,
+          "work_in": 313.9200000000001,
+          "work_out": 313.9200000000001
+        },
+        {
+          "stroke": 1,
+          "cells": 14,
+          "limit": 44,
+          "pulled": 3.3,
+          "lift": 1.65,
+          "work_in": 323.73,
+          "work_out": 323.73
+        },
+        {
+          "stroke": 1,
+          "cells": 16,
+          "limit": 44,
+          "pulled": 3.4,
+          "lift": 1.7,
+          "work_in": 333.54,
+          "work_out": 333.54
+        },
+        {
+          "stroke": 1,
+          "cells": 18,
+          "limit": 44,
+          "pulled": 3.5,
+          "lift": 1.75,
+          "work_in": 343.35,
+          "work_out": 343.35
+        },
+        {
+          "stroke": 1,
+          "cells": 20,
+          "limit": 44,
+          "pulled": 3.6,
+          "lift": 1.8,
+          "work_in": 353.16,
+          "work_out": 353.16
+        },
+        {
+          "stroke": 1,
+          "cells": 22,
+          "limit": 44,
+          "pulled": 3.7,
+          "lift": 1.85,
+          "work_in": 362.97,
+          "work_out": 362.97
+        },
+        {
+          "stroke": 1,
+          "cells": 24,
+          "limit": 44,
+          "pulled": 3.8,
+          "lift": 1.9,
+          "work_in": 372.78000000000003,
+          "work_out": 372.78000000000003
+        },
+        {
+          "stroke": 1,
+          "cells": 26,
+          "limit": 44,
+          "pulled": 3.9,
+          "lift": 1.95,
+          "work_in": 382.59000000000003,
+          "work_out": 382.59000000000003
+        },
+        {
+          "stroke": 1,
+          "cells": 28,
+          "limit": 44,
+          "pulled": 4,
+          "lift": 2,
+          "work_in": 392.40000000000003,
+          "work_out": 392.40000000000003
+        },
+        {
+          "stroke": 1,
+          "cells": 30,
+          "limit": 44,
+          "pulled": 4.1,
+          "lift": 2.05,
+          "work_in": 402.21,
+          "work_out": 402.21
+        },
+        {
+          "stroke": 1,
+          "cells": 32,
+          "limit": 44,
+          "pulled": 4.2,
+          "lift": 2.1,
+          "work_in": 412.02000000000004,
+          "work_out": 412.02000000000004
+        },
+        {
+          "stroke": 1,
+          "cells": 34,
+          "limit": 44,
+          "pulled": 4.3,
+          "lift": 2.15,
+          "work_in": 421.83000000000004,
+          "work_out": 421.83000000000004
+        },
+        {
+          "stroke": 1,
+          "cells": 36,
+          "limit": 44,
+          "pulled": 4.4,
+          "lift": 2.2,
+          "work_in": 431.6400000000001,
+          "work_out": 431.6400000000001
+        },
+        {
+          "stroke": 1,
+          "cells": 38,
+          "limit": 44,
+          "pulled": 4.5,
+          "lift": 2.25,
+          "work_in": 441.45000000000005,
+          "work_out": 441.45000000000005
+        },
+        {
+          "stroke": 1,
+          "cells": 40,
+          "limit": 44,
+          "pulled": 4.6,
+          "lift": 2.3,
+          "work_in": 451.26,
+          "work_out": 451.26
+        },
+        {
+          "stroke": 1,
+          "cells": 42,
+          "limit": 44,
+          "pulled": 4.7,
+          "lift": 2.35,
+          "work_in": 461.07000000000005,
+          "work_out": 461.07000000000005
+        },
+        {
+          "stroke": 1,
+          "cells": 44,
+          "limit": 44,
+          "pulled": 4.8,
+          "lift": 2.4,
+          "work_in": 470.88,
+          "work_out": 470.88
+        },
+        {
+          "stroke": 2,
+          "cells": 0,
+          "limit": 0,
+          "pulled": 4.8,
+          "lift": 2.4,
+          "work_in": 470.88,
+          "work_out": 470.88
+        }
+      ]
+    },
+    {
+      "name": "four",
+      "strands": 4,
+      "mass": 20,
+      "strokes": [
+        52,
+        52,
+        52,
+        52,
+        52
+      ],
+      "required": 49.050000000000004,
+      "pull_per_metre": 4,
+      "weight": 196.20000000000002,
+      "samples": [
+        {
+          "stroke": 0,
+          "cells": 0,
+          "limit": 192,
+          "pulled": 0,
+          "lift": 0,
+          "work_in": 0,
+          "work_out": 0
+        },
+        {
+          "stroke": 0,
+          "cells": 2,
+          "limit": 192,
+          "pulled": 0.1,
+          "lift": 0.025,
+          "work_in": 4.905000000000001,
+          "work_out": 4.905000000000001
+        },
+        {
+          "stroke": 0,
+          "cells": 4,
+          "limit": 192,
+          "pulled": 0.2,
+          "lift": 0.05,
+          "work_in": 9.810000000000002,
+          "work_out": 9.810000000000002
+        },
+        {
+          "stroke": 0,
+          "cells": 6,
+          "limit": 192,
+          "pulled": 0.3,
+          "lift": 0.075,
+          "work_in": 14.715,
+          "work_out": 14.715
+        },
+        {
+          "stroke": 0,
+          "cells": 8,
+          "limit": 192,
+          "pulled": 0.4,
+          "lift": 0.1,
+          "work_in": 19.620000000000005,
+          "work_out": 19.620000000000005
+        },
+        {
+          "stroke": 0,
+          "cells": 10,
+          "limit": 192,
+          "pulled": 0.5,
+          "lift": 0.125,
+          "work_in": 24.525000000000002,
+          "work_out": 24.525000000000002
+        },
+        {
+          "stroke": 0,
+          "cells": 12,
+          "limit": 192,
+          "pulled": 0.6,
+          "lift": 0.15,
+          "work_in": 29.43,
+          "work_out": 29.43
+        },
+        {
+          "stroke": 0,
+          "cells": 14,
+          "limit": 192,
+          "pulled": 0.7,
+          "lift": 0.175,
+          "work_in": 34.335,
+          "work_out": 34.335
+        },
+        {
+          "stroke": 0,
+          "cells": 16,
+          "limit": 192,
+          "pulled": 0.8,
+          "lift": 0.2,
+          "work_in": 39.24000000000001,
+          "work_out": 39.24000000000001
+        },
+        {
+          "stroke": 0,
+          "cells": 18,
+          "limit": 192,
+          "pulled": 0.9,
+          "lift": 0.225,
+          "work_in": 44.145,
+          "work_out": 44.145
+        },
+        {
+          "stroke": 0,
+          "cells": 20,
+          "limit": 192,
+          "pulled": 1,
+          "lift": 0.25,
+          "work_in": 49.050000000000004,
+          "work_out": 49.050000000000004
+        },
+        {
+          "stroke": 0,
+          "cells": 22,
+          "limit": 192,
+          "pulled": 1.1,
+          "lift": 0.275,
+          "work_in": 53.95500000000001,
+          "work_out": 53.95500000000001
+        },
+        {
+          "stroke": 0,
+          "cells": 24,
+          "limit": 192,
+          "pulled": 1.2,
+          "lift": 0.3,
+          "work_in": 58.86,
+          "work_out": 58.86
+        },
+        {
+          "stroke": 0,
+          "cells": 26,
+          "limit": 192,
+          "pulled": 1.3,
+          "lift": 0.325,
+          "work_in": 63.76500000000001,
+          "work_out": 63.76500000000001
+        },
+        {
+          "stroke": 0,
+          "cells": 28,
+          "limit": 192,
+          "pulled": 1.4,
+          "lift": 0.35,
+          "work_in": 68.67,
+          "work_out": 68.67
+        },
+        {
+          "stroke": 0,
+          "cells": 30,
+          "limit": 192,
+          "pulled": 1.5,
+          "lift": 0.375,
+          "work_in": 73.575,
+          "work_out": 73.575
+        },
+        {
+          "stroke": 0,
+          "cells": 32,
+          "limit": 192,
+          "pulled": 1.6,
+          "lift": 0.4,
+          "work_in": 78.48000000000002,
+          "work_out": 78.48000000000002
+        },
+        {
+          "stroke": 0,
+          "cells": 34,
+          "limit": 192,
+          "pulled": 1.7,
+          "lift": 0.425,
+          "work_in": 83.385,
+          "work_out": 83.385
+        },
+        {
+          "stroke": 0,
+          "cells": 36,
+          "limit": 192,
+          "pulled": 1.8,
+          "lift": 0.45,
+          "work_in": 88.29,
+          "work_out": 88.29
+        },
+        {
+          "stroke": 0,
+          "cells": 38,
+          "limit": 192,
+          "pulled": 1.9,
+          "lift": 0.475,
+          "work_in": 93.19500000000001,
+          "work_out": 93.19500000000001
+        },
+        {
+          "stroke": 0,
+          "cells": 40,
+          "limit": 192,
+          "pulled": 2,
+          "lift": 0.5,
+          "work_in": 98.10000000000001,
+          "work_out": 98.10000000000001
+        },
+        {
+          "stroke": 0,
+          "cells": 42,
+          "limit": 192,
+          "pulled": 2.1,
+          "lift": 0.525,
+          "work_in": 103.00500000000001,
+          "work_out": 103.00500000000001
+        },
+        {
+          "stroke": 0,
+          "cells": 44,
+          "limit": 192,
+          "pulled": 2.2,
+          "lift": 0.55,
+          "work_in": 107.91000000000003,
+          "work_out": 107.91000000000003
+        },
+        {
+          "stroke": 0,
+          "cells": 46,
+          "limit": 192,
+          "pulled": 2.3,
+          "lift": 0.575,
+          "work_in": 112.815,
+          "work_out": 112.815
+        },
+        {
+          "stroke": 0,
+          "cells": 48,
+          "limit": 192,
+          "pulled": 2.4,
+          "lift": 0.6,
+          "work_in": 117.72,
+          "work_out": 117.72
+        },
+        {
+          "stroke": 0,
+          "cells": 50,
+          "limit": 192,
+          "pulled": 2.5,
+          "lift": 0.625,
+          "work_in": 122.62500000000001,
+          "work_out": 122.62500000000001
+        },
+        {
+          "stroke": 0,
+          "cells": 52,
+          "limit": 192,
+          "pulled": 2.6,
+          "lift": 0.65,
+          "work_in": 127.53000000000002,
+          "work_out": 127.53000000000002
+        },
+        {
+          "stroke": 1,
+          "cells": 0,
+          "limit": 140,
+          "pulled": 2.6,
+          "lift": 0.65,
+          "work_in": 127.53000000000002,
+          "work_out": 127.53000000000002
+        },
+        {
+          "stroke": 1,
+          "cells": 2,
+          "limit": 140,
+          "pulled": 2.7,
+          "lift": 0.675,
+          "work_in": 132.43500000000003,
+          "work_out": 132.43500000000003
+        },
+        {
+          "stroke": 1,
+          "cells": 4,
+          "limit": 140,
+          "pulled": 2.8,
+          "lift": 0.7,
+          "work_in": 137.34,
+          "work_out": 137.34
+        },
+        {
+          "stroke": 1,
+          "cells": 6,
+          "limit": 140,
+          "pulled": 2.9,
+          "lift": 0.725,
+          "work_in": 142.245,
+          "work_out": 142.245
+        },
+        {
+          "stroke": 1,
+          "cells": 8,
+          "limit": 140,
+          "pulled": 3,
+          "lift": 0.75,
+          "work_in": 147.15,
+          "work_out": 147.15
+        },
+        {
+          "stroke": 1,
+          "cells": 10,
+          "limit": 140,
+          "pulled": 3.1,
+          "lift": 0.775,
+          "work_in": 152.055,
+          "work_out": 152.055
+        },
+        {
+          "stroke": 1,
+          "cells": 12,
+          "limit": 140,
+          "pulled": 3.2,
+          "lift": 0.8,
+          "work_in": 156.96000000000004,
+          "work_out": 156.96000000000004
+        },
+        {
+          "stroke": 1,
+          "cells": 14,
+          "limit": 140,
+          "pulled": 3.3,
+          "lift": 0.825,
+          "work_in": 161.865,
+          "work_out": 161.865
+        },
+        {
+          "stroke": 1,
+          "cells": 16,
+          "limit": 140,
+          "pulled": 3.4,
+          "lift": 0.85,
+          "work_in": 166.77,
+          "work_out": 166.77
+        },
+        {
+          "stroke": 1,
+          "cells": 18,
+          "limit": 140,
+          "pulled": 3.5,
+          "lift": 0.875,
+          "work_in": 171.675,
+          "work_out": 171.675
+        },
+        {
+          "stroke": 1,
+          "cells": 20,
+          "limit": 140,
+          "pulled": 3.6,
+          "lift": 0.9,
+          "work_in": 176.58,
+          "work_out": 176.58
+        },
+        {
+          "stroke": 1,
+          "cells": 22,
+          "limit": 140,
+          "pulled": 3.7,
+          "lift": 0.925,
+          "work_in": 181.485,
+          "work_out": 181.485
+        },
+        {
+          "stroke": 1,
+          "cells": 24,
+          "limit": 140,
+          "pulled": 3.8,
+          "lift": 0.95,
+          "work_in": 186.39000000000001,
+          "work_out": 186.39000000000001
+        },
+        {
+          "stroke": 1,
+          "cells": 26,
+          "limit": 140,
+          "pulled": 3.9,
+          "lift": 0.975,
+          "work_in": 191.29500000000002,
+          "work_out": 191.29500000000002
+        },
+        {
+          "stroke": 1,
+          "cells": 28,
+          "limit": 140,
+          "pulled": 4,
+          "lift": 1,
+          "work_in": 196.20000000000002,
+          "work_out": 196.20000000000002
+        },
+        {
+          "stroke": 1,
+          "cells": 30,
+          "limit": 140,
+          "pulled": 4.1,
+          "lift": 1.025,
+          "work_in": 201.105,
+          "work_out": 201.105
+        },
+        {
+          "stroke": 1,
+          "cells": 32,
+          "limit": 140,
+          "pulled": 4.2,
+          "lift": 1.05,
+          "work_in": 206.01000000000002,
+          "work_out": 206.01000000000002
+        },
+        {
+          "stroke": 1,
+          "cells": 34,
+          "limit": 140,
+          "pulled": 4.3,
+          "lift": 1.075,
+          "work_in": 210.91500000000002,
+          "work_out": 210.91500000000002
+        },
+        {
+          "stroke": 1,
+          "cells": 36,
+          "limit": 140,
+          "pulled": 4.4,
+          "lift": 1.1,
+          "work_in": 215.82000000000005,
+          "work_out": 215.82000000000005
+        },
+        {
+          "stroke": 1,
+          "cells": 38,
+          "limit": 140,
+          "pulled": 4.5,
+          "lift": 1.125,
+          "work_in": 220.72500000000002,
+          "work_out": 220.72500000000002
+        },
+        {
+          "stroke": 1,
+          "cells": 40,
+          "limit": 140,
+          "pulled": 4.6,
+          "lift": 1.15,
+          "work_in": 225.63,
+          "work_out": 225.63
+        },
+        {
+          "stroke": 1,
+          "cells": 42,
+          "limit": 140,
+          "pulled": 4.7,
+          "lift": 1.175,
+          "work_in": 230.53500000000003,
+          "work_out": 230.53500000000003
+        },
+        {
+          "stroke": 1,
+          "cells": 44,
+          "limit": 140,
+          "pulled": 4.8,
+          "lift": 1.2,
+          "work_in": 235.44,
+          "work_out": 235.44
+        },
+        {
+          "stroke": 1,
+          "cells": 46,
+          "limit": 140,
+          "pulled": 4.9,
+          "lift": 1.225,
+          "work_in": 240.34500000000003,
+          "work_out": 240.34500000000003
+        },
+        {
+          "stroke": 1,
+          "cells": 48,
+          "limit": 140,
+          "pulled": 5,
+          "lift": 1.25,
+          "work_in": 245.25000000000003,
+          "work_out": 245.25000000000003
+        },
+        {
+          "stroke": 1,
+          "cells": 50,
+          "limit": 140,
+          "pulled": 5.1,
+          "lift": 1.275,
+          "work_in": 250.155,
+          "work_out": 250.155
+        },
+        {
+          "stroke": 1,
+          "cells": 52,
+          "limit": 140,
+          "pulled": 5.2,
+          "lift": 1.3,
+          "work_in": 255.06000000000003,
+          "work_out": 255.06000000000003
+        },
+        {
+          "stroke": 2,
+          "cells": 0,
+          "limit": 88,
+          "pulled": 5.2,
+          "lift": 1.3,
+          "work_in": 255.06000000000003,
+          "work_out": 255.06000000000003
+        },
+        {
+          "stroke": 2,
+          "cells": 2,
+          "limit": 88,
+          "pulled": 5.3,
+          "lift": 1.325,
+          "work_in": 259.96500000000003,
+          "work_out": 259.96500000000003
+        },
+        {
+          "stroke": 2,
+          "cells": 4,
+          "limit": 88,
+          "pulled": 5.4,
+          "lift": 1.35,
+          "work_in": 264.87000000000006,
+          "work_out": 264.87000000000006
+        },
+        {
+          "stroke": 2,
+          "cells": 6,
+          "limit": 88,
+          "pulled": 5.5,
+          "lift": 1.375,
+          "work_in": 269.77500000000003,
+          "work_out": 269.77500000000003
+        },
+        {
+          "stroke": 2,
+          "cells": 8,
+          "limit": 88,
+          "pulled": 5.6,
+          "lift": 1.4,
+          "work_in": 274.68,
+          "work_out": 274.68
+        },
+        {
+          "stroke": 2,
+          "cells": 10,
+          "limit": 88,
+          "pulled": 5.7,
+          "lift": 1.425,
+          "work_in": 279.58500000000004,
+          "work_out": 279.58500000000004
+        },
+        {
+          "stroke": 2,
+          "cells": 12,
+          "limit": 88,
+          "pulled": 5.8,
+          "lift": 1.45,
+          "work_in": 284.49,
+          "work_out": 284.49
+        },
+        {
+          "stroke": 2,
+          "cells": 14,
+          "limit": 88,
+          "pulled": 5.9,
+          "lift": 1.475,
+          "work_in": 289.39500000000004,
+          "work_out": 289.39500000000004
+        },
+        {
+          "stroke": 2,
+          "cells": 16,
+          "limit": 88,
+          "pulled": 6,
+          "lift": 1.5,
+          "work_in": 294.3,
+          "work_out": 294.3
+        },
+        {
+          "stroke": 2,
+          "cells": 18,
+          "limit": 88,
+          "pulled": 6.1,
+          "lift": 1.525,
+          "work_in": 299.205,
+          "work_out": 299.205
+        },
+        {
+          "stroke": 2,
+          "cells": 20,
+          "limit": 88,
+          "pulled": 6.2,
+          "lift": 1.55,
+          "work_in": 304.11,
+          "work_out": 304.11
+        },
+        {
+          "stroke": 2,
+          "cells": 22,
+          "limit": 88,
+          "pulled": 6.3,
+          "lift": 1.575,
+          "work_in": 309.01500000000004,
+          "work_out": 309.01500000000004
+        },
+        {
+          "stroke": 2,
+          "cells": 24,
+          "limit": 88,
+          "pulled": 6.4,
+          "lift": 1.6,
+          "work_in": 313.9200000000001,
+          "work_out": 313.9200000000001
+        },
+        {
+          "stroke": 2,
+          "cells": 26,
+          "limit": 88,
+          "pulled": 6.5,
+          "lift": 1.625,
+          "work_in": 318.82500000000005,
+          "work_out": 318.82500000000005
+        },
+        {
+          "stroke": 2,
+          "cells": 28,
+          "limit": 88,
+          "pulled": 6.6,
+          "lift": 1.65,
+          "work_in": 323.73,
+          "work_out": 323.73
+        },
+        {
+          "stroke": 2,
+          "cells": 30,
+          "limit": 88,
+          "pulled": 6.7,
+          "lift": 1.675,
+          "work_in": 328.63500000000005,
+          "work_out": 328.63500000000005
+        },
+        {
+          "stroke": 2,
+          "cells": 32,
+          "limit": 88,
+          "pulled": 6.8,
+          "lift": 1.7,
+          "work_in": 333.54,
+          "work_out": 333.54
+        },
+        {
+          "stroke": 2,
+          "cells": 34,
+          "limit": 88,
+          "pulled": 6.9,
+          "lift": 1.725,
+          "work_in": 338.44500000000005,
+          "work_out": 338.44500000000005
+        },
+        {
+          "stroke": 2,
+          "cells": 36,
+          "limit": 88,
+          "pulled": 7,
+          "lift": 1.75,
+          "work_in": 343.35,
+          "work_out": 343.35
+        },
+        {
+          "stroke": 2,
+          "cells": 38,
+          "limit": 88,
+          "pulled": 7.1,
+          "lift": 1.775,
+          "work_in": 348.255,
+          "work_out": 348.255
+        },
+        {
+          "stroke": 2,
+          "cells": 40,
+          "limit": 88,
+          "pulled": 7.2,
+          "lift": 1.8,
+          "work_in": 353.16,
+          "work_out": 353.16
+        },
+        {
+          "stroke": 2,
+          "cells": 42,
+          "limit": 88,
+          "pulled": 7.3,
+          "lift": 1.825,
+          "work_in": 358.065,
+          "work_out": 358.065
+        },
+        {
+          "stroke": 2,
+          "cells": 44,
+          "limit": 88,
+          "pulled": 7.4,
+          "lift": 1.85,
+          "work_in": 362.97,
+          "work_out": 362.97
+        },
+        {
+          "stroke": 2,
+          "cells": 46,
+          "limit": 88,
+          "pulled": 7.5,
+          "lift": 1.875,
+          "work_in": 367.87500000000006,
+          "work_out": 367.87500000000006
+        },
+        {
+          "stroke": 2,
+          "cells": 48,
+          "limit": 88,
+          "pulled": 7.6,
+          "lift": 1.9,
+          "work_in": 372.78000000000003,
+          "work_out": 372.78000000000003
+        },
+        {
+          "stroke": 2,
+          "cells": 50,
+          "limit": 88,
+          "pulled": 7.7,
+          "lift": 1.925,
+          "work_in": 377.68500000000006,
+          "work_out": 377.68500000000006
+        },
+        {
+          "stroke": 2,
+          "cells": 52,
+          "limit": 88,
+          "pulled": 7.8,
+          "lift": 1.95,
+          "work_in": 382.59000000000003,
+          "work_out": 382.59000000000003
+        },
+        {
+          "stroke": 3,
+          "cells": 0,
+          "limit": 36,
+          "pulled": 7.8,
+          "lift": 1.95,
+          "work_in": 382.59000000000003,
+          "work_out": 382.59000000000003
+        },
+        {
+          "stroke": 3,
+          "cells": 2,
+          "limit": 36,
+          "pulled": 7.9,
+          "lift": 1.975,
+          "work_in": 387.49500000000006,
+          "work_out": 387.49500000000006
+        },
+        {
+          "stroke": 3,
+          "cells": 4,
+          "limit": 36,
+          "pulled": 8,
+          "lift": 2,
+          "work_in": 392.40000000000003,
+          "work_out": 392.40000000000003
+        },
+        {
+          "stroke": 3,
+          "cells": 6,
+          "limit": 36,
+          "pulled": 8.1,
+          "lift": 2.025,
+          "work_in": 397.305,
+          "work_out": 397.305
+        },
+        {
+          "stroke": 3,
+          "cells": 8,
+          "limit": 36,
+          "pulled": 8.2,
+          "lift": 2.05,
+          "work_in": 402.21,
+          "work_out": 402.21
+        },
+        {
+          "stroke": 3,
+          "cells": 10,
+          "limit": 36,
+          "pulled": 8.3,
+          "lift": 2.075,
+          "work_in": 407.11500000000007,
+          "work_out": 407.11500000000007
+        },
+        {
+          "stroke": 3,
+          "cells": 12,
+          "limit": 36,
+          "pulled": 8.4,
+          "lift": 2.1,
+          "work_in": 412.02000000000004,
+          "work_out": 412.02000000000004
+        },
+        {
+          "stroke": 3,
+          "cells": 14,
+          "limit": 36,
+          "pulled": 8.5,
+          "lift": 2.125,
+          "work_in": 416.925,
+          "work_out": 416.925
+        },
+        {
+          "stroke": 3,
+          "cells": 16,
+          "limit": 36,
+          "pulled": 8.6,
+          "lift": 2.15,
+          "work_in": 421.83000000000004,
+          "work_out": 421.83000000000004
+        },
+        {
+          "stroke": 3,
+          "cells": 18,
+          "limit": 36,
+          "pulled": 8.7,
+          "lift": 2.175,
+          "work_in": 426.735,
+          "work_out": 426.735
+        },
+        {
+          "stroke": 3,
+          "cells": 20,
+          "limit": 36,
+          "pulled": 8.8,
+          "lift": 2.2,
+          "work_in": 431.6400000000001,
+          "work_out": 431.6400000000001
+        },
+        {
+          "stroke": 3,
+          "cells": 22,
+          "limit": 36,
+          "pulled": 8.9,
+          "lift": 2.225,
+          "work_in": 436.5450000000001,
+          "work_out": 436.5450000000001
+        },
+        {
+          "stroke": 3,
+          "cells": 24,
+          "limit": 36,
+          "pulled": 9,
+          "lift": 2.25,
+          "work_in": 441.45000000000005,
+          "work_out": 441.45000000000005
+        },
+        {
+          "stroke": 3,
+          "cells": 26,
+          "limit": 36,
+          "pulled": 9.1,
+          "lift": 2.275,
+          "work_in": 446.355,
+          "work_out": 446.355
+        },
+        {
+          "stroke": 3,
+          "cells": 28,
+          "limit": 36,
+          "pulled": 9.2,
+          "lift": 2.3,
+          "work_in": 451.26,
+          "work_out": 451.26
+        },
+        {
+          "stroke": 3,
+          "cells": 30,
+          "limit": 36,
+          "pulled": 9.3,
+          "lift": 2.325,
+          "work_in": 456.1650000000001,
+          "work_out": 456.1650000000001
+        },
+        {
+          "stroke": 3,
+          "cells": 32,
+          "limit": 36,
+          "pulled": 9.4,
+          "lift": 2.35,
+          "work_in": 461.07000000000005,
+          "work_out": 461.07000000000005
+        },
+        {
+          "stroke": 3,
+          "cells": 34,
+          "limit": 36,
+          "pulled": 9.5,
+          "lift": 2.375,
+          "work_in": 465.975,
+          "work_out": 465.975
+        },
+        {
+          "stroke": 3,
+          "cells": 36,
+          "limit": 36,
+          "pulled": 9.6,
+          "lift": 2.4,
+          "work_in": 470.88,
+          "work_out": 470.88
+        },
+        {
+          "stroke": 4,
+          "cells": 0,
+          "limit": 0,
+          "pulled": 9.6,
+          "lift": 2.4,
+          "work_in": 470.88,
+          "work_out": 470.88
+        }
+      ]
+    },
+    {
+      "name": "light short",
+      "strands": 4,
+      "mass": 7,
+      "strokes": [
+        20,
+        20,
+        7
+      ],
+      "required": 17.1675,
+      "pull_per_metre": 4,
+      "weight": 68.67,
+      "samples": [
+        {
+          "stroke": 0,
+          "cells": 0,
+          "limit": 192,
+          "pulled": 0,
+          "lift": 0,
+          "work_in": 0,
+          "work_out": 0
+        },
+        {
+          "stroke": 0,
+          "cells": 1,
+          "limit": 192,
+          "pulled": 0.05,
+          "lift": 0.0125,
+          "work_in": 0.8583750000000001,
+          "work_out": 0.8583750000000001
+        },
+        {
+          "stroke": 0,
+          "cells": 2,
+          "limit": 192,
+          "pulled": 0.1,
+          "lift": 0.025,
+          "work_in": 1.7167500000000002,
+          "work_out": 1.7167500000000002
+        },
+        {
+          "stroke": 0,
+          "cells": 3,
+          "limit": 192,
+          "pulled": 0.15,
+          "lift": 0.0375,
+          "work_in": 2.575125,
+          "work_out": 2.575125
+        },
+        {
+          "stroke": 0,
+          "cells": 4,
+          "limit": 192,
+          "pulled": 0.2,
+          "lift": 0.05,
+          "work_in": 3.4335000000000004,
+          "work_out": 3.4335000000000004
+        },
+        {
+          "stroke": 0,
+          "cells": 5,
+          "limit": 192,
+          "pulled": 0.25,
+          "lift": 0.0625,
+          "work_in": 4.291875,
+          "work_out": 4.291875
+        },
+        {
+          "stroke": 0,
+          "cells": 6,
+          "limit": 192,
+          "pulled": 0.3,
+          "lift": 0.075,
+          "work_in": 5.15025,
+          "work_out": 5.15025
+        },
+        {
+          "stroke": 0,
+          "cells": 7,
+          "limit": 192,
+          "pulled": 0.35,
+          "lift": 0.0875,
+          "work_in": 6.008624999999999,
+          "work_out": 6.008624999999999
+        },
+        {
+          "stroke": 0,
+          "cells": 8,
+          "limit": 192,
+          "pulled": 0.4,
+          "lift": 0.1,
+          "work_in": 6.867000000000001,
+          "work_out": 6.867000000000001
+        },
+        {
+          "stroke": 0,
+          "cells": 9,
+          "limit": 192,
+          "pulled": 0.45,
+          "lift": 0.1125,
+          "work_in": 7.7253750000000005,
+          "work_out": 7.7253750000000005
+        },
+        {
+          "stroke": 0,
+          "cells": 10,
+          "limit": 192,
+          "pulled": 0.5,
+          "lift": 0.125,
+          "work_in": 8.58375,
+          "work_out": 8.58375
+        },
+        {
+          "stroke": 0,
+          "cells": 11,
+          "limit": 192,
+          "pulled": 0.55,
+          "lift": 0.1375,
+          "work_in": 9.442125,
+          "work_out": 9.442125
+        },
+        {
+          "stroke": 0,
+          "cells": 12,
+          "limit": 192,
+          "pulled": 0.6,
+          "lift": 0.15,
+          "work_in": 10.3005,
+          "work_out": 10.3005
+        },
+        {
+          "stroke": 0,
+          "cells": 13,
+          "limit": 192,
+          "pulled": 0.65,
+          "lift": 0.1625,
+          "work_in": 11.158875,
+          "work_out": 11.158875
+        },
+        {
+          "stroke": 0,
+          "cells": 14,
+          "limit": 192,
+          "pulled": 0.7,
+          "lift": 0.175,
+          "work_in": 12.017249999999999,
+          "work_out": 12.017249999999999
+        },
+        {
+          "stroke": 0,
+          "cells": 15,
+          "limit": 192,
+          "pulled": 0.75,
+          "lift": 0.1875,
+          "work_in": 12.875625,
+          "work_out": 12.875625
+        },
+        {
+          "stroke": 0,
+          "cells": 16,
+          "limit": 192,
+          "pulled": 0.8,
+          "lift": 0.2,
+          "work_in": 13.734000000000002,
+          "work_out": 13.734000000000002
+        },
+        {
+          "stroke": 0,
+          "cells": 17,
+          "limit": 192,
+          "pulled": 0.85,
+          "lift": 0.2125,
+          "work_in": 14.592375,
+          "work_out": 14.592375
+        },
+        {
+          "stroke": 0,
+          "cells": 18,
+          "limit": 192,
+          "pulled": 0.9,
+          "lift": 0.225,
+          "work_in": 15.450750000000001,
+          "work_out": 15.450750000000001
+        },
+        {
+          "stroke": 0,
+          "cells": 19,
+          "limit": 192,
+          "pulled": 0.95,
+          "lift": 0.2375,
+          "work_in": 16.309124999999998,
+          "work_out": 16.309124999999998
+        },
+        {
+          "stroke": 0,
+          "cells": 20,
+          "limit": 192,
+          "pulled": 1,
+          "lift": 0.25,
+          "work_in": 17.1675,
+          "work_out": 17.1675
+        },
+        {
+          "stroke": 1,
+          "cells": 0,
+          "limit": 172,
+          "pulled": 1,
+          "lift": 0.25,
+          "work_in": 17.1675,
+          "work_out": 17.1675
+        },
+        {
+          "stroke": 1,
+          "cells": 1,
+          "limit": 172,
+          "pulled": 1.05,
+          "lift": 0.2625,
+          "work_in": 18.025875000000003,
+          "work_out": 18.025875000000003
+        },
+        {
+          "stroke": 1,
+          "cells": 2,
+          "limit": 172,
+          "pulled": 1.1,
+          "lift": 0.275,
+          "work_in": 18.88425,
+          "work_out": 18.88425
+        },
+        {
+          "stroke": 1,
+          "cells": 3,
+          "limit": 172,
+          "pulled": 1.15,
+          "lift": 0.2875,
+          "work_in": 19.742625,
+          "work_out": 19.742625
+        },
+        {
+          "stroke": 1,
+          "cells": 4,
+          "limit": 172,
+          "pulled": 1.2,
+          "lift": 0.3,
+          "work_in": 20.601,
+          "work_out": 20.601
+        },
+        {
+          "stroke": 1,
+          "cells": 5,
+          "limit": 172,
+          "pulled": 1.25,
+          "lift": 0.3125,
+          "work_in": 21.459375,
+          "work_out": 21.459375
+        },
+        {
+          "stroke": 1,
+          "cells": 6,
+          "limit": 172,
+          "pulled": 1.3,
+          "lift": 0.325,
+          "work_in": 22.31775,
+          "work_out": 22.31775
+        },
+        {
+          "stroke": 1,
+          "cells": 7,
+          "limit": 172,
+          "pulled": 1.35,
+          "lift": 0.3375,
+          "work_in": 23.176125000000003,
+          "work_out": 23.176125000000003
+        },
+        {
+          "stroke": 1,
+          "cells": 8,
+          "limit": 172,
+          "pulled": 1.4,
+          "lift": 0.35,
+          "work_in": 24.034499999999998,
+          "work_out": 24.034499999999998
+        },
+        {
+          "stroke": 1,
+          "cells": 9,
+          "limit": 172,
+          "pulled": 1.45,
+          "lift": 0.3625,
+          "work_in": 24.892875,
+          "work_out": 24.892875
+        },
+        {
+          "stroke": 1,
+          "cells": 10,
+          "limit": 172,
+          "pulled": 1.5,
+          "lift": 0.375,
+          "work_in": 25.75125,
+          "work_out": 25.75125
+        },
+        {
+          "stroke": 1,
+          "cells": 11,
+          "limit": 172,
+          "pulled": 1.55,
+          "lift": 0.3875,
+          "work_in": 26.609625,
+          "work_out": 26.609625
+        },
+        {
+          "stroke": 1,
+          "cells": 12,
+          "limit": 172,
+          "pulled": 1.6,
+          "lift": 0.4,
+          "work_in": 27.468000000000004,
+          "work_out": 27.468000000000004
+        },
+        {
+          "stroke": 1,
+          "cells": 13,
+          "limit": 172,
+          "pulled": 1.65,
+          "lift": 0.4125,
+          "work_in": 28.326375,
+          "work_out": 28.326375
+        },
+        {
+          "stroke": 1,
+          "cells": 14,
+          "limit": 172,
+          "pulled": 1.7,
+          "lift": 0.425,
+          "work_in": 29.18475,
+          "work_out": 29.18475
+        },
+        {
+          "stroke": 1,
+          "cells": 15,
+          "limit": 172,
+          "pulled": 1.75,
+          "lift": 0.4375,
+          "work_in": 30.043125,
+          "work_out": 30.043125
+        },
+        {
+          "stroke": 1,
+          "cells": 16,
+          "limit": 172,
+          "pulled": 1.8,
+          "lift": 0.45,
+          "work_in": 30.901500000000002,
+          "work_out": 30.901500000000002
+        },
+        {
+          "stroke": 1,
+          "cells": 17,
+          "limit": 172,
+          "pulled": 1.85,
+          "lift": 0.4625,
+          "work_in": 31.759875,
+          "work_out": 31.759875
+        },
+        {
+          "stroke": 1,
+          "cells": 18,
+          "limit": 172,
+          "pulled": 1.9,
+          "lift": 0.475,
+          "work_in": 32.618249999999996,
+          "work_out": 32.618249999999996
+        },
+        {
+          "stroke": 1,
+          "cells": 19,
+          "limit": 172,
+          "pulled": 1.95,
+          "lift": 0.4875,
+          "work_in": 33.476625,
+          "work_out": 33.476625
+        },
+        {
+          "stroke": 1,
+          "cells": 20,
+          "limit": 172,
+          "pulled": 2,
+          "lift": 0.5,
+          "work_in": 34.335,
+          "work_out": 34.335
+        },
+        {
+          "stroke": 2,
+          "cells": 0,
+          "limit": 152,
+          "pulled": 2,
+          "lift": 0.5,
+          "work_in": 34.335,
+          "work_out": 34.335
+        },
+        {
+          "stroke": 2,
+          "cells": 1,
+          "limit": 152,
+          "pulled": 2.05,
+          "lift": 0.5125,
+          "work_in": 35.193374999999996,
+          "work_out": 35.193374999999996
+        },
+        {
+          "stroke": 2,
+          "cells": 2,
+          "limit": 152,
+          "pulled": 2.1,
+          "lift": 0.525,
+          "work_in": 36.051750000000006,
+          "work_out": 36.051750000000006
+        },
+        {
+          "stroke": 2,
+          "cells": 3,
+          "limit": 152,
+          "pulled": 2.15,
+          "lift": 0.5375,
+          "work_in": 36.910125,
+          "work_out": 36.910125
+        },
+        {
+          "stroke": 2,
+          "cells": 4,
+          "limit": 152,
+          "pulled": 2.2,
+          "lift": 0.55,
+          "work_in": 37.7685,
+          "work_out": 37.7685
+        },
+        {
+          "stroke": 2,
+          "cells": 5,
+          "limit": 152,
+          "pulled": 2.25,
+          "lift": 0.5625,
+          "work_in": 38.626875,
+          "work_out": 38.626875
+        },
+        {
+          "stroke": 2,
+          "cells": 6,
+          "limit": 152,
+          "pulled": 2.3,
+          "lift": 0.575,
+          "work_in": 39.48525,
+          "work_out": 39.48525
+        },
+        {
+          "stroke": 2,
+          "cells": 7,
+          "limit": 152,
+          "pulled": 2.35,
+          "lift": 0.5875,
+          "work_in": 40.343625,
+          "work_out": 40.343625
+        }
+      ]
+    },
+    {
+      "name": "two short",
+      "strands": 2,
+      "mass": 7,
+      "strokes": [
+        20,
+        13
+      ],
+      "required": 34.335,
+      "pull_per_metre": 2,
+      "weight": 68.67,
+      "samples": [
+        {
+          "stroke": 0,
+          "cells": 0,
+          "limit": 96,
+          "pulled": 0,
+          "lift": 0,
+          "work_in": 0,
+          "work_out": 0
+        },
+        {
+          "stroke": 0,
+          "cells": 1,
+          "limit": 96,
+          "pulled": 0.05,
+          "lift": 0.025,
+          "work_in": 1.7167500000000002,
+          "work_out": 1.7167500000000002
+        },
+        {
+          "stroke": 0,
+          "cells": 2,
+          "limit": 96,
+          "pulled": 0.1,
+          "lift": 0.05,
+          "work_in": 3.4335000000000004,
+          "work_out": 3.4335000000000004
+        },
+        {
+          "stroke": 0,
+          "cells": 3,
+          "limit": 96,
+          "pulled": 0.15,
+          "lift": 0.075,
+          "work_in": 5.15025,
+          "work_out": 5.15025
+        },
+        {
+          "stroke": 0,
+          "cells": 4,
+          "limit": 96,
+          "pulled": 0.2,
+          "lift": 0.1,
+          "work_in": 6.867000000000001,
+          "work_out": 6.867000000000001
+        },
+        {
+          "stroke": 0,
+          "cells": 5,
+          "limit": 96,
+          "pulled": 0.25,
+          "lift": 0.125,
+          "work_in": 8.58375,
+          "work_out": 8.58375
+        },
+        {
+          "stroke": 0,
+          "cells": 6,
+          "limit": 96,
+          "pulled": 0.3,
+          "lift": 0.15,
+          "work_in": 10.3005,
+          "work_out": 10.3005
+        },
+        {
+          "stroke": 0,
+          "cells": 7,
+          "limit": 96,
+          "pulled": 0.35,
+          "lift": 0.175,
+          "work_in": 12.017249999999999,
+          "work_out": 12.017249999999999
+        },
+        {
+          "stroke": 0,
+          "cells": 8,
+          "limit": 96,
+          "pulled": 0.4,
+          "lift": 0.2,
+          "work_in": 13.734000000000002,
+          "work_out": 13.734000000000002
+        },
+        {
+          "stroke": 0,
+          "cells": 9,
+          "limit": 96,
+          "pulled": 0.45,
+          "lift": 0.225,
+          "work_in": 15.450750000000001,
+          "work_out": 15.450750000000001
+        },
+        {
+          "stroke": 0,
+          "cells": 10,
+          "limit": 96,
+          "pulled": 0.5,
+          "lift": 0.25,
+          "work_in": 17.1675,
+          "work_out": 17.1675
+        },
+        {
+          "stroke": 0,
+          "cells": 11,
+          "limit": 96,
+          "pulled": 0.55,
+          "lift": 0.275,
+          "work_in": 18.88425,
+          "work_out": 18.88425
+        },
+        {
+          "stroke": 0,
+          "cells": 12,
+          "limit": 96,
+          "pulled": 0.6,
+          "lift": 0.3,
+          "work_in": 20.601,
+          "work_out": 20.601
+        },
+        {
+          "stroke": 0,
+          "cells": 13,
+          "limit": 96,
+          "pulled": 0.65,
+          "lift": 0.325,
+          "work_in": 22.31775,
+          "work_out": 22.31775
+        },
+        {
+          "stroke": 0,
+          "cells": 14,
+          "limit": 96,
+          "pulled": 0.7,
+          "lift": 0.35,
+          "work_in": 24.034499999999998,
+          "work_out": 24.034499999999998
+        },
+        {
+          "stroke": 0,
+          "cells": 15,
+          "limit": 96,
+          "pulled": 0.75,
+          "lift": 0.375,
+          "work_in": 25.75125,
+          "work_out": 25.75125
+        },
+        {
+          "stroke": 0,
+          "cells": 16,
+          "limit": 96,
+          "pulled": 0.8,
+          "lift": 0.4,
+          "work_in": 27.468000000000004,
+          "work_out": 27.468000000000004
+        },
+        {
+          "stroke": 0,
+          "cells": 17,
+          "limit": 96,
+          "pulled": 0.85,
+          "lift": 0.425,
+          "work_in": 29.18475,
+          "work_out": 29.18475
+        },
+        {
+          "stroke": 0,
+          "cells": 18,
+          "limit": 96,
+          "pulled": 0.9,
+          "lift": 0.45,
+          "work_in": 30.901500000000002,
+          "work_out": 30.901500000000002
+        },
+        {
+          "stroke": 0,
+          "cells": 19,
+          "limit": 96,
+          "pulled": 0.95,
+          "lift": 0.475,
+          "work_in": 32.618249999999996,
+          "work_out": 32.618249999999996
+        },
+        {
+          "stroke": 0,
+          "cells": 20,
+          "limit": 96,
+          "pulled": 1,
+          "lift": 0.5,
+          "work_in": 34.335,
+          "work_out": 34.335
+        },
+        {
+          "stroke": 1,
+          "cells": 0,
+          "limit": 76,
+          "pulled": 1,
+          "lift": 0.5,
+          "work_in": 34.335,
+          "work_out": 34.335
+        },
+        {
+          "stroke": 1,
+          "cells": 1,
+          "limit": 76,
+          "pulled": 1.05,
+          "lift": 0.525,
+          "work_in": 36.051750000000006,
+          "work_out": 36.051750000000006
+        },
+        {
+          "stroke": 1,
+          "cells": 2,
+          "limit": 76,
+          "pulled": 1.1,
+          "lift": 0.55,
+          "work_in": 37.7685,
+          "work_out": 37.7685
+        },
+        {
+          "stroke": 1,
+          "cells": 3,
+          "limit": 76,
+          "pulled": 1.15,
+          "lift": 0.575,
+          "work_in": 39.48525,
+          "work_out": 39.48525
+        },
+        {
+          "stroke": 1,
+          "cells": 4,
+          "limit": 76,
+          "pulled": 1.2,
+          "lift": 0.6,
+          "work_in": 41.202,
+          "work_out": 41.202
+        },
+        {
+          "stroke": 1,
+          "cells": 5,
+          "limit": 76,
+          "pulled": 1.25,
+          "lift": 0.625,
+          "work_in": 42.91875,
+          "work_out": 42.91875
+        },
+        {
+          "stroke": 1,
+          "cells": 6,
+          "limit": 76,
+          "pulled": 1.3,
+          "lift": 0.65,
+          "work_in": 44.6355,
+          "work_out": 44.6355
+        },
+        {
+          "stroke": 1,
+          "cells": 7,
+          "limit": 76,
+          "pulled": 1.35,
+          "lift": 0.675,
+          "work_in": 46.352250000000005,
+          "work_out": 46.352250000000005
+        },
+        {
+          "stroke": 1,
+          "cells": 8,
+          "limit": 76,
+          "pulled": 1.4,
+          "lift": 0.7,
+          "work_in": 48.068999999999996,
+          "work_out": 48.068999999999996
+        },
+        {
+          "stroke": 1,
+          "cells": 9,
+          "limit": 76,
+          "pulled": 1.45,
+          "lift": 0.725,
+          "work_in": 49.78575,
+          "work_out": 49.78575
+        },
+        {
+          "stroke": 1,
+          "cells": 10,
+          "limit": 76,
+          "pulled": 1.5,
+          "lift": 0.75,
+          "work_in": 51.5025,
+          "work_out": 51.5025
+        },
+        {
+          "stroke": 1,
+          "cells": 11,
+          "limit": 76,
+          "pulled": 1.55,
+          "lift": 0.775,
+          "work_in": 53.21925,
+          "work_out": 53.21925
+        },
+        {
+          "stroke": 1,
+          "cells": 12,
+          "limit": 76,
+          "pulled": 1.6,
+          "lift": 0.8,
+          "work_in": 54.93600000000001,
+          "work_out": 54.93600000000001
+        },
+        {
+          "stroke": 1,
+          "cells": 13,
+          "limit": 76,
+          "pulled": 1.65,
+          "lift": 0.825,
+          "work_in": 56.65275,
+          "work_out": 56.65275
+        }
+      ]
+    }
+  ]
+}

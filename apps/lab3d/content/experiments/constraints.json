@@ -1,0 +1,78 @@
+{
+  "id": "constraints",
+  "version": 1,
+  "content": "constraints",
+  "scene": "res://experiments/constraints/constraints.gd",
+  "bench_id": "CN",
+  "camera": {
+    "target": [0.0, 2.5, 0.0],
+    "distance": 9.8,
+    "distance_range": [4.0, 26.0],
+    "yaw_range_deg": [-100.0, 100.0],
+    "pitch_range_deg": [-89.0, -2.0],
+    "pan_radius": 6.0,
+    "default_mode": "three_quarter",
+    "views": {
+      "front": { "yaw_deg": 0.0, "pitch_deg": -6.0, "distance": 12.5 },
+      "three_quarter": { "yaw_deg": 24.0, "pitch_deg": -16.0 },
+      "top": { "yaw_deg": 0.0, "pitch_deg": -89.0, "distance": 15.0 },
+      "side": { "yaw_deg": 90.0, "pitch_deg": -10.0, "distance": 12.0 },
+      "follow": { "yaw_deg": 20.0, "pitch_deg": -12.0, "distance": 6.0 }
+    }
+  },
+  "controls": [
+    {
+      "id": "gravity", "type": "choice", "label": "중력", "default": "earth",
+      "options": [
+        { "id": "zero", "label": "무중력", "g": 0.0, "note": "무중력 · 0× · g = 0 m/s²" },
+        { "id": "moon", "label": "달", "g": 1.62, "note": "달 · 0.17× · g = 1.62 m/s²" },
+        { "id": "earth", "label": "지구", "g": 9.81, "note": "지구 · 1× · g = 9.81 m/s²" },
+        { "id": "jupiter", "label": "목성", "g": 24.79, "note": "목성 · 2.53× · g = 24.79 m/s²" }
+      ]
+    },
+    {
+      "id": "length", "type": "slider", "label": "줄·막대 길이 L", "unit": " m",
+      "min": 1.0, "max": 3.5, "step": 0.25, "default": 2.0, "digits": 2
+    },
+    {
+      "id": "damping", "type": "choice", "label": "감쇠", "default": "web",
+      "note": "추는 둘 다 1 kg이에요. 감쇠가 있으면 흔들림이 조금씩 줄어요.",
+      "options": [
+        { "id": "web", "label": "조금", "rope_b": 0.06, "rod_b": 0.03, "note": "줄 0.06 /s · 막대 0.03 /s (웹과 같아요)" },
+        { "id": "none", "label": "없음", "rope_b": 0.0, "rod_b": 0.0, "note": "공기 저항·마찰 없음: 흔들림이 그대로예요" }
+      ]
+    }
+  ],
+  "actions": [
+    { "id": "release", "label": "놓기", "style": "primary" },
+    { "id": "reset", "label": "처음으로" }
+  ],
+  "observations": [
+    { "id": "state", "label": "상태" },
+    { "id": "length", "label": "줄·막대 길이 L", "unit": "m", "digits": 2 },
+    { "id": "rope_distance", "label": "줄: 고정점–추 거리 |A − B|", "unit": "m", "digits": 3 },
+    { "id": "rod_distance", "label": "막대: 고정점–추 거리 |A − B|", "unit": "m", "digits": 3 },
+    { "id": "rope_angle", "label": "줄 진자 각도 θ (오른쪽 +)", "unit": "°", "digits": 1 },
+    { "id": "rod_angle", "label": "막대 진자 각도 θ (오른쪽 +)", "unit": "°", "digits": 1 },
+    { "id": "small_period", "label": "작은 각도 주기 T ≈ 2π√(L/g)", "unit": "s", "digits": 2 },
+    { "id": "rope_period", "label": "줄 진자 한 번 왕복한 시간 (공식 모델)", "unit": "s", "digits": 2 },
+    { "id": "rod_period", "label": "막대 진자 한 번 왕복한 시간 (공식 모델)", "unit": "s", "digits": 2 },
+    { "id": "rope_tension", "label": "줄이 추를 당기는 힘 T = mg cosθ + mv²/L", "unit": "N", "digits": 2 },
+    { "id": "rod_tension", "label": "막대가 추를 당기는 힘 mg cosθ + mv²/L", "unit": "N", "digits": 2 }
+  ],
+  "manipulation": {
+    "objects": [
+      { "id": "rope", "surface": "rope_arc", "snap": 5.0, "height": false },
+      { "id": "rod", "surface": "rod_arc", "snap": 5.0, "height": false }
+    ]
+  },
+  "graph": {
+    "title": "두 진자의 각도",
+    "x": { "label": "시간 t", "unit": "s", "max": 10.0 },
+    "y": { "label": "각도 θ (오른쪽 +)", "unit": "°", "max": 90.0, "signed": true },
+    "series": [
+      { "id": "rope", "label": "줄", "color": "#2d7cf6", "style": "line" },
+      { "id": "rod", "label": "막대", "color": "#ff7a1a", "style": "line" }
+    ]
+  }
+}

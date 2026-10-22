@@ -27,6 +27,16 @@
 ## 11. orbit lab (Task 4d, tests/orbit_lab_checks.gd): the model and the engine planet step by step
 ##    against the TS-core vectors (tests/orbit_lab_vectors.json), Kepler periods, escape and crash
 ##    from the engine planet, panel, art, a fresh screen, the input path, the demo.
+## 12. constraints lab (Task 4e, tests/constraints_lab_checks.gd): the string and rod pendulum models
+##    and engine bobs step by step against the TS-core vectors (tests/constraints_lab_vectors.json),
+##    the fixed length, small- and large-angle periods and energy from the engine bobs, panel, art,
+##    a fresh screen, the input path, the demo.
+## 13. lever lab (Task 4e, tests/rotation_lab_checks.gd): the lever model and the engine beam and load
+##    step by step against the TS-core vectors (tests/rotation_lab_vectors.json), the torque balance
+##    at the lift from the engine beam, panel, art, the handle / load / fulcrum input path, the demo.
+## 14. pulley lab (Task 4e, tests/pulley_lab_checks.gd): the pulley model and the engine load step by
+##    step against the TS-core vectors (tests/pulley_lab_vectors.json), lift = rope / n, the rope
+##    length and F d = m g h from the engine bodies, panel, art, hand-over-hand input, the demo.
 ## Times are engine fixed steps (60 Hz), independent of rendering FPS.
 extends SceneTree
 
@@ -120,6 +130,21 @@ func _run() -> void:
 	_expect(orbit != null and orbit.can_instantiate(), "orbit lab checks compile", "")
 	if orbit != null and orbit.can_instantiate():
 		await orbit.new(self, _expect).run()
+	print("== constraints lab (Task 4e) ==")
+	var constraints: GDScript = load("res://tests/constraints_lab_checks.gd")
+	_expect(constraints != null and constraints.can_instantiate(), "constraints lab checks compile", "")
+	if constraints != null and constraints.can_instantiate():
+		await constraints.new(self, _expect).run()
+	print("== lever lab (Task 4e) ==")
+	var rotation: GDScript = load("res://tests/rotation_lab_checks.gd")
+	_expect(rotation != null and rotation.can_instantiate(), "rotation lab checks compile", "")
+	if rotation != null and rotation.can_instantiate():
+		await rotation.new(self, _expect).run()
+	print("== pulley lab (Task 4e) ==")
+	var pulley: GDScript = load("res://tests/pulley_lab_checks.gd")
+	_expect(pulley != null and pulley.can_instantiate(), "pulley lab checks compile", "")
+	if pulley != null and pulley.can_instantiate():
+		await pulley.new(self, _expect).run()
 	print("RESULT: %s (%d failure(s))" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -562,7 +587,8 @@ func _check_shared_content(incline: Dictionary) -> void:
 			continue
 		var lab: Dictionary = shared[raw.content]
 		for key in ExperimentRegistry.SHARED_KEYS:
-			same = same and str(definition[key]) == str(lab[key])
+			var shown: Variant = lab.get("app", {}).get(key, lab[key]) if key in ExperimentRegistry.APP_OVERRIDES else lab[key]
+			same = same and str(definition[key]) == str(shown)
 			raw_texts = raw_texts or raw.has(key)
 		same = same and definition.get("tip", "") == lab.get("app", {}).get("tip", "")
 	_expect(same and not raw_texts, "listed experiments take every text from the shared lab content (none written in the experiment file)", "")
@@ -579,6 +605,40 @@ func _check_shared_content(incline: Dictionary) -> void:
 	problems.append_array(ExperimentRegistry.resolve(unknown)[1])
 	_expect(problems.size() == 2 and "duplicates" in problems[0] and "not in" in problems[1],
 		"registry rejects texts written next to `content` and an unknown lab id", ", ".join(problems))
+	_check_app_overrides(file)
+
+
+## The 3D app's own steps / observe (lab.app.steps / app.observe): only for the labs that have them,
+## the web fields stay in the shared lab, malformed overrides are rejected.
+func _check_app_overrides(file: Dictionary) -> void:
+	var overridden := {}
+	for lab in file.labs:
+		for key in ExperimentRegistry.APP_OVERRIDES:
+			if lab.get("app", {}).has(key):
+				overridden[lab.id] = true
+	var shown_ok := true
+	for id in overridden:
+		var definition := ExperimentRegistry.find(id)
+		var lab: Dictionary = ExperimentRegistry.shared_labs()[id]
+		var changed := false
+		for key in ExperimentRegistry.APP_OVERRIDES:
+			if lab.app.has(key):
+				shown_ok = shown_ok and str(definition[key]) == str(lab.app[key]) and str(definition[key]) != str(lab[key])
+				changed = true
+		shown_ok = shown_ok and changed and definition.steps.size() == 3
+	var raw: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(ExperimentRegistry.INDEX_PATH.get_base_dir().path_join("rotation.json")))
+	var saved: Dictionary = ExperimentRegistry.shared_labs()["rotation"]
+	var original: Dictionary = saved.app.duplicate(true)
+	saved.app["steps"] = ["a", "b"]
+	saved.app["observe"] = ""
+	var bad: PackedStringArray = ExperimentRegistry.resolve(raw)[1]
+	saved.app["steps"] = ["a", "b", "c"]
+	saved.app["observe"] = "d"
+	var good: Array = ExperimentRegistry.resolve(raw)
+	saved.app = original
+	_expect(shown_ok and overridden.has("pulley") and overridden.has("rotation") and bad.size() == 2 and good[1].is_empty()
+		and good[0].steps == ["a", "b", "c"] and good[0].observe == "d",
+		"app.steps / app.observe replace the shared texts in the 3D app only (pulley, rotation); malformed ones are rejected", "%s; %s" % [str(overridden.keys()), ", ".join(bad)])
 
 
 func _check_fonts() -> void:

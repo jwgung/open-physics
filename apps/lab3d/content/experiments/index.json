@@ -6,8 +6,11 @@
     "collision.json",
     "spring.json",
     "friction.json",
+    "rotation.json",
     "orbit.json",
     "buoyancy.json",
+    "constraints.json",
+    "pulley.json",
     "incline-friction.json"
   ],
   "hidden": [

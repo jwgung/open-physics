@@ -13,6 +13,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { vectorMismatch } from "./ts-oracle";
 import { OrbitChallenge } from "../../../src/app/mechanics-challenges";
 import { PointGravityField } from "../../../src/physics/fields";
 import type { BodyState } from "../../../src/physics/core";
@@ -213,7 +214,7 @@ describe("orbit lab vectors", () => {
       writeFileSync(vectorsPath, `${JSON.stringify(vectors, null, 2)}\n`);
     }
     const committed = JSON.parse(readFileSync(vectorsPath, "utf8"));
-    expect(committed).toEqual(JSON.parse(JSON.stringify(vectors)));
+    expect(vectorMismatch(committed, JSON.parse(JSON.stringify(vectors)))).toBeNull();
   });
 
   it("orbit as Newton and Kepler say", () => {

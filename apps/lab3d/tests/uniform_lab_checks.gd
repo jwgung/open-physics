@@ -38,6 +38,7 @@ func run() -> void:
 	await check_free_fall_art()
 	await check_projectile_cases()
 	await check_projectile_zero_g()
+	await check_projectile_settles()
 	await check_projectile_art()
 	check_arrow_surface()
 	await check_free_fall_manipulation()
@@ -354,6 +355,30 @@ func check_projectile_zero_g() -> void:
 	expect.call(lab.out_of_bounds == false and lab._ball_visual.visible and hidden and shown.state == "섬 밖으로 날아감" and shown.range == "닿지 않아요"
 		and shown.flight_time == "닿지 않아요" and shown.apex == "계속 올라가요" and t_after > t_before,
 		"projectile: no field, the ball flies straight off the island, is stopped there (time keeps running), reset brings it back", str(shown))
+	await _free(lab)
+
+
+## After the landing the ball comes to rest near the landing point (friction, no bounce away off the
+## island) and a second throw flies exactly like the first (the reset restores every state).
+func check_projectile_settles() -> void:
+	var lab: Experiment = await _lab("projectile")
+	lab.release()
+	for i in 4 * STEP_HZ:
+		await tree.physics_frame
+	var c: UniformFieldCorrector = lab.corrector()
+	var landed_x: float = lab.ball_center().x + c.offsets[c.landed_step].x
+	var rest: Vector3 = lab.ball.global_position
+	var rest_speed: float = lab.ball.linear_velocity.length()
+	var landed := c.landed_step
+	var first: PackedVector3Array = c.offsets.slice(0, landed)
+	lab.release()   # the same corrector again: its history restarts
+	await _until_step(c, landed)
+	var again: PackedVector3Array = c.offsets.slice(0, landed)
+	var diff := INF if first.size() != again.size() else 0.0
+	for k in mini(first.size(), again.size()):
+		diff = maxf(diff, (first[k] - again[k]).length())
+	expect.call(absf(rest.x - landed_x) < 3.0 and rest_speed < 0.2 and not lab.out_of_bounds and diff <= 1e-6,
+		"projectile: the landed ball rests near its landing point; the next throw flies the same", "landed x %.2f, rest x %.2f, v %.3f m/s, flight diff %s m (%d / %d samples)" % [landed_x, rest.x, rest_speed, str(diff), first.size(), again.size()])
 	await _free(lab)
 
 

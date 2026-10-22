@@ -8,7 +8,7 @@
 class_name FreeFallProps
 extends RefCounted
 
-const RULER_AT := Vector3(-2.75, 0.0, -1.1)
+const RULER_AT := Vector3(-3.6, 0.0, -1.4)
 const RULER_HEIGHT := 8.5
 const PAD_SIZE := Vector3(0.56, 0.06, 0.56)
 const PAD_FLIP_S := 0.18

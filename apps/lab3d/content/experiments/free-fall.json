@@ -5,18 +5,18 @@
   "scene": "res://experiments/free_fall/free_fall.gd",
   "bench_id": "FF",
   "camera": {
-    "target": [0.0, 2.7, 0.0],
-    "distance": 11.5,
+    "target": [0.0, 3.2, 0.0],
+    "distance": 13.0,
     "distance_range": [3.0, 22.0],
     "yaw_range_deg": [-100.0, 100.0],
     "pitch_range_deg": [-89.0, -2.0],
     "pan_radius": 5.0,
     "default_mode": "three_quarter",
     "views": {
-      "front": { "yaw_deg": 0.0, "pitch_deg": -4.0, "distance": 12.0 },
-      "three_quarter": { "yaw_deg": 30.0, "pitch_deg": -20.0 },
+      "front": { "yaw_deg": 0.0, "pitch_deg": -4.0, "distance": 13.5 },
+      "three_quarter": { "yaw_deg": 30.0, "pitch_deg": -14.0 },
       "top": { "yaw_deg": 0.0, "pitch_deg": -89.0, "distance": 9.0 },
-      "side": { "yaw_deg": 90.0, "pitch_deg": -6.0, "distance": 11.0 },
+      "side": { "yaw_deg": 90.0, "pitch_deg": -6.0, "distance": 13.0 },
       "follow": { "yaw_deg": 25.0, "pitch_deg": -15.0, "distance": 5.0 }
     }
   },

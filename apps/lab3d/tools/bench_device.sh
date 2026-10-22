@@ -6,8 +6,11 @@
 # box is dragged (put down, released 0.4 s later) every 4 s so the drag, physics, observations and
 # graph keep updating. OPBENCH_PLAY=--auto-release=4 re-releases only (the Task 2a/2c measurement:
 # the experiment's own release action, no UI work besides what the experiment emits).
+# Other experiments (Task 4a): OPBENCH_EXPERIMENT=<id> (default incline-friction), OPBENCH_SCENE=<bench
+# id> (default S3), OPBENCH_CTL=<comma-separated launch args> (default --ctl-angle=30, the incline's
+# measured angle; "" for the defaults); OPBENCH_SUSTAINED=0 skips the 600 s sustained capture.
 # Usage: apps/lab3d/tools/bench_device.sh <tier> [runs] [seconds] [rest_s]   e.g. low 3 90 60
-# Output: $OPBENCH_RESULTS_DIR/lab3d-<tier>-S3-*.jsonl. The default follows the play mode so a drag
+# Output: $OPBENCH_RESULTS_DIR/lab3d-<tier>-<scene>-*.jsonl. The default follows the play mode so a drag
 # measurement never overwrites the 2a baseline: spikes/bench/results/phase1-task2b for --auto-drag,
 # phase1-task2a for --auto-release.
 # plus gpu-clock-<tier>.log ("<unix s> <Mali kHz> <AP °C>" every 5 s). Summarise with
@@ -28,7 +31,10 @@ case $play in
   *) default_dir=phase1-task2a ;;
 esac
 export OPBENCH_RESULTS_DIR=${OPBENCH_RESULTS_DIR:-$repo/spikes/bench/results/$default_dir}
-args="--experiment=incline-friction,--quality=$tier,--orientation=portrait,--scroll-to=observations,$play,--ctl-angle=30"
+experiment=${OPBENCH_EXPERIMENT:-incline-friction}
+scene=${OPBENCH_SCENE:-S3}
+ctl=${OPBENCH_CTL---ctl-angle=30}
+args="--experiment=$experiment,--quality=$tier,--orientation=portrait,--scroll-to=observations,$play${ctl:+,$ctl}"
 mkdir -p "$OPBENCH_RESULTS_DIR"
 
 adb_ready() { adb start-server >/dev/null 2>&1; adb wait-for-device; }
@@ -52,11 +58,13 @@ log "shader cache run"; launch; sleep 20
 for run in $(seq 1 "$runs"); do
   log "run $run: launch + 30 s warm-up"; launch; sleep 30
   log "run $run: capture $seconds s"
-  "$repo/spikes/bench/collect.sh" "lab3d-$tier" S3 "$run" "$package" "$seconds"
+  "$repo/spikes/bench/collect.sh" "lab3d-$tier" "$scene" "$run" "$package" "$seconds"
   log "run $run: rest $rest s"; adb shell am force-stop "$package"; sleep "$rest"
 done
-log "sustained: launch + 30 s warm-up"; launch; sleep 30
-log "sustained: capture 600 s"
-"$repo/spikes/bench/collect.sh" "lab3d-$tier" S3 sustained "$package" 600
+if [[ ${OPBENCH_SUSTAINED:-1} != 0 ]]; then
+  log "sustained: launch + 30 s warm-up"; launch; sleep 30
+  log "sustained: capture 600 s"
+  "$repo/spikes/bench/collect.sh" "lab3d-$tier" "$scene" sustained "$package" 600
+fi
 adb shell am force-stop "$package"
 log "done"

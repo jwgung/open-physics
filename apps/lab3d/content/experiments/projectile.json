@@ -5,15 +5,15 @@
   "scene": "res://experiments/projectile/projectile.gd",
   "bench_id": "PJ",
   "camera": {
-    "target": [-1.6, 1.8, 0.0],
-    "distance": 11.5,
+    "target": [-0.8, 1.8, 0.0],
+    "distance": 12.5,
     "distance_range": [3.0, 26.0],
     "yaw_range_deg": [-100.0, 100.0],
     "pitch_range_deg": [-89.0, -2.0],
     "pan_radius": 7.0,
     "default_mode": "three_quarter",
     "views": {
-      "front": { "yaw_deg": 0.0, "pitch_deg": -4.0, "distance": 12.5 },
+      "front": { "yaw_deg": 0.0, "pitch_deg": -4.0, "distance": 13.5 },
       "three_quarter": { "yaw_deg": 25.0, "pitch_deg": -18.0 },
       "top": { "yaw_deg": 0.0, "pitch_deg": -89.0, "distance": 15.0 },
       "side": { "yaw_deg": 90.0, "pitch_deg": -8.0, "distance": 15.0 },

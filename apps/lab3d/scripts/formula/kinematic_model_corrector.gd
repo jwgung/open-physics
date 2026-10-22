@@ -4,8 +4,8 @@
 ## FREEZE_MODE_KINEMATIC, or an AnimatableBody3D): Jolt moves it to the posed transform during the
 ## step and still pushes dynamic bodies it touches, but forces do not move it. Jolt joints were
 ## measured and rejected for these (docs/formula-correction.md): a PinJoint3D pendulum keeps its
-## length to 0.1 mm but loses ~8% of its amplitude in 30 s (constraint solver damping), and the
-## web model's damping and pose would not be reproduced.
+## length to 0.1 mm but loses 1.3% of its amplitude in 30 s (constraint solver damping), and the
+## web model's own damping and angle curve would not be reproduced.
 ## Each step: record the measured quantity of the body (after k steps), advance the model one
 ## step, pose the body for the coming physics step. Subclasses implement advance(), pose(),
 ## measure().

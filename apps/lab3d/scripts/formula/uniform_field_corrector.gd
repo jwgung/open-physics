@@ -58,9 +58,9 @@ func release(body: RigidBody3D, velocity: Vector3) -> void:
 	in_flight = true
 	landed_step = -1
 	_seed_contacts = not body.contact_monitor
+	body.max_contacts_reported = maxi(body.max_contacts_reported, 4)   # 0 (the default) reports nothing
 	if _seed_contacts:
 		body.contact_monitor = true
-		body.max_contacts_reported = maxi(body.max_contacts_reported, 4)
 		_start_contacts.clear()
 	else:
 		_start_contacts.assign(body.get_colliding_bodies())

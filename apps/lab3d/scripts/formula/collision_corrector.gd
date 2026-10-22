@@ -119,7 +119,7 @@ func step(dt: float) -> void:
 	var vb := body_b.linear_velocity
 	var reported_a := body_a.get_colliding_bodies()
 	var reported_b := body_b.get_colliding_bodies()
-	var touching := reported_a.has(body_b)
+	var touching := reported_a.has(body_b) or reported_b.has(body_a)   # either side, if one report list is full
 	if gap > APART_GAP:
 		_apart = true
 	if _has_prev:

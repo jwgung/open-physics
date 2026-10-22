@@ -168,8 +168,10 @@ func _formula_line(height: Callable, landing: float) -> PackedVector2Array:
 ## A ball has landed: the engine reported its landing, or its formula landing time is 0 (let go on
 ## the floor in a field and not thrown upwards: nothing to fall). Without a field a ball on the
 ## floor never lands (landing INF).
+## A landing within the first step (a release a few mm above the floor) touches the floor inside the
+## step that seeds the start contacts, so the engine never reports it: the formula time decides.
 static func has_landed_by(c: UniformFieldCorrector, landing: float) -> bool:
-	return c.landed_step >= 0 or landing <= 0.0
+	return c.landed_step >= 0 or landing <= c.dt
 
 
 ## Start height (ball bottom above the floor, m) kept on the 1 mm grid of the handles' steps, so the

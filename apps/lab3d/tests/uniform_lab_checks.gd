@@ -477,6 +477,14 @@ func check_first_release_from_floor() -> void:
 		"landing: a fresh free-fall lab with a ball on the floor reports no engine landing for it; the dropped ones land at their formula time",
 		"red %d, orange %d (formula %d)" % [lab.corrector_of("red").landed_step, orange.landed_step, want])
 	await _free(lab)
+	# 1 mm up: the floor is touched inside the first (seeding) step, so the formula time decides.
+	lab = await _lab("free-fall")
+	lab.manipulation_placed("red", Transform3D(Basis(), Vector3(1.5, lab.BALL_RADIUS + 0.001, 0.0)))
+	lab.release()
+	for i in 10:
+		await tree.physics_frame
+	expect.call(lab.has_landed("red"), "landing: a ball let go 1 mm above the floor counts as landed (formula time within the first step)", "")
+	await _free(lab)
 
 
 ## Balls side by side (touching at the release, one beside a higher one) land on the floor at their

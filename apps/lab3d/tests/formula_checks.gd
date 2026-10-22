@@ -129,13 +129,17 @@ func check_layer_contract() -> void:
 	base.leapfrog_start = false
 	factors.append(base.start_factor(true))
 	expect.call(factors == [0.5, 1.0, 1.0], "formula layer: start_factor = 1/2 only on the first step with leapfrog_start", str(factors))
-	base.history_steps = 2
+	base.history_steps = 3
 	base.record(1.0)
 	base.record(2.0, -3.0)
-	base.record(4.0, 5.0)
-	expect.call(base.samples == PackedFloat64Array([1.0, 2.0]) and base.velocities == PackedFloat64Array([-3.0])
-		and base.last_sample == 4.0 and base.last_velocity == 5.0, "formula layer: record() keeps bounded samples and optional velocities",
-		"%s / %s" % [base.samples, base.velocities])
+	base.record(4.0)
+	base.record(6.0, 5.0)
+	var v := base.velocities
+	expect.call(base.samples == PackedFloat64Array([1.0, 2.0, 4.0]) and v.size() == 3 and is_nan(v[0]) and v[1] == -3.0 and is_nan(v[2])
+		and base.last_sample == 6.0 and base.last_velocity == 5.0,
+		"formula layer: record() keeps bounded samples and index-aligned velocities (NAN without one)", "%s / %s" % [base.samples, v])
+	base.record(7.0)
+	expect.call(is_nan(base.last_velocity), "formula layer: last_velocity belongs to the last sample (NAN without one)", str(base.last_velocity))
 
 
 # --- 2. representative scenes -------------------------------------------------------------------

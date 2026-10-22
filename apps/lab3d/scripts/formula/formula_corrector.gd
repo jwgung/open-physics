@@ -27,7 +27,8 @@ var samples: PackedFloat64Array = PackedFloat64Array()
 var history_steps := 600
 var last_sample := 0.0
 ## Optional second series recorded with the sample (record(value, velocity)): velocities[k] is the
-## velocity after k steps, same bound as samples. Correctors without a velocity leave it empty.
+## velocity after k steps, always the same length as samples (NAN where a step gave no velocity), so
+## the indices of both series stay aligned. last_velocity is that of the last sample (NAN if none).
 var velocities: PackedFloat64Array = PackedFloat64Array()
 var last_velocity := 0.0
 ## Leapfrog start: on the first released step only half of the net force acts, so Jolt's
@@ -46,16 +47,13 @@ func reset_history() -> void:
 	last_velocity = 0.0
 
 
-## Stores the sample of this step (bounded history), and the velocity when one is given.
+## Stores the sample of this step and its velocity (NAN when not given) in the bounded history.
 func record(value: float, velocity := NAN) -> void:
 	last_sample = value
-	var has_velocity := not is_nan(velocity)
-	if has_velocity:
-		last_velocity = velocity
+	last_velocity = velocity
 	if samples.size() < history_steps:
 		samples.append(value)
-		if has_velocity:
-			velocities.append(velocity)
+		velocities.append(velocity)
 
 
 ## One fixed step before the physics server steps. Body-bound correctors also accept apply().

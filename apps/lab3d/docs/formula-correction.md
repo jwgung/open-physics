@@ -141,6 +141,8 @@
   끌어 놓은 뒤 출발(용수철 0.7 m, 부력 0.55 m 아래, 궤도 knob 4.5 m/s·90°와 반지름 4 m)도 공식 곡선과 같다(≤ 2.4e-7 m).
 - 엔진 기록은 `history_steps`까지만 쌓이므로 직전 스텝 위치를 `last_engine`에 따로 둔다(4c와 같음). 엔진 위치는 Godot 단정밀도(float32)라 반올림이 위 오차의 한계다.
 - 공 회전 없음: 용수철 공·부력 통·궤도 행성의 몸체는 돌지 않는다(회전은 메시뿐, 4c와 같음). 부력은 선형 잠김 비율이 정확한 세운 기둥(상자·원기둥)만 쓴다.
+- 구조: 세 실험(과 충돌)의 공통 부분(run 상태·그래프 장부·`release()` 본문·자유 바디 구성)은 `experiments/model_driven/model_driven_lab.gd`(`ModelDrivenLab`), 배치 복원(`begin_batch`/`end_batch`/`_restart`)은 `Experiment`에 있다. 시계는 `BodyModel.dt`/`time()` 하나다. 궤도의 GM·충돌·이탈 반지름·평면 높이는 `OrbitModel`의 상수 한 곳이고, 서브스텝마다 부르는 `PhysicsLaws.point_gravity_field_acceleration`은 `out` 인자에 써서 할당이 없다(수치 불변).
+- 리뷰 반영(4d 검증): 시계 방향 발사의 첫 바퀴 시간은 `|swept| ≥ 2π`로 센다(TS 오라클도 같게 고쳐 벡터의 "clockwise" 경우가 −1 대신 8.69 s). 부력 상태는 밀도 판정이 먼저라 같은 밀도(중성) 통이 바닥에 닿아도 `staying`이고 `sunk`는 더 무거운 통만이다. 돌연변이: `swept >= TAU`로 되돌림(시계 방향 첫 바퀴 검사 실패), 바닥 접촉을 먼저 `sunk`로 봄(중성 바닥 검사 실패) — 모두 실패했다.
 - 그래프 y축: 용수철의 에너지 비율은 고정 0–100 %축(`graph.y.max`, `GraphView.y_top`), 나머지는 데이터에 맞춘 자동 축.
 
 ## 5. 테스트 파이프라인

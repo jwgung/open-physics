@@ -18,13 +18,21 @@ var vz := 0.0
 ## True when the model stopped for good (resting on a floor, crashed, out of range): step() then
 ## only counts steps.
 var stopped := false
+## Length of the last fixed step (s); time() = steps * dt.
+var dt := 1.0 / 60.0
 
 
 ## One fixed step of `dt` seconds.
-func step(dt: float) -> void:
+func step(step_dt: float) -> void:
+	dt = step_dt
 	steps += 1
 	if not stopped:
-		advance(dt)
+		advance(step_dt)
+
+
+## Seconds since the last reset (steps of dt).
+func time() -> float:
+	return steps * dt
 
 
 ## Advances the state by one fixed step (subclasses).
@@ -36,8 +44,3 @@ func advance(_dt: float) -> void:
 func position() -> Vector3:
 	return Vector3(x, y, z)
 
-
-## The quantity the driver records from the engine body each step (the lab's measured sample:
-## extension, depth, radius); `at` is the engine body's position.
-func engine_sample(_at: Vector3) -> float:
-	return 0.0

@@ -18,7 +18,6 @@ var mass := 1.0
 var x0 := 0.0
 var extension := 0.0
 var velocity := 0.0
-var dt := 1.0 / 60.0
 
 
 ## The ball at rest at extension `start` (waiting or released from there); y / z = the rod.
@@ -42,17 +41,11 @@ func gamma() -> float:
 	return damping / (2.0 * mass)
 
 
-func advance(step_dt: float) -> void:
-	dt = step_dt
+func advance(_step_dt: float) -> void:
 	var t := time()
 	extension = PhysicsLaws.spring_release_displacement(x0, omega0(), gamma(), t)
 	velocity = PhysicsLaws.spring_release_velocity(x0, omega0(), gamma(), t)
 	_place()
-
-
-## Seconds since the release (steps of dt).
-func time() -> float:
-	return steps * dt
 
 
 func _place() -> void:
@@ -86,7 +79,3 @@ func period() -> float:
 		return PhysicsLaws.period_from_angular_frequency(omega0())
 	return TAU / PhysicsLaws.damped_angular_frequency(omega0(), gamma())
 
-
-## The engine ball's extension (m): its distance from the anchor along the rod minus the rest length.
-func engine_sample(at: Vector3) -> float:
-	return float(at.x) - anchor_x - rest_length

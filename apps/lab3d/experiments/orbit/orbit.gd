@@ -9,7 +9,7 @@
 ## 8 velocity Verlet substeps per fixed step). BodyModelDriver poses the engine planet on it every
 ## step (method "kinematic_model"): the panel has no engine measurement.
 ## See docs/formula-correction.md (Task 4d).
-extends Experiment
+extends ModelDrivenLab
 
 const ORBIT_Y := 2.0
 const MU := 27.0                  # G M (m^3/s^2): 3 m/s circular speed at 3 m
@@ -23,7 +23,6 @@ const RADIUS_CELLS := 2.0         # grid cells per metre (0.5 m)
 const KNOB_SIZE := 0.3
 const KNOB_LAYER := 2
 const PLANET_LAYER := 3
-const GRAPH_EVERY_STEPS := 6
 
 var model := OrbitModel.new()
 var driver := BodyModelDriver.new()
@@ -37,22 +36,9 @@ var speed := 3.0
 var direction := 90.0
 ## OrbitChallenge prediction of the launch (PhysicsLaws.orbit_analyze).
 var prediction: Dictionary = {}
-var released := false
-var holding := ""
-var reset_count := 0
 var crashes := 0
 var _floor: StaticBody3D
-var _graph: Array[Vector4] = []   # (t, speed, circular speed, escape speed)
-var _graph_revision := 0
 var _preview := PackedFloat64Array()   # (direction, speed, radius) the held preview shows
-
-
-func _ready() -> void:
-	_build_world()
-	begin_batch()
-	for control in definition.get("controls", []):
-		set_control(control.id, control.default)
-	end_batch()
 
 
 func set_control(id: String, value: Variant) -> void:
@@ -116,12 +102,7 @@ func _load_model() -> void:
 func reset_run() -> void:
 	if planet == null:
 		return
-	reset_count += 1
-	released = false
-	_load_model()
-	driver.reset()
-	_graph.clear()
-	_graph_revision += 1
+	_clear_run()
 	props.set_guide(start_radius)
 	props.set_path(prediction.path, prediction.outcome)
 	props.reset()
@@ -130,18 +111,17 @@ func reset_run() -> void:
 	_update_status(true)
 
 
+## Launches the planet (a flight in progress starts again from the start).
 func launch() -> void:
-	if released:
-		reset_run()
-	else:
-		_load_model()
-		driver.reset()
-	released = true
-	_graph.clear()
-	_graph.append(_graph_point())
-	_graph_revision += 1
+	release()
+
+
+func _reset_driver() -> void:
+	driver.reset()
+
+
+func _notify_released() -> void:
 	props.launched()
-	_update_status(true)
 
 
 func _physics_process(_delta: float) -> void:
@@ -153,13 +133,13 @@ func _physics_process(_delta: float) -> void:
 		crashes += 1
 		props.crashed(Vector3(-model.x, 0.0, -model.z))
 		impact.emit(0.6)
-	if model.steps % GRAPH_EVERY_STEPS == 0 and model.time() <= graph_x_max() + 1e-6 and model.outcome == "":
-		_graph.append(_graph_point())
-		_graph_revision += 1
+	if model.outcome == "" and _graph_due(model.steps, model.time()):
+		_add_graph_point()
 	if status() != _last_status:
 		_update_status()
 
 
+## (t, speed, circular speed, escape speed).
 func _graph_point() -> Vector4:
 	return Vector4(model.time(), model.speed(), model.circular_speed(), model.escape_speed())
 
@@ -247,16 +227,12 @@ func graph_series() -> Dictionary:
 	return {"speed": v, "circular": c, "escape": e}
 
 
-func graph_revision() -> int:
-	return _graph_revision
+func _main_body() -> RigidBody3D:
+	return planet
 
 
 func graph_x_max() -> float:
 	return float(definition.get("graph", {}).get("x", {}).get("max", 20.0))
-
-
-func follow_point() -> Vector3:
-	return planet.global_position if planet != null else global_position
 
 
 ## Start radius for a planet centre at world x on the 0.5 m grid (whole cells), RADIUS_MIN..RADIUS_MAX.
@@ -268,23 +244,15 @@ static func radius_at(world_x: float) -> float:
 
 func _build_world() -> void:
 	_floor = _add_floor(null, Vector3(30.0, 0.4, 22.0))
-	planet = RigidBody3D.new()
-	planet.name = "Planet"
-	_setup_free_body(planet)
-	planet.gravity_scale = 0.0
-	planet.collision_layer = 1 << (PLANET_LAYER - 1)
-	planet.collision_mask = 0
-	var shape := CollisionShape3D.new()
 	var sphere := SphereShape3D.new()
 	sphere.radius = PLANET_RADIUS
-	shape.shape = sphere
-	planet.add_child(shape)
+	planet = _make_driven_body("Planet", sphere, PLANET_LAYER)
 	planet.position = Vector3(start_radius, ORBIT_Y, 0.0)
 	add_child(planet)
 	knob = _make_knob("Knob", KNOB_LAYER, KNOB_SIZE)
 	props.dress(self, planet, PLANET_RADIUS, knob, ORBIT_Y, STAR_RADIUS)
 	_load_model()
-	driver.history_steps = int(graph_x_max() * Engine.physics_ticks_per_second) + 2
+	driver.history_steps = _history_steps()
 	driver.bind(model, planet)
 	driver.reset()
 

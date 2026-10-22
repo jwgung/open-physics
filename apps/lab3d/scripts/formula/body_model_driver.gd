@@ -68,6 +68,3 @@ func pose() -> Transform3D:
 	_posed[2] = model.z
 	return Transform3D(body.global_basis, model.position())
 
-
-func measure() -> float:
-	return model.engine_sample(body.global_position)

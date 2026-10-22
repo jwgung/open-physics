@@ -8,7 +8,7 @@
 ## engine drum on it every step (method "kinematic_model"): the panel has no engine measurement. The
 ## floating depth and the judgement (floats / stays / sinks) come from the densities.
 ## See docs/formula-correction.md (Task 4d).
-extends Experiment
+extends ModelDrivenLab
 
 const WATERLINE := 1.5
 const FLOOR_Y := 0.2
@@ -18,7 +18,6 @@ const GRID_CELLS := 20.0          # grid cells per metre (0.05 m), counted in wh
 const START_ABOVE := 0.3          # m: the drum's bottom above the water at the start
 const WATER_DENSITY := 1000.0     # kg/m^3
 const DRUM_LAYER := 3             # pickable; the drum touches nothing in the engine (mask 0)
-const GRAPH_EVERY_STEPS := 6
 const SETTLED_SPEED := 0.002      # m/s: slower than this (and where the formula puts it) = settled
 const SETTLED_DEPTH := 0.002      # m from the floating depth
 const SPLASH_SPEED := 0.5         # m/s: a slower entry into the water gets no splash
@@ -32,24 +31,11 @@ var drum: RigidBody3D
 var mass := 70.0
 var volume_id := "big"
 var start_bottom := WATERLINE + START_ABOVE   # height of the drum's bottom it is released from (m)
-var released := false
-var holding := ""
-var reset_count := 0
 var splashes := 0
 var _placed := false
 var _floor: StaticBody3D
 var _tank_floor: StaticBody3D
 var _shape: CylinderShape3D
-var _graph: Array[Vector2] = []   # (t, submerged depth)
-var _graph_revision := 0
-
-
-func _ready() -> void:
-	_build_world()
-	begin_batch()
-	for control in definition.get("controls", []):
-		set_control(control.id, control.default)
-	end_batch()
 
 
 func set_control(id: String, value: Variant) -> void:
@@ -121,28 +107,22 @@ func _load_model() -> void:
 func reset_run() -> void:
 	if drum == null:
 		return
-	reset_count += 1
-	released = false
-	_load_model()
-	driver.reset()
-	_graph.clear()
-	_graph_revision += 1
+	_clear_run()
 	props.reset()
 	_update_status(true)
 
 
-func release() -> void:
-	if released:
-		reset_run()
-	else:
-		_load_model()
-		driver.reset()
-	released = true
-	_graph.clear()
-	_graph.append(Vector2(0.0, model.depth()))
-	_graph_revision += 1
+func _reset_driver() -> void:
+	driver.reset()
+
+
+func _notify_released() -> void:
 	props.released()
-	_update_status(true)
+
+
+## (t, submerged depth).
+func _graph_point() -> Vector2:
+	return Vector2(model.time(), model.depth())
 
 
 func _physics_process(_delta: float) -> void:
@@ -156,9 +136,8 @@ func _physics_process(_delta: float) -> void:
 	if model.hit_floor and model.hit_speed >= FLOOR_HIT_SPEED:
 		props.hit_floor(model.hit_speed)
 		impact.emit(clampf(model.hit_speed / 6.0, 0.15, 0.6))
-	if model.steps % GRAPH_EVERY_STEPS == 0 and _clock() <= graph_x_max() + 1e-6:
-		_graph.append(Vector2(_clock(), model.depth()))
-		_graph_revision += 1
+	if _graph_due(model.steps, model.time()):
+		_add_graph_point()
 	if status() != _last_status:
 		_update_status()
 
@@ -170,10 +149,6 @@ func _process(_delta: float) -> void:
 		props.hide_forces()
 		return
 	props.show_forces(drum.global_position, model.weight(), model.buoyant_force(), model.displaced_mass * model.g)
-
-
-func _clock() -> float:
-	return model.steps / float(Engine.physics_ticks_per_second)
 
 
 ## ready (waiting), held, moving, floating (settled at the floating depth), staying (neutral, at
@@ -237,16 +212,8 @@ func graph_series() -> Dictionary:
 	return {"depth": depth, "floating": PackedVector2Array([Vector2(0.0, level), Vector2(graph_x_max(), level)])}
 
 
-func graph_revision() -> int:
-	return _graph_revision
-
-
-func graph_x_max() -> float:
-	return float(definition.get("graph", {}).get("x", {}).get("max", 10.0))
-
-
-func follow_point() -> Vector3:
-	return drum.global_position if drum != null else global_position
+func _main_body() -> RigidBody3D:
+	return drum
 
 
 ## Height of the drum's bottom for a centre at world y on the 0.05 m grid (whole cells, 64-bit),
@@ -266,22 +233,14 @@ func _build_world() -> void:
 	_add_box_shape(_tank_floor, Vector3(BuoyancyProps.HALF_X * 2.0, FLOOR_Y, BuoyancyProps.HALF_Z * 2.0))
 	_tank_floor.position = Vector3(0.0, FLOOR_Y * 0.5, 0.0)
 	add_child(_tank_floor)
-	drum = RigidBody3D.new()
-	drum.name = "Drum"
-	_setup_free_body(drum)
-	drum.gravity_scale = 0.0
-	drum.collision_layer = 1 << (DRUM_LAYER - 1)
-	drum.collision_mask = 0
-	var shape := CollisionShape3D.new()
 	_shape = CylinderShape3D.new()
-	shape.shape = _shape
-	drum.add_child(shape)
+	drum = _make_driven_body("Drum", _shape, DRUM_LAYER)
 	drum.position = Vector3(0.0, start_bottom + 0.25, 0.0)
 	add_child(drum)
 	props.dress(self, drum, drum_radius(), drum_height(), FLOOR_Y, WATERLINE, TANK_TOP)
 	_resize()
 	_load_model()
-	driver.history_steps = int(graph_x_max() * Engine.physics_ticks_per_second) + 2
+	driver.history_steps = _history_steps()
 	driver.bind(model, drum)
 	driver.reset()
 

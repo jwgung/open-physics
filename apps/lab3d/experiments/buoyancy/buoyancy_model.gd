@@ -93,7 +93,7 @@ func weight() -> float:
 
 ## The law's up force (buoyancy and water drag) plus gravity (N, up +).
 func net_force() -> float:
-	return PhysicsLaws.buoyancy_region_force(displaced_mass, g, drag, fraction(), mass, vy) + -weight()
+	return PhysicsLaws.buoyancy_region_force(displaced_mass, g, drag, fraction(), mass, vy) - weight()
 
 
 ## rho_object / rho_water (same volume: the mass ratio).
@@ -115,7 +115,3 @@ func judgement() -> String:
 func floating_depth() -> float:
 	return minf(1.0, density_ratio()) * height
 
-
-## The engine drum's submerged depth (m) from its centre.
-func engine_sample(at: Vector3) -> float:
-	return PhysicsLaws.submerged_fraction(waterline - (float(at.y) - height * 0.5), height) * height

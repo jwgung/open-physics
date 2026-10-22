@@ -25,7 +25,6 @@ var outcome := ""
 ## time of the first full turn (s; -1 before it).
 var swept := 0.0
 var first_lap_time := -1.0
-var dt := 1.0 / 60.0
 var _ax := 0.0
 var _az := 0.0
 
@@ -53,7 +52,6 @@ func _acceleration() -> void:
 
 
 func advance(step_dt: float) -> void:
-	dt = step_dt
 	var h := step_dt / SUBSTEPS
 	for i in SUBSTEPS:
 		var before := atan2(-(z - cz), x - cx)
@@ -96,10 +94,6 @@ func speed() -> float:
 	return sqrt(vx * vx + vz * vz)
 
 
-func time() -> float:
-	return steps * dt
-
-
 ## Specific orbital energy v^2 / 2 - GM / r (J/kg): < 0 bound, >= 0 escapes.
 func specific_energy() -> float:
 	return speed() * speed() * 0.5 - mu / radius()
@@ -122,7 +116,3 @@ func escape_speed() -> float:
 func circular_period() -> float:
 	return PhysicsLaws.circular_orbit_period(mu, radius(), 1.0)
 
-
-## The engine planet's distance from the star (m).
-func engine_sample(at: Vector3) -> float:
-	return Vector2(float(at.x) - cx, float(at.z) - cz).length()

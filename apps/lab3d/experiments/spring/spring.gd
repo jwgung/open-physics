@@ -7,7 +7,7 @@
 ## (period 2 pi sqrt(m / k), K + U = k x0^2 / 2 without damping). BodyModelDriver poses the engine
 ## ball on it every step (method "kinematic_model"): the panel has no engine measurement, the ball
 ## stands where the formula puts it. See docs/formula-correction.md (Task 4d).
-extends Experiment
+extends ModelDrivenLab
 
 const ANCHOR_X := -4.5
 const REST_LENGTH := 3.0
@@ -19,7 +19,6 @@ const PULL_CELLS := 10.0          # grid cells per metre (0.1 m), counted in who
 const DEFAULT_PULL := 1.2
 const END_X := ANCHOR_X + REST_LENGTH + EXT_MAX + 0.6   # the rod's end stand
 const BALL_LAYER := 3             # pickable; the ball touches nothing in the engine (mask 0)
-const GRAPH_EVERY_STEPS := 6      # 10 Hz graph samples
 const REST_AMPLITUDE := 0.002     # m: a damped ball within this of the rest length, this slow, is at rest
 const REST_SPEED := 0.005         # m/s
 
@@ -31,23 +30,8 @@ var ball: RigidBody3D
 var mass := 1.0
 var damping_id := "none"
 var pull := DEFAULT_PULL          # extension the ball is released from (m)
-## True from the release until the next reset.
-var released := false
-## A finger holds the ball (the run waits).
-var holding := ""
-var reset_count := 0
 var _placed := false
 var _floor: StaticBody3D
-var _graph: Array[Vector3] = []   # (t, K %, U %)
-var _graph_revision := 0
-
-
-func _ready() -> void:
-	_build_world()
-	begin_batch()
-	for control in definition.get("controls", []):
-		set_control(control.id, control.default)
-	end_batch()
 
 
 func set_control(id: String, value: Variant) -> void:
@@ -101,39 +85,26 @@ func _load_model() -> void:
 func reset_run() -> void:
 	if ball == null:
 		return
-	reset_count += 1
-	released = false
-	_load_model()
-	driver.reset()
-	_graph.clear()
-	_graph_revision += 1
+	_clear_run()
 	props.reset()
 	_show()
 	_update_status(true)
 
 
-## Lets the ball go from rest at the pull (a running one starts again from there).
-func release() -> void:
-	if released:
-		reset_run()
-	else:
-		_load_model()
-		driver.reset()
-	released = true
-	_graph.clear()
-	_graph.append(_graph_point())
-	_graph_revision += 1
+func _reset_driver() -> void:
+	driver.reset()
+
+
+func _notify_released() -> void:
 	props.released()
-	_update_status(true)
 
 
 func _physics_process(_delta: float) -> void:
 	if not released or holding != "":
 		return
 	driver.step(1.0 / float(Engine.physics_ticks_per_second))
-	if model.steps % GRAPH_EVERY_STEPS == 0 and model.time() <= graph_x_max() + 1e-6:
-		_graph.append(_graph_point())
-		_graph_revision += 1
+	if _graph_due(model.steps, model.time()):
+		_add_graph_point()
 	if status() != _last_status:
 		_update_status()
 
@@ -211,16 +182,8 @@ func graph_series() -> Dictionary:
 	return {"kinetic": k, "spring": u}
 
 
-func graph_revision() -> int:
-	return _graph_revision
-
-
-func graph_x_max() -> float:
-	return float(definition.get("graph", {}).get("x", {}).get("max", 10.0))
-
-
-func follow_point() -> Vector3:
-	return ball.global_position if ball != null else global_position
+func _main_body() -> RigidBody3D:
+	return ball
 
 
 ## Extension (m) of a ball centre at world x on the 0.1 m grid (whole cells, 64-bit), within EXT_MIN..EXT_MAX.
@@ -233,21 +196,13 @@ static func extension_at(world_x: float) -> float:
 
 func _build_world() -> void:
 	_floor = _add_floor(null, Vector3(30.0, 0.4, 22.0))
-	ball = RigidBody3D.new()
-	ball.name = "Ball"
-	_setup_free_body(ball)
-	ball.gravity_scale = 0.0
-	ball.collision_layer = 1 << (BALL_LAYER - 1)
-	ball.collision_mask = 0
-	var shape := CollisionShape3D.new()
 	var sphere := SphereShape3D.new()
 	sphere.radius = BALL_RADIUS
-	shape.shape = sphere
-	ball.add_child(shape)
+	ball = _make_driven_body("Ball", sphere, BALL_LAYER)
 	ball.position = Vector3(ANCHOR_X + REST_LENGTH + pull, ROD_Y, 0.0)
 	add_child(ball)
 	_load_model()
-	driver.history_steps = int(graph_x_max() * Engine.physics_ticks_per_second) + 2
+	driver.history_steps = _history_steps()
 	driver.bind(model, ball)
 	driver.reset()
 	props.dress(self, ball, BALL_RADIUS, ANCHOR_X, END_X, ROD_Y, ANCHOR_X + REST_LENGTH)

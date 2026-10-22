@@ -90,6 +90,7 @@ func set_mode(new_mode: String, instant := false) -> void:
 		goal_pitch = clampf(deg_to_rad(view.get("pitch_deg", -10.0)), pitch_range.x, pitch_range.y)
 		goal_distance = clampf(view.get("distance", default_distance), distance_range.x, distance_range.y)
 		pan = Vector3.ZERO
+	_assist_saved = {}   # the new mode wins: end_assist() must not turn the view back to the old one
 	var changed := new_mode != mode
 	mode = new_mode   # before snap(): follow targets depend on the mode
 	if instant:
@@ -144,7 +145,6 @@ func nudge(strength: float) -> void:
 	_shake_v -= NUDGE_SPEED * clampf(strength, 0.0, 1.0)
 
 
-## Mode and view, to rebuild the camera later (App keeps it across a 3D view rebuild).
 ## Manipulation assist (Task 2b, apps/lab3d/README.md "보조 시점"): while an object is dragged the
 ## view must show the surface it moves on. If the current goal view looks at the plane with
 ## `plane_normal` at less than ASSIST_PLANE_DEG, or along `line_axis` (a line the object moves on,
@@ -212,6 +212,7 @@ static func view_direction(yaw: float, pitch: float) -> Vector3:
 	return -Vector3(sin(yaw) * cos(pitch), -sin(pitch), cos(yaw) * cos(pitch))
 
 
+## Mode and view, to rebuild the camera later (App keeps it across a 3D view rebuild).
 func get_state() -> Dictionary:
 	var yaw: float = _assist_saved.get("yaw", goal_yaw)
 	var pitch: float = _assist_saved.get("pitch", goal_pitch)

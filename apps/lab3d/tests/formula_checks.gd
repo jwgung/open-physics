@@ -471,6 +471,7 @@ func check_spring() -> void:
 	world.queue_free()
 	await tree.process_frame
 	await _check_damped_spring(target)
+	await _check_spring_launch(target)
 
 
 ## Damped spring (b = 0.45 kg/s, the web preset): the displayed energies are those of the current
@@ -512,6 +513,39 @@ func _check_damped_spring(target: Dictionary) -> void:
 		"start %.4f J, |K + U - E| %s, |K - m v^2 / 2| %s" % [first.total_energy, String.num_scientific(worst_sum), String.num_scientific(worst_kinetic)])
 	expect.call(worst_rise <= 1e-6 and float(last.total_energy) < 0.5 * start,
 		"force injection (spring, damped): the displayed total energy only falls", "after 5 s %.4f J of %.4f J, max rise %s J" % [last.total_energy, start, String.num_scientific(worst_rise)])
+	world.queue_free()
+	await tree.process_frame
+
+
+## Undamped spring launched at 2 m/s from its rest length: the displayed total is the release state's
+## K + U = m v0^2 / 2 (the extension is 0 there), not k A^2 / 2 of the release extension alone, and
+## the engine energy stays at it (K = E - U is clamped at 0, so K + U exceeds E by the measured x overshoot only).
+func _check_spring_launch(target: Dictionary) -> void:
+	var world := _world()
+	var ball := _body(world, target.mass, Vector3(1.0, 5.0, 0.0), 0.2)
+	ball.gravity_scale = 0.0
+	ball.collision_layer = 0
+	ball.collision_mask = 0
+	ball.linear_velocity = Vector3(2.0, 0.0, 0.0)
+	var spring := SpringInjector.new()
+	spring.anchor = Vector3(0.0, 5.0, 0.0)
+	spring.rest_length = 1.0
+	spring.stiffness = target.stiffness
+	spring.reset(ball)
+	ball.corrector = spring
+	var expected := PhysicsLaws.kinetic_energy(target.mass, 2.0)
+	var first := spring.formula_values()
+	var worst_engine := 0.0
+	var worst_sum := 0.0
+	for i in 3 * STEP_HZ:
+		await tree.physics_frame
+		if i > 0:
+			worst_engine = maxf(worst_engine, _rel(spring.engine_energy(ball), expected))
+		var shown := spring.formula_values()
+		worst_sum = maxf(worst_sum, absf(float(shown.kinetic_energy) + float(shown.spring_energy) - expected))
+	expect.call(float(first.total_energy) == expected and float(first.kinetic_energy) == expected and worst_sum <= 5e-3 * expected and worst_engine <= 5e-3,
+		"force injection (spring): launched from rest length at 2 m/s, total = m v0^2 / 2 of the release state",
+		"total %.4f J (want %.4f), |K + U - E| %s, engine max rel dev %s" % [first.total_energy, expected, String.num_scientific(worst_sum), String.num_scientific(worst_engine)])
 	world.queue_free()
 	await tree.process_frame
 

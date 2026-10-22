@@ -2,8 +2,9 @@
 ## step. The sample is the extension x (m). Displayed energies use the TS definitions (web
 ## physics-playground: kinetic m v^2 / 2, spring k x^2 / 2 about the rest length; gravity's m g h is
 ## a separate panel value):
-## - no damping and no engine gravity (energy conserved): total E = k A^2 / 2 for the release
-##   amplitude A, spring energy from the measured x, kinetic = the rest;
+## - no damping and no engine gravity (energy conserved): total E = k A^2 / 2 + m v0^2 / 2 of the
+##   release state (extension A, speed v0; the TS K + U at release), spring energy from the measured
+##   x, kinetic = the rest;
 ## - otherwise (damping, or a hanging spring under gravity): energies of the current state, kinetic
 ##   from the step-synchronised speed of the sample and total = kinetic + spring.
 ## The damping term uses the engine's linear_velocity, which is v_(k-1/2), half a step behind the
@@ -18,6 +19,7 @@ var rest_length := 1.0
 var stiffness := 5.0
 var damping := 0.0
 var amplitude := 0.0   # extension at release
+var release_energy := 0.0   # K + U of the release state (J)
 var _speed := 0.0      # step-synchronised speed (m/s) of the last sample
 
 
@@ -26,6 +28,7 @@ func reset(body: RigidBody3D) -> void:
 	amplitude = extension(body)
 	last_sample = amplitude   # state before the first step (not recorded)
 	_speed = body.linear_velocity.length()
+	release_energy = PhysicsLaws.harmonic_energy(stiffness, amplitude) + PhysicsLaws.kinetic_energy(mass, _speed)
 
 
 func extension(body: RigidBody3D) -> float:
@@ -54,7 +57,7 @@ func formula_values() -> Dictionary:
 	var total: float
 	var kinetic: float
 	if damping == 0.0 and engine_gravity == Vector3.ZERO:
-		total = PhysicsLaws.harmonic_energy(stiffness, amplitude)
+		total = release_energy
 		kinetic = maxf(0.0, total - spring)
 	else:
 		kinetic = PhysicsLaws.kinetic_energy(mass, _speed)

@@ -25,7 +25,7 @@ Notion Story·Task와 GitHub Issue는 발행하지 않는다. 이 문서가 Phas
 | 2b | 3D 앱 셸 조작 | 조작 평면(바닥·면 위 드래그), 스냅, 자동 안착, 보조 시점, 높이 손잡이 | 2a | 완료 | `feat/manipulation-plane`, [#7](https://github.com/jwgung/open-physics/pull/7) |
 | 2c | 아트 디렉션·연출 | 장난감·로우폴리 스타일(시안 중 B 잔디 섬으로 확정: 선명한 원색, 각진 로우폴리, 구운 조명·발밑 그림자, 통통 튀는 연출)을 정하고 빗면 실험에 적용한다. SM-P200 low 60 fps 유지. 이후 실험은 이 스타일로 만든다 | 2a | 완료 | `feat/art-direction`, [#6](https://github.com/jwgung/open-physics/pull/6) |
 | 3 | 공식 보정 계층과 parity 파이프라인 | 일반 접촉에 쓸 보정 설계(Jolt 접촉 콜백 범위 조사 포함), TS↔GDScript 벡터 테스트, CI(Node + Godot 헤드리스) | 1 | 완료 | `feat/formula-correction-layer`, [#8](https://github.com/jwgung/open-physics/pull/8) |
-| 4 | 역학 안내형 10개 3D 이식 | 실험별로 나눠 진행한다. 실험 콘텐츠는 JSON으로 빼서 웹 2D와 공유한다. 빗면 마찰은 2a에서 먼저 옮긴다 | 2a, 2b, 2c, 3 | 진행 중 (4a 완료, 4b 진행) | 4a [#9](https://github.com/jwgung/open-physics/pull/9), 4b `feat/labs-contact-push` |
+| 4 | 역학 안내형 10개 3D 이식 | 실험별로 나눠 진행한다. 실험 콘텐츠는 JSON으로 빼서 웹 2D와 공유한다. 빗면 마찰은 2a에서 먼저 옮긴다 | 2a, 2b, 2c, 3 | 진행 중 (4a 완료, 4b 구현 완료·SM-P200 실측 대기) | 4a [#9](https://github.com/jwgung/open-physics/pull/9), 4b `feat/labs-contact-push` |
 | 5 | 역학 빈 실험실 3D | 고정 블록·줄·용수철·지렛대·도르래·힘·중력원·물 | 2a, 2b, 2c, 3 | 대기 | |
 | 6 | 출시 준비 | 서명, 스토어 자료, 개인정보처리방침(수집 없음), Kids/Families 정책, 모바일 CI, iOS 실기기 확인 | 4, 5 | 대기 | |
 
@@ -203,3 +203,4 @@ Notion Story·Task와 GitHub Issue는 발행하지 않는다. 이 문서가 Phas
   - 판정: 헤드리스 표시값 = TS(1e-9), 위치 ≤ 1e-4 m, 질량 무관, 착지 ±2스텝, 사거리·최고점, 실제 입력 경로 조작, 돌연변이 9종 실패 확인. SM-P200 low 끄기 재생 90초 × 3회 자유 낙하 59.7 fps, 던지기 59.8 fps. `build.sh test`·`npm test`(449)·`build`·`test:spikes`·스파이크 테스트 통과.
   - 사용자 판단 필요: 웹 조건 중 캔버스 크기 의존 출발 높이(웹 약 7.8 m)를 3D에서는 0.5–8 m 조건(기본 5 m)으로, 던지기 각도·빠르기를 슬라이더(15°, 0.5 m/s)와 화살표 손잡이 둘 다로 둔 것. 그래프 가로축 3초 고정(달의 긴 비행은 앞부분만).
 - 2026-10-22: Task 4a PR #9 머지(코드 리뷰 2회 반영 — 착지 판정을 공식 소유로). 낙하 높이 기본 5 m(0.5–8 m)·발사 높이 0.5 m·공 크기 유지(사용자 확인). 4b 접촉 힘(마찰 밀기) 착수.
+- 2026-10-22: Task 4b 마찰 밀기 구현·헤드리스 검증 완료(검토 대기). SM-P200이 연결돼 있지 않아 실기기 측정(low 90초 × 3, 스크린샷·화면 기록)은 하지 못했다. 실험 설명은 [앱 README "실험 목록"](../../apps/lab3d/README.md#실험-목록), 보정은 [공식 보정 4절 Task 4b](../../apps/lab3d/docs/formula-correction.md#실험-구현-task-4b-마찰-밀기).

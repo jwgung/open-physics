@@ -279,7 +279,9 @@ func _process(delta: float) -> void:
 	var side := _normal.cross(Vector3.FORWARD)
 	if side.length_squared() < 0.01:
 		side = _normal.cross(Vector3.RIGHT)
-	var offset := u * (_half_extent(_normal) * (sy - 1.0) + _lift) + body.global_basis.inverse() * side.normalized() * _wobble
+	# The bottom stays on the surface: the mesh is moved along `u` by how far the whole transform
+	# (also the bump's widening across the surface) pushed its lowest point below the unscaled one.
+	var offset := u * (_support(m, u) - _support(Basis.IDENTITY, u) + _lift) + body.global_basis.inverse() * side.normalized() * _wobble
 	mesh.transform = Transform3D(m, offset)
 
 
@@ -289,6 +291,15 @@ func _half_extent(dir: Vector3) -> float:
 		return size * 0.5
 	var l := body.global_basis.inverse() * dir
 	return size * 0.5 * (absf(l.x) + absf(l.y) + absf(l.z))
+
+
+## How far the body mesh (a cube of `size` or a sphere) transformed by `m` reaches along the local
+## direction `u`: the support function of the transformed shape.
+func _support(m: Basis, u: Vector3) -> float:
+	var v := m.transposed() * u
+	if round_body:
+		return size * 0.5 * v.length()
+	return size * 0.5 * (absf(v.x) + absf(v.y) + absf(v.z))
 
 
 ## Blob shadow straight below the body, on whatever is there; smaller and lighter when high.

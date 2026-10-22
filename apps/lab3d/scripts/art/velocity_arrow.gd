@@ -12,9 +12,10 @@ const MIN_LENGTH := 0.3       # shorter arrows are drawn at this length (the hea
 
 var color := ArtPalette.PURPLE
 var top_color := ArtPalette.PURPLE_TOP
-## Length and colours the mesh was built for.
+## Length and colours (side and top) the mesh was built for.
 var _built_length := -1.0
 var _built_color := Color.TRANSPARENT
+var _built_top := Color.TRANSPARENT
 
 
 func _init(arrow_color := ArtPalette.PURPLE, arrow_top := ArtPalette.PURPLE_TOP) -> void:
@@ -30,14 +31,15 @@ func point(origin: Vector3, angle_deg: float, length: float) -> void:
 	position = origin
 	rotation = Vector3(0.0, 0.0, deg_to_rad(angle_deg))
 	var l := maxf(length, MIN_LENGTH)
-	if l == _built_length and color == _built_color:
+	if l == _built_length and color == _built_color and top_color == _built_top:
 		return
 	_built_length = l
 	_built_color = color
+	_built_top = top_color
 	mesh = arrow_mesh(l, color, top_color)
 
 
-## Colours for the next point() (rebuilds the mesh only when they differ from the built ones).
+## Colours for the next point() (rebuilds the mesh only when they differ from the built ones, the top too).
 func set_colors(arrow_color: Color, arrow_top: Color) -> void:
 	color = arrow_color
 	top_color = arrow_top

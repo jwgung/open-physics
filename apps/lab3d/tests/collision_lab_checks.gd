@@ -506,4 +506,28 @@ func check_review() -> void:
 		"collision: past the history window (29 s run) the engine balls and their step velocity / momentum still equal the formula",
 		"steps %d, moving after 620: %d, |dx| %s, |dp| %s, step v %s" % [lab.model.steps, moving_late, String.num_scientific(worst_x),
 			String.num_scientific(worst_p), String.num_scientific(lab.driver.worst_velocity)])
+	# Squash: the widening across a bump never sinks the ball into the rail.
+	var juice: ArtJuice = lab.props.juice_b
+	lab.release()
+	juice.bump(Vector3.RIGHT, 1.0)
+	var lowest := INF
+	var widest := 0.0
+	for k in 40:
+		await tree.process_frame
+		var xf: Transform3D = juice.mesh.transform
+		var reach: float = lab.RADIUS_B * (xf.basis.transposed() * Vector3.UP).length()
+		lowest = minf(lowest, xf.origin.y - reach)
+		widest = maxf(widest, xf.basis.get_scale().y)
+	expect.call(widest > 1.05 and lowest >= -lab.RADIUS_B - 1e-5,
+		"collision: at the strongest bump the ball's underside stays on the rail (bump widening kept off the surface)", "lowest %.5f (surface %.5f), widest y %.3f" % [lowest, -lab.RADIUS_B, widest])
+	# Arrow mesh cache: another top colour with the same colour rebuilds the mesh.
+	var arrow := VelocityArrow.new()
+	arrow.point(Vector3.ZERO, 0.0, 1.0)
+	var built := arrow.mesh
+	arrow.point(Vector3.ZERO, 0.0, 1.0)
+	var kept: bool = arrow.mesh == built
+	arrow.set_colors(arrow.color, ArtPalette.RED_TOP)
+	arrow.point(Vector3.ZERO, 0.0, 1.0)
+	expect.call(kept and arrow.mesh != built, "arrow: the mesh cache keeps the mesh for the same length and colours and rebuilds it when only the top colour changes", "")
+	arrow.free()
 	await _free(lab)

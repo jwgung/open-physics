@@ -230,6 +230,31 @@ static func harmonic_velocity(amplitude: float, omega: float, time: float, phase
 static func harmonic_energy(stiffness: float, amplitude: float) -> float:
 	return 0.5 * stiffness * (amplitude * amplitude)
 
+## Spring lab (Task 4d): the motion AnchoredSpringLaw gives a body released from rest at extension
+## x0 along the spring (m x'' = -k x - b x'), the exact solution of that law for the underdamped
+## case (gamma = b / 2m < omega0 = sqrt(k / m), the lab's every condition):
+## x(t) = e^(-gamma t) (x0 cos(wd t) + gamma x0 / wd sin(wd t)), wd = sqrt(omega0^2 - gamma^2).
+## The TS core has it only for gamma = 0 (oscillation.ts harmonicDisplacement / harmonicVelocity,
+## used then); the vectors check both against an integration of the TS law
+## (tools/spring-lab-vectors.test.ts).
+static func spring_release_displacement(x0: float, omega0: float, gamma: float, t: float) -> float:
+	if gamma == 0.0:
+		return harmonic_displacement(x0, omega0, t, 0.0)
+	var wd := damped_angular_frequency(omega0, gamma)
+	return exp(-gamma * t) * (x0 * cos(wd * t) + gamma * x0 / wd * sin(wd * t))
+
+## Velocity of spring_release_displacement: v(t) = -e^(-gamma t) x0 omega0^2 / wd sin(wd t).
+static func spring_release_velocity(x0: float, omega0: float, gamma: float, t: float) -> float:
+	if gamma == 0.0:
+		return harmonic_velocity(x0, omega0, t, 0.0)
+	var wd := damped_angular_frequency(omega0, gamma)
+	return -exp(-gamma * t) * x0 * omega0 * omega0 / wd * sin(wd * t)
+
+## Angular frequency of the damped oscillation: wd = sqrt(omega0^2 - gamma^2) (underdamped only).
+static func damped_angular_frequency(omega0: float, gamma: float) -> float:
+	assert(gamma >= 0.0 and gamma < omega0)
+	return sqrt(omega0 * omega0 - gamma * gamma)
+
 # --- lever (mechanics-challenges.ts LeverChallenge, rotation.ts) ---------------------------------
 
 ## LeverChallenge.requiredForce: F = m g r_load / r_effort
@@ -299,6 +324,22 @@ static func point_gravity_acceleration(central_mass: float, distance: float, gra
 		return 0.0
 	return gravitational_constant * central_mass / (distance * distance)
 
+## fields.ts PointGravityField.forceAt with core.ts accelerationFromForce (a = F / m): the acceleration
+## [ax, ay] of a body of `mass` towards a source (G = 1, source mass mu) at (dx, dy) = source -
+## position; the same operations in the same order as the TS (orbit lab, Task 4d). Written into
+## `out` (size 2): it runs every substep, so it allocates nothing.
+static func point_gravity_field_acceleration(mu: float, mass: float, dx: float, dy: float, out: PackedFloat64Array) -> void:
+	var distance_squared := dx * dx + dy * dy
+	if distance_squared == 0.0:
+		out[0] = 0.0
+		out[1] = 0.0
+		return
+	var distance := sqrt(distance_squared)
+	var magnitude := 1.0 * mu * mass / distance_squared
+	var inverse_mass := 1.0 / mass
+	out[0] = magnitude * dx / distance * inverse_mass
+	out[1] = magnitude * dy / distance * inverse_mass
+
 ## OrbitChallenge.analyze: predicted outcome of a launch around a centre with GM = mu.
 ## Returns {outcome: "crash"|"orbit"|"escape", speed, circular_speed, escape_speed,
 ## path: PackedFloat64Array [x0, y0, x1, y1, ...]} (same integration as the TS predictor).
@@ -347,6 +388,10 @@ static func _orbit_result(outcome: String, path: PackedFloat64Array, radius: flo
 	}
 
 # --- buoyancy (fluid.ts, world-mechanics.ts BuoyancyRegionLaw) ------------------------------------
+
+## mechanics.ts density: rho = m / V
+static func density(mass: float, volume: float) -> float:
+	return mass / volume
 
 ## fluid.ts buoyantForce: F_b = rho g V
 static func buoyant_force(fluid_density: float, g: float, displaced_volume: float) -> float:

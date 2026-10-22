@@ -58,3 +58,34 @@ export function tsApexTime(v0: number, a: number): number {
   return bisect(v, 0, hi);
 }
 
+
+/**
+ * Deep comparison of generated vectors with the committed JSON: same shape and strings, numbers
+ * equal within `tolerance` (relative, absolute near zero). Long trigonometric runs (the orbit's
+ * atan2 sweep) differ in the last bits between Node/V8 versions, so they cannot be compared exactly.
+ */
+export function vectorMismatch(a: unknown, b: unknown, tolerance = 1e-12, path = "$"): string | null {
+  if (typeof a === "number" && typeof b === "number") {
+    const scale = Math.max(1, Math.abs(a), Math.abs(b));
+    return Math.abs(a - b) <= tolerance * scale ? null : `${path}: ${a} vs ${b}`;
+  }
+  if (Array.isArray(a) && Array.isArray(b)) {
+    if (a.length !== b.length) return `${path}: length ${a.length} vs ${b.length}`;
+    for (let i = 0; i < a.length; i++) {
+      const m = vectorMismatch(a[i], b[i], tolerance, `${path}[${i}]`);
+      if (m) return m;
+    }
+    return null;
+  }
+  if (a && b && typeof a === "object" && typeof b === "object") {
+    const ka = Object.keys(a).sort();
+    const kb = Object.keys(b).sort();
+    if (ka.join() !== kb.join()) return `${path}: keys ${ka.join()} vs ${kb.join()}`;
+    for (const k of ka) {
+      const m = vectorMismatch((a as Record<string, unknown>)[k], (b as Record<string, unknown>)[k], tolerance, `${path}.${k}`);
+      if (m) return m;
+    }
+    return null;
+  }
+  return a === b ? null : `${path}: ${String(a)} vs ${String(b)}`;
+}

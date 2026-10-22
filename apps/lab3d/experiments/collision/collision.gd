@@ -10,7 +10,7 @@
 ## 2 px/s, wall bounces with the ball's e), stepped in 64 bit. CollisionRailDriver poses the engine
 ## balls on it every step (method "kinematic_model"), so the panel has no engine measurement: the
 ## balls stand where the formula puts them. See docs/formula-correction.md (Task 4c).
-extends Experiment
+extends ModelDrivenLab
 
 const RADIUS_A := 0.4
 const RADIUS_B := 0.5
@@ -26,15 +26,12 @@ const ARROW_STEP := 0.5                 # m/s grid of the knob (the web arrow ha
 const SPEED_MAX := 9.0                  # m/s (the web arrow: 96 px / 0.22 = 9.09 m/s)
 const BALL_LAYER := 3                   # pickable; the balls touch nothing in the engine (mask 0)
 const KNOB_LAYER := 2
-const GRAPH_EVERY_STEPS := 6            # 10 Hz graph samples
 const HIT_CLOSING_MAX := 8.0            # m/s closing speed that gives the full hit strength
 const HIT_STRENGTH_MIN := 0.25          # weakest hit reaction
 const HIT_CLOSING_MIN := 0.3            # m/s: a contact that closes more slowly than this gets no reaction
 const IMPACT_STEPS := 30                # "충돌!" is shown this many steps after a hit (the web's 0.4 s flash)
 
 var model := CollisionModel.new()
-var driver := CollisionRailDriver.new()
-var props := CollisionProps.new()
 var ball_a: RigidBody3D
 var ball_b: RigidBody3D
 var knob_a: StaticBody3D
@@ -50,47 +47,15 @@ var start_a := START_A
 var start_b := START_B
 ## Test-only restitutions (>= 0 replaces the materials' e: the ideal elastic e = 1 of the checks).
 var restitution_override := Vector2(-1.0, -1.0)
-## True from the release until the next reset.
-var released := false
-## A finger holds a ball or a knob (the run waits).
-var holding := ""
-## Reactions shown (hits at or above HIT_CLOSING_MIN) since the screen opened, and run resets (tests).
+## Reactions shown (hits at or above HIT_CLOSING_MIN) since the screen opened (tests).
 var hit_reactions := 0
-var reset_count := 0
-var _placed := false
-var _batch := 0                          # begin_batch() depth: changes only mark the run for a restart
-var _batch_dirty := false
 var _floor: StaticBody3D
-var _graph: Array[Vector3] = []          # (t, pA, pB)
-var _graph_revision := 0
 var _shown := Vector4.INF                # (ball A x, ball B x, knob A x, knob B x) the arrows were placed for
 
 
-func _ready() -> void:
-	_build_world()
-	begin_batch()   # the six defaults restart the run once, not six times (six pops)
-	for control in definition.get("controls", []):
-		set_control(control.id, control.default)
-	end_batch()
-
-
-func begin_batch() -> void:
-	_batch += 1
-
-
-func end_batch() -> void:
-	_batch = maxi(0, _batch - 1)
-	if _batch == 0 and _batch_dirty:
-		_batch_dirty = false
-		reset_run()
-
-
-## The conditions changed: the run starts over (once, when a batch is open).
-func _restart() -> void:
-	if _batch > 0:
-		_batch_dirty = true
-	else:
-		reset_run()
+func _init() -> void:
+	driver = CollisionRailDriver.new()
+	props = CollisionProps.new()
 
 
 func set_control(id: String, value: Variant) -> void:
@@ -160,32 +125,16 @@ func _load_model() -> void:
 func reset_run() -> void:
 	if ball_a == null:
 		return
-	reset_count += 1
-	released = false
-	_load_model()
-	driver.reset()
-	_graph.clear()
-	_graph_revision += 1
+	_clear_run()
 	_shown = Vector4.INF
 	props.reset()
 	_show_arrows()
 	_update_status(true)
 
 
-## Starts the run (a finished or running one starts again from the starts).
-func release() -> void:
-	if released:
-		reset_run()
-	else:
-		# The conditions (and a test's restitution_override) may have changed since the last reset.
-		_load_model()
-		driver.reset()
-	released = true
-	_graph.clear()
-	_graph.append(Vector3(0.0, model.momentum_a(), model.momentum_b()))
-	_graph_revision += 1
-	props.released()
-	_update_status(true)
+## (t, pA, pB).
+func _graph_point() -> Vector3:
+	return Vector3(_clock(), model.momentum_a(), model.momentum_b())
 
 
 func _physics_process(_delta: float) -> void:
@@ -195,9 +144,8 @@ func _physics_process(_delta: float) -> void:
 	driver.step(1.0 / float(Engine.physics_ticks_per_second))
 	if model.collisions != collisions:
 		_hit()
-	if model.steps % GRAPH_EVERY_STEPS == 0 and _clock() <= graph_x_max() + 1e-6:
-		_graph.append(Vector3(_clock(), model.momentum_a(), model.momentum_b()))
-		_graph_revision += 1
+	if _graph_due(model.steps, _clock()):
+		_add_graph_point()
 	if status() != _last_status:
 		_update_status()
 
@@ -282,14 +230,6 @@ func graph_series() -> Dictionary:
 	return {"momentum_a": pa, "momentum_b": pb}
 
 
-func graph_revision() -> int:
-	return _graph_revision
-
-
-func graph_x_max() -> float:
-	return float(definition.get("graph", {}).get("x", {}).get("max", 10.0))
-
-
 func follow_point() -> Vector3:
 	if ball_a == null:
 		return global_position
@@ -353,7 +293,7 @@ func _build_world() -> void:
 	knob_a = _make_knob("KnobA", KNOB_LAYER, KNOB_SIZE)
 	knob_b = _make_knob("KnobB", KNOB_LAYER, KNOB_SIZE)
 	_load_model()
-	driver.history_steps = int(graph_x_max() * Engine.physics_ticks_per_second) + 2
+	driver.history_steps = _history_steps()
 	driver.attach(model, ball_a, ball_b)
 	driver.reset()
 	props.dress(self, ball_a, RADIUS_A, ball_b, RADIUS_B, knob_a, knob_b, WALL)
@@ -361,18 +301,10 @@ func _build_world() -> void:
 
 ## A ball on the rail: a sphere the manipulator can pick (its own layer) that touches nothing.
 func _make_ball(ball_name: String, radius: float, x: float) -> RigidBody3D:
-	var ball := RigidBody3D.new()
-	ball.name = ball_name
-	_setup_free_body(ball)
-	ball.gravity_scale = 0.0
-	ball.collision_layer = 1 << (BALL_LAYER - 1)
-	ball.collision_mask = 0
-	ball.physics_material_override = _frictionless_material()
-	var shape := CollisionShape3D.new()
 	var sphere := SphereShape3D.new()
 	sphere.radius = radius
-	shape.shape = sphere
-	ball.add_child(shape)
+	var ball := _make_driven_body(ball_name, sphere, BALL_LAYER)
+	ball.physics_material_override = _frictionless_material()
 	ball.position = Vector3(x, radius, 0.0)
 	add_child(ball)
 	return ball
@@ -444,14 +376,7 @@ func manipulation_placed(id: String, transform: Transform3D) -> void:
 	_restart()
 
 
-func manipulation_cancelled(_id: String) -> void:
-	holding = ""
-	reset_run()
-
-
 ## The start positions once a ball was moved (kept across a screen rebuild; the velocities are
 ## controls and come back with them).
-func placements() -> Dictionary:
-	if not _placed:
-		return {}
+func _placement_transforms() -> Dictionary:
 	return {"ball_a": Transform3D(Basis(), Vector3(start_a, RADIUS_A, 0.0)), "ball_b": Transform3D(Basis(), Vector3(start_b, RADIUS_B, 0.0))}

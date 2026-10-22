@@ -32,6 +32,10 @@ const BLUE_DARK := Color("1f62d6")
 const WHITE := Color("ffffff")
 const PURPLE := Color("7a5cf0")       # velocity arrow (the web's purple arrow: projectile)
 const PURPLE_TOP := Color("9479ff")
+const WATER := Color("39a6f0")        # water of the buoyancy tank (walls and floor below the waterline)
+const WATER_TOP := Color("8fd3ff")    # the water surface (waterline strips, the ring around a floating body)
+const SPACE := Color("27357a")        # the orbit lab's space stage (deep blue, never black)
+const SPACE_TOP := Color("2f3f8f")
 
 # Lighting (art_lit.gdshader) and contact
 const LIGHT := Color("ffffff")        # lit side multiplier

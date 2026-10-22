@@ -1,0 +1,67 @@
+{
+  "id": "spring",
+  "version": 1,
+  "content": "spring",
+  "scene": "res://experiments/spring/spring.gd",
+  "bench_id": "SP",
+  "camera": {
+    "target": [-0.4, 0.9, 0.0],
+    "distance": 9.0,
+    "distance_range": [3.0, 22.0],
+    "yaw_range_deg": [-100.0, 100.0],
+    "pitch_range_deg": [-89.0, -2.0],
+    "pan_radius": 6.0,
+    "default_mode": "three_quarter",
+    "views": {
+      "front": { "yaw_deg": 0.0, "pitch_deg": -8.0, "distance": 11.0 },
+      "three_quarter": { "yaw_deg": 26.0, "pitch_deg": -24.0 },
+      "top": { "yaw_deg": 0.0, "pitch_deg": -89.0, "distance": 13.0 },
+      "side": { "yaw_deg": 90.0, "pitch_deg": -12.0, "distance": 11.0 },
+      "follow": { "yaw_deg": 20.0, "pitch_deg": -16.0, "distance": 5.5 }
+    }
+  },
+  "controls": [
+    {
+      "id": "mass", "type": "slider", "label": "공 질량", "unit": " kg",
+      "min": 0.5, "max": 5.0, "step": 0.5, "default": 1.0, "digits": 1
+    },
+    {
+      "id": "damping", "type": "choice", "label": "감쇠", "default": "none",
+      "note": "용수철 상수 k = 5 N/m예요. 감쇠가 있으면 에너지가 조금씩 줄어요.",
+      "options": [
+        { "id": "none", "label": "없음", "b": 0.0, "note": "마찰·공기 저항 없음: K + U가 그대로예요" },
+        { "id": "web", "label": "조금", "b": 0.45, "note": "감쇠 b = 0.45 N·s/m (웹과 같아요)" }
+      ]
+    }
+  ],
+  "actions": [
+    { "id": "release", "label": "놓기", "style": "primary" },
+    { "id": "reset", "label": "처음으로" }
+  ],
+  "observations": [
+    { "id": "state", "label": "상태" },
+    { "id": "extension", "label": "늘어난 길이 x (+ 늘어남, − 눌림)", "unit": "m", "digits": 2 },
+    { "id": "speed", "label": "속력", "unit": "m/s", "digits": 2 },
+    { "id": "force", "label": "복원력 F = −kx (오른쪽 +)", "unit": "N", "digits": 2 },
+    { "id": "acceleration", "label": "가속도 a = F/m", "unit": "m/s²", "digits": 2 },
+    { "id": "kinetic", "label": "운동 에너지 K = ½mv²", "unit": "J", "digits": 2 },
+    { "id": "spring", "label": "탄성 에너지 U = ½kx²", "unit": "J", "digits": 2 },
+    { "id": "total", "label": "역학적 에너지 K + U", "unit": "J", "digits": 2 },
+    { "id": "natural_period", "label": "고유 주기 T₀ = 2π√(m/k) (감쇠 없을 때)", "unit": "s", "digits": 2 },
+    { "id": "period", "label": "실제 왕복 주기 T = 2π/ω_d (감쇠 없으면 T₀)", "unit": "s", "digits": 2 }
+  ],
+  "manipulation": {
+    "objects": [
+      { "id": "ball", "surface": "rod", "snap": 0.1, "height": false }
+    ]
+  },
+  "graph": {
+    "title": "에너지가 바뀌는 모습",
+    "x": { "label": "시간 t", "unit": "s", "max": 10.0 },
+    "y": { "label": "에너지 비율", "unit": "%", "max": 100.0 },
+    "series": [
+      { "id": "kinetic", "label": "움직임 (운동 에너지)", "color": "#2d7cf6", "style": "line" },
+      { "id": "spring", "label": "용수철 (탄성 에너지)", "color": "#7a5cf0", "style": "line" }
+    ]
+  }
+}

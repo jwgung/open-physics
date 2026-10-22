@@ -63,8 +63,8 @@
 | 접촉 힘 보정 (`contact_force`) | `ContactFrictionCorrector`(빗면: `InclineFrictionCorrector`, `incline`은 `surface`의 다른 이름) | 엔진 마찰 0, 공식 마찰력(정지·운동, 법칙 `surface`·`push`)과 학습자가 주는 힘을 접선 방향으로 주입, 도약 출발 |
 | 균일장 출발 보정 (`uniform_field`) | `UniformFieldCorrector` | 엔진 중력으로 적분, 첫 스텝 −mg/2(도약 출발). 표시 공식은 놓을 때의 엔진 장(크기·방향). 출발 면이 아닌 첫 접촉까지 자유 비행 기록 |
 | 충돌 결과 보정 (`collision`) | `CollisionCorrector` | 엔진이 바디 재질 그대로 접촉을 감지·해결. A–B 접촉 보고가 시작된 스텝 직전 속도를 접촉이 끝날 때까지 보관하고, 끝나면 속도 = 보관 속도 + 접촉 스텝의 외력 Δv(마지막 비접촉 스텝의 실제 속도 변화) + 법선 방향 `world_collision_velocities` 결과(엔진 법선·마찰 충격량만 버림). 제3 바디 동시 접촉·지속 접촉은 엔진 결과 |
-| 공식 힘 주입 (`force_injection`) | `ForceInjectionCorrector` → `SpringInjector`, `BuoyancyInjector`, `PointGravityInjector` | 엔진에 없는(또는 다른) 힘을 매 스텝 공식으로 계산해 주입, 도약 출발 |
-| 해석 모델 구동 (`kinematic_model`) | `KinematicModelCorrector` → `PendulumModelDriver`, `LeverModelDriver`, `PulleyModelDriver`; 충돌 실험의 `CollisionRailDriver`(두 공, Task 4c) | TS 모델을 고정 스텝으로 진행하고 바디를 키네마틱으로 그 자세에 놓음(엔진은 충돌만. 충돌 실험은 두 공끼리의 접촉도 공식) |
+| 공식 힘 주입 (`force_injection`) | `ForceInjectionCorrector` → `SpringInjector`, `BuoyancyInjector`, `PointGravityInjector` | 엔진에 없는(또는 다른) 힘을 매 스텝 공식으로 계산해 주입, 도약 출발. 대표 장면·빈 실험실(Task 5)용이고 안내형 용수철·부력·궤도는 아래 공식 모델 구동 |
+| 해석 모델 구동 (`kinematic_model`) | `KinematicModelCorrector` → `PendulumModelDriver`, `LeverModelDriver`, `PulleyModelDriver`; 안내형 용수철·부력·궤도의 `BodyModelDriver`(Task 4d); 충돌 실험의 `CollisionRailDriver`(두 공, Task 4c) | TS 모델을 고정 스텝으로 진행하고 바디를 키네마틱으로 그 자세에 놓음(엔진은 충돌만. 충돌 실험은 두 공끼리의 접촉도 공식) |
 
 ## 4. 실험별 보정 방식
 
@@ -75,14 +75,14 @@
 | 자유 낙하 (`free-fall`) | 균일장 출발 보정 | `constantAccelerationDisplacement/Velocity`, `UniformGravity`, `kineticEnergy`, `momentum`, `gravitationalPotentialEnergy` | 높이, 속력, 가속도 g, 운동량, 운동·위치 에너지 | 스텝 위치 = ½gt² (≤ 1e-4 m), 질량 0.5·1·3 kg가 같이 떨어짐(≤ 1e-6 m), 바닥 접촉 시각 = √(2h/g) ±2스텝 | 적분이 symplectic Euler라 도약 출발만으로 정확(보정 끄면 8 cm 오차) |
 | 던지기 (`projectile`) | 균일장 출발 보정 | 위와 같음(축별) | 위치, 속도, 비행 경로(공식 곡선) | (x, y)(t) = x₀ + v₀t + ½at² (≤ 1e-4 m) | 같음. 착지 뒤 튀기는 엔진 접촉 |
 | 충돌 (`collision`) | 충돌 결과 보정(대표 장면). 안내형 실험은 공식 모델 구동(Task 4c, 아래) | `postCollisionVelocity1D(·Second)`, `elasticCollision1D`, world.ts 반발 규칙(`min(eA, eB)`, 1 m/s 미만 e = 0), `momentum` | 충돌 전후 속도, 운동량(합 보존) | 충돌 뒤 속도 = TS world 결과(≤ 1e-4 m/s): 재질 반발 0(두 스텝 해결)·0.88씩(Jolt e = 1), 느린 접근(0.7 m/s, e = 0), 깊은 겹침 출발, 중력 하 공중 충돌(TS `MultiBodyWorld` 80스텝 속도와 네 성분 비교). 운동량 보존(≤ 1e-4). 짝 바디의 바닥 반발 = 보정 없는 쌍둥이(재질 그대로) | Jolt 반발 결합이 합(min(a+b,1))이고 마찰이 있어 TS와 다름. 재질을 바꾸면 바닥·벽까지 바뀌어 결과만 덮어씀 |
-| 용수철 (`spring`) | 공식 힘 주입 | `AnchoredSpringLaw`(F = −kx − bv), `springPotentialEnergy`, `angularFrequency`, `periodFromAngularFrequency`, `harmonicDisplacement/Velocity/Energy`, `kineticEnergy` | 늘어난 길이(측정), 탄성·운동 에너지(TS 정의: 탄성 ½kx², 운동 ½mv². 감쇠·중력이 없으면 전체 = 놓을 때 상태의 ½kA² + ½mv₀², 운동 = 나머지. 있으면 현재 상태의 ½mv²(스텝 동기 속력) + ½kx²), 주기 | 주기 = 2π√(m/k) ±0.1%, 엔진 에너지(스텝 동기 속도) = ½kA² ±0.5%(10초), 감쇠 0.45에서 표시 에너지 = 현재 상태 K + U이고 줄기만 함, 정지 길이에서 2 m/s로 출발하면 전체 = ½mv₀² | 6DOF 스프링은 에너지 비보존(0.118–0.624 J). 주입 + 도약 출발은 3.5e-4 |
+| 용수철 (`spring`) | 공식 힘 주입(대표 장면). 안내형 실험은 공식 모델 구동(Task 4d, 아래) | `AnchoredSpringLaw`(F = −kx − bv), `springPotentialEnergy`, `angularFrequency`, `periodFromAngularFrequency`, `harmonicDisplacement/Velocity/Energy`, `kineticEnergy` | 늘어난 길이(측정), 탄성·운동 에너지(TS 정의: 탄성 ½kx², 운동 ½mv². 감쇠·중력이 없으면 전체 = 놓을 때 상태의 ½kA² + ½mv₀², 운동 = 나머지. 있으면 현재 상태의 ½mv²(스텝 동기 속력) + ½kx²), 고유 주기 T₀ = 2π√(m/k)와 실제 주기 T = 2π/ω_d(웹 TS에는 용수철 주기 표시가 없고 `periodFromAngularFrequency`만 있어, 감쇠 시 TS 모델이 쓰는 ω_d = √(ω₀² − γ²)로 별도 행에 표시. 감쇠 없으면 T = T₀) | 주기 = 2π√(m/k) ±0.1%, 엔진 에너지(스텝 동기 속도) = ½kA² ±0.5%(10초), 감쇠 0.45에서 표시 에너지 = 현재 상태 K + U이고 줄기만 함, 정지 길이에서 2 m/s로 출발하면 전체 = ½mv₀² | 6DOF 스프링은 에너지 비보존(0.118–0.624 J). 주입 + 도약 출발은 3.5e-4 |
 | 마찰 (`friction`) | 접촉 힘 보정 (`push`) | `PushFrictionLaw`(정지·운동, 역주행 방지), `maximumStaticForce` | 미는 힘, 최대 정지 마찰력 μₛmg, 지금 마찰력, 운동 마찰력 μₖmg(`KineticFriction`), 속력, 열에너지(`work`), 상태(버팀/움직임. 정지 임계 0.01 px/s = 0.01/48 m/s) | μₛmg 아래 2초 정지(≤ 1 mm), 위에서 s = ½at², a = (F − μₖmg)/m(상대 ≤ 1e-4) | Jolt 마찰은 계수 하나. 빗면(Task 2a)과 같은 방식 |
 | 빗면 마찰 (Task 2a, 마찰 실험의 3D 첫 사례) | 접촉 힘 보정 (`surface`) | `SurfaceContactFrictionModifier`, 임계각 atan μₛ | 기존 그대로 | 기존 테스트(측정 기준 4절, 재질별 임계각, s = ½at² ±1%) 그대로 통과, 기록 해시 리팩터 전과 같음 | S3 |
 | 지렛대 (`rotation`) | 해석 모델 구동 | `LeverChallenge`(F = m g r_load / r_effort, 역학적 이득, lifting), `torque` | 필요한 힘, 역학적 이득, 양쪽 토크, 들림 여부 | 필요한 힘 미만이면 수평, 이상이면 들림 각 0.18 rad(≤ 1e-5 rad), 표시 힘 = TS | 웹도 운동이 아니라 평형 판정(0 / 0.18 rad). 힌지 동역학은 필요 없음 |
 | 줄·막대 (`constraints`, 진자) | 해석 모델 구동 | `PendulumModel.step`(반암시적 오일러, 감쇠), `pose`, `pendulumPeriod`, `pendulumAngularFrequency` | 각도, 주기 2π√(L/g), 길이 | 추 각도 = TS 모델(≤ 1e-5 rad, 감쇠 0과 TS 기본 감쇠 0.08 둘 다), 길이 = L(≤ 1e-5 m), 주기 ±0.5%(0.1 rad), 추가 다른 바디를 민다 | PinJoint3D는 솔버 감쇠로 진폭이 줄고(30초 −1.3%) 웹 감쇠·각도 곡선을 재현 못 함 |
 | 도르래 (`pulley`) | 해석 모델 구동 | `PulleyAdvantageChallenge`(F = mg/n, d_pull = n d_lift) | 필요한 힘, 줄 수, 들린 높이, 당긴 줄 길이 | 1 m 당기면 1/n 올라감(≤ 1e-5 m), 힘 = TS(1·2·4줄) | 웹도 이상적 도르래 관계만 보여 줌. 줄·바퀴 동역학 없음 |
-| 궤도 (`orbit`) | 공식 힘 주입 | `PointGravity`(a = GM/r²), `circularOrbitSpeed/Period`, `escapeSpeed`, `OrbitChallenge.analyze`(충돌·공전·이탈 예측) | 궤도 반지름, 원 궤도 속력·주기, 탈출 속력, 예측 결과 | 원 궤도 한 바퀴 시간 = 2π√(r³/GM) ±0.1%, 반지름 ±0.1% | Area3D 점 중력 대신 주입: 법칙·G·M을 TS와 같게. 도약 출발 없이는 반지름이 0.7% 흔들림 |
-| 부력 (`buoyancy`) | 공식 힘 주입 | `BuoyancyRegionLaw`(잠긴 비율 선형, 끌림), `buoyantForce`, `floatingSubmergedFraction`, `buoyancyNetForce` | 잠긴 깊이(측정), 부력 ρgV_sub, 무게, 뜨는 비율 ρ물체/ρ유체, 판정 뜸/중성/가라앉음(비율이 1에서 1e-9 이내면 중성) | 상자가 비율 m/m_displaced에 뜸 ±0.5%, 더 무거우면 바닥까지 가라앉음, 같으면 중성(가라앉음 아님) | Jolt에 유체 없음 |
+| 궤도 (`orbit`) | 공식 힘 주입(대표 장면). 안내형 실험은 공식 모델 구동(Task 4d, 아래) | `PointGravity`(a = GM/r²), `circularOrbitSpeed/Period`, `escapeSpeed`, `OrbitChallenge.analyze`(충돌·공전·이탈 예측) | 궤도 반지름, 원 궤도 속력·주기, 탈출 속력, 예측 결과 | 원 궤도 한 바퀴 시간 = 2π√(r³/GM) ±0.1%, 반지름 ±0.1% | Area3D 점 중력 대신 주입: 법칙·G·M을 TS와 같게. 도약 출발 없이는 반지름이 0.7% 흔들림 |
+| 부력 (`buoyancy`) | 공식 힘 주입(대표 장면). 안내형 실험은 공식 모델 구동(Task 4d, 아래) | `BuoyancyRegionLaw`(잠긴 비율 선형, 끌림), `buoyantForce`, `floatingSubmergedFraction`, `buoyancyNetForce` | 잠긴 깊이(측정), 부력 ρgV_sub, 무게, 뜨는 비율 ρ물체/ρ유체, 판정 뜸/중성/가라앉음(비율이 1에서 1e-9 이내면 중성) | 상자가 비율 m/m_displaced에 뜸 ±0.5%, 더 무거우면 바닥까지 가라앉음, 같으면 중성(가라앉음 아님) | Jolt에 유체 없음 |
 
 ### 실험 구현 (Task 4a: 균일장)
 
@@ -116,6 +116,34 @@
 - TS 오라클(`tools/collision-lab-vectors.test.ts` → `tests/collision_lab_vectors.json`): 웹 `PhysicsSimulation`에 원 두 개를 웹 px 단위로 넣고 60 Hz로 진행하며, 프리셋 감쇠·정지·벽 규칙을 웹과 같은 순서로 적용한다(이 상수들은 `physics-playground.ts` 안의 비공개 값이라 테스트가 소스에서 값을 읽어 같은지 확인한다). 7가지 경우의 6스텝마다 위치·속도·운동량, 첫 충돌(스텝, 앞뒤 속도, `coefficientOfRestitution`, 충격량, 운동량·에너지 합), 충돌 횟수를 기록한다.
 - 엔진 기록 `engine_a/b`는 `history_steps`까지만 쌓이므로 직전 스텝 위치는 `last_engine`에 따로 둔다(`FormulaCorrector.last_sample`처럼). 10초를 넘는 실행(웹 시작 약 29초)에서도 엔진 위치·스텝 속도·운동량이 공식과 1e-4 안이다. 충돌 연출 세기는 모델이 기록한 그 스텝의 닫히는 속도(`CollisionModel.last_closing`)로 정한다.
 - 결과: 모델 = TS(상대 7e-15, 첫 충돌 값 1e-15), 패널 = TS(1.6e-15), 운동량 보존(1.8e-15), 같은 질량 e = 1이면 속도 교환. 돌연변이(감쇠 끔, 밀어내기 끔, 충돌 결과 0.1% 변경, 벽 반발 무시, 구동이 한 스텝 늦음, 손잡이 눈금 변경, 엔진 접촉 켬) 모두 해당 검사가 실패했다.
+
+### 실험 구현 (Task 4d: 용수철·부력·궤도)
+
+세 실험(`experiments/{spring,buoyancy,orbit}/`)은 충돌(4c)처럼 사용자 우선순위("물리 공식에 맞게 동작하는 것이 제일 중요")에 따라 표시값과 **화면 속 물체의 움직임**을 TS 공식과 스텝 단위로 맞춘다. 구동은 공용 `BodyModelDriver`(방식 `kinematic_model`): 매 고정 스텝 물리 서버 전에 엔진 바디(얼린 키네마틱 `RigidBody3D`, 충돌 없음)의 위치를 기록하고 공식 모델을 한 스텝 진행해 바디를 모델 위치에 둔다. 그래서 `SpringInjector`·`BuoyancyInjector`·`PointGravityInjector`(대표 장면)는 안내형 실험에 쓰지 않는다. 엔진 바디가 공식 위치에 놓이므로 엔진에서 잰 값은 독립 측정이 아니다: 패널에 "시뮬레이션" 관찰값을 두지 않고 모든 수치가 공식 모델 값이다(엔진 위치는 테스트가 공식과 대조하는 데만 쓴다).
+
+| 실험 | 공식 모델 | 웹과 같은 것 | 웹 적분을 따르지 않은 이유(측정) |
+|---|---|---|---|
+| 용수철 | `SpringModel`: `AnchoredSpringLaw`(k = 5 N/m)의 정확한 해를 t = k dt에서 취함. 감쇠 없으면 TS `harmonicDisplacement/Velocity`, 감쇠(b = 0.45)는 감쇠 진동 해(`PhysicsLaws` 추가, TS 법칙 RK4와 1e-9) | k, b, 질량 | 웹 명시적 오일러는 10초에 에너지 +52% |
+| 부력 | `BuoyancyModel`: `BuoyancyRegionLaw`(잠긴 비율 선형 = 세운 기둥에 정확, 물 저항 1.8/s)와 중력, 반암시적 오일러 4번 나눔(60 Hz), 웹 바닥 규칙(e 0.5, 1 m/s 미만 정지) | 법칙, 물 1000 kg/m³, 바닥 규칙 | 웹 명시적 오일러는 가벼운 통이 10초에 뜰 깊이에서 0.72 m 벗어남 |
+| 궤도 | `OrbitModel`: `PointGravityField`(GM 27 m³/s², 3 m에서 원 궤도 3 m/s)를 속도 Verlet 8번 나눔(60 Hz). 별 표면 + 행성 반지름(1.2 m)에서 충돌, 12 m에서 이탈로 끝. 예측은 `OrbitChallenge` | GM, 시작 조건, 충돌·이탈 규칙, 예측 | 웹 명시적 오일러는 20초에 반지름 3 → 3.83 m로 퍼짐 |
+
+- TS 오라클(`tools/{spring,buoyancy,orbit}-lab-vectors.test.ts` → `tests/*_lab_vectors.json`, 용수철 6·부력 7·궤도 8가지 경우): TS 코어 클래스·함수로 6스텝마다 상태·패널 값을 기록한다. 감시: TS를 바꾸면 vitest가 먼저 깨지고, `UPDATE_{SPRING,BUOYANCY,ORBIT}_VECTORS=1`로 다시 만든 뒤 Godot 쪽 불일치를 본다.
+- 결과(헤드리스, `tests/{spring,buoyancy,orbit}_lab_checks.gd`):
+
+| 항목 | 용수철 | 부력 | 궤도 |
+|---|---|---|---|
+| 모델 = TS (상대 오차) | 1.3e-15 | 3.1e-16 | 3.7e-15(예측·결과 1.7e-13) |
+| 엔진 바디 위치 오차(60초 실행 포함) | 1.2e-7 m | 5.9e-8 m | 4.6e-7 m |
+| 엔진 스텝 속도 오차 | 1.5e-5 m/s | 1.3e-5 m/s | 5.2e-5 m/s |
+| 패널 = TS (상대 오차) | 1.3e-15 | 3.1e-16 | 3.8e-16 |
+| 법칙 확인(엔진 바디에서) | 영점 통과 주기 = 2π√(m/k)(0.5·1·3 kg, 1e-4), 엔진 위치로 잰 에너지 보존 4.6e-4(30초), 감쇠 때만 감소 | 70 kg·100 L이 0.35 m에 떠 부력 = 무게, 같은 밀도면 작은 통도 같은 비율, 150 kg은 바닥, 같은 밀도는 그 자리에 머묾 | 원 궤도 반지름 6.7e-6 m 이내 60초, 주기 = 2π√(r³/GM) 3 m·5 m(1.4e-6), 에너지 보존 1e-4(타원 30초), 탈출 속력 위/아래, 충돌 위치 r = 1.2 m |
+
+  끌어 놓은 뒤 출발(용수철 0.7 m, 부력 0.55 m 아래, 궤도 knob 4.5 m/s·90°와 반지름 4 m)도 공식 곡선과 같다(≤ 2.4e-7 m).
+- 엔진 기록은 `history_steps`까지만 쌓이므로 직전 스텝 위치를 `last_engine`에 따로 둔다(4c와 같음). 엔진 위치는 Godot 단정밀도(float32)라 반올림이 위 오차의 한계다.
+- 공 회전 없음: 용수철 공·부력 통·궤도 행성의 몸체는 돌지 않는다(회전은 메시뿐, 4c와 같음). 부력은 선형 잠김 비율이 정확한 세운 기둥(상자·원기둥)만 쓴다.
+- 구조: 세 실험(과 충돌)의 공통 부분(run 상태·그래프 장부·`release()` 본문·자유 바디 구성)은 `experiments/model_driven/model_driven_lab.gd`(`ModelDrivenLab`), 배치 복원(`begin_batch`/`end_batch`/`_restart`)은 `Experiment`에 있다. 시계는 `BodyModel.dt`/`time()` 하나다. 궤도의 GM·충돌·이탈 반지름·평면 높이는 `OrbitModel`의 상수 한 곳이고, 서브스텝마다 부르는 `PhysicsLaws.point_gravity_field_acceleration`은 `out` 인자에 써서 할당이 없다(수치 불변).
+- 리뷰 반영(4d 검증): 시계 방향 발사의 첫 바퀴 시간은 `|swept| ≥ 2π`로 센다(TS 오라클도 같게 고쳐 벡터의 "clockwise" 경우가 −1 대신 8.69 s). 부력 상태는 밀도 판정이 먼저라 같은 밀도(중성) 통이 바닥에 닿아도 `staying`이고 `sunk`는 더 무거운 통만이다. 돌연변이: `swept >= TAU`로 되돌림(시계 방향 첫 바퀴 검사 실패), 바닥 접촉을 먼저 `sunk`로 봄(중성 바닥 검사 실패) — 모두 실패했다.
+- 그래프 y축: 용수철의 에너지 비율은 고정 0–100 %축(`graph.y.max`, `GraphView.y_top`), 나머지는 데이터에 맞춘 자동 축.
 
 ## 5. 테스트 파이프라인
 

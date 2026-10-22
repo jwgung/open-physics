@@ -4,7 +4,10 @@
     "free-fall.json",
     "projectile.json",
     "collision.json",
+    "spring.json",
     "friction.json",
+    "orbit.json",
+    "buoyancy.json",
     "incline-friction.json"
   ],
   "hidden": [

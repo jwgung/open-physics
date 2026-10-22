@@ -4,6 +4,7 @@
     "free-fall.json",
     "projectile.json",
     "collision.json",
+    "spring.json",
     "friction.json",
     "incline-friction.json"
   ],

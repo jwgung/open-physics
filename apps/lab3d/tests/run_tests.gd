@@ -18,6 +18,9 @@
 ## 8. collision lab (Task 4c, tests/collision_lab_checks.gd): the model and the engine balls step by
 ##    step against the TS-core vectors (tests/collision_lab_vectors.json), panel, restitution per
 ##    material, elastic exchange, art, the first collision of a fresh screen, the input path, the demo.
+## 9. spring lab (Task 4d, tests/spring_lab_checks.gd): the model and the engine ball step by step
+##    against the TS-core vectors (tests/spring_lab_vectors.json), period and energy measured from the
+##    engine ball, panel, art, the first release of a fresh screen, the input path, the demo.
 ## Times are engine fixed steps (60 Hz), independent of rendering FPS.
 extends SceneTree
 
@@ -96,6 +99,11 @@ func _run() -> void:
 	_expect(collision != null and collision.can_instantiate(), "collision lab checks compile", "")
 	if collision != null and collision.can_instantiate():
 		await collision.new(self, _expect).run()
+	print("== spring lab (Task 4d) ==")
+	var spring: GDScript = load("res://tests/spring_lab_checks.gd")
+	_expect(spring != null and spring.can_instantiate(), "spring lab checks compile", "")
+	if spring != null and spring.can_instantiate():
+		await spring.new(self, _expect).run()
 	print("RESULT: %s (%d failure(s))" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
 

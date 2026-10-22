@@ -20,6 +20,9 @@
 ## 7. the real input path: dragging ball A (0.5 m grid on its half) and its arrow knob (0.5 m/s grid,
 ##    preview while held, slider follows), then a run = formula.
 ## 8. the measurement demo (--auto-drag) drags ball A and starts runs that collide.
+## 9. review fixes: signed graph ticks, reactions by the step's closing speed, engine record past the
+##    history window (29 s run), arrows of slow balls, one restart per restored state, squash keeps
+##    the ball on the rail, arrow cache key, knob factory.
 extends RefCounted
 
 const VECTORS_PATH := "res://tests/collision_lab_vectors.json"
@@ -50,6 +53,7 @@ func run() -> void:
 	await check_first_collision_screen()
 	await check_input_path()
 	await check_demo()
+	await check_review()
 
 
 # --- helpers ----------------------------------------------------------------------------------
@@ -463,3 +467,43 @@ func check_demo() -> void:
 	expect.call(runs >= 2 and hits > 0 and lab.start_a != lab.START_A,
 		"collision: the measurement demo (--auto-drag) drags ball A and starts runs that collide", "%d runs" % runs)
 	await _close(screen)
+
+
+# --- 9. review fixes --------------------------------------------------------------------------
+
+func check_review() -> void:
+	# Signed graph: the grid lines are +max, 0, -max and so are the labels; unsigned: max, max/2, 0.
+	var lab: Experiment = await _lab()
+	var graph_spec: Dictionary = lab.definition.graph
+	var top := GraphView.y_top(graph_spec, {"p": PackedVector2Array([Vector2(1.0, -7.3)])})
+	expect.call(graph_spec.y.get("signed", false) and GraphView.y_tick_values(top, true) == [top, 0.0, -top] and top >= 7.3
+		and GraphView.y_tick_values(8.0, false) == [8.0, 4.0, 0.0],
+		"graph: a signed y axis is labelled +max, 0, -max (the grid lines' values); an unsigned one max, max/2, 0", "top %s" % top)
+	# Engine record: a run longer than the history window (the web start runs ~29 s to rest).
+	_setup_lab(lab, _case("web start"))
+	lab.release()
+	var reference := _model_for(_case("web start"))
+	var dt := 1.0 / STEP_HZ
+	var worst_x := 0.0
+	var worst_p := 0.0
+	var worst_hist := 0
+	var moving_late := 0
+	for k in 1750:
+		await tree.physics_frame
+		while reference.steps < lab.model.steps:
+			var previous := [reference.xa, reference.xb]
+			reference.step(dt)
+			if reference.steps == lab.model.steps and reference.steps > 1:
+				worst_x = maxf(worst_x, maxf(absf(lab.ball_a.global_position.x - reference.xa), absf(lab.ball_b.global_position.x - reference.xb)))
+				# The engine step momentum = the reference displacement of the step over dt.
+				var want: float = lab.model.mass_a * (reference.xa - previous[0]) / dt + lab.model.mass_b * (reference.xb - previous[1]) / dt
+				worst_p = maxf(worst_p, absf(float(lab.driver.engine_values().momentum) - want))
+				if reference.steps > 620 and not reference.at_rest():
+					moving_late += 1
+	worst_hist = lab.driver.engine_a.size()
+	expect.call(lab.model.steps >= 1750 and moving_late > 100 and worst_x <= ENGINE_TOLERANCE and worst_p <= ENGINE_TOLERANCE * 3.0
+		and lab.driver.worst_position <= ENGINE_TOLERANCE and lab.driver.worst_velocity <= ENGINE_TOLERANCE and worst_hist == lab.driver.history_steps,
+		"collision: past the history window (29 s run) the engine balls and their step velocity / momentum still equal the formula",
+		"steps %d, moving after 620: %d, |dx| %s, |dp| %s, step v %s" % [lab.model.steps, moving_late, String.num_scientific(worst_x),
+			String.num_scientific(worst_p), String.num_scientific(lab.driver.worst_velocity)])
+	await _free(lab)

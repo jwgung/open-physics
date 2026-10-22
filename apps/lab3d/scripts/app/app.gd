@@ -72,7 +72,8 @@ func _notification(what: int) -> void:
 
 func _go_back() -> void:
 	if _screen is ExperimentScreen:
-		show_list()
+		if not (_screen as ExperimentScreen).handle_back():   # an open sidebar closes first
+			show_list()
 	elif _screen is SettingsScreen:
 		_leave_settings()
 	else:

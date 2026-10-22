@@ -1009,13 +1009,15 @@ func _check_layout(definition: Dictionary) -> void:
 		_expect(h_open >= minf(h_closed, 73.3) and h_closed >= 73.3,
 			"%s landscape: the view beside the sidebar keeps at least the 16:10 screen's horizontal field of view (the whole apparatus stays in frame)" % name,
 			"closed %.1f deg, open %.1f deg" % [h_closed, h_open])
-		screen.close_sidebar()
+		var back_closes: bool = screen.handle_back() and not screen.is_sidebar_open()
 		await process_frame
 		var kept_while_closing: bool = is_equal_approx(screen.view.size.x, size.x - side)
 		for i in 20:
 			await process_frame
-		_expect(kept_while_closing and not screen.is_sidebar_open() and not screen._sidebar.visible and screen.view.size == size and screen._sidebar_button.visible,
-			"%s landscape: closing slides the sidebar out, then the view fills the screen again" % name, "view %s" % screen.view.size)
+		_expect(back_closes and not screen.handle_back() and kept_while_closing and not screen.is_sidebar_open() and not screen._sidebar.visible \
+			and screen.view.size == size and screen._sidebar_button.visible,
+			"%s landscape: back closes the open sidebar (slides out, then the view fills the screen again); with it closed, back leaves the screen" % name,
+			"view %s" % screen.view.size)
 		screen.queue_free()
 		await process_frame
 	host.queue_free()

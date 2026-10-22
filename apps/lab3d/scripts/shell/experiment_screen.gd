@@ -175,8 +175,16 @@ func _process(delta: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("ui_cancel"):
+	if event.is_action_pressed("ui_cancel") and not handle_back():
 		back_requested.emit()
+
+
+## Back (Android back, Esc): closes an open sidebar first. Returns true if it did.
+func handle_back() -> bool:
+	if not is_sidebar_open():
+		return false
+	close_sidebar()
+	return true
 
 
 # --- layout ---------------------------------------------------------------------------------

@@ -25,6 +25,13 @@ func _init(scene_tree: SceneTree, expect_fn: Callable) -> void:
 
 func run() -> void:
 	check_parity()
+	await check_uniform_field()
+	await check_contact_force()
+	await check_collision()
+	await check_spring()
+	await check_orbit()
+	await check_buoyancy()
+	await check_kinematic_models()
 
 
 # --- 1. parity --------------------------------------------------------------------------------
@@ -102,3 +109,371 @@ func _error(actual: Variant, expected: Variant) -> float:
 				worst = maxf(worst, error)
 			return worst
 	return -1.0
+
+
+# --- 2. representative scenes -------------------------------------------------------------------
+
+func _world() -> Node3D:
+	var world := Node3D.new()
+	tree.root.add_child(world)
+	return world
+
+
+func _floor(world: Node3D, top: float) -> StaticBody3D:
+	var floor_body := StaticBody3D.new()
+	var material := PhysicsMaterial.new()
+	material.friction = 0.0
+	floor_body.physics_material_override = material
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(40.0, 1.0, 40.0)
+	shape.shape = box
+	floor_body.add_child(shape)
+	floor_body.position = Vector3(0.0, top - 0.5, 0.0)
+	world.add_child(floor_body)
+	return floor_body
+
+
+## A rigid body (FormulaBody when `formula`) with a sphere (size.x = radius) or box shape.
+func _body(world: Node3D, mass: float, position: Vector3, sphere_radius := 0.0, box_size := 0.0, formula := true) -> RigidBody3D:
+	var body: RigidBody3D = FormulaBody.new() if formula else RigidBody3D.new()
+	body.mass = mass
+	body.can_sleep = false
+	body.linear_damp_mode = RigidBody3D.DAMP_MODE_REPLACE
+	body.angular_damp_mode = RigidBody3D.DAMP_MODE_REPLACE
+	var material := PhysicsMaterial.new()
+	material.friction = 0.0
+	material.bounce = 0.0
+	body.physics_material_override = material
+	var shape := CollisionShape3D.new()
+	if sphere_radius > 0.0:
+		var sphere := SphereShape3D.new()
+		sphere.radius = sphere_radius
+		shape.shape = sphere
+	else:
+		var box := BoxShape3D.new()
+		box.size = Vector3.ONE * box_size
+		shape.shape = box
+	body.add_child(shape)
+	body.position = position
+	world.add_child(body)
+	return body
+
+
+func _steps(count: int) -> void:
+	for i in count:
+		await tree.physics_frame
+
+
+func _rel(value: float, expected: float) -> float:
+	return absf(value - expected) / maxf(1e-12, absf(expected))
+
+
+## Time (s) at which an increasing series crosses `level`, linearly interpolated between steps.
+static func _crossings(series: PackedFloat64Array, level: float, rising: bool) -> PackedFloat64Array:
+	var times := PackedFloat64Array()
+	for k in range(1, series.size()):
+		var a := series[k - 1] - level
+		var b := series[k] - level
+		if (rising and a < 0.0 and b >= 0.0) or (not rising and a > 0.0 and b <= 0.0):
+			times.append((k - 1 + a / (a - b)) / float(STEP_HZ))
+	return times
+
+
+## uniform_field: three masses dropped together and one projectile; positions at the step points
+## equal x0 + v0 t + g t^2 / 2 (TS constantAccelerationDisplacement), independent of mass.
+func check_uniform_field() -> void:
+	var target: Dictionary = vectors.scenes.uniform_field
+	var g: float = target.g
+	var world := _world()
+	_floor(world, 0.0)
+	var drops: Array[RigidBody3D] = []
+	var x := 0.0
+	for mass in target.masses:
+		var drop := _body(world, mass, Vector3(x, 8.0, 0.0), 0.25)
+		drop.contact_monitor = true
+		drop.max_contacts_reported = 4
+		drop.corrector = UniformFieldCorrector.new()
+		drop.freeze = true
+		drops.append(drop)
+		x += 1.5
+	var thrown := _body(world, 1.0, Vector3(-8.0, 0.3, 4.0), 0.25)
+	thrown.corrector = UniformFieldCorrector.new()
+	thrown.contact_monitor = true
+	thrown.max_contacts_reported = 4
+	thrown.freeze = true
+	await tree.physics_frame
+	var v0 := Vector3(target.v0[0], target.v0[1], 0.0)
+	for drop in drops:
+		drop.corrector.release(drop, Vector3.ZERO)
+	thrown.corrector.release(thrown, v0)
+	await _steps(100)
+	var worst_drop := 0.0
+	var worst_mass := 0.0
+	for k in [15, 30, 45, 60]:
+		var t: float = k / float(STEP_HZ)
+		var expected := PhysicsLaws.constant_acceleration_displacement(0.0, -g, t)
+		for drop in drops:
+			worst_drop = maxf(worst_drop, absf(drop.corrector.samples[k] - expected))
+			worst_mass = maxf(worst_mass, absf(drop.corrector.samples[k] - drops[0].corrector.samples[k]))
+	expect.call(worst_drop <= 1e-4, "uniform field: free fall s(t) = g t^2 / 2 at the step points (3 masses)", "max |diff| %s m" % String.num_scientific(worst_drop))
+	expect.call(worst_mass <= 1e-6, "uniform field: the masses fall together", "max spread %s m" % String.num_scientific(worst_mass))
+	var worst_throw := 0.0
+	for row in target.samples:
+		var k := roundi(float(row.t) * STEP_HZ)
+		var offset: Vector3 = thrown.corrector.offsets[k]
+		worst_throw = maxf(worst_throw, maxf(absf(offset.x - float(row.x)), absf(offset.y - float(row.y))))
+	expect.call(worst_throw <= 1e-4, "uniform field: projectile (x, y)(t) = TS constantAccelerationDisplacement", "max |diff| %s m" % String.num_scientific(worst_throw))
+	var land_time := sqrt(2.0 * (8.0 - 0.25) / g)
+	var landed: int = drops[1].corrector.landed_step
+	expect.call(landed > 0 and absf(landed / float(STEP_HZ) - land_time) <= 2.0 / STEP_HZ, "uniform field: free flight ends at the floor contact (formula time ±2 steps)",
+		"contact at step %d (%.3f s), formula %.3f s" % [landed, landed / float(STEP_HZ), land_time])
+	var shown: Dictionary = thrown.corrector.formula_values()
+	expect.call(float(shown.y) == PhysicsLaws.constant_acceleration_displacement(float(target.v0[1]), -g, float(shown.time)),
+		"uniform field: displayed height comes from the formula", "t %.3f s, y %.4f m" % [shown.time, shown.y])
+	world.queue_free()
+	await tree.process_frame
+
+
+## contact_force (floor push, PushFrictionLaw): below the maximum static friction the box holds;
+## above it s(t) = a t^2 / 2 with a = (F - mu_k m g) / m.
+func check_contact_force() -> void:
+	var target: Dictionary = vectors.scenes.contact_force
+	var world := _world()
+	_floor(world, 0.0)
+	var surface := Node3D.new()
+	world.add_child(surface)
+	var box := _body(world, target.mass, Vector3(0.0, 0.2, 0.0), 0.0, 0.4)
+	var corrector := ContactFrictionCorrector.new()
+	corrector.law = "push"
+	corrector.surface = surface
+	corrector.tangent_axis = Vector3.RIGHT
+	corrector.half_length = 15.0
+	corrector.half_extent = 0.2
+	corrector.mu_s = target.mu_s
+	corrector.mu_k = target.mu_k
+	box.corrector = corrector
+	await _steps(10)   # settle on the floor
+	for force in [target.hold_force, target.push_force]:
+		box.linear_velocity = Vector3.ZERO
+		corrector.reset(box.global_position)
+		corrector.applied_force = force
+		await _steps(2 * STEP_HZ + 2)
+		if force == target.hold_force:
+			expect.call(corrector.max_offset <= 0.001 and corrector.status == "holding", "contact force: %.0f N < max static %.2f N holds 2 s" % [force, target.max_static],
+				"moved %.4f mm, %s" % [corrector.max_offset * 1000.0, corrector.status])
+	var worst := 0.0
+	for row in target.samples:
+		worst = maxf(worst, _rel(corrector.samples[roundi(float(row.t) * STEP_HZ)], row.s))
+	expect.call(worst <= 1e-4, "contact force: %.0f N push follows s = a t^2 / 2 (a = %.4f m/s^2)" % [target.push_force, target.accel],
+		"s(1 s) %.5f, s(2 s) %.5f m, max rel %s" % [corrector.samples[STEP_HZ], corrector.samples[2 * STEP_HZ], String.num_scientific(worst)])
+	world.queue_free()
+	await tree.process_frame
+
+
+## collision: head-on spheres (1 kg at 3.4 m/s, 2 kg at -1.7 m/s) leave with the TS world outcome
+## for e = 1 and e = 0.88, also when the Jolt materials are not mapped (bounce 0.88 + 0.88 = 1).
+func check_collision() -> void:
+	var target: Dictionary = vectors.scenes.collision
+	for case in [["elastic", target.elastic, true], ["rubber", target.rubber, true], ["rubber, unmapped materials", target.rubber, false]]:
+		var outcome: Dictionary = case[1]
+		var world := _world()
+		var a := _body(world, target.masses[0], Vector3(-3.0, 1.0, 0.0), 0.6, 0.0, false)
+		var b := _body(world, target.masses[1], Vector3(3.0, 1.0, 0.0), 0.8, 0.0, false)
+		for body in [a, b]:
+			body.gravity_scale = 0.0
+		var corrector := CollisionCorrector.new()
+		corrector.setup(a, b, 0.6, 0.8, outcome.e, outcome.e)
+		corrector.threshold = target.threshold
+		if not case[2]:
+			for body in [a, b]:
+				body.physics_material_override.bounce = outcome.e
+		var driver := FormulaDriver.new()
+		driver.correctors.append(corrector)
+		world.add_child(driver)
+		a.linear_velocity = Vector3(target.velocities[0], 0.0, 0.0)
+		b.linear_velocity = Vector3(target.velocities[1], 0.0, 0.0)
+		driver.running = true
+		await _steps(90)
+		var after := [a.linear_velocity.x, b.linear_velocity.x]
+		var error := maxf(absf(after[0] - float(outcome.after[0])), absf(after[1] - float(outcome.after[1])))
+		var engine: Array = corrector.events[0].engine if corrector.events.size() > 0 else [Vector3.ZERO, Vector3.ZERO]
+		var shown := corrector.formula_values()
+		expect.call(corrector.events.size() == 1 and error <= 1e-4 and absf(float(shown.get("velocity_a", INF)) - float(outcome.after[0])) <= 1e-6,
+			"collision (%s, e = %.2f): velocities after = TS world outcome" % [case[0], outcome.e],
+			"%.4f / %.4f m/s vs %.4f / %.4f (engine %.4f / %.4f), %d event(s)" % [after[0], after[1], outcome.after[0], outcome.after[1], engine[0].x, engine[1].x, corrector.events.size()])
+		var momentum: float = target.masses[0] * after[0] + target.masses[1] * after[1]
+		expect.call(absf(momentum - float(target.momentum)) <= 1e-4, "collision (%s): momentum conserved" % case[0], "%.6f vs %.6f kg m/s" % [momentum, target.momentum])
+		world.queue_free()
+		await tree.process_frame
+
+
+## spring (force injection): period and energy of an undamped 1 kg, k = 5 N/m oscillator.
+func check_spring() -> void:
+	var target: Dictionary = vectors.scenes.force_injection.spring
+	var world := _world()
+	var ball := _body(world, target.mass, Vector3(1.0 + float(target.amplitude), 5.0, 0.0), 0.2)
+	ball.gravity_scale = 0.0
+	ball.collision_layer = 0
+	ball.collision_mask = 0
+	var spring := SpringInjector.new()
+	spring.anchor = Vector3(0.0, 5.0, 0.0)
+	spring.rest_length = 1.0
+	spring.stiffness = target.stiffness
+	spring.history_steps = 10 * STEP_HZ
+	spring.reset(ball)
+	ball.corrector = spring
+	var worst_energy := 0.0
+	for i in 10 * STEP_HZ:
+		await tree.physics_frame
+		if i > 0:
+			worst_energy = maxf(worst_energy, _rel(spring.engine_energy(ball), target.energy))
+	var crossings := _crossings(spring.samples, 0.0, true)
+	var period := (crossings[-1] - crossings[0]) / (crossings.size() - 1) if crossings.size() >= 2 else 0.0
+	expect.call(_rel(period, target.period) <= 1e-3, "force injection (spring): period = 2 pi sqrt(m / k) ±0.1%",
+		"%.5f s vs %.5f s over %d periods" % [period, target.period, crossings.size() - 1])
+	expect.call(worst_energy <= 5e-3, "force injection (spring): engine energy stays at k A^2 / 2 ±0.5% over 10 s",
+		"max rel dev %s (E = %.4f J)" % [String.num_scientific(worst_energy), target.energy])
+	var shown := spring.formula_values()
+	expect.call(float(shown.total_energy) == float(target.energy) and absf(float(shown.spring_energy) + float(shown.kinetic_energy) - float(target.energy)) <= 1e-12,
+		"force injection (spring): displayed energies come from the formula", str(shown))
+	world.queue_free()
+	await tree.process_frame
+
+
+## orbit (force injection): a circular launch keeps its radius and closes one revolution in
+## T = 2 pi sqrt(r^3 / G M).
+func check_orbit() -> void:
+	var target: Dictionary = vectors.scenes.force_injection.orbit
+	var world := _world()
+	var radius: float = target.radius
+	var star := _body(world, 1.0, Vector3(radius, 2.0, 0.0), 0.2)
+	star.gravity_scale = 0.0
+	star.collision_layer = 0
+	star.collision_mask = 0
+	var gravity := PointGravityInjector.new()
+	gravity.center = Vector3(0.0, 2.0, 0.0)
+	gravity.mu = target.mu
+	gravity.history_steps = 0
+	star.linear_velocity = Vector3(0.0, 0.0, -float(target.speed))
+	gravity.reset(star)
+	star.corrector = gravity
+	var worst_radius := 0.0
+	var period := 0.0
+	var last := [0.0, 0.0]   # (time, swept angle) of the previous sample
+	for i in int(1.2 * float(target.period) * STEP_HZ):
+		await tree.physics_frame
+		if gravity.steps == 0:
+			continue
+		worst_radius = maxf(worst_radius, _rel(gravity.last_sample, radius))
+		var t := (gravity.steps - 1) / float(STEP_HZ)   # the sample is the state after steps - 1 steps
+		var angle := absf(gravity.swept_angle)
+		if period == 0.0 and last[1] < TAU and angle >= TAU:
+			period = last[0] + (t - last[0]) * (TAU - last[1]) / (angle - last[1])
+		last = [t, angle]
+	expect.call(_rel(period, target.period) <= 1e-3, "force injection (orbit): circular period ±0.1%", "%.4f s vs %.4f s" % [period, target.period])
+	expect.call(worst_radius <= 1e-3, "force injection (orbit): radius stays within 0.1%", "max rel dev %s" % String.num_scientific(worst_radius))
+	world.queue_free()
+	await tree.process_frame
+
+
+## buoyancy (force injection): a 0.4 m box floats at the depth fraction m / m_displaced; a box
+## heavier than the displaced water sinks to the bottom.
+func check_buoyancy() -> void:
+	var target: Dictionary = vectors.scenes.force_injection.buoyancy
+	var size: float = target.size
+	var world := _world()
+	_floor(world, -3.0)
+	var boxes := {}
+	var x := 0.0
+	for kind in ["light", "heavy"]:
+		var box := _body(world, target[kind].mass, Vector3(x, size * 0.5, 0.0), 0.0, size)
+		var buoyancy := BuoyancyInjector.new()
+		buoyancy.waterline = 0.0
+		buoyancy.height = size
+		buoyancy.displaced_mass = target.displaced_mass
+		buoyancy.drag = target.drag
+		buoyancy.reset(box)
+		box.corrector = buoyancy
+		boxes[kind] = box
+		x += 2.0
+	await _steps(15 * STEP_HZ)
+	var light: RigidBody3D = boxes.light
+	var fraction := (0.0 - (light.global_position.y - size * 0.5)) / size   # measured from the body, not the corrector
+	expect.call(_rel(fraction, target.light.fraction) <= 5e-3 and light.linear_velocity.length() < 0.01,
+		"force injection (buoyancy): floats at depth fraction rho_obj / rho_fluid ±0.5%",
+		"%.4f vs %.4f (speed %.4f m/s)" % [fraction, target.light.fraction, light.linear_velocity.length()])
+	var heavy: RigidBody3D = boxes.heavy
+	expect.call(float(heavy.corrector.last_sample) == float(target.heavy.fraction) and absf(heavy.global_position.y - (-3.0 + size * 0.5)) <= 0.03
+		and heavy.corrector.formula_values().sinks, "force injection (buoyancy): heavier than the displaced water sinks to the bottom",
+		"fraction %.3f, y %.3f" % [heavy.corrector.last_sample, heavy.global_position.y])
+	world.queue_free()
+	await tree.process_frame
+
+
+## kinematic_model: the pendulum bob follows the TS PendulumModel step by step with a fixed length
+## and still pushes a dynamic ball; the pulley load and lever beam take their formula poses.
+func check_kinematic_models() -> void:
+	var target: Dictionary = vectors.scenes.kinematic_model
+	var world := _world()
+	var bob := _body(world, 1.0, Vector3.ZERO, 0.15, 0.0, false)
+	var pendulum := PendulumModelDriver.new()
+	pendulum.anchor = Vector3(0.0, 5.0, 0.0)
+	pendulum.length = target.pendulum.length
+	pendulum.angle = target.pendulum.angle
+	pendulum.history_steps = 10 * STEP_HZ + 1
+	pendulum.attach(bob)
+	var ball := _body(world, 0.5, Vector3(-0.42, 3.0, 0.0), 0.15, 0.0, false)
+	ball.gravity_scale = 0.0
+	var load := _body(world, 20.0, Vector3(4.0, 0.5, 0.0), 0.0, 0.6, false)
+	var pulley := PulleyModelDriver.new()
+	pulley.base = load.global_transform
+	pulley.strands = 2
+	pulley.attach(load)
+	var beam := _body(world, 5.0, Vector3(8.0, 1.0, 0.0), 0.0, 0.3, false)
+	var lever := LeverModelDriver.new()
+	lever.pivot = beam.global_transform
+	lever.load_mass = target.lever.load_mass
+	lever.load_arm = target.lever.load_arm
+	lever.effort_arm = target.lever.effort_arm
+	lever.attach(beam)
+	var driver := FormulaDriver.new()
+	driver.correctors.assign([pendulum, pulley, lever])
+	world.add_child(driver)
+	await tree.physics_frame
+	driver.running = true
+	await _steps(10 * STEP_HZ + 2)
+	var worst_angle := 0.0
+	var k := 30
+	for expected in target.pendulum.angles:
+		worst_angle = maxf(worst_angle, absf(pendulum.samples[k] - float(expected)))
+		k += 30
+	expect.call(worst_angle <= 1e-5, "kinematic model (pendulum): bob angle = TS PendulumModel at 0.5/1/1.5/2 s", "max |diff| %s rad" % String.num_scientific(worst_angle))
+	var crossings := _crossings(pendulum.samples, 0.0, false)
+	var period := (crossings[-1] - crossings[0]) / (crossings.size() - 1) if crossings.size() >= 2 else 0.0
+	expect.call(_rel(period, target.pendulum.period) <= 5e-3, "kinematic model (pendulum): period = 2 pi sqrt(L / g) ±0.5% (0.1 rad swing)",
+		"%.4f s vs %.4f s" % [period, target.pendulum.period])
+	expect.call(absf(float(pendulum.engine_values().length) - float(target.pendulum.length)) <= 1e-5, "kinematic model (pendulum): the string length stays L",
+		"%.6f m" % pendulum.engine_values().length)
+	expect.call(ball.linear_velocity.x < -0.05, "kinematic model (pendulum): the posed bob still pushes a dynamic body (Jolt contact)", "ball v %.3f m/s" % ball.linear_velocity.x)
+	# Pulley: 1 m of rope lifts the load 1 / n; the force is m g / n for each strand count.
+	pulley.pull_distance = 1.0
+	await _steps(3)
+	var row: Dictionary = target.pulley[1]
+	expect.call(absf(pulley.last_sample - float(row.lift_for_pull_1m)) <= 1e-5, "kinematic model (pulley): 1 m pull lifts the load 1 / n (n = 2)", "%.5f m" % pulley.last_sample)
+	var forces_ok := true
+	for entry in target.pulley:
+		pulley.strands = int(entry.strands)
+		forces_ok = forces_ok and _rel(float(pulley.formula_values().required_force), float(entry.force)) <= 1e-12
+	expect.call(forces_ok, "kinematic model (pulley): displayed force = TS m g / n for 1, 2, 4 strands", str(target.pulley))
+	# Lever: below the required force the beam stays level; at it, the beam lifts.
+	var required := lever.required_force()
+	lever.applied_force = required * 0.9
+	await _steps(3)
+	var level: float = lever.last_sample
+	lever.applied_force = required
+	await _steps(3)
+	expect.call(_rel(required, target.lever.required) <= 1e-12 and absf(level) <= 1e-6 and absf(lever.last_sample + LeverModelDriver.LIFT_ANGLE) <= 1e-5,
+		"kinematic model (lever): level below F = m g r_load / r_effort, lifted at it", "F %.3f N, angles %.5f / %.5f rad" % [required, level, lever.last_sample])
+	world.queue_free()
+	await tree.process_frame

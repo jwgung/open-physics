@@ -17,6 +17,7 @@ func reset(body: RigidBody3D) -> void:
 	super(body)
 	swept_angle = 0.0
 	_last_direction = (body.global_position - center).normalized()
+	last_sample = (body.global_position - center).length()   # radius before the first step (not recorded)
 
 
 func formula_force(body: RigidBody3D) -> Vector3:
@@ -35,8 +36,12 @@ func sample(body: RigidBody3D) -> float:
 	return (body.global_position - center).length()
 
 
+## Before the first step the radius is the body's position at reset(); at the centre (r = 0) only
+## the radius is given (the orbit formulas need r > 0).
 func formula_values() -> Dictionary:
 	var r := last_sample
+	if r <= 0.0:
+		return {"radius": r}
 	return {
 		"radius": r,
 		"circular_speed": PhysicsLaws.circular_orbit_speed(mu, r, 1.0),

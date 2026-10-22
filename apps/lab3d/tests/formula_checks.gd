@@ -446,6 +446,14 @@ func check_orbit() -> void:
 	gravity.history_steps = 0
 	star.linear_velocity = Vector3(0.0, 0.0, -float(target.speed))
 	gravity.reset(star)
+	var before_step := gravity.formula_values()
+	var start_radius: float = before_step.get("radius", 0.0)
+	expect.call(gravity.steps == 0 and _rel(start_radius, radius) <= 1e-6 and before_step.get("circular_speed") == PhysicsLaws.circular_orbit_speed(target.mu, start_radius, 1.0),
+		"force injection (orbit): formula values right after reset use the body's radius", str(before_step))
+	var at_center := PointGravityInjector.new()
+	at_center.center = star.global_position
+	at_center.reset(star)
+	expect.call(at_center.formula_values() == {"radius": 0.0}, "force injection (orbit): a body at the centre gives only r = 0", str(at_center.formula_values()))
 	star.corrector = gravity
 	var worst_radius := 0.0
 	var period := 0.0

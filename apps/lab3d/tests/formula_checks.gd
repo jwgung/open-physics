@@ -78,8 +78,11 @@ func _typed_args(law: String, args: Array) -> Array:
 
 
 ## Relative error (absolute when |expected| < 1) of a value against the JSON expectation; -1 when
-## the shapes or exact values (bool, string) differ.
+## the shapes or exact values (bool, string) differ. "inf" / "-inf" (JSON has no Infinity) expect
+## that float exactly.
 func _error(actual: Variant, expected: Variant) -> float:
+	if expected is String and (expected == "inf" or expected == "-inf"):
+		return 0.0 if actual is float and is_inf(actual) and (actual > 0.0) == (expected == "inf") else -1.0
 	match typeof(expected):
 		TYPE_FLOAT, TYPE_INT:
 			if typeof(actual) != TYPE_FLOAT and typeof(actual) != TYPE_INT:

@@ -116,17 +116,27 @@ static func gravitational_potential_energy(mass: float, g: float, height: float)
 	return mass * g * height
 
 ## Landing time in a uniform field (Task 4a: free fall, projectile): the first t > 0 at which
-## constantAccelerationDisplacement(v0, a, t) = -drop along one axis (v0 and a along +up, a <= 0,
-## drop >= 0: how far below the start the landing level is). No closed form in the TS core: the
-## vectors (tools/formula-vectors.test.ts) find this root of the TS function by bisection.
-## INF when the body never comes down to that level (a = 0 and v0 >= 0, or drop < 0 out of reach).
+## constantAccelerationDisplacement(v0, a, t) = -drop along one axis (v0 and a along +up; drop: how
+## far below the start the landing level is, < 0 above it), i.e. the first positive root of
+## a t^2 / 2 + v0 t + drop = 0 for any signs of v0, a and drop. A start on the level (drop = 0) that
+## moves below it at once (v0 < 0, or v0 = 0 and a < 0) lands at t = 0. INF when the body never
+## reaches the level (no positive root). No closed form in the TS core: the vectors
+## (tools/formula-vectors.test.ts) find the same root of the TS function by bisection (ts-oracle.ts).
 static func landing_time(v0: float, a: float, drop: float) -> float:
-	if a >= 0.0:
-		return drop / -v0 if v0 < 0.0 and drop >= 0.0 else INF
+	if drop == 0.0 and (v0 < 0.0 or (v0 == 0.0 and a < 0.0)):
+		return 0.0
+	if a == 0.0:
+		var t := -drop / v0 if v0 != 0.0 else INF
+		return t if t > 0.0 else INF
 	var disc := v0 * v0 - 2.0 * a * drop
 	if disc < 0.0:
 		return INF
-	return (v0 + sqrt(disc)) / -a
+	var root := sqrt(disc)
+	var first := INF
+	for t in [(-v0 - root) / a, (-v0 + root) / a]:
+		if t > 0.0 and t < first:
+			first = t
+	return first
 
 ## Apex of a throw in a uniform field (Task 4a: projectile): time at which
 ## constantAccelerationVelocity(v0, a, t) = 0 (0 when the body does not rise: v0 <= 0 or a >= 0 with

@@ -1743,6 +1743,146 @@
       "expect": 0
     },
     {
+      "experiment": "projectile",
+      "law": "landing_time",
+      "args": [
+        7.2,
+        -9.81,
+        -0.5
+      ],
+      "expect": 0.07308309526072448
+    },
+    {
+      "experiment": "projectile",
+      "law": "landing_time",
+      "args": [
+        1,
+        -9.81,
+        -0.5
+      ],
+      "expect": "inf"
+    },
+    {
+      "experiment": "projectile",
+      "law": "landing_time",
+      "args": [
+        -5,
+        -9.81,
+        -0.5
+      ],
+      "expect": "inf"
+    },
+    {
+      "experiment": "projectile",
+      "law": "landing_time",
+      "args": [
+        0,
+        -9.81,
+        0
+      ],
+      "expect": 0
+    },
+    {
+      "experiment": "projectile",
+      "law": "landing_time",
+      "args": [
+        -1,
+        -9.81,
+        0
+      ],
+      "expect": 0
+    },
+    {
+      "experiment": "projectile",
+      "law": "landing_time",
+      "args": [
+        3,
+        -9.81,
+        0
+      ],
+      "expect": 0.6116207951070336
+    },
+    {
+      "experiment": "projectile",
+      "law": "landing_time",
+      "args": [
+        -3,
+        2,
+        1
+      ],
+      "expect": 0.3819660112501051
+    },
+    {
+      "experiment": "projectile",
+      "law": "landing_time",
+      "args": [
+        -1,
+        2,
+        1
+      ],
+      "expect": "inf"
+    },
+    {
+      "experiment": "projectile",
+      "law": "landing_time",
+      "args": [
+        0,
+        2,
+        -1
+      ],
+      "expect": 1
+    },
+    {
+      "experiment": "projectile",
+      "law": "landing_time",
+      "args": [
+        0,
+        2,
+        0
+      ],
+      "expect": "inf"
+    },
+    {
+      "experiment": "projectile",
+      "law": "landing_time",
+      "args": [
+        -2,
+        0,
+        1
+      ],
+      "expect": 0.5
+    },
+    {
+      "experiment": "projectile",
+      "law": "landing_time",
+      "args": [
+        2,
+        0,
+        1
+      ],
+      "expect": "inf"
+    },
+    {
+      "experiment": "projectile",
+      "law": "landing_time",
+      "args": [
+        2,
+        0,
+        -1
+      ],
+      "expect": 0.5
+    },
+    {
+      "experiment": "projectile",
+      "law": "landing_time",
+      "args": [
+        0,
+        0,
+        0
+      ],
+      "expect": "inf"
+    },
+    {
       "experiment": "collision",
       "law": "post_collision_velocity_1d",
       "args": [

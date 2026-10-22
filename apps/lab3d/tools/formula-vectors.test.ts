@@ -129,7 +129,24 @@ function projectile(): Case[] {
       cases.push({ law: "apex_rise", args: [vy, -g], expect: vy > 0 ? constantAccelerationDisplacement({ x: 0, y: vy }, { x: 0, y: -g }, tsApexTime(vy, -g)).y : 0 });
     }
   }
+  // landing_time outside the labs' everyday range (review of PR #9): the first root t > 0 for any
+  // signs, t = 0 for a start on the level moving below it, INF ("inf") when the level is never met.
+  for (const [v0, a, drop] of [
+    [7.2, -G, -0.5], // level above the start, reached on the way up
+    [1, -G, -0.5], // level above the apex: never
+    [-5, -G, -0.5], // level above, moving away: never
+    [0, -G, 0], [-1, -G, 0], [3, -G, 0], // on the level: at once / at once / after the flight
+    [-3, 2, 1], [-1, 2, 1], [0, 2, -1], [0, 2, 0], // field upwards: first root, never, rising, never
+    [-2, 0, 1], [2, 0, 1], [2, 0, -1], [0, 0, 0], // no field: straight line
+  ]) {
+    cases.push({ law: "landing_time", args: [v0, a, drop], expect: finiteOr(tsLandingTime(v0, a, drop)) });
+  }
   return cases;
+}
+
+/** JSON has no Infinity: an unbounded expectation is written as the string "inf". */
+function finiteOr(value: number): number | string {
+  return Number.isFinite(value) ? value : value > 0 ? "inf" : "-inf";
 }
 
 function collision(): Case[] {

@@ -1,0 +1,97 @@
+{
+  "id": "collision",
+  "version": 1,
+  "content": "collision",
+  "scene": "res://experiments/collision/collision.gd",
+  "bench_id": "CO",
+  "camera": {
+    "target": [0.0, 0.7, 0.0],
+    "distance": 11.5,
+    "distance_range": [3.0, 24.0],
+    "yaw_range_deg": [-100.0, 100.0],
+    "pitch_range_deg": [-89.0, -2.0],
+    "pan_radius": 6.0,
+    "default_mode": "three_quarter",
+    "views": {
+      "front": { "yaw_deg": 0.0, "pitch_deg": -8.0, "distance": 13.5 },
+      "three_quarter": { "yaw_deg": 26.0, "pitch_deg": -26.0 },
+      "top": { "yaw_deg": 0.0, "pitch_deg": -89.0, "distance": 16.0 },
+      "side": { "yaw_deg": 90.0, "pitch_deg": -12.0, "distance": 13.0 },
+      "follow": { "yaw_deg": 20.0, "pitch_deg": -18.0, "distance": 6.0 }
+    }
+  },
+  "controls": [
+    {
+      "id": "mass_a", "type": "slider", "label": "공 A 질량 (파랑)", "unit": " kg",
+      "min": 0.5, "max": 10.0, "step": 0.5, "default": 1.0, "digits": 1
+    },
+    {
+      "id": "mass_b", "type": "slider", "label": "공 B 질량 (주황)", "unit": " kg",
+      "min": 0.5, "max": 10.0, "step": 0.5, "default": 2.0, "digits": 1
+    },
+    {
+      "id": "velocity_a", "type": "slider", "label": "공 A 속도 (오른쪽 +)", "unit": " m/s",
+      "min": -9.0, "max": 9.0, "step": 0.1, "default": 3.4, "digits": 1
+    },
+    {
+      "id": "velocity_b", "type": "slider", "label": "공 B 속도 (오른쪽 +)", "unit": " m/s",
+      "min": -9.0, "max": 9.0, "step": 0.1, "default": -1.7, "digits": 1
+    },
+    {
+      "id": "material_a", "type": "choice", "label": "공 A 재질", "default": "rubber",
+      "note": "두 공 중 반발계수가 작은 쪽으로 튀어요. 1 m/s보다 느리게 부딪히면 e = 0이에요.",
+      "options": [
+        { "id": "rubber", "label": "고무", "e": 0.88, "note": "반발계수 e = 0.88" },
+        { "id": "wood", "label": "나무", "e": 0.5, "note": "반발계수 e = 0.50" },
+        { "id": "steel", "label": "금속", "e": 0.72, "note": "반발계수 e = 0.72" },
+        { "id": "clay", "label": "점토", "e": 0.08, "note": "반발계수 e = 0.08" }
+      ]
+    },
+    {
+      "id": "material_b", "type": "choice", "label": "공 B 재질", "default": "rubber",
+      "options": [
+        { "id": "rubber", "label": "고무", "e": 0.88, "note": "반발계수 e = 0.88" },
+        { "id": "wood", "label": "나무", "e": 0.5, "note": "반발계수 e = 0.50" },
+        { "id": "steel", "label": "금속", "e": 0.72, "note": "반발계수 e = 0.72" },
+        { "id": "clay", "label": "점토", "e": 0.08, "note": "반발계수 e = 0.08" }
+      ]
+    }
+  ],
+  "actions": [
+    { "id": "release", "label": "출발", "style": "primary" },
+    { "id": "reset", "label": "처음으로" }
+  ],
+  "observations": [
+    { "id": "state", "label": "상태" },
+    { "id": "restitution", "label": "이번 충돌 반발계수 e", "digits": 2 },
+    { "id": "before_a", "label": "충돌 전 속도 A", "unit": "m/s", "digits": 2 },
+    { "id": "before_b", "label": "충돌 전 속도 B", "unit": "m/s", "digits": 2 },
+    { "id": "after_a", "label": "충돌 뒤 속도 A", "unit": "m/s", "digits": 2 },
+    { "id": "after_b", "label": "충돌 뒤 속도 B", "unit": "m/s", "digits": 2 },
+    { "id": "p_before", "label": "운동량 합 · 충돌 전", "unit": "kg·m/s", "digits": 2 },
+    { "id": "p_after", "label": "운동량 합 · 충돌 뒤", "unit": "kg·m/s", "digits": 2 },
+    { "id": "impulse_a", "label": "A가 받은 충격량 J = Δp", "unit": "N·s", "digits": 2 },
+    { "id": "impulse_b", "label": "B가 받은 충격량", "unit": "N·s", "digits": 2 },
+    { "id": "k_before", "label": "운동 에너지 합 · 충돌 전", "unit": "J", "digits": 2 },
+    { "id": "k_after", "label": "운동 에너지 합 · 충돌 뒤", "unit": "J", "digits": 2 },
+    { "id": "measured", "label": "지금 운동량 합 (시뮬레이션)", "unit": "kg·m/s", "digits": 2 }
+  ],
+  "manipulation": {
+    "objects": [
+      { "id": "ball_a", "surface": "lane_a", "snap": 0.5, "height": false },
+      { "id": "ball_b", "surface": "lane_b", "snap": 0.5, "height": false },
+      { "id": "arrow_a", "surface": "arrow_a", "snap": 0.2, "height": false },
+      { "id": "arrow_b", "surface": "arrow_b", "snap": 0.2, "height": false }
+    ],
+    "demo_action": "release"
+  },
+  "graph": {
+    "title": "두 물체의 운동량",
+    "x": { "label": "시간 t", "unit": "s", "max": 10.0 },
+    "y": { "label": "운동량 p (오른쪽 +)", "unit": "kg·m/s", "min_max": 2.0, "signed": true },
+    "series": [
+      { "id": "momentum_a", "label": "공 A", "color": "#2d7cf6", "style": "line" },
+      { "id": "momentum_b", "label": "공 B", "color": "#ff7a1a", "style": "line" }
+    ]
+  }
+}

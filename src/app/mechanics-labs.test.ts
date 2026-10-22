@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
+import sharedContent from "../../apps/lab3d/content/mechanics-labs.json";
 import {
   MECHANICS_LABS,
   mechanicsInteractionTip,
   mechanicsLab,
   mechanicsSettingFeedback,
+  parseMechanicsLabs,
   shouldAutoPlayLab,
 } from "./mechanics-labs";
 
@@ -51,5 +53,27 @@ describe("mechanics labs", () => {
     expect(mechanicsSettingFeedback("mass", "가벼움")).toContain("무게: 가벼움");
     expect(mechanicsSettingFeedback("material", "나무")).toContain("움직임과 그래프");
     expect(mechanicsSettingFeedback("gravity", "달 · 0.17×")).toContain("중력: 달 · 0.17×");
+  });
+
+  it("reads the shared content file without changing a single text (Task 4a)", async () => {
+    // SHA-256 of the labs and interaction tips as they were written in this file before the texts
+    // moved to apps/lab3d/content/mechanics-labs.json (commit 4cb04a4). Any change to a web text,
+    // its order or a control fails here.
+    const payload = JSON.stringify({
+      labs: MECHANICS_LABS,
+      tips: MECHANICS_LABS.map((lab) => [lab.id, mechanicsInteractionTip(lab.id)]),
+    });
+    const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(payload));
+    expect([...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join(""))
+      .toBe("9fcf3b93d11e3918584cf22eecdba3748b6aa16adcf82018e16de335bd69f340");
+    expect(sharedContent.labs.map((lab) => lab.id)).toEqual(MECHANICS_LABS.map((lab) => lab.id));
+  });
+
+  it("rejects shared content the web cannot show", () => {
+    const lab = sharedContent.labs[0];
+    expect(() => parseMechanicsLabs([{ ...lab, id: "sandbox" }])).toThrow(RangeError);
+    expect(() => parseMechanicsLabs([{ ...lab, category: "열" }])).toThrow(RangeError);
+    expect(() => parseMechanicsLabs([{ ...lab, steps: lab.steps.slice(0, 2) }])).toThrow(RangeError);
+    expect(() => parseMechanicsLabs([{ ...lab, web: { ...lab.web, controls: ["speed"] } }])).toThrow(RangeError);
   });
 });

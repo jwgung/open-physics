@@ -1,5 +1,7 @@
 import type { PlaygroundPreset } from "./physics-playground";
 import type { PhysicsTermDefinition } from "./subjects/subject-experience";
+// Lab texts live in one JSON file shared with the 3D app (apps/lab3d/README.md "콘텐츠 공유").
+import { labs as sharedLabs } from "../../apps/lab3d/content/mechanics-labs.json";
 
 export type LabControl = "mass" | "material" | "gravity" | "velocity";
 export type LabActivationSource = "initial" | "selection";
@@ -25,173 +27,55 @@ export interface MechanicsLab {
   };
 }
 
-export const MECHANICS_LABS: readonly MechanicsLab[] = [
-  {
-    id: "free-fall",
-    title: "질량이 달라도 같이 떨어질까?",
-    category: "움직임과 힘",
-    icon: "↓",
-    question: "가벼운 공과 무거운 공은 바닥에 닿는 시간이 다를까요?",
-    steps: ["세 공의 높이를 맞춰요.", "중력을 달이나 목성으로 바꿔요.", "공들이 바닥에 닿는 순간을 비교해요."],
-    observe: "질량보다 중력 환경이 떨어지는 속도 변화에 어떤 영향을 주는지 보세요.",
-    terms: [
-      { name: "질량", description: "물체가 움직임의 변화를 얼마나 버티는지를 나타내는 양이에요." },
-      { name: "중력", description: "지구 같은 천체가 물체를 끌어당기는 힘이에요." },
-      { name: "가속도", description: "속도가 시간에 따라 얼마나 빠르게 바뀌는지를 뜻해요." },
-    ],
-    controls: ["mass", "gravity"],
-    law: { title: "중력과 가속도", description: "중력은 물체를 아래로 끌어 속도를 계속 바꿉니다.", equation: "F = mg" },
-  },
-  {
-    id: "projectile",
-    title: "어떤 각도로 던져야 멀리 갈까?",
-    category: "움직임과 힘",
-    icon: "↗",
-    question: "같은 빠르기라면 어느 방향으로 던질 때 가장 멀리 갈까요?",
-    steps: ["보라색 화살표를 끌어 방향을 정해요.", "공을 놓아 날아가는 길을 봐요.", "처음으로 돌아가 다른 각도와 비교해요."],
-    observe: "옆 방향 속도와 아래 방향 가속도가 함께 만드는 곡선을 보세요.",
-    terms: [
-      { name: "속도", description: "물체가 어느 방향으로 얼마나 빠르게 움직이는지를 나타내요." },
-      { name: "가속도", description: "속도가 시간에 따라 얼마나 빠르게 바뀌는지를 뜻해요." },
-      { name: "포물선 운동", description: "던진 물체가 중력을 받으며 그리는 굽은 이동 경로예요." },
-    ],
-    controls: ["gravity", "velocity"],
-    law: { title: "던진 물체의 운동", description: "옆으로 가는 동안 중력이 아래쪽 속도를 더해 곡선으로 움직입니다.", equation: "x = x₀ + v₀t + ½at²" },
-  },
-  {
-    id: "collision",
-    title: "충돌하면 움직임은 어디로 갈까?",
-    category: "움직임과 힘",
-    icon: "⇄",
-    question: "두 공의 무게가 달라지면 충돌 뒤 움직임은 어떻게 달라질까요?",
-    steps: ["두 공의 무게를 서로 다르게 정해요.", "속도 화살표로 충돌 방향을 바꿔요.", "충돌 전후 운동량 화살표를 비교해요."],
-    observe: "충돌 순간 두 물체가 크기는 같고 방향은 반대인 힘을 주고받으며, 접촉 시간 동안 받은 충격량만큼 운동량이 바뀌는지 보세요.",
-    terms: [
-      { name: "운동량", description: "질량과 속도를 함께 생각한 물체의 움직임 양이에요." },
-      { name: "충격량", description: "힘이 일정 시간 작용해 운동량을 바꾼 정도예요." },
-      { name: "작용·반작용", description: "두 물체가 서로에게 동시에 크기는 같고 방향은 반대인 힘을 주는 관계예요." },
-      { name: "충돌", description: "두 물체가 짧은 접촉 시간 동안 큰 힘을 서로 주고받는 일이에요." },
-    ],
-    controls: ["mass", "material", "velocity"],
-    law: { title: "충돌·운동량·충격량", description: "두 물체가 주고받는 힘은 같고 반대이며, 힘과 접촉 시간의 곱이 각 물체의 운동량 변화를 만듭니다.", equation: "F₁₂ = −F₂₁ · J = FΔt = Δp" },
-  },
-  {
-    id: "spring",
-    title: "용수철은 에너지를 어떻게 돌려줄까?",
-    category: "움직임과 힘",
-    icon: "⌁",
-    question: "공을 더 멀리 당기면 돌아올 때 얼마나 빨라질까요?",
-    steps: ["공을 잡아 제자리에서 멀리 당겨요.", "손을 놓고 에너지 막대를 봐요.", "공의 무게를 바꾸어 왕복 운동을 비교해요."],
-    observe: "복원력이 공에 한 일이 운동 에너지를 바꾸며, 용수철 에너지가 줄 때 운동 에너지가 커지는지 보세요.",
-    terms: [
-      { name: "복원력", description: "늘어나거나 눌린 물체가 원래 모양으로 돌아가려는 힘이에요." },
-      { name: "탄성 에너지", description: "늘어나거나 눌린 용수철에 저장된 에너지예요." },
-      { name: "운동 에너지", description: "움직이는 물체가 가진 에너지예요." },
-      { name: "일-에너지 정리", description: "물체에 한 알짜힘의 일이 운동 에너지 변화와 같다는 관계예요." },
-    ],
-    controls: ["mass"],
-    law: { title: "용수철과 일-에너지", description: "복원력이 한 일은 운동 에너지를 바꾸고, 마찰이 작으면 운동 에너지와 탄성 에너지의 합이 보존됩니다.", equation: "W알짜힘 = ΔK · E = ½mv² + ½kx²" },
-  },
-  {
-    id: "friction",
-    title: "얼마나 세게 밀어야 움직일까?",
-    category: "움직임과 힘",
-    icon: "▰",
-    question: "상자가 버티다가 움직이기 시작하는 순간의 힘은 얼마일까요?",
-    steps: ["빨간 손잡이를 천천히 옆으로 당겨요.", "상자가 처음 움직이는 힘을 그래프에서 찾아요.", "재질과 무게를 바꾸어 필요한 힘을 비교해요."],
-    observe: "내가 주는 힘과 최대 정지 마찰력이 같아지는 순간을 눈여겨보세요.",
-    terms: [
-      { name: "정지 마찰력", description: "닿아 있는 물체가 미끄러지지 않도록 버티는 힘이에요." },
-      { name: "최대 정지 마찰력", description: "물체가 움직이기 직전까지 버틸 수 있는 가장 큰 마찰력이에요." },
-      { name: "마찰계수", description: "두 표면이 얼마나 잘 미끄러지지 않는지를 나타내는 값이에요." },
-      { name: "열에너지", description: "마찰이 운동 에너지의 일부를 물체와 바닥의 내부 에너지로 바꾼 결과예요." },
-    ],
-    controls: ["material", "mass"],
-    law: { title: "마찰력과 에너지 전환", description: "정지 마찰력은 한계까지 물체를 붙잡고, 미끄러질 때 마찰이 한 일은 역학적 에너지를 열에너지로 바꿉니다.", equation: "Fₛ ≤ μₛN · W마찰 = ΔE열" },
-  },
-  {
-    id: "rotation",
-    title: "지렛대로 무거운 짐을 들 수 있을까?",
-    category: "회전과 연결",
-    icon: "⚖",
-    question: "같은 짐도 받침점에서 멀리 누르면 더 쉽게 들 수 있을까요?",
-    steps: ["막대 위 세 힘점 중 하나를 골라요.", "빨간 손잡이를 아래로 천천히 눌러요.", "힘점을 바꾸어 필요한 힘을 그래프로 비교해요."],
-    observe: "받침점에서 힘점까지의 거리가 길어질수록 필요한 힘이 줄고, 막대가 멈춘 순간 시계·반시계 토크가 평형인지 보세요.",
-    terms: [
-      { name: "지렛대", description: "막대를 받침점에 걸쳐 작은 힘으로 큰 힘을 내는 도구예요." },
-      { name: "받침점", description: "지렛대가 회전할 때 중심이 되는 점이에요." },
-      { name: "토크", description: "힘이 물체를 돌리려는 효과를 나타내는 양이에요." },
-      { name: "회전 평형", description: "시계 방향 토크와 반시계 방향 토크의 합이 0인 상태예요." },
-    ],
-    controls: ["mass"],
-    law: { title: "지렛대와 회전 평형", description: "막대가 평형이면 받침점을 기준으로 양쪽 토크의 크기가 같고 방향은 반대입니다.", equation: "Στ = 0 · F₁r₁ = F₂r₂" },
-  },
-  {
-    id: "constraints",
-    title: "줄과 막대는 움직임을 어떻게 제한할까?",
-    category: "회전과 연결",
-    icon: "╱",
-    question: "같은 길이의 줄과 막대에 매단 추는 어떤 길로 움직일까요?",
-    steps: ["줄 추와 막대 추를 서로 다른 각도로 끌어요.", "손을 놓아 두 진자를 움직여요.", "고정점에서 추까지의 거리를 비교해요."],
-    observe: "추가 움직여도 연결 길이가 일정하게 유지되는지 보세요.",
-    terms: [
-      { name: "진자", description: "고정점에 매달려 좌우로 왕복 운동하는 물체예요." },
-      { name: "고정점", description: "줄이나 막대가 묶여 움직이지 않는 기준점이에요." },
-      { name: "주기", description: "한 번 왕복해 처음 상태로 돌아오는 데 걸리는 시간이에요." },
-    ],
-    controls: ["gravity"],
-    law: { title: "진자와 줄·막대", description: "길이가 고정된 연결 안에서 중력이 추를 왕복 운동하게 합니다.", equation: "|A − B| = L · T ≈ 2π√(L/g)" },
-  },
-  {
-    id: "pulley",
-    title: "도르래 줄이 많으면 얼마나 쉬워질까?",
-    category: "회전과 연결",
-    icon: "◉",
-    question: "무거운 짐을 받치는 줄을 늘리면 필요한 힘은 얼마나 줄어들까요?",
-    steps: ["위쪽에서 1줄, 2줄, 4줄을 차례로 골라요.", "빨간 손잡이를 같은 거리만큼 아래로 당겨 봐요.", "손잡이가 따라오는 정도와 실제로 당긴 줄의 거리를 함께 비교해요."],
-    observe: "필요한 힘이 적을수록 손잡이가 더 잘 따라오고, 같은 높이에는 더 긴 줄이 필요한지 보세요.",
-    terms: [
-      { name: "도르래", description: "줄의 방향을 바꾸거나 필요한 힘을 줄여 주는 바퀴 장치예요." },
-      { name: "장력", description: "팽팽한 줄이 연결된 물체를 당기는 힘이에요." },
-      { name: "역학적 이득", description: "장치를 써서 힘이 몇 배 쉬워졌는지를 나타내요." },
-    ],
-    controls: ["mass"],
-    law: { title: "도르래의 역학적 이득", description: "짐을 받치는 줄이 많을수록 필요한 힘은 줄지만 당겨야 하는 거리는 늘어납니다.", equation: "F = mg/n · d당김 = nd상승" },
-  },
-  {
-    id: "orbit",
-    title: "조금만 다르게 쏘면 궤도를 벗어날까?",
-    category: "중력과 유체",
-    icon: "◎",
-    question: "발사 속도나 방향을 조금 바꾸면 충돌·공전·이탈 중 무엇이 될까요?",
-    steps: ["작은 별의 보라색 속도 손잡이를 끌어요.", "색 점선으로 예상되는 길과 판정을 먼저 봐요.", "길이와 방향을 조금씩 바꾸어 세 결과를 찾아요."],
-    observe: "비슷해 보이는 발사도 방향과 탈출 속력에 따라 다른 길이 되고, 궤도 반지름이 커지면 공전 주기가 길어지는지 보세요.",
-    terms: [
-      { name: "궤도", description: "중력을 받는 물체가 천체 주위를 움직이는 길이에요." },
-      { name: "만유인력", description: "질량을 가진 모든 물체가 서로 끌어당기는 힘이에요." },
-      { name: "탈출 속력", description: "천체의 중력에서 벗어나는 데 필요한 가장 작은 처음 속력이에요." },
-      { name: "케플러 법칙", description: "같은 중심 천체를 도는 궤도는 반지름이 클수록 공전 주기가 더 길어진다는 관계예요." },
-    ],
-    controls: ["velocity"],
-    law: { title: "만유인력과 케플러 법칙", description: "중력이 진행 방향을 휘게 하며, 원 궤도에서는 반지름의 세제곱과 주기의 제곱이 비례합니다.", equation: "v원 = √(GM/r) · T² ∝ r³" },
-  },
-  {
-    id: "buoyancy",
-    title: "물체는 언제 물에 뜰까?",
-    category: "중력과 유체",
-    icon: "≈",
-    question: "공의 무게를 바꾸면 물에 잠기는 정도가 어떻게 달라질까요?",
-    steps: ["공을 물속으로 끌어 넣어요.", "손을 놓고 위로 미는 힘을 봐요.", "무게를 바꾸어 잠기는 깊이를 비교해요."],
-    observe: "물에 잠긴 부피가 커질수록 부력이 커지는 모습을 보세요.",
-    terms: [
-      { name: "부력", description: "물이나 공기가 물체를 위로 밀어 올리는 힘이에요." },
-      { name: "밀도", description: "같은 부피 안에 질량이 얼마나 모여 있는지를 나타내요." },
-      { name: "잠긴 부피", description: "물체 전체 중 물속에 들어가 있는 부분의 부피예요." },
-    ],
-    controls: ["mass"],
-    law: { title: "부력", description: "물에 잠긴 부피가 커질수록 위로 미는 힘이 커집니다.", equation: "Fᵦ = ρgV" },
-  },
+/** Shape of one lab in the shared content file (apps/lab3d/content/mechanics-labs.json). */
+interface SharedLabContent {
+  readonly id: string;
+  readonly title: string;
+  readonly category: string;
+  readonly icon: string;
+  readonly question: string;
+  readonly steps: readonly string[];
+  readonly observe: string;
+  readonly terms: readonly PhysicsTermDefinition[];
+  readonly law: MechanicsLab["law"];
+  readonly web: { readonly controls: readonly string[]; readonly tip: string };
+}
+
+const CATEGORIES: readonly MechanicsLab["category"][] = ["움직임과 힘", "회전과 연결", "중력과 유체"];
+const CONTROLS: readonly LabControl[] = ["mass", "material", "gravity", "velocity"];
+const PRESETS: readonly PlaygroundPreset[] = [
+  "free-fall", "projectile", "collision", "spring", "friction", "rotation", "orbit", "buoyancy", "constraints", "pulley",
 ];
+
+/**
+ * Reads the shared lab content (the web 2D and the 3D app read the same file) into the web's lab
+ * definitions, checking the parts the web relies on (preset ids, categories, three steps, controls).
+ */
+export function parseMechanicsLabs(labs: readonly SharedLabContent[]): MechanicsLab[] {
+  return labs.map((lab) => {
+    if (!PRESETS.includes(lab.id as PlaygroundPreset)) throw new RangeError(`Unknown mechanics lab: ${lab.id}`);
+    if (!CATEGORIES.includes(lab.category as MechanicsLab["category"])) throw new RangeError(`Unknown category: ${lab.category}`);
+    if (lab.steps.length !== 3) throw new RangeError(`${lab.id} needs three steps`);
+    const controls = lab.web.controls.map((control) => {
+      if (!CONTROLS.includes(control as LabControl)) throw new RangeError(`Unknown control: ${control}`);
+      return control as LabControl;
+    });
+    return {
+      id: lab.id as PlaygroundPreset,
+      title: lab.title,
+      category: lab.category as MechanicsLab["category"],
+      icon: lab.icon,
+      question: lab.question,
+      steps: [lab.steps[0], lab.steps[1], lab.steps[2]],
+      observe: lab.observe,
+      terms: lab.terms.map((term) => ({ name: term.name, description: term.description })),
+      controls,
+      law: { title: lab.law.title, description: lab.law.description, equation: lab.law.equation },
+    };
+  });
+}
+
+export const MECHANICS_LABS: readonly MechanicsLab[] = parseMechanicsLabs(sharedLabs);
 
 export function mechanicsLab(id: PlaygroundPreset): MechanicsLab {
   const lab = MECHANICS_LABS.find((candidate) => candidate.id === id);
@@ -199,18 +83,9 @@ export function mechanicsLab(id: PlaygroundPreset): MechanicsLab {
   return lab;
 }
 
-const interactionTips: Record<PlaygroundPreset, string> = {
-  "free-fall": "중력 버튼을 바꾸고, 떨어지는 세 공과 오른쪽 그래프를 함께 보세요.",
-  projectile: "공의 보라색 화살표 끝을 끌어 발사 방향과 빠르기를 정하세요.",
-  collision: "각 공의 보라색 속도 화살표 끝을 끌어 충돌 방향을 바꾸세요.",
-  spring: "용수철 끝의 공을 잡아당겼다가 놓아 보세요.",
-  friction: "상자 옆 빨간 손잡이를 오른쪽으로 천천히 당기세요.",
-  rotation: "막대 위 힘점을 고른 뒤 빨간 손잡이를 아래로 누르세요.",
-  constraints: "줄과 막대 끝의 추를 서로 다른 방향으로 끌었다가 놓으세요.",
-  pulley: "도르래 오른쪽의 빨간 손잡이를 아래로 길게 당기세요.",
-  orbit: "작은 별의 보라색 화살표 끝을 끌어 발사 방향과 빠르기를 정하세요.",
-  buoyancy: "물 위의 공을 잡아 물속으로 끌어 넣었다가 놓으세요.",
-};
+const interactionTips = Object.fromEntries(
+  sharedLabs.map((lab) => [lab.id, lab.web.tip]),
+) as Record<PlaygroundPreset, string>;
 
 export function mechanicsInteractionTip(id: PlaygroundPreset): string {
   return interactionTips[id];

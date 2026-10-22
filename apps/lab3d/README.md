@@ -23,8 +23,10 @@ apps/lab3d/
                                       Manipulator(물체 조작), ManipSurface(조작 평면)
   experiments/incline_friction/       빗면 마찰 실험(장면, InclineFrictionCorrector = 접촉 힘 보정 설정, InclineProps 소품)
   experiments/manipulation_dev/       조작 확인용 개발 장면(목록에 없음, --experiment=manipulation-dev)
-  content/experiments/                실험 콘텐츠 JSON(index.json + 실험별 파일)
-  assets/fonts/                       Noto Sans CJK KR 서브셋(Regular·Bold, SIL OFL 1.1)
+  content/mechanics-labs.json         역학 실험 문구(웹 2D와 공유, "콘텐츠 공유")
+  content/experiments/                실험 정의 JSON(index.json + 실험별 파일: 3D 전용 필드)
+  assets/fonts/                       Noto Sans CJK KR 서브셋(Regular·Bold, SIL OFL 1.1), 기호 대체 글꼴
+                                      DejaVu Sans 서브셋(Lab3dSymbols, Bitstream Vera 라이선스)
   tests/                              헤드리스 테스트, TS 생성 parity 벡터
   tools/                              빌드·글꼴·벡터 생성·실기기 측정·제스처 도구
   docs/ui-resolution.md               low 단계 UI 해상도 방식 결정과 측정 근거
@@ -47,7 +49,22 @@ apps/lab3d/
 | 착지 때 카메라를 살짝 흔든다(`CameraRig.nudge`) | `impact(strength)` 신호(연출용, 선택) |
 | 한 손가락 조작: 집기·끌기·스냅·미리보기·높이 손잡이·취소·보조 시점(`Manipulator`) | JSON `manipulation`의 규칙, `manipulation_body`·`manipulation_surface`·`manipulation_juice`, 결과 통보(`manipulation_started`·`_placed`·`_cancelled`), 추가 규칙 `placement_allowed`, 화면 재구성 때 유지할 `placements()` |
 
-콘텐츠(문구·조건·관찰값·그래프·시점)는 JSON 데이터다. Task 4에서 웹 2D와 같은 파일을 공유할 수 있게 코드와 분리했다.
+콘텐츠(문구·조건·관찰값·그래프·시점)는 JSON 데이터다. 문구는 웹 2D와 같은 파일을 쓴다(아래 "콘텐츠 공유").
+
+### 콘텐츠 공유 (Task 4a)
+
+역학 안내형 실험의 문구는 `content/mechanics-labs.json` 한 파일에 있고, 웹 2D와 3D 앱이 함께 읽는다.
+
+| 위치 | 내용 | 읽는 곳 |
+|---|---|---|
+| `content/mechanics-labs.json` `labs` | 웹 2D의 10개 실험(웹 목록 순서): `id`, `title`, `category`, `icon`, `question`, `steps`(3개), `observe`, `terms`, `law`, 플랫폼별 조작 안내 `web`(`controls` = 웹 조건 패널, `tip`)·`app`(`tip`, 3D로 옮긴 실험만) | 웹 `src/app/mechanics-labs.ts`(`import { labs }`, `parseMechanicsLabs`가 id·분류·단계 수·조건을 검사), 앱 `ExperimentRegistry` |
+| 같은 파일 `app_labs` | 3D 앱에만 있는 실험(빗면 마찰) | 앱 |
+| `content/experiments/<id>.json` | 3D 전용 필드: `content`(공유 실험 id), `scene`, `bench_id`, `camera`, `controls`, `actions`, `observations`, `graph`, `manipulation` | 앱 |
+
+- `ExperimentRegistry.resolve()`가 `content`의 문구(`title`·`category`·`icon`·`question`·`steps`·`observe`·`terms`·`law`, `tip` = `app.tip`)를 실험 정의에 합친다. 실험 파일에 문구를 함께 쓰면 오류로 빼고, 없는 id도 오류다. `content`가 없는 파일(개발 장면)은 문구를 직접 쓴다.
+- 웹의 조작 안내(`web.tip`)와 앱의 조작 안내(`app.tip`)는 조작 방식이 달라 따로 둔다. 질문·단계·관찰·용어·법칙은 하나다.
+- 웹 불변 확인: `src/app/mechanics-labs.test.ts`가 웹이 읽은 10개 실험과 조작 팁의 SHA-256이 옮기기 전(4cb04a4) TS 리터럴과 같은지 본다(한 글자 바꾸면 실패). 웹 빌드(`vite build`)의 한글 문자열 2,083개는 옮기기 전과 같다(압축된 변수 이름만 다름). `import { labs }`라 `app_labs`·설명 문구는 웹 번들에 들어가지 않는다.
+- 공유 파일의 기호 중 Noto Sans CJK에 없는 것(`x₀`의 아래 첨자, `⚖`·`⌁`·`▰` 아이콘)은 DejaVu Sans 서브셋을 대체 글꼴로 그린다(`tools/subset_font.sh`가 두 서브셋을 함께 만든다).
 
 ### 공식 보정 계층 (Task 3)
 
@@ -238,8 +255,8 @@ python3 -I apps/lab3d/tools/device_gesture.py orbit  # orbit | pinch | pinch-fix
 
 ## 5. 실험 추가
 
-1. `content/experiments/<id>.json`을 만든다. 필드는 `incline-friction.json`을 따른다. `ExperimentRegistry.validate()`가 검사하는 필수 필드는 `id`, `title`, `category`, `question`, `steps`, `observe`, `law`, `scene`, `camera`, `controls`, `actions`, `observations`, `graph`다. 나머지(`icon`, `terms`, `tip`)는 선택이다.
-   - 문구: `title`, `category`, `icon`, `question`, `steps`(웹 2D처럼 3개 권장), `observe`, `terms`, `law`(`title`·`description`·`equation`), `tip`
+1. `content/experiments/<id>.json`을 만든다. 필드는 `incline-friction.json`을 따른다. 문구는 `content`에 공유 실험 id를 적어 `content/mechanics-labs.json`에서 가져온다(웹 2D 실험이면 `labs`의 그 항목에 3D 조작 안내 `app.tip`을 더하고, 3D 전용이면 `app_labs`에 더한다, 1절 "콘텐츠 공유"). 합친 정의에서 `ExperimentRegistry.validate()`가 검사하는 필수 필드는 `id`, `title`, `category`, `question`, `steps`, `observe`, `law`, `scene`, `camera`, `controls`, `actions`, `observations`, `graph`다. 나머지(`icon`, `terms`, `tip`)는 선택이다.
+   - 문구(공유 파일): `title`, `category`, `icon`, `question`, `steps`(3개), `observe`, `terms`, `law`(`title`·`description`·`equation`), `app.tip`
    - `scene`: 실험 스크립트 경로, `bench_id`: OPBENCH 장면 이름
    - `camera`: `target`, `distance`, `distance_range`, `yaw_range_deg`, `pitch_range_deg`, `pan_radius`, `default_mode`, `views`(front·three_quarter·top·side·follow의 `yaw_deg`·`pitch_deg`, 선택 `distance`)
    - `controls`: `slider`(`min`·`max`·`step`·`default`·`unit`·`digits`) 또는 `choice`(`options`·`default`). `options` 항목은 `id`·`label`이고, 재질 선택처럼 실험이 쓰는 계수(`mu_s`·`mu_k`)를 함께 둘 수 있다

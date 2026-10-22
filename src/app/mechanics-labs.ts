@@ -1,4 +1,4 @@
-import type { PlaygroundPreset } from "./physics-playground";
+import { PLAYGROUND_PRESETS, type PlaygroundPreset } from "./physics-playground";
 import type { PhysicsTermDefinition } from "./subjects/subject-experience";
 // Lab texts live in one JSON file shared with the 3D app (apps/lab3d/README.md "콘텐츠 공유").
 import { labs as sharedLabs } from "../../apps/lab3d/content/mechanics-labs.json";
@@ -43,17 +43,32 @@ interface SharedLabContent {
 
 const CATEGORIES: readonly MechanicsLab["category"][] = ["움직임과 힘", "회전과 연결", "중력과 유체"];
 const CONTROLS: readonly LabControl[] = ["mass", "material", "gravity", "velocity"];
-const PRESETS: readonly PlaygroundPreset[] = [
-  "free-fall", "projectile", "collision", "spring", "friction", "rotation", "orbit", "buoyancy", "constraints", "pulley",
-];
+function isPlaygroundPreset(id: string): id is PlaygroundPreset {
+  return PLAYGROUND_PRESETS.some((preset) => preset === id);
+}
+
+interface ParsedLabs {
+  readonly labs: MechanicsLab[];
+  readonly tips: ReadonlyMap<PlaygroundPreset, string>;
+}
 
 /**
  * Reads the shared lab content (the web 2D and the 3D app read the same file) into the web's lab
- * definitions, checking the parts the web relies on (preset ids, categories, three steps, controls).
+ * definitions, checking the parts the web relies on (preset ids, categories, three steps, controls)
+ * and that every preset has exactly one lab with an interaction tip.
  */
 export function parseMechanicsLabs(labs: readonly SharedLabContent[]): MechanicsLab[] {
-  return labs.map((lab) => {
-    if (!PRESETS.includes(lab.id as PlaygroundPreset)) throw new RangeError(`Unknown mechanics lab: ${lab.id}`);
+  return parseLabs(labs).labs;
+}
+
+function parseLabs(content: readonly SharedLabContent[]): ParsedLabs {
+  const tips = new Map<PlaygroundPreset, string>();
+  const labs = content.map((lab): MechanicsLab => {
+    const id = lab.id;
+    if (!isPlaygroundPreset(id)) throw new RangeError(`Unknown mechanics lab: ${id}`);
+    if (tips.has(id)) throw new RangeError(`Duplicate mechanics lab: ${id}`);
+    if (typeof lab.web.tip !== "string" || lab.web.tip.trim() === "") throw new RangeError(`${id} needs an interaction tip`);
+    tips.set(id, lab.web.tip);
     if (!CATEGORIES.includes(lab.category as MechanicsLab["category"])) throw new RangeError(`Unknown category: ${lab.category}`);
     if (lab.steps.length !== 3) throw new RangeError(`${lab.id} needs three steps`);
     const controls = lab.web.controls.map((control) => {
@@ -61,7 +76,7 @@ export function parseMechanicsLabs(labs: readonly SharedLabContent[]): Mechanics
       return control as LabControl;
     });
     return {
-      id: lab.id as PlaygroundPreset,
+      id,
       title: lab.title,
       category: lab.category as MechanicsLab["category"],
       icon: lab.icon,
@@ -73,9 +88,14 @@ export function parseMechanicsLabs(labs: readonly SharedLabContent[]): Mechanics
       law: { title: lab.law.title, description: lab.law.description, equation: lab.law.equation },
     };
   });
+  const missing = PLAYGROUND_PRESETS.filter((preset) => !tips.has(preset));
+  if (missing.length > 0) throw new RangeError(`Missing mechanics labs: ${missing.join(", ")}`);
+  return { labs, tips };
 }
 
-export const MECHANICS_LABS: readonly MechanicsLab[] = parseMechanicsLabs(sharedLabs);
+const SHARED_LABS = parseLabs(sharedLabs);
+
+export const MECHANICS_LABS: readonly MechanicsLab[] = SHARED_LABS.labs;
 
 export function mechanicsLab(id: PlaygroundPreset): MechanicsLab {
   const lab = MECHANICS_LABS.find((candidate) => candidate.id === id);
@@ -83,12 +103,10 @@ export function mechanicsLab(id: PlaygroundPreset): MechanicsLab {
   return lab;
 }
 
-const interactionTips = Object.fromEntries(
-  sharedLabs.map((lab) => [lab.id, lab.web.tip]),
-) as Record<PlaygroundPreset, string>;
-
 export function mechanicsInteractionTip(id: PlaygroundPreset): string {
-  return interactionTips[id];
+  const tip = SHARED_LABS.tips.get(id);
+  if (tip === undefined) throw new RangeError(`Unknown mechanics lab: ${id}`);
+  return tip;
 }
 
 const settingLabels: Record<LabControl, string> = {

@@ -70,10 +70,17 @@ describe("mechanics labs", () => {
   });
 
   it("rejects shared content the web cannot show", () => {
-    const lab = sharedContent.labs[0];
-    expect(() => parseMechanicsLabs([{ ...lab, id: "sandbox" }])).toThrow(RangeError);
-    expect(() => parseMechanicsLabs([{ ...lab, category: "열" }])).toThrow(RangeError);
-    expect(() => parseMechanicsLabs([{ ...lab, steps: lab.steps.slice(0, 2) }])).toThrow(RangeError);
-    expect(() => parseMechanicsLabs([{ ...lab, web: { ...lab.web, controls: ["speed"] } }])).toThrow(RangeError);
+    const labs = sharedContent.labs;
+    const lab = labs[0];
+    const withFirst = (changed: (typeof labs)[number]) => [changed, ...labs.slice(1)];
+    expect(parseMechanicsLabs(labs)).toEqual(MECHANICS_LABS);
+    expect(() => parseMechanicsLabs(withFirst({ ...lab, id: "sandbox" }))).toThrow(/Unknown mechanics lab: sandbox/);
+    expect(() => parseMechanicsLabs(withFirst({ ...lab, category: "열" }))).toThrow(/Unknown category/);
+    expect(() => parseMechanicsLabs(withFirst({ ...lab, steps: lab.steps.slice(0, 2) }))).toThrow(/three steps/);
+    expect(() => parseMechanicsLabs(withFirst({ ...lab, web: { ...lab.web, controls: ["speed"] } }))).toThrow(/Unknown control/);
+    // Every preset needs its lab and its interaction tip (the web shows both).
+    expect(() => parseMechanicsLabs(labs.slice(1))).toThrow(new RangeError(`Missing mechanics labs: ${lab.id}`));
+    expect(() => parseMechanicsLabs(withFirst({ ...lab, web: { ...lab.web, tip: "" } }))).toThrow(`${lab.id} needs an interaction tip`);
+    expect(() => parseMechanicsLabs([...labs, lab])).toThrow(`Duplicate mechanics lab: ${lab.id}`);
   });
 });

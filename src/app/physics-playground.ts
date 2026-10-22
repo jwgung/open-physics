@@ -23,17 +23,11 @@ import {
 } from "./mechanics-challenges";
 
 export type PlaygroundShape = "circle" | "box";
-export type PlaygroundPreset =
-  | "free-fall"
-  | "projectile"
-  | "collision"
-  | "spring"
-  | "friction"
-  | "rotation"
-  | "orbit"
-  | "buoyancy"
-  | "constraints"
-  | "pulley";
+/** Every guided experiment preset (the single list the PlaygroundPreset union comes from). */
+export const PLAYGROUND_PRESETS = [
+  "free-fall", "projectile", "collision", "spring", "friction", "rotation", "orbit", "buoyancy", "constraints", "pulley",
+] as const;
+export type PlaygroundPreset = (typeof PLAYGROUND_PRESETS)[number];
 export type PlaygroundMaterial = "rubber" | "wood" | "steel" | "clay";
 export type SandboxObjectKind = "ball" | "box" | "block" | "anchor";
 export type SandboxApparatusKind = "spring" | "lever" | "pulley";

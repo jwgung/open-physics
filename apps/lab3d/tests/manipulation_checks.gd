@@ -713,6 +713,15 @@ func check_review2() -> void:
 	var picked_near: String = m.active_id
 	_touch(screen, 0, beside, false)
 	expect.call(picked_behind == "" and picked_near == "orange", "a wall in front of a box is not picked through; a finger beside it on the floor still picks it", "behind '%s', near '%s'" % [picked_behind, picked_near])
+	# A low, flat view: a finger just below the box hits the floor far in front of it, which is not
+	# an obstacle between the camera and the box.
+	screen.view.rig.set_mode("front", true)
+	await tree.process_frame
+	var below := _at(screen, orange.global_position) + Vector2(0.0, 30.0)
+	_touch(screen, 0, below, true)
+	var picked_low: String = m.active_id
+	_touch(screen, 0, below, false)
+	expect.call(picked_low == "orange", "in a low view a finger just below the box (on the floor in front) still picks it", "'%s'" % picked_low)
 	# The auto-drag demo reports a put-down only when the box was put down: not when the place is refused.
 	var placed := [0]
 	m.demo_placed.connect(func() -> void: placed[0] += 1)

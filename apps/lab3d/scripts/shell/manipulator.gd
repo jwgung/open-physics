@@ -373,14 +373,20 @@ func _pick(position: Vector2) -> String:
 			continue
 		if not hit.is_empty() and hit.collider == body:
 			return id
-		# Near the object on screen counts, unless something else stands in front of it.
-		if not hit.is_empty() and ray[0].distance_to(hit.position) < ray[0].distance_to(body.global_position) - _half_extents(id).length():
-			continue
+		# Near the object on screen counts, unless something else stands between the camera and it
+		# (a ray to its centre; the floor or surface it rests on is below that line of sight).
 		var d := _screen_distance(body.global_position, position)
-		if d <= best_distance:
+		if d <= best_distance and _in_sight(ray[0], body):
 			best_distance = d
 			best = id
 	return best
+
+
+func _in_sight(eye: Vector3, body: PhysicsBody3D) -> bool:
+	_ray.from = eye
+	_ray.to = body.global_position
+	var hit := experiment.get_world_3d().direct_space_state.intersect_ray(_ray)
+	return hit.is_empty() or hit.collider == body
 
 
 ## Height-handle drag: the point of the knob's vertical line (the rod beside the object, where the

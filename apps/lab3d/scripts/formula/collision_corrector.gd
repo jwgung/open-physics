@@ -5,23 +5,30 @@
 ## combines materials as min(bounceA + bounceB, 1) and has friction; TS uses min(eA, eB), e = 0
 ## below a 1 m/s closing speed, which equals Jolt's bounce velocity threshold, and no friction), and
 ## a pair with bounce 0 is resolved over two steps (speculative contact, then the hit).
-## Each fixed step, before the physics server steps:
-## - the velocities the bodies start the step with are kept (`_prev`). A step whose relative normal
-##   velocity changed more than the external forces explain while the surfaces touch had an A-B
-##   contact impulse: the velocities from before that step are frozen (`_before`) until the bodies
-##   stop closing in, however many steps the engine takes;
-## - then both velocities are set to v_free + n (u' - u) along the contact normal n, where v_free is
-##   the frozen velocity plus the external velocity change of the contact steps (engine gravity,
-##   constant force), u its normal component and u' the PhysicsLaws.world_collision_velocities
-##   outcome (TS world order: integrate, then resolve). The engine's normal and friction impulses of
-##   those steps are discarded; tangential motion and the external forces stay.
+## Contact detection uses the engine's contact reports (setup() turns contact_monitor on for both
+## bodies; a report describes the previous step). Each fixed step, before the physics server steps:
+## - a step whose report newly lists B among A's colliding bodies started an A-B contact; the
+##   velocities the bodies started that step with (`_prev`) are frozen (`_before`) until the bodies
+##   stop closing in or the report drops the pair, however many steps the engine takes;
+## - it is left to the engine (no event) when A or B also newly touched another body in that step
+##   (wall, floor, third body: the impulses cannot be split), or when it is a persistent contact: the
+##   pair has not been apart (gap > APART_GAP) since its last contact and closes slower than the
+##   restitution threshold (pressed together, a flickering report);
+## - on resolving, both velocities are set to v_free + n (u' - u) along the contact normal n, where
+##   v_free is the frozen velocity plus the external velocity change of the contact steps, u its
+##   normal component and u' the PhysicsLaws.world_collision_velocities outcome (TS world order:
+##   integrate, then resolve). The external change per step is the measured velocity change of the
+##   last step without an A-B contact (so gravity, the floor's support, constant_force and apply_*
+##   forces held over the contact are all in it); before such a step exists it is engine gravity +
+##   constant_force. The engine's normal and friction impulses of those steps are discarded;
+##   tangential motion and the external forces stay.
 ## Positions of the contact steps keep the engine's outcome (an error <= |dv| dt per step).
 class_name CollisionCorrector
 extends FormulaCorrector
 
-const TOUCH_TOLERANCE := 0.05     # m between the surfaces that still counts as touching
-const IMPULSE_TOLERANCE := 1e-4   # m/s of unexplained relative normal velocity change = a contact impulse
-const MAX_CONTACT_STEPS := 30     # resolve anyway if the bodies keep closing in for this long
+const APART_GAP := 0.05          # m between the surfaces: the pair has separated since its last contact
+const IMPULSE_TOLERANCE := 1e-4   # m/s of relative normal velocity that still counts as closing in
+const REPORTED_CONTACTS := 8      # max_contacts_reported setup() ensures on both bodies
 
 var body_a: RigidBody3D
 var body_b: RigidBody3D
@@ -40,6 +47,15 @@ var _engaged := false
 var _before_a := Vector3.ZERO
 var _before_b := Vector3.ZERO
 var _contact_steps := 0
+var _touching := false            # B was in A's contact report on the previous step
+var _apart := false               # the surfaces have been more than APART_GAP apart since the last contact
+var _reported_a: Array[Node3D] = []   # previous step's contact reports
+var _reported_b: Array[Node3D] = []
+var _free_dv_a := Vector3.ZERO    # measured velocity change of the last step without an A-B contact
+var _free_dv_b := Vector3.ZERO
+var _has_free_dv := false
+var _dv_a := Vector3.ZERO         # external velocity change per contact step (frozen with _before)
+var _dv_b := Vector3.ZERO
 
 
 func _init() -> void:
@@ -54,6 +70,9 @@ func setup(a: RigidBody3D, b: RigidBody3D, ra: float, rb: float, ea: float, eb: 
 	radius_b = rb
 	restitution_a = ea
 	restitution_b = eb
+	for body in [a, b]:
+		body.contact_monitor = true
+		body.max_contacts_reported = maxi(body.max_contacts_reported, REPORTED_CONTACTS)
 	reset()
 
 
@@ -63,6 +82,11 @@ func reset() -> void:
 	_has_prev = false
 	_engaged = false
 	_contact_steps = 0
+	_touching = false
+	_apart = false
+	_reported_a.clear()
+	_reported_b.clear()
+	_has_free_dv = false
 
 
 ## Unit normal from A to B (scalar doubles) and the gap between the surfaces.
@@ -81,7 +105,8 @@ static func _dot(v: Vector3, n: PackedFloat64Array) -> float:
 	return float(v.x) * n[0] + float(v.y) * n[1] + float(v.z) * n[2]
 
 
-## Velocity change of one step from the forces the engine adds besides contacts.
+## Velocity change of one step from the forces the engine adds besides contacts (fallback before a
+## contact-free step was measured).
 static func _external_dv(body: RigidBody3D, dt: float) -> Vector3:
 	return (body.get_gravity() * body.gravity_scale + body.constant_force / body.mass) * dt
 
@@ -92,33 +117,61 @@ func step(dt: float) -> void:
 	var gap: float = contact[1]
 	var va := body_a.linear_velocity
 	var vb := body_b.linear_velocity
+	var reported_a := body_a.get_colliding_bodies()
+	var reported_b := body_b.get_colliding_bodies()
+	var touching := reported_a.has(body_b)
+	if gap > APART_GAP:
+		_apart = true
 	if _has_prev:
-		var relative := _dot(vb, normal) - _dot(va, normal)
-		var expected := _dot(_prev_b + _external_dv(body_b, dt), normal) - _dot(_prev_a + _external_dv(body_a, dt), normal)
-		# After the contact step the bodies may already have separated by up to (relative speed) * dt.
-		var reach := TOUCH_TOLERANCE + absf(relative) * dt
-		if not _engaged and expected < 0.0 and relative - expected > IMPULSE_TOLERANCE and gap <= reach:
+		if not touching:
+			_free_dv_a = va - _prev_a
+			_free_dv_b = vb - _prev_b
+			_has_free_dv = true
+		elif not _touching and not _engaged and _starts_collision(normal, reported_a, reported_b):
 			_engaged = true
 			_before_a = _prev_a
 			_before_b = _prev_b
+			_dv_a = _free_dv_a if _has_free_dv else _external_dv(body_a, dt)
+			_dv_b = _free_dv_b if _has_free_dv else _external_dv(body_b, dt)
 			_contact_steps = 0
+		if touching:
+			_apart = false
 		if _engaged:
 			_contact_steps += 1
-			if relative >= -IMPULSE_TOLERANCE or _contact_steps >= MAX_CONTACT_STEPS:
-				_resolve(normal, va, vb, dt)
+			var relative := _dot(vb, normal) - _dot(va, normal)
+			if relative >= -IMPULSE_TOLERANCE or not touching:
+				_resolve(normal, va, vb)
 				va = body_a.linear_velocity
 				vb = body_b.linear_velocity
+	elif touching:
+		_apart = false
 	record(gap)
 	steps += 1
 	_prev_a = va
 	_prev_b = vb
 	_has_prev = true
+	_touching = touching
+	_reported_a.assign(reported_a)
+	_reported_b.assign(reported_b)
 
 
-func _resolve(normal: PackedFloat64Array, engine_a: Vector3, engine_b: Vector3, dt: float) -> void:
+## A new A-B contact report is a collision to correct unless another body newly touched A or B in the
+## same step, or it is a persistent contact (not apart since the last one, closing below threshold).
+func _starts_collision(normal: PackedFloat64Array, reported_a: Array[Node3D], reported_b: Array[Node3D]) -> bool:
+	for other in reported_a:
+		if other != body_b and not _reported_a.has(other):
+			return false
+	for other in reported_b:
+		if other != body_a and not _reported_b.has(other):
+			return false
+	var closing := _dot(_prev_a, normal) - _dot(_prev_b, normal)
+	return _apart or closing >= threshold
+
+
+func _resolve(normal: PackedFloat64Array, engine_a: Vector3, engine_b: Vector3) -> void:
 	_engaged = false
-	var free_a := _before_a + _external_dv(body_a, dt) * _contact_steps
-	var free_b := _before_b + _external_dv(body_b, dt) * _contact_steps
+	var free_a := _before_a + _dv_a * _contact_steps
+	var free_b := _before_b + _dv_b * _contact_steps
 	var ua := _dot(free_a, normal)
 	var ub := _dot(free_b, normal)
 	var after := PhysicsLaws.world_collision_velocities(body_a.mass, body_b.mass, ua, 0.0, ub, 0.0, 1.0, 0.0,

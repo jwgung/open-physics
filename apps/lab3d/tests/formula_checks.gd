@@ -503,6 +503,10 @@ func check_collision() -> void:
 		world.queue_free()
 		await tree.process_frame
 	await _check_collision_materials()
+	await _check_collision_wall_neighbour()
+	await _check_collision_applied_force()
+	await _check_collision_pressed()
+	await _check_collision_applied_during_contact()
 
 
 ## The collision corrector leaves the bodies' materials alone: a ball of a corrected pair bounces
@@ -534,6 +538,125 @@ func _check_collision_materials() -> void:
 		and is_equal_approx(partner.physics_material_override.bounce, 0.3), "collision: setup() keeps the bodies' own materials", "bounce %.2f, friction %.2f" % [material.bounce, material.friction])
 	expect.call(worst <= 1e-5 and rebound > 1.0 and corrector.events.is_empty(), "collision: floor bounce of a corrected body = its own material (uncorrected twin)",
 		"max |dv| %s m/s, rebound %.3f m/s, %d event(s)" % [String.num_scientific(worst), rebound, corrector.events.size()])
+	world.queue_free()
+	await tree.process_frame
+
+
+## A pair's corrector over the next steps (FormulaDriver), with the given bodies.
+func _collision_driver(world: Node3D, a: RigidBody3D, b: RigidBody3D, ra: float, rb: float) -> CollisionCorrector:
+	var corrector := CollisionCorrector.new()
+	corrector.setup(a, b, ra, rb, 0.88, 0.88)
+	var driver := FormulaDriver.new()
+	driver.correctors.append(corrector)
+	world.add_child(driver)
+	driver.running = true
+	return corrector
+
+
+## A bounces off a wall while B rests against the same wall 3 cm beside it (inside the old 5 cm touch
+## band, closing along the A-B line at the wall step): no A-B contact, so no event, A rebounds like an
+## uncorrected twin (the wall's own bounce) and B does not move.
+func _check_collision_wall_neighbour() -> void:
+	var world := _world()
+	var wall := StaticBody3D.new()
+	var shape := CollisionShape3D.new()
+	var box := BoxShape3D.new()
+	box.size = Vector3(1.0, 4.0, 20.0)
+	shape.shape = box
+	wall.add_child(shape)
+	wall.position = Vector3(3.5, 5.0, 0.0)   # face at x = 3
+	world.add_child(wall)
+	var a := _body(world, 1.0, Vector3(1.0, 5.0, 0.0), 0.3, 0.0, false)
+	var b := _body(world, 1.0, Vector3(2.7, 5.0, 0.63), 0.3, 0.0, false)
+	var twin := _body(world, 1.0, Vector3(1.0, 5.0, 5.0), 0.3, 0.0, false)
+	for body in [a, b, twin]:
+		body.gravity_scale = 0.0
+		body.physics_material_override.bounce = 0.5
+	a.linear_velocity = Vector3(3.0, 0.0, 0.0)
+	twin.linear_velocity = a.linear_velocity
+	var corrector := _collision_driver(world, a, b, 0.3, 0.3)
+	var worst := 0.0
+	var moved := 0.0
+	for i in STEP_HZ:
+		await tree.physics_frame
+		worst = maxf(worst, (a.linear_velocity - twin.linear_velocity).length())
+		moved = maxf(moved, b.linear_velocity.length())
+	expect.call(corrector.events.is_empty() and worst <= 1e-5 and a.linear_velocity.x < -1.0 and moved <= 1e-6,
+		"collision: A bouncing off a wall next to B (3 cm) is not an A-B collision (wall bounce kept, B still)",
+		"%d event(s), A %.4f m/s vs twin %.4f, max |dv| %s, B max speed %s" % [corrector.events.size(), a.linear_velocity.x,
+			twin.linear_velocity.x, String.num_scientific(worst), String.num_scientific(moved)])
+	world.queue_free()
+	await tree.process_frame
+
+
+## A pushed toward B every step with apply_central_force, stopping a few cm short of a contact (inside
+## the old 5 cm touch band): no event.
+func _check_collision_applied_force() -> void:
+	var world := _world()
+	var a := _body(world, 1.0, Vector3(0.0, 5.0, 0.0), 0.3, 0.0, false)
+	var b := _body(world, 1.0, Vector3(1.08, 5.0, 0.0), 0.3, 0.0, false)
+	for body in [a, b]:
+		body.gravity_scale = 0.0
+	var corrector := _collision_driver(world, a, b, 0.3, 0.3)
+	var closest := INF
+	for i in STEP_HZ:
+		a.apply_central_force(Vector3(4.0 if i < 20 else -4.0, 0.0, 0.0))   # out and back: gap stays > 0
+		await tree.physics_frame
+		if corrector.steps > 0:
+			closest = minf(closest, corrector.last_sample)
+	expect.call(corrector.events.is_empty() and closest > 0.0 and closest < 0.05 and b.linear_velocity.length() == 0.0,
+		"collision: apply_central_force on A toward B without a contact is not a collision",
+		"%d event(s), closest gap %.3f m" % [corrector.events.size(), closest])
+	world.queue_free()
+	await tree.process_frame
+
+
+## Two spheres pressed together for 2 s (constant force on A pushes both; they start touching): a
+## persistent contact, no event and no bounce, they move together at F t / (mA + mB).
+func _check_collision_pressed() -> void:
+	var world := _world()
+	var a := _body(world, 1.0, Vector3(-0.6, 5.0, 0.0), 0.6, 0.0, false)
+	var b := _body(world, 2.0, Vector3(0.8, 5.0, 0.0), 0.8, 0.0, false)
+	for body in [a, b]:
+		body.gravity_scale = 0.0
+	a.constant_force = Vector3(3.0, 0.0, 0.0)
+	var corrector := _collision_driver(world, a, b, 0.6, 0.8)
+	var worst_split := 0.0
+	for i in 2 * STEP_HZ:
+		await tree.physics_frame
+		if i >= 10:
+			worst_split = maxf(worst_split, absf(a.linear_velocity.x - b.linear_velocity.x))
+	var expected := 3.0 * corrector.steps / float(STEP_HZ) / 3.0
+	expect.call(corrector.events.is_empty() and worst_split <= 0.05 and _rel(b.linear_velocity.x, expected) <= 0.02,
+		"collision: a pair pressed together by a constant force for 2 s has no event and no bounce",
+		"%d event(s), max |vA - vB| %.4f m/s, vB %.4f vs F t / m %.4f m/s" % [corrector.events.size(), worst_split, b.linear_velocity.x, expected])
+	world.queue_free()
+	await tree.process_frame
+
+
+## A force applied with apply_central_force every step keeps acting over the contact steps: the
+## velocity the formula outcome starts from is the frozen one plus F / m dt per contact step (the
+## measured velocity change of the last contact-free step), not the frozen one alone.
+func _check_collision_applied_during_contact() -> void:
+	var world := _world()
+	var a := _body(world, 1.0, Vector3(-3.0, 5.0, 0.0), 0.6, 0.0, false)
+	var b := _body(world, 2.0, Vector3(3.0, 5.0, 0.0), 0.8, 0.0, false)
+	for body in [a, b]:
+		body.gravity_scale = 0.0
+	a.linear_velocity = Vector3(3.4, 0.0, 0.0)
+	b.linear_velocity = Vector3(-1.7, 0.0, 0.0)
+	var corrector := _collision_driver(world, a, b, 0.6, 0.8)
+	for i in 90:
+		a.apply_central_force(Vector3(2.0, 0.0, 0.0))
+		await tree.physics_frame
+	var error := INF
+	var detail := "no event"
+	if corrector.events.size() == 1:
+		var event: Dictionary = corrector.events[0]
+		var want: float = event.before[0].x + 2.0 / STEP_HZ * event.steps
+		error = absf(float(event.normal_before[0]) - want)
+		detail = "free vA %.5f vs %.5f m/s over %d contact step(s)" % [event.normal_before[0], want, event.steps]
+	expect.call(error <= 1e-5, "collision: an apply_central_force force acting through the contact steps stays in the outcome", detail)
 	world.queue_free()
 	await tree.process_frame
 

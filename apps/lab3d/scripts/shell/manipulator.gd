@@ -17,7 +17,8 @@
 ##   one, a second finger, or a system cancel puts it back where it was picked up.
 ## - The camera turns to show the surface while dragging if the view is too flat (CameraRig.begin_assist).
 ## Work per input event: at most one ray (pick) and one shape query (only when the grid target or
-## the height changes). Nothing is allocated per frame.
+## the height changes). _process allocates nothing; a pointer event makes a few small values (the
+## finger ray, one projected point).
 class_name Manipulator
 extends Node3D
 
@@ -72,6 +73,7 @@ var _rods: Dictionary = {}           # id -> MeshInstance3D (handle rod sized to
 var _knob: MeshInstance3D
 var _handle_body := Transform3D()    # body and camera transforms the handle was placed for
 var _handle_camera := Transform3D()
+var _handle_offset := Vector3.ZERO   # from the object's base point to the handle rod (camera right * reach)
 var _handle_surface: ManipSurface    # surface of the selected object, built once per selection / state change
 var _demo_every := 0.0
 var _demo_left := 0.0
@@ -177,7 +179,7 @@ func _move(position: Vector2) -> void:
 		if s == null:
 			return
 		var rule: Dictionary = rules[active_id]
-		var h := _snap_height(rule, clampf(s - _grab_height - _lift, 0.0, rule.height_max))
+		var h := _snap_height(rule, s - _grab_height - _lift)
 		if not is_equal_approx(h, height):
 			height = h
 			_body.global_transform = _surface.pose(_held, _lift + height)
@@ -236,7 +238,7 @@ func _begin(id: String, kind: String, position: Vector2) -> void:
 		and surface.clamp_soft(p, SOFT_MARGIN).distance_to(p) < REGION_EPS
 	height = 0.0
 	if rule.height_max > 0.0 and on_surface:
-		height = _snap_height(rule, clampf(above, 0.0, rule.height_max))
+		height = _snap_height(rule, above)
 	var ray := _finger_ray(position)
 	if kind == "drag":
 		var finger: Variant = surface.project_ray(ray[0], ray[1], _lift + height)
@@ -274,10 +276,12 @@ func _finish() -> void:
 	_target_set = false
 
 
-## `h` on the rule's height step (unchanged when the rule has none).
+## `h` kept in 0..height_max and rounded to the rule's height step (never above height_max, also
+## when the maximum is not a multiple of the step).
 func _snap_height(rule: Dictionary, h: float) -> float:
+	h = clampf(h, 0.0, rule.height_max)
 	if rule.height_step > 0.0:
-		return roundf(h / rule.height_step) * rule.height_step
+		h = minf(roundf(h / rule.height_step) * rule.height_step, rule.height_max)
 	return h
 
 
@@ -345,11 +349,12 @@ func _pick(position: Vector2) -> String:
 	return best
 
 
-## Height-handle drag: the point of the knob's vertical line closest to the finger ray, as the
-## distance above the surface (null when the ray runs along the line).
+## Height-handle drag: the point of the knob's vertical line (the rod beside the object, where the
+## handle is drawn) closest to the finger ray, as the distance above the surface (null when the ray
+## runs along the line).
 func _knob_line_point(position: Vector2) -> Variant:
 	var ray := _finger_ray(position)
-	var base := _surface.pose(_held, 0.0).origin
+	var base := _surface.pose(_held, 0.0).origin + _handle_offset
 	return ManipSurface.closest_on_line(base, _surface.normal(), ray[0], ray[1])
 
 
@@ -476,7 +481,8 @@ func _update_handle() -> void:
 	var e := _half_extents(selected_id)
 	var reach := absf(right.dot(surface.frame.basis.x)) * e.x + absf(right.dot(surface.frame.basis.z)) * e.z + HANDLE_GAP
 	var center := body.global_position
-	var base := center - n * surface.height_of(center) + right * reach
+	_handle_offset = right * reach
+	var base := center - n * surface.height_of(center) + _handle_offset
 	rod.global_transform = Transform3D(surface.frame.basis, base)
 	_knob.global_transform = Transform3D(surface.frame.basis, base + n * surface.height_of(center))
 	rod.visible = mode != "drag"

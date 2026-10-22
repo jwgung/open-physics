@@ -96,7 +96,7 @@ func reset_boxes() -> void:
 func observations() -> Dictionary:
 	var values := {}
 	for id in bodies:
-		values[id] = maxf(0.0, bodies[id].global_position.y - BOXES[id][0] * 0.5)
+		values[id] = _base_height(id)
 	return values
 
 
@@ -104,7 +104,7 @@ func graph_series() -> Dictionary:
 	var points := PackedVector2Array()
 	var i := 1
 	for id in bodies:
-		points.append(Vector2(i, maxf(0.0, bodies[id].global_position.y - BOXES[id][0] * 0.5)))
+		points.append(Vector2(i, _base_height(id)))
 		i += 1
 	return {"height": points}
 
@@ -147,20 +147,20 @@ func manipulation_cancelled(_id: String) -> void:
 	_changed()
 
 
+## Only boxes held in place are kept: a box that is falling (or has fallen) starts from its
+## start position again, not frozen in mid-air.
 func placements() -> Dictionary:
 	var result := {}
 	for id in bodies:
-		result[id] = bodies[id].global_transform
+		if bodies[id].freeze:
+			result[id] = bodies[id].global_transform
 	return result
+
+
+## Height of the box's base above the floor (m).
+func _base_height(id: String) -> float:
+	return maxf(0.0, bodies[id].global_position.y - BOXES[id][0] * 0.5)
 
 
 func _changed() -> void:
 	state_changed.emit()
-
-
-func _add_box_shape(body: CollisionObject3D, size: Vector3) -> void:
-	var shape := CollisionShape3D.new()
-	var box_shape := BoxShape3D.new()
-	box_shape.size = size
-	shape.shape = box_shape
-	body.add_child(shape)

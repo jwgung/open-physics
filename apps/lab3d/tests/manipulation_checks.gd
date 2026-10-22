@@ -26,9 +26,14 @@ func run(definition: Dictionary) -> void:
 	check_surface()
 	check_registry(definition)
 	check_assist(definition)
+	check_assist_search(definition)
+	check_assist_user_turn(definition)
+	check_height_snap()
 	await check_incline_drag(definition)
+	await check_incline_relanding(definition)
 	await check_incline_runs(definition)
 	await check_dev_scene()
+	await check_dev_review()
 
 
 # --- pure parts -----------------------------------------------------------------------------------
@@ -67,8 +72,9 @@ func check_registry(definition: Dictionary) -> void:
 	broken.manipulation.objects.append({"id": "x", "surface": "floor", "height": {"max": 0}})
 	broken.manipulation.objects.append({"id": "y", "surface": "floor", "snap": -1})
 	broken.manipulation.objects.append({"id": "z"})
+	broken.manipulation.objects.append({"id": "w", "surface": "floor", "height": {"max": 1.0, "step": 0.4}})
 	var problems := ExperimentRegistry.validate(broken)
-	expect.call(problems.size() == 4, "registry rejects bad manipulation rules (duplicate, height, snap, surface)", ", ".join(problems))
+	expect.call(problems.size() == 5, "registry rejects bad manipulation rules (duplicate, height, snap, surface, max not a step multiple)", ", ".join(problems))
 	var listed := ExperimentRegistry.load_all().map(func(d: Dictionary) -> String: return d.id)
 	var dev := ExperimentRegistry.find("manipulation-dev")
 	expect.call(not dev.is_empty() and "manipulation-dev" not in listed, "the development scene opens by id but is not listed", str(listed))
@@ -117,6 +123,96 @@ func check_assist(definition: Dictionary) -> void:
 	rig.end_assist()
 	expect.call(still and rig._goal_target().is_equal_approx(Vector3(4, 2, 3)), "follow target is held while dragging", str(held))
 	holder.queue_free()
+
+
+## Brute-force reference of the assist search (the 2.5 deg grid over the whole limits): the least
+## yaw + pitch change of a satisfying view, INF if none.
+func _brute_assist_cost(rig: CameraRig, normal: Vector3, axis: Vector3) -> float:
+	var best := INF
+	var step := deg_to_rad(2.5)   # the grid of the former exhaustive search
+	var yaw := rig.yaw_range.x
+	while yaw <= rig.yaw_range.y + 0.0001:
+		var pitch := rig.pitch_range.x
+		while pitch <= rig.pitch_range.y + 0.0001:
+			var cost := absf(angle_difference(rig.goal_yaw, yaw)) + absf(pitch - rig.goal_pitch)
+			if cost < best and CameraRig.assist_ok(yaw, pitch, normal, axis):
+				best = cost
+			pitch += step
+		yaw += step
+	return best
+
+
+func _rig_for(definition: Dictionary) -> CameraRig:
+	var holder := Node3D.new()
+	tree.root.add_child(holder)
+	var rig := CameraRig.new()
+	holder.add_child(rig)
+	rig.configure(definition.camera)
+	return rig
+
+
+## The assist search finds a view at least as close as the full grid search, with a few dozen checks.
+func check_assist_search(definition: Dictionary) -> void:
+	var rig := _rig_for(definition)
+	var tilt := Basis(Vector3.BACK, deg_to_rad(20.0))
+	var downhill := tilt * Vector3(-1.0, 0.0, 0.0)
+	var normal := tilt * Vector3.UP
+	var cases := [
+		["front", normal, downhill], ["three_quarter", normal, downhill], ["side", normal, downhill],
+		["front", Vector3.UP, Vector3.ZERO], ["side", Vector3.UP, Vector3.ZERO],
+		["three_quarter", Vector3.ZERO, normal], ["front", Vector3.ZERO, Vector3.UP],
+	]
+	var worst_checks := 0
+	var worse := ""
+	var unsatisfied := ""
+	for c in cases:
+		rig.set_mode(c[0], true)
+		var yaw := rig.goal_yaw
+		var pitch := rig.goal_pitch
+		var brute := _brute_assist_cost(rig, c[1], c[2])
+		CameraRig.assist_checks = 0
+		var turned := rig.begin_assist(c[1], c[2])
+		worst_checks = maxi(worst_checks, CameraRig.assist_checks)
+		var cost := absf(angle_difference(yaw, rig.goal_yaw)) + absf(pitch - rig.goal_pitch)
+		if turned and not CameraRig.assist_ok(rig.goal_yaw, rig.goal_pitch, c[1], c[2]):
+			unsatisfied += " %s" % c[0]
+		if turned and cost > brute + 1e-6:
+			worse += " %s(%.1f>%.1f)" % [c[0], rad_to_deg(cost), rad_to_deg(brute)]
+		rig.end_assist()
+	expect.call(unsatisfied == "" and worse == "", "assist search: the turn is never bigger than the full-grid search finds, and satisfies the limits", "unsatisfied:%s worse:%s" % [unsatisfied, worse])
+	expect.call(worst_checks <= 120, "assist search takes about a hundred checks at most, not the whole grid (~2800)", "worst %d checks" % worst_checks)
+	rig.get_parent().queue_free()
+
+
+## The user turning the view while an object is held keeps that view after the drop.
+func check_assist_user_turn(definition: Dictionary) -> void:
+	var rig := _rig_for(definition)
+	rig.set_mode("front", true)
+	rig.orbit(Vector2(0.0, -40000.0))   # as flat as the limits allow
+	var original := rig.get_state()
+	var turned := rig.begin_assist(Vector3.UP, Vector3.ZERO)
+	var during := rig.get_state()
+	rig.orbit(Vector2(120.0, 20.0))   # the user turns the view while holding
+	var yaw := rig.goal_yaw
+	var pitch := rig.goal_pitch
+	var state := rig.get_state()
+	rig.end_assist()
+	expect.call(turned and is_equal_approx(during.pitch, original.pitch) and is_equal_approx(state.yaw, yaw) and is_equal_approx(state.pitch, pitch)
+		and is_equal_approx(rig.goal_yaw, yaw) and is_equal_approx(rig.goal_pitch, pitch) and not is_equal_approx(pitch, original.pitch),
+		"a view the user turned while holding is kept after the drop (and is what get_state reports)", "pitch %.3f -> %.3f (was %.3f)" % [during.pitch, rig.goal_pitch, original.pitch])
+	rig.get_parent().queue_free()
+
+
+func check_height_snap() -> void:
+	var m := Manipulator.new()
+	var rule := {"height_max": 1.0, "height_step": 0.4}
+	var top: float = m._snap_height(rule, 1.0)
+	var over: float = m._snap_height(rule, 7.0)
+	var mid: float = m._snap_height(rule, 0.9)
+	var below: float = m._snap_height(rule, -0.3)
+	expect.call(top <= 1.0 and over <= 1.0 and is_equal_approx(mid, 0.8) and is_equal_approx(below, 0.0),
+		"height snap never exceeds the maximum (also when it is not a step multiple)", "%.2f %.2f %.2f %.2f" % [top, over, mid, below])
+	m.free()
 
 
 # --- incline: the real input path ------------------------------------------------------------------
@@ -293,6 +389,45 @@ func check_incline_drag(definition: Dictionary) -> void:
 	await _close(screen)
 
 
+## A box that landed and is dragged to a new start reacts to its next landing again, and the
+## auto-release timer goes through the same path as the buttons (it puts a held box down first).
+func check_incline_relanding(definition: Dictionary) -> void:
+	var screen: Control = await _open(definition)
+	var lab: Experiment = screen.experiment
+	var m: Manipulator = screen.manipulator
+	var box: RigidBody3D = lab.box
+	var juice: ArtJuice = lab.props.juice
+	var impacts := [0]
+	lab.impact.connect(func(_strength: float) -> void: impacts[0] += 1)
+	screen._set_control("angle", 40.0)
+	screen.experiment_action("release")
+	for i in 400:
+		await tree.physics_frame
+		if juice._landed:
+			break
+	var first_landing: bool = juice._landed and impacts[0] == 1
+	_swipe(screen, _at(screen, box.global_position), _run_point(screen, 2.5), 4)
+	var rearmed: bool = not juice._landed and not juice._resting and lab.status() == "ready"
+	_touch(screen, 0, _run_point(screen, 2.5), false)
+	screen.experiment_action("release")
+	for i in 400:
+		await tree.physics_frame
+		if juice._landed:
+			break
+	expect.call(first_landing and rearmed and juice._landed and impacts[0] == 2,
+		"a box that landed, dragged to a new start and released lands with squash, dust and impact again", "first %s, rearmed %s, impacts %d" % [first_landing, rearmed, impacts[0]])
+	# --auto-release while a box is held: the held box goes back first (like the buttons).
+	screen.experiment_action("reset")
+	_swipe(screen, _at(screen, box.global_position), _run_point(screen, 3.0), 4)
+	screen._auto_release_every = 5.0
+	screen._auto_release_left = 0.0
+	screen._process(0.016)
+	expect.call(m.mode == "" and lab.released and not screen.view.rig.is_assisting(),
+		"the auto-release timer puts a held box back before releasing", "mode %s, released %s" % [m.mode, lab.released])
+	_touch(screen, 0, _run_point(screen, 3.0), false)
+	await _close(screen)
+
+
 func _mouse(button: int, pressed: bool, position: Vector2) -> InputEventMouseButton:
 	var event := InputEventMouseButton.new()
 	event.button_index = button
@@ -397,4 +532,42 @@ func check_dev_scene() -> void:
 	for i in 90:
 		await tree.physics_frame
 	expect.call(not red.freeze and absf(red.global_position.y - (0.6 + 0.25)) < 0.05, "after 상자 떨어뜨리기 the raised box falls onto the block", str(red.global_position))
+	await _close(screen)
+
+
+## Review fixes on the development scene: the handle goes away on an action, a falling box is not
+## saved as placed, the handle drag follows the rod beside the box (also near the screen edge).
+func check_dev_review() -> void:
+	var definition := ExperimentRegistry.find("manipulation-dev")
+	var screen: Control = await _open(definition)
+	var lab: Experiment = screen.experiment
+	var m: Manipulator = screen.manipulator
+	var red: RigidBody3D = lab.bodies.red
+	# Handle drag near the left edge of the area, from three views: the finger on the knob reads the knob's height.
+	var worst := 0.0
+	var goal := Vector3(-3.75, 0.25, 1.0)
+	_swipe(screen, _at(screen, red.global_position), _at(screen, goal))
+	_touch(screen, 0, _at(screen, goal), false)
+	for view_mode in ["front", "three_quarter", "side"]:
+		screen.view.rig.set_mode(view_mode, true)
+		m._update_handle()
+		var knob_at := _at(screen, m._knob.global_position)
+		_touch(screen, 0, knob_at, true)
+		if m.mode == "height":
+			var s: Variant = m._knob_line_point(knob_at)
+			worst = maxf(worst, absf(float(s) - (m._lift + m.height)))
+		else:
+			worst = 99.0
+		_touch(screen, 0, knob_at, false)
+	expect.call(worst < 0.02, "the height drag measures along the rod beside the box (finger on the knob = the knob's height)", "worst error %.3f m" % worst)
+	# An action deselects: the handle does not follow a box that starts to fall.
+	m.select("red")
+	expect.call(m._knob.visible, "the placed box shows its handle", "")
+	screen.experiment_action("drop")
+	expect.call(m.selected_id == "" and not m._knob.visible, "an action hides the height handle (a falling box is not followed)", "selected '%s'" % m.selected_id)
+	await tree.physics_frame
+	await tree.physics_frame
+	expect.call(lab.placements().is_empty(), "boxes that are falling are not saved as placed", str(lab.placements().keys()))
+	screen.experiment_action("reset")
+	expect.call(lab.placements().size() == 3, "frozen boxes are saved as placed", str(lab.placements().keys()))
 	await _close(screen)

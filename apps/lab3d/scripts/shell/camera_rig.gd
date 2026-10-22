@@ -108,6 +108,7 @@ func orbit(relative: Vector2) -> void:
 	var pitch := clampf(goal_pitch - relative.y * ORBIT_RAD_PER_UNIT, pitch_range.x, pitch_range.y)
 	cur_yaw += yaw - goal_yaw
 	cur_pitch += pitch - goal_pitch
+	_assist_saved = {}   # the user's own view wins: end_assist() must not turn it back
 	goal_yaw = yaw
 	goal_pitch = pitch
 	if mode != "orbit" and mode != "follow":
@@ -154,7 +155,10 @@ func nudge(strength: float) -> void:
 ## the camera does not chase the object under the finger. Returns true if the view was turned.
 const ASSIST_PLANE_DEG := 25.0
 const ASSIST_LINE_DEG := 35.0
-const ASSIST_STEP_DEG := 2.5
+const ASSIST_STEP_DEG := 5.0
+## Number of assist_ok() evaluations so far (tests: the search must stay small).
+static var assist_checks := 0
+const ASSIST_REFINE_STEPS := 5   # bisection steps pulling the found view back toward the goal
 
 
 func begin_assist(plane_normal: Vector3, line_axis: Vector3) -> bool:
@@ -163,28 +167,84 @@ func begin_assist(plane_normal: Vector3, line_axis: Vector3) -> bool:
 	_assist_saved = {}
 	if assist_ok(goal_yaw, goal_pitch, plane_normal, line_axis):
 		return false
-	var best := Vector2(goal_yaw, goal_pitch)
-	var best_cost := INF
-	var step := deg_to_rad(ASSIST_STEP_DEG)
-	var yaw := yaw_range.x
-	while yaw <= yaw_range.y + 0.0001:
-		var pitch := pitch_range.x
-		while pitch <= pitch_range.y + 0.0001:
-			var cost := absf(angle_difference(goal_yaw, yaw)) + absf(pitch - goal_pitch)
-			if cost < best_cost and assist_ok(yaw, pitch, plane_normal, line_axis):
-				best_cost = cost
-				best = Vector2(yaw, pitch)
-			pitch += step
-		yaw += step
-	if best_cost == INF:
+	var found := _nearest_assist_view(plane_normal, line_axis)
+	if found.is_empty():
 		return false
 	_assist_saved = {"yaw": goal_yaw, "pitch": goal_pitch}
-	goal_yaw = best.x
-	goal_pitch = best.y
+	goal_yaw = found.yaw
+	goal_pitch = found.pitch
 	return true
 
 
-## Ends the assist: a turned view eases back to where it was, the follow target moves again.
+## The satisfying view nearest to the goal view (cost = yaw change + pitch change), inside the
+## limits, or {} if there is none. Searches outward in ASSIST_STEP_DEG steps around the goal view and
+## stops once no closer view is possible (a typical turn needs a few dozen checks, not the whole
+## range), then pulls the best view back toward the goal along each axis as far as it still
+## satisfies (so the turn is no bigger than needed).
+func _nearest_assist_view(plane_normal: Vector3, line_axis: Vector3) -> Dictionary:
+	var step := deg_to_rad(ASSIST_STEP_DEG)
+	var full_circle := yaw_range.y - yaw_range.x >= TAU - 0.001
+	var yaw_reach := PI if full_circle else yaw_range.y - yaw_range.x
+	var best_cost := INF
+	var best_yaw := 0.0
+	var best_pitch := 0.0
+	var k := 0
+	while k * step <= yaw_reach + 0.0001 and k * step < best_cost:
+		var d := k * step
+		for side in ([1.0] if k == 0 else [1.0, -1.0]):
+			var yaw: float = goal_yaw + side * d
+			if full_circle:
+				yaw = wrapf(yaw, yaw_range.x, yaw_range.x + TAU)
+			elif yaw < yaw_range.x - 0.0001 or yaw > yaw_range.y + 0.0001:
+				continue
+			var j := 0
+			while d + j * step < best_cost and j * step <= pitch_range.y - pitch_range.x + 0.0001:
+				var hit := false
+				for pitch_side in ([1.0] if j == 0 else [1.0, -1.0]):
+					var pitch: float = goal_pitch + pitch_side * j * step
+					if pitch < pitch_range.x - 0.0001 or pitch > pitch_range.y + 0.0001:
+						continue
+					if assist_ok(yaw, pitch, plane_normal, line_axis):
+						best_cost = d + j * step
+						best_yaw = yaw
+						best_pitch = pitch
+						hit = true
+						break
+				if hit:
+					break
+				j += 1
+		k += 1
+	if best_cost == INF:
+		return {}
+	# Refine: bisect the pitch, then the yaw, back toward the goal (the grid overshoots the limit
+	# of the satisfying region by up to a step).
+	var pitch_back := best_pitch - goal_pitch
+	var lo := 0.0
+	var hi := 1.0
+	for i in ASSIST_REFINE_STEPS:
+		var mid := (lo + hi) * 0.5
+		if assist_ok(best_yaw, goal_pitch + pitch_back * mid, plane_normal, line_axis):
+			hi = mid
+		else:
+			lo = mid
+	best_pitch = goal_pitch + pitch_back * hi
+	var yaw_back := angle_difference(goal_yaw, best_yaw)
+	lo = 0.0
+	hi = 1.0
+	for i in ASSIST_REFINE_STEPS:
+		var mid := (lo + hi) * 0.5
+		if assist_ok(goal_yaw + yaw_back * mid, best_pitch, plane_normal, line_axis):
+			hi = mid
+		else:
+			lo = mid
+	var yaw_goal := goal_yaw + yaw_back * hi
+	if full_circle:
+		yaw_goal = wrapf(yaw_goal, yaw_range.x, yaw_range.x + TAU)
+	return {"yaw": yaw_goal, "pitch": best_pitch}
+
+
+## Ends the assist: a turned view eases back to where it was (unless the user turned the view
+## meanwhile, see orbit()), the follow target moves again.
 func end_assist() -> void:
 	if not _assist_saved.is_empty():
 		goal_yaw = _assist_saved.yaw
@@ -199,6 +259,7 @@ func is_assisting() -> bool:
 
 ## Whether a view at (yaw, pitch) sees the plane / line well enough (see begin_assist).
 static func assist_ok(yaw: float, pitch: float, plane_normal: Vector3, line_axis: Vector3) -> bool:
+	assist_checks += 1
 	var look := view_direction(yaw, pitch)
 	if plane_normal != Vector3.ZERO and absf(look.dot(plane_normal.normalized())) < sin(deg_to_rad(ASSIST_PLANE_DEG)):
 		return false
@@ -212,7 +273,9 @@ static func view_direction(yaw: float, pitch: float) -> Vector3:
 	return -Vector3(sin(yaw) * cos(pitch), -sin(pitch), cos(yaw) * cos(pitch))
 
 
-## Mode and view, to rebuild the camera later (App keeps it across a 3D view rebuild).
+## Mode and view, to rebuild the camera later (App keeps it across a 3D view rebuild). During an
+## assist this is the view the user had before it (the one end_assist() returns to), or the
+## current goal view when the user turned it meanwhile.
 func get_state() -> Dictionary:
 	var yaw: float = _assist_saved.get("yaw", goal_yaw)
 	var pitch: float = _assist_saved.get("pitch", goal_pitch)

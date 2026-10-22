@@ -17,6 +17,15 @@ signal impact(strength: float)
 var definition: Dictionary = {}
 
 
+## Adds a box collision shape of `size` to a body (floors, blocks, boxes of the experiments).
+func _add_box_shape(body: CollisionObject3D, size: Vector3) -> void:
+	var shape := CollisionShape3D.new()
+	var box_shape := BoxShape3D.new()
+	box_shape.size = size
+	shape.shape = box_shape
+	body.add_child(shape)
+
+
 ## Sets a control declared in definition.controls. `value` is a float for sliders and the option
 ## id (String) for choices. Called once per control with its default before the first frame.
 func set_control(_id: String, _value: Variant) -> void:

@@ -124,17 +124,22 @@ func set_run_length(run: float) -> void:
 
 ## Places the box at rest on the incline (frozen) at start_x.
 func reset_box() -> void:
-	released = false
-	box.linear_damp = 0.0
 	box.freeze = true
 	box.linear_velocity = Vector3.ZERO
 	box.angular_velocity = Vector3.ZERO
 	var local := Transform3D(Basis(), Vector3(start_x, BOX * 0.5, 0.0))
 	box.global_transform = _pivot.global_transform * local
+	_stop_run()
+	_update_status()
+
+
+## Ends the run at the box's current place: not released, no floor brake, history and graph cleared.
+func _stop_run() -> void:
+	released = false
+	box.linear_damp = 0.0
 	corrector.reset(box.global_position)
 	_graph_points.clear()
 	_graph_revision += 1
-	_update_status()
 
 
 func release() -> void:
@@ -150,12 +155,13 @@ func release() -> void:
 	_update_status()
 
 
-## Records the current status, tells the UI and lets the props react to the change.
-func _update_status() -> void:
+## Records the current status, tells the UI and lets the props react to the change
+## (`quiet`: no reaction, the change was made by the user's hand).
+func _update_status(quiet := false) -> void:
 	var previous := _last_status
 	_last_status = status()
 	state_changed.emit()
-	if _last_status != previous:
+	if _last_status != previous and not quiet:
 		props.status_changed(previous, _last_status)
 
 
@@ -321,14 +327,6 @@ func _fit_stand() -> void:
 		_post.scale.y = pose.y / STAND_HEIGHT
 
 
-func _add_box_shape(body: CollisionObject3D, size: Vector3) -> void:
-	var shape := CollisionShape3D.new()
-	var box_shape := BoxShape3D.new()
-	box_shape.size = size
-	shape.shape = box_shape
-	body.add_child(shape)
-
-
 # --- manipulation (Task 2b) -------------------------------------------------------------------
 
 func manipulation_body(id: String) -> PhysicsBody3D:
@@ -353,13 +351,9 @@ func manipulation_juice(_id: String) -> ArtJuice:
 
 ## Picked up (also while sliding or lying on the floor): the run stops and the box waits, frozen.
 func manipulation_started(_id: String) -> void:
-	released = false
-	box.linear_damp = 0.0
-	corrector.reset(box.global_position)
-	_graph_points.clear()
-	_graph_revision += 1
-	_last_status = "ready"   # no "placed" pop: the hand reaction comes from the manipulator
-	state_changed.emit()
+	_stop_run()
+	props.juice.rearm()   # the next landing reacts again (squash, dust, impact)
+	_update_status(true)  # no "placed" pop: the hand reaction comes from the manipulator
 
 
 func manipulation_placed(_id: String, transform: Transform3D) -> void:

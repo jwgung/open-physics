@@ -118,9 +118,14 @@ func setup(target_body: RigidBody3D, target_mesh: MeshInstance3D, body_size: flo
 	_ray.collide_with_areas = false
 
 
-func pop() -> void:
+## The next landing counts as a new one (squash, dust, landed signal), without any animation.
+func rearm() -> void:
 	_landed = false
 	_resting = false
+
+
+func pop() -> void:
+	rearm()
 	_squash = 0.0
 	_squash_v = 0.0
 	_pop = POP_START

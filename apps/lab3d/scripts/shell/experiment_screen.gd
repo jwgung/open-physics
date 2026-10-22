@@ -142,7 +142,7 @@ func _process(delta: float) -> void:
 		_auto_release_left -= delta
 		if _auto_release_left <= 0.0:
 			_auto_release_left = _auto_release_every
-			experiment.run_action("release")
+			experiment_action("release")
 	if _demo_release_left >= 0.0:
 		_demo_release_left -= delta
 		if _demo_release_left < 0.0:
@@ -352,10 +352,12 @@ func _set_control(id: String, value: Variant) -> void:
 	_update_readouts(true)
 
 
-## A control or action changes the experiment under a held object: put it back first.
+## A control or action changes the experiment under a held object: put it back first. The height
+## handle goes away too (a released object may fall or move on, the handle would follow it).
 func _drop_held_object() -> void:
 	if manipulator != null:
 		manipulator.cancel()
+		manipulator.select("")
 
 
 ## state_changed during our own control/action call is covered by that call's single refresh.

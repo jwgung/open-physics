@@ -50,11 +50,17 @@ var experiment: Experiment
 ## id -> {"surface": String, "snap": float, "height_max": float, "height_step": float}
 ## (height_max 0 = no height handle).
 var rules: Dictionary = {}
+## Action (id from the experiment's actions) the measurement demo runs after it put its object
+## down, from manipulation.demo_action ("" = none).
+var demo_action := ""
 
 var mode := ""                   # "", "drag", "height"
 var active_id := ""
 var selected_id := ""
 var valid := true
+## An experiment callback (placed / cancelled) is running: the experiment's own state_changed in
+## there is covered by the `changed` signal that follows (one panel refresh).
+var notifying := false
 var target := Vector2.ZERO       # grid point (plane coordinates) the held object would land on
 var height := 0.0                # chosen height of the object's base above the surface (m)
 
@@ -85,22 +91,15 @@ var _demo_left := 0.0
 var _demo_flip := false
 var _demo_from := Vector2.ZERO
 var _demo_to := Vector2.ZERO
+var _demo_goal := Vector2.ZERO   # plane point the demo drags to (on the grid)
 var _demo_t := -1.0
 
 
 func setup(target_view: View3D, target_experiment: Experiment) -> void:
 	view = target_view
 	experiment = target_experiment
-	rules.clear()
-	for object in experiment.definition.get("manipulation", {}).get("objects", []):
-		var h: Variant = object.get("height", false)
-		var height_rule: Dictionary = h if h is Dictionary else {}
-		rules[object.id] = {
-			"surface": str(object.surface),
-			"snap": float(object.get("snap", 0.0)),
-			"height_max": float(height_rule.get("max", 0.0)),
-			"height_step": float(height_rule.get("step", 0.0)),
-		}
+	rules = parse_rules(experiment.definition)
+	demo_action = str(experiment.definition.get("manipulation", {}).get("demo_action", ""))
 	_ray.collide_with_areas = false
 	_query.collide_with_areas = false
 	experiment.state_changed.connect(_forget_handle_surface)
@@ -114,6 +113,22 @@ func setup(target_view: View3D, target_experiment: Experiment) -> void:
 	_knob.name = "HeightKnob"
 	_knob.visible = false
 	add_child(_knob)
+
+
+## The manipulation rules of an experiment definition (the one reading of the JSON: the experiment
+## takes its grid step from here too): id -> {"surface", "snap", "height_max", "height_step"}.
+static func parse_rules(definition: Dictionary) -> Dictionary:
+	var result := {}
+	for object in definition.get("manipulation", {}).get("objects", []):
+		var h: Variant = object.get("height", false)
+		var height_rule: Dictionary = h if h is Dictionary else {}
+		result[object.id] = {
+			"surface": str(object.surface),
+			"snap": float(object.get("snap", 0.0)),
+			"height_max": float(height_rule.get("max", 0.0)),
+			"height_step": float(height_rule.get("step", 0.0)),
+		}
+	return result
 
 
 ## View3D.single_pointer handler (positions in the view's UI units).
@@ -140,7 +155,9 @@ func cancel(shake := false) -> void:
 		(_body as RigidBody3D).freeze = _start_freeze
 	var juice := experiment.manipulation_juice(id)
 	_finish()
+	notifying = true
 	experiment.manipulation_cancelled(id)
+	notifying = false
 	if juice:
 		juice.hold(false)
 		if shake:
@@ -228,7 +245,9 @@ func _release() -> void:
 	_body.global_transform = xf
 	var juice := experiment.manipulation_juice(id)
 	_finish()
+	notifying = true
 	experiment.manipulation_placed(id, xf)
+	notifying = false
 	_placed_last = true
 	if juice:
 		if was_drag:
@@ -242,11 +261,9 @@ func _release() -> void:
 func _begin(id: String, kind: String, position: Vector2) -> void:
 	var rule: Dictionary = rules[id]
 	var body := experiment.manipulation_body(id)
-	var surface := experiment.manipulation_surface(rule.surface)
+	var surface := _surface_for(id)
 	if body == null or surface == null:
 		return
-	if surface.snap == Vector2.ZERO and rule.snap > 0.0:
-		surface.snap = Vector2(rule.snap, rule.snap)
 	_body = body
 	_surface = surface
 	active_id = id
@@ -267,7 +284,7 @@ func _begin(id: String, kind: String, position: Vector2) -> void:
 		and surface.clamp_soft(p, SOFT_MARGIN).distance_to(p) < REGION_EPS
 	height = 0.0
 	if rule.height_max > 0.0 and on_surface:
-		height = _snap_height(rule, above)
+		height = clampf(above, 0.0, rule.height_max)   # picked up where it is (e.g. on a block); the step applies to the handle
 	_finger = position
 	_finger_camera = view.rig.global_transform
 	var ray := _finger_ray(position)
@@ -294,7 +311,7 @@ func _begin(id: String, kind: String, position: Vector2) -> void:
 		_grab_height = (s - (_lift + height)) if s != null else 0.0
 		view.rig.begin_assist(Vector3.ZERO, surface.normal())
 	_target_set = false
-	_update_target()
+	_update_target(false)   # the first place is not announced: nothing moved from a valid one
 
 
 func _finish() -> void:
@@ -317,7 +334,8 @@ func _snap_height(rule: Dictionary, h: float) -> float:
 
 
 ## Recomputes the landing point and whether it is free; only when the grid point (or height) changed.
-func _update_target() -> void:
+## An invalid place shakes the object when the target turns from valid to invalid (`announce`).
+func _update_target(announce := true) -> void:
 	var t := _surface.nearest_inside(_held) if _surface.contains(_held) else _surface.snap_point(_held)
 	if _target_set and t == target:
 		return
@@ -326,7 +344,7 @@ func _update_target() -> void:
 	target = t
 	var xf := _surface.pose(t, _lift + height)
 	valid = _surface.contains(t) and _is_free(active_id, xf) and experiment.placement_allowed(active_id, xf)
-	if was_valid and not valid:
+	if announce and was_valid and not valid:
 		var juice := experiment.manipulation_juice(active_id)
 		if juice:
 			juice.wobble()
@@ -423,6 +441,10 @@ func _query_shape(id: String) -> Shape3D:
 		shrunk = CylinderShape3D.new()
 		shrunk.radius = (shape as CylinderShape3D).radius - 0.01
 		shrunk.height = (shape as CylinderShape3D).height - 0.02
+	elif shape is CapsuleShape3D:
+		shrunk = CapsuleShape3D.new()
+		shrunk.radius = (shape as CapsuleShape3D).radius - 0.01
+		shrunk.height = (shape as CapsuleShape3D).height - 0.02
 	_query_shapes[id] = shrunk
 	return shrunk
 
@@ -535,8 +557,18 @@ func _update_handle() -> void:
 ## The selected object's surface (built again only after select() or an experiment state change).
 func _selected_surface() -> ManipSurface:
 	if _handle_surface == null:
-		_handle_surface = experiment.manipulation_surface(rules[selected_id].surface)
+		_handle_surface = _surface_for(selected_id)
 	return _handle_surface
+
+
+## The surface of the object's rule as the experiment has it now, with the rule's grid step when
+## the experiment set none (the one place a surface is built for an object).
+func _surface_for(id: String) -> ManipSurface:
+	var rule: Dictionary = rules[id]
+	var surface := experiment.manipulation_surface(rule.surface)
+	if surface != null and surface.snap == Vector2.ZERO and rule.snap > 0.0:
+		surface.snap = Vector2(rule.snap, rule.snap)
+	return surface
 
 
 func _forget_handle_surface() -> void:
@@ -581,11 +613,12 @@ func _demo_tick(delta: float) -> void:
 	_demo_left = _demo_every
 	var id: String = rules.keys()[0]
 	var body := experiment.manipulation_body(id)
-	var surface := experiment.manipulation_surface(rules[id].surface)
+	var surface := _surface_for(id)
 	if body == null or surface == null or view.rig.is_position_behind(body.global_position):
 		return
 	_demo_flip = not _demo_flip
 	var goal := surface.nearest_inside(surface.region_min.lerp(surface.region_max, 1.0 if _demo_flip else DEMO_NEAR_FRACTION))
+	_demo_goal = goal
 	var lift := _half_extents(id).y
 	_demo_from = view.rig.unproject_position(body.global_position) / _pixels_per_unit()
 	_demo_to = view.rig.unproject_position(surface.pose(goal, lift).origin) / _pixels_per_unit()

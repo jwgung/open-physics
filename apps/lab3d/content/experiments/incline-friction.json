@@ -73,7 +73,8 @@
   "manipulation": {
     "objects": [
       { "id": "box", "surface": "incline", "snap": 0.5, "height": false }
-    ]
+    ],
+    "demo_action": "release"
   },
   "graph": {
     "title": "놓은 뒤 이동 거리",

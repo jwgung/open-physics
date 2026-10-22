@@ -106,13 +106,14 @@ static func validate(definition: Dictionary) -> PackedStringArray:
 	var graph: Dictionary = definition.graph
 	if not graph.has("series") or graph.series.is_empty():
 		problems.append("graph.series missing")
-	problems.append_array(_validate_manipulation(definition.get("manipulation")))
+	problems.append_array(_validate_manipulation(definition.get("manipulation"), definition.actions))
 	return problems
 
 
 ## Optional `manipulation` (Task 2b): {"objects": [{"id", "surface", "snap" (m, optional),
-## "height": false | {"max" (m, > 0, a multiple of step), "step" (m, optional)}}]}.
-static func _validate_manipulation(manipulation: Variant) -> PackedStringArray:
+## "height": false | {"max" (m, > 0, a multiple of step), "step" (m, optional)}}],
+## "demo_action" (optional, an action id: what the --auto-drag demo does after putting an object down)}.
+static func _validate_manipulation(manipulation: Variant, actions: Array = []) -> PackedStringArray:
 	var problems := PackedStringArray()
 	if manipulation == null:
 		return problems
@@ -140,6 +141,9 @@ static func _validate_manipulation(manipulation: Variant) -> PackedStringArray:
 				problems.append("manipulation %s.height.max must be a multiple of step" % object.id)
 		elif height != false:
 			problems.append("manipulation %s.height must be false or {max, step}" % object.id)
+	var demo: Variant = manipulation.get("demo_action", "")
+	if not demo is String or (demo != "" and not actions.any(func(a: Dictionary) -> bool: return a.get("id") == demo)):
+		problems.append("manipulation.demo_action must be the id of one of the actions")
 	return problems
 
 

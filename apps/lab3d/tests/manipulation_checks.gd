@@ -38,6 +38,7 @@ func run(definition: Dictionary) -> void:
 	await check_follow_camera()
 	await check_review2()
 	await check_incline_snap_rule(definition)
+	await check_review3(definition)
 
 
 # --- pure parts -----------------------------------------------------------------------------------
@@ -754,4 +755,122 @@ func check_incline_snap_rule(definition: Dictionary) -> void:
 	_touch(screen, 0, _run_point(screen, 5.6), false)
 	var run: float = lab.run_length()
 	expect.call(is_equal_approx(run, 6.0), "the incline start snaps to the JSON snap of the box (1 m: 5.6 -> 6.0, not the 0.5 m grid)", "run %.2f" % run)
+	await _close(screen)
+
+
+# --- third review ---------------------------------------------------------------------------------
+
+func check_review3(definition: Dictionary) -> void:
+	# Registry: demo_action must name one of the actions.
+	var bad_demo := definition.duplicate(true)
+	bad_demo.manipulation.demo_action = "nope"
+	var demo_problems := ExperimentRegistry.validate(bad_demo)
+	expect.call(demo_problems.size() == 1 and ExperimentRegistry.validate(definition).is_empty(), "registry checks the demo follow-up action id", ", ".join(demo_problems))
+	# The tick scale is on the snap grid (origin = pivot), not counted from the lower end.
+	var grid := ManipSurface.new()
+	grid.snap = Vector2(0.3, 0.3)
+	var ticks := InclineProps.tick_positions(8.0, 0.3)
+	var on_grid := not ticks.is_empty() and InclineProps.tick_positions(8.0, 0.0).is_empty()
+	for x in ticks:
+		on_grid = on_grid and is_equal_approx(grid.snap_point(Vector2(x, 0.0)).x, x)
+	expect.call(on_grid and is_equal_approx(ticks[0], -3.9), "the incline scale ticks sit on the snap grid (0.3 m: -3.9, not -3.7)", str(ticks.slice(0, 3)))
+	# One reading of the rules: grid step, demo goal and the selected surface all come from them.
+	var coarse := definition.duplicate(true)
+	coarse.manipulation.objects[0].snap = 0.3
+	var screen: Control = await _open(coarse)
+	var lab: Experiment = screen.experiment
+	var m: Manipulator = screen.manipulator
+	var surface_snap: Vector2 = m._surface_for("box").snap
+	m.select("box")
+	var selected_snap: Vector2 = m._selected_surface().snap
+	m.select("")
+	m.start_demo(100.0)
+	var goals_on_grid := true
+	for flip in 2:
+		m._demo_left = 0.0
+		for i in 200:
+			m._process(1.0 / 60.0)
+			if i == 0:
+				goals_on_grid = goals_on_grid and absf(m._demo_goal.x / 0.3 - roundf(m._demo_goal.x / 0.3)) < 1e-4
+	expect.call(lab._start_snap() == 0.3 and surface_snap == Vector2(0.3, 0.3) and selected_snap == Vector2(0.3, 0.3) and goals_on_grid and m.demo_action == "release",
+		"the grid step is read once (rule): experiment, selected surface and demo goals use it", "%s %s goals %s" % [str(surface_snap), str(selected_snap), goals_on_grid])
+	await _close(screen)
+	# Panel refresh: one per put-down, one per cancel.
+	screen = await _open(definition)
+	lab = screen.experiment
+	_swipe(screen, _at(screen, lab.box.global_position), _run_point(screen, 5.5), 6)
+	var before: int = screen.refresh_count
+	_touch(screen, 0, _run_point(screen, 5.5), false)
+	var put_down: int = screen.refresh_count - before
+	_swipe(screen, _at(screen, lab.box.global_position), _run_point(screen, 4.0), 6)
+	before = screen.refresh_count
+	_touch(screen, 1, Vector2(100, 100), true)
+	var cancelled: int = screen.refresh_count - before
+	_touch(screen, 1, Vector2(100, 100), false)
+	_touch(screen, 0, _run_point(screen, 4.0), false)
+	expect.call(put_down == 1 and cancelled == 1, "putting down and cancelling refresh the panel once each", "put down %d, cancel %d" % [put_down, cancelled])
+	await _close(screen)
+
+	# Development scene: block top, first target, capsule, measurement action.
+	var dev := ExperimentRegistry.find("manipulation-dev")
+	screen = await _open(dev)
+	lab = screen.experiment
+	m = screen.manipulator
+	var red: RigidBody3D = lab.bodies.red
+	var orange: RigidBody3D = lab.bodies.orange
+	# A box lying on the block (0.6 m up) is picked at that height (not rounded to the 0.25 m step), is not
+	# marked blocked and stays there when let go.
+	var on_block := Vector3(1.75, 0.85, -0.75)
+	red.global_transform = Transform3D(Basis(), on_block)
+	await tree.physics_frame
+	_touch(screen, 0, _at(screen, on_block), true)
+	var picked_h: float = m.height
+	var marked_blocked: bool = m._markers["red"][1].visible
+	var was_valid: bool = m.valid
+	_touch(screen, 0, _at(screen, on_block), false)
+	expect.call(m.mode == "" and is_equal_approx(picked_h, 0.6) and was_valid and not marked_blocked and red.global_position.is_equal_approx(on_block),
+		"a box picked up on the block keeps its height (0.6 m), is not blocked and stays when let go", "height %.3f, valid %s, at %s" % [picked_h, was_valid, str(red.global_position)])
+	# The first target being invalid does not shake the box; turning from valid to invalid does.
+	var juice: ArtJuice = lab.juices.red
+	red.global_transform = Transform3D(Basis(), orange.global_position + Vector3(0.1, 0.0, 0.0))
+	await tree.physics_frame
+	juice._wobble_v = 0.0
+	_touch(screen, 0, _at(screen, red.global_position), true)
+	var first_shake: float = juice._wobble_v
+	var first_valid: bool = m.valid
+	_touch(screen, 0, _at(screen, red.global_position), false)   # refused: goes back
+	var free_at := Vector3(-3.0, 0.25, -1.5)
+	red.global_transform = Transform3D(Basis(), free_at)
+	await tree.physics_frame
+	_swipe(screen, _at(screen, free_at), _at(screen, orange.global_position), 4)
+	var later_shake: float = juice._wobble_v
+	_touch(screen, 0, _at(screen, orange.global_position), false)
+	expect.call(not first_valid and first_shake == 0.0 and later_shake > 0.0,
+		"an invalid first target does not shake the box; moving onto a blocked place does", "valid %s, first %.2f, later %.2f" % [first_valid, first_shake, later_shake])
+	# The overlap query shrinks a capsule like the other shapes.
+	var holder: CollisionShape3D = null
+	for child in red.get_children():
+		if child is CollisionShape3D:
+			holder = child
+	var original := holder.shape
+	var capsule := CapsuleShape3D.new()
+	capsule.radius = 0.3
+	capsule.height = 1.0
+	holder.shape = capsule
+	m._query_shapes.erase("red")
+	var shrunk: Shape3D = m._query_shape("red")
+	holder.shape = original
+	m._query_shapes.erase("red")
+	expect.call(shrunk is CapsuleShape3D and is_equal_approx(shrunk.radius, 0.29) and is_equal_approx(shrunk.height, 0.98), "the overlap query shrinks a capsule (radius and height)", "")
+	# A measurement action is the experiment's own change: it keeps the selection when nothing is held and
+	# puts a held object back first.
+	m.select("red")
+	screen._run_measured_action("drop")
+	var kept: bool = m.selected_id == "red"
+	m.select("")
+	_touch(screen, 0, _at(screen, orange.global_position), true)
+	var holding: bool = m.mode == "drag"
+	screen._run_measured_action("reset")
+	expect.call(kept and holding and m.mode == "", "a measurement action skips the button's deselect when nothing is held, and cancels a held object", "kept %s, holding %s, mode '%s'" % [kept, holding, m.mode])
+	_touch(screen, 0, Vector2.ZERO, false)
 	await _close(screen)

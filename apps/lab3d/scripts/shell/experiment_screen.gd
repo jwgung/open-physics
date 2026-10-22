@@ -35,6 +35,7 @@ var _observation_labels: Dictionary = {}
 var _control_widgets: Dictionary = {}   # id -> {"slider": HSlider, "value": Label} or {"buttons": {}, "note": Label}
 var _graph: GraphView
 var _sections: Dictionary = {}          # section id -> card (for --scroll-to)
+var refresh_count := 0                  # full panel refreshes so far (tests)
 var _refresh_left := 0.0
 var _auto_release_every := 0.0
 var _auto_release_left := 0.0
@@ -77,8 +78,10 @@ func _ready() -> void:
 		view.viewport.add_child(manipulator)
 		manipulator.setup(view, experiment)
 		view.single_pointer.connect(manipulator.handle_pointer)
-		manipulator.changed.connect(_refresh)
-		manipulator.demo_placed.connect(func() -> void: _demo_release_left = DEMO_RELEASE_DELAY_S)
+		manipulator.changed.connect(_on_manipulator_changed)
+		manipulator.demo_placed.connect(func() -> void:
+			if manipulator.demo_action != "":
+				_demo_release_left = DEMO_RELEASE_DELAY_S)
 	view.rig.follow_source = experiment
 	view.rig.configure(definition.camera)
 	view.rig.mode_changed.connect(_on_mode_changed)
@@ -142,11 +145,11 @@ func _process(delta: float) -> void:
 		_auto_release_left -= delta
 		if _auto_release_left <= 0.0:
 			_auto_release_left = _auto_release_every
-			experiment_action("release")
+			_run_measured_action("release")
 	if _demo_release_left >= 0.0:
 		_demo_release_left -= delta
 		if _demo_release_left < 0.0:
-			experiment_action("release")
+			_run_measured_action(manipulator.demo_action)
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -334,6 +337,16 @@ func _build_conditions() -> Control:
 	return parts[0]
 
 
+## An action fired by a measurement hook (--auto-release, --auto-drag): the experiment's own change,
+## as in Task 2a, without the UI work of a button press (cancel, deselect, full refresh) unless
+## an object is held (then it goes back first, as for a button).
+func _run_measured_action(id: String) -> void:
+	if manipulator != null and manipulator.mode != "":
+		experiment_action(id)
+		return
+	experiment.run_action(id)
+
+
 func experiment_action(id: String) -> void:
 	_drop_held_object()
 	_updating = true
@@ -356,12 +369,21 @@ func _set_control(id: String, value: Variant) -> void:
 ## handle goes away too (a released object may fall or move on, the handle would follow it).
 func _drop_held_object() -> void:
 	if manipulator != null:
+		var was_updating := _updating
+		_updating = true   # the caller refreshes once afterwards
 		manipulator.cancel()
 		manipulator.select("")
+		_updating = was_updating
 
 
-## state_changed during our own control/action call is covered by that call's single refresh.
+## state_changed during our own control/action call is covered by that call's single refresh; one
+## inside a manipulator callback (placed / cancelled) by its `changed`.
 func _on_state_changed() -> void:
+	if not _updating and not (manipulator != null and manipulator.notifying):
+		_refresh()
+
+
+func _on_manipulator_changed() -> void:
 	if not _updating:
 		_refresh()
 
@@ -466,6 +488,7 @@ func _build_explanation() -> Control:
 
 ## Everything: all controls, observations and graph (events, actions, a restored state).
 func _refresh() -> void:
+	refresh_count += 1
 	if experiment == null or not experiment.is_inside_tree():
 		return
 	for control in definition.controls:

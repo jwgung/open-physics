@@ -45,15 +45,27 @@ func start_line_mesh(width: float) -> Mesh:
 	return b.commit()
 
 
+## Tick positions along the incline (pivot x): every multiple of `step` m from the pivot (the grid
+## the box snaps to), not at the two ends.
+static func tick_positions(length: float, step: float) -> PackedFloat32Array:
+	var result := PackedFloat32Array()
+	if step <= 0.0:
+		return result
+	var first := int(ceilf((-length * 0.5 + 1e-4) / step))
+	var last := int(floorf((length * 0.5 - 1e-4) / step))
+	for i in range(first, last + 1):
+		result.append(i * step)
+	return result
+
+
 ## Scale ticks along the front edge of the incline's top face (incline-local, the pivot frame):
-## a short mark every `step` m from the lower end, a longer one every metre. Visual only.
+## a short mark at each tick position, a longer one at every whole metre. Visual only.
 func ticks_mesh(length: float, width: float, step: float) -> Mesh:
 	var b := ArtKit.builder()
 	b.ao_min = 1.0
-	var count := int(roundf(length / step))
-	for i in range(1, count):
-		var x := -length * 0.5 + i * step
-		var whole := is_equal_approx(fmod(i * step, 1.0), 0.0)
+	for x in tick_positions(length, step):
+		var metres := absf(x)
+		var whole := is_equal_approx(metres, roundf(metres))
 		var depth := 0.34 if whole else 0.18
 		b.add_rounded_box(Transform3D(Basis(), Vector3(x, 0.005, width * 0.5 - 0.06 - depth * 0.5)),
 			Vector3(0.05, 0.02, depth), 0.0, 1, ArtPalette.WHITE)   # flat marks: no bevel (36 vertices each)

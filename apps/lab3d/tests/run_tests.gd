@@ -31,6 +31,9 @@
 ##    and engine bobs step by step against the TS-core vectors (tests/constraints_lab_vectors.json),
 ##    the fixed length, small- and large-angle periods and energy from the engine bobs, panel, art,
 ##    a fresh screen, the input path, the demo.
+## 13. lever lab (Task 4e, tests/rotation_lab_checks.gd): the lever model and the engine beam and load
+##    step by step against the TS-core vectors (tests/rotation_lab_vectors.json), the torque balance
+##    at the lift from the engine beam, panel, art, the handle / load / fulcrum input path, the demo.
 ## Times are engine fixed steps (60 Hz), independent of rendering FPS.
 extends SceneTree
 
@@ -129,6 +132,11 @@ func _run() -> void:
 	_expect(constraints != null and constraints.can_instantiate(), "constraints lab checks compile", "")
 	if constraints != null and constraints.can_instantiate():
 		await constraints.new(self, _expect).run()
+	print("== lever lab (Task 4e) ==")
+	var rotation: GDScript = load("res://tests/rotation_lab_checks.gd")
+	_expect(rotation != null and rotation.can_instantiate(), "rotation lab checks compile", "")
+	if rotation != null and rotation.can_instantiate():
+		await rotation.new(self, _expect).run()
 	print("RESULT: %s (%d failure(s))" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
 

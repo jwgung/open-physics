@@ -57,14 +57,6 @@ static func stand_mesh(anchors: Array[Vector3]) -> Mesh:
 	return b.commit()
 
 
-## A link of length 1 down from the origin (scaled along y, turned about z).
-static func link_mesh(radius: float, color: Color) -> Mesh:
-	var b := ArtKit.builder()
-	b.ao_min = 1.0
-	b.add_cylinder(Transform3D(Basis(Vector3.RIGHT, PI), Vector3.ZERO), radius, radius, 1.0, 6, color)
-	return b.commit()
-
-
 static func bob_mesh(radius: float, color: Color) -> Mesh:
 	var b := ArtKit.builder()
 	b.ao_height = radius * 1.2
@@ -98,9 +90,8 @@ func dress(experiment: Node3D, bobs: Array[RigidBody3D], anchors: Array[Vector3]
 	stand.name = "Stands"
 	experiment.add_child(stand)
 	for i in bobs.size():
-		var link := ArtKit.instance(link_mesh(CORD_RADIUS if i == 0 else ROD_RADIUS, ArtPalette.WHITE if i == 0 else ArtPalette.BLUE_DARK))
+		var link := ArtKit.instance(ArtKit.link_mesh(CORD_RADIUS if i == 0 else ROD_RADIUS, ArtPalette.WHITE if i == 0 else ArtPalette.BLUE_DARK))
 		link.name = "String" if i == 0 else "Rod"
-		link.position = anchors[i]
 		experiment.add_child(link)
 		links.append(link)
 		var path := MeshInstance3D.new()
@@ -133,12 +124,7 @@ func show_paths(length: float, max_deg: float) -> void:
 
 ## Link `i` from its anchor to the bob centre `at`.
 func stretch_link(i: int, at: Vector3) -> void:
-	var link := links[i]
-	var d := at - _anchors[i]
-	var length := d.length()
-	if length < 1e-6:
-		return
-	link.basis = Basis(Vector3.BACK, atan2(d.x, -d.y)) * Basis.from_scale(Vector3(1.0, length, 1.0))
+	ArtKit.stretch_link(links[i], _anchors[i], at)
 
 
 func released() -> void:

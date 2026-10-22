@@ -142,6 +142,14 @@ func control_value(id: String) -> Variant:
 	return null
 
 
+## The control `id` of definition.controls ({} when there is none).
+func _find_control(id: String) -> Dictionary:
+	for control in definition.get("controls", []):
+		if control.id == id:
+			return control
+	return {}
+
+
 ## The option `option_id` of the choice control `control_id` in definition.controls ({} when the
 ## control or the option does not exist).
 func _find_option(control_id: String, option_id: String) -> Dictionary:
@@ -224,6 +232,26 @@ func placement_allowed(_id: String, _transform: Transform3D) -> bool:
 ## saved placement (placements()) when the screen is rebuilt.
 func manipulation_placed(_id: String, _transform: Transform3D) -> void:
 	pass
+
+
+## Grid step of the manipulation object `id` (m, or the lab's own unit): the one value, from the
+## definition's rule (the `snap` Manipulator.parse_rules reads), the lab's surface and its snapping
+## both use. (Read here, not through Manipulator: the shell's Experiment must not depend on it.)
+func _grid_step(id: String) -> float:
+	for object in definition.get("manipulation", {}).get("objects", []):
+		if object.get("id") == id:
+			return float(object.get("snap", 0.0))
+	return 0.0
+
+
+## `offset` (from the grid's origin) on the grid of object `id`, in whole cells (64-bit), kept
+## within lo..hi (the same bounds the lab's surface has).
+func _snap_to_grid(id: String, offset: float, lo: float, hi: float) -> float:
+	var step := _grid_step(id)
+	if step <= 0.0:
+		return clampf(offset, lo, hi)
+	var cells := roundf(1.0 / step)
+	return clampf(roundi(offset * cells) / cells, lo, hi)
 
 
 ## The pick-up was cancelled (second finger, system cancel, or let go where it cannot be placed).

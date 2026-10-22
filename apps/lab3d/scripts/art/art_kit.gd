@@ -70,6 +70,31 @@ static func instance(mesh: Mesh, material: Material = null) -> MeshInstance3D:
 	return mi
 
 
+## A link of length 1 from the origin down along -y (a string, a rod, a rope segment): a 6-sided
+## cylinder posed between two points by stretch_link() (Task 4e: pendulum string and rod, the
+## lever's handle rod, the pulley's rope).
+static func link_mesh(radius: float, color: Color) -> Mesh:
+	var b := builder()
+	b.ao_min = 1.0
+	b.add_cylinder(Transform3D(Basis(Vector3.RIGHT, PI), Vector3.ZERO), radius, radius, 1.0, 6, color)
+	return b.commit()
+
+
+## Poses `link` (a link_mesh() instance whose parent has no transform) from world `from` to `to`:
+## turned along the segment and scaled to its length (hidden when the points meet). No allocation.
+static func stretch_link(link: Node3D, from: Vector3, to: Vector3) -> void:
+	var d := to - from
+	var length := d.length()
+	if length < 1e-6:
+		link.visible = false
+		return
+	link.visible = true
+	var down := d / length                      # the link's local -y
+	var side := down.cross(Vector3.BACK if absf(down.z) < 0.9 else Vector3.RIGHT).normalized()
+	var y := -down
+	link.transform = Transform3D(Basis(side, y * length, side.cross(y)), from)
+
+
 ## Sky-coloured background, no ambient/sky lighting (the shaders are unshaded).
 static func make_environment() -> WorldEnvironment:
 	var environment := Environment.new()

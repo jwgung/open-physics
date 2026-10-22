@@ -1,6 +1,8 @@
 ## Line/point graph for definition.graph (lab-graph.ts look: light grid, round 2.5-unit lines,
 ## latest point emphasised). The x range is fixed (graph.x.max); y grows to fit the data with
-## graph.y.min_max as the smallest top value. Axis ticks are numbers with units.
+## graph.y.min_max as the smallest top value. With graph.y.signed the y axis runs from -top to +top
+## around a zero line in the middle (signed values: the collision lab's momenta, + = to the right).
+## Axis ticks are numbers with units.
 class_name GraphView
 extends Control
 
@@ -40,10 +42,12 @@ func _draw() -> void:
 	var y_spec: Dictionary = spec.get("y", {})
 	var x_max: float = x_spec.get("max", 1.0)
 	var y_max: float = y_spec.get("min_max", 1.0)
+	var signed: bool = y_spec.get("signed", false)
 	for id in series:
 		for point in series[id]:
-			y_max = maxf(y_max, point.y * 1.08)
+			y_max = maxf(y_max, (absf(point.y) if signed else point.y) * 1.08)
 	y_max = _nice_ceiling(y_max)
+	var y_min := -y_max if signed else 0.0
 	var muted := UiTheme.MUTED
 	var grid := Color("e1ebf5")
 	for i in 3:
@@ -60,7 +64,7 @@ func _draw() -> void:
 	draw_string(font, Vector2(plot.end.x - 300.0, size.y - 4.0), x_label, HORIZONTAL_ALIGNMENT_RIGHT, 300.0, font_size, muted)
 
 	var to_screen := func(p: Vector2) -> Vector2:
-		return Vector2(plot.position.x + p.x / x_max * plot.size.x, plot.end.y - p.y / y_max * plot.size.y)
+		return Vector2(plot.position.x + p.x / x_max * plot.size.x, plot.end.y - (p.y - y_min) / (y_max - y_min) * plot.size.y)
 	for entry in spec.get("series", []):
 		var points: PackedVector2Array = series.get(entry.id, PackedVector2Array())
 		if points.is_empty():

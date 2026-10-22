@@ -398,6 +398,17 @@ func check_first_launch_screen() -> void:
 	var lab: Experiment = screen.experiment
 	var c := _case("circular")
 	var waiting: Dictionary = lab.observations()
+	# The velocity arrow keeps its length through the launch (same speed, same length) and ends at the
+	# knob's near face before it.
+	await tree.process_frame
+	var before: float = lab.props.velocity_arrow._built_length
+	var knob_gap: float = (lab.knob.global_position - lab.planet.global_position).length()
+	screen.experiment_action("launch")
+	await tree.process_frame
+	await tree.process_frame
+	var after: float = lab.props.velocity_arrow._built_length
+	expect.call(lab.released and absf(before - after) < 1e-9 and absf(before - (knob_gap - lab.KNOB_SIZE * 0.5)) < 0.02 and before > 0.0,
+		"orbit: the velocity arrow has the same length before and after the launch and ends at the knob's near face", "%.3f m -> %.3f m (knob %.3f m out)" % [before, after, knob_gap])
 	screen.experiment_action("launch")
 	var worst := 0.0
 	for s in c.samples:

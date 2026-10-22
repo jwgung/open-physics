@@ -42,6 +42,9 @@ var prediction: Dictionary = {}
 var crashes := 0
 var _floor: StaticBody3D
 var _preview := PackedFloat64Array()   # (direction, speed, radius) the held preview shows
+var _chosen := PackedFloat64Array([0.0, 0.0])   # (direction, speed) the waiting arrow shows (reused every frame)
+var _surface: OrbitArrowSurface
+var _surface_at := Vector3.INF         # planet position the cached surface was built for
 
 
 func set_control(id: String, value: Variant) -> void:
@@ -105,7 +108,7 @@ func reset_run() -> void:
 	props.set_guide(start_radius)
 	props.set_path(prediction.path, prediction.outcome)
 	props.reset()
-	_preview = PackedFloat64Array()
+	_preview.clear()
 	_show_waiting()
 	_update_status(true)
 
@@ -148,7 +151,7 @@ func _process(_delta: float) -> void:
 		return
 	if released and holding == "":
 		var at := planet.global_position
-		props.show_velocity(at, model.vx, model.vz, model.speed() * OrbitArrowSurface.SCALE if model.outcome == "" else 0.0)
+		props.show_velocity(at, model.vx, model.vz, _arrow_length(model.speed()) if model.outcome == "" else 0.0)
 		if model.outcome == "":
 			props.show_gravity(at, Vector3(0.0, ORBIT_Y, 0.0), PhysicsLaws.point_gravity_acceleration(MU, model.radius(), 1.0))
 		else:
@@ -162,22 +165,28 @@ func _process(_delta: float) -> void:
 ## the predicted path).
 func _show_waiting() -> void:
 	var at := planet.global_position
-	var chosen := PackedFloat64Array([direction, speed])
+	var chosen := _chosen
+	chosen[0] = direction
+	chosen[1] = speed
 	if holding == "arrow":
-		chosen = OrbitArrowSurface.launch_of(_arrow_surface().to_plane(knob.global_position))
+		OrbitArrowSurface.launch_into(_arrow_surface().to_plane(knob.global_position), chosen)
 	else:
 		var tip := PolarArrowSurface.tip_point(direction, speed, OrbitArrowSurface.OFFSET, OrbitArrowSurface.SCALE)
 		knob.global_position = Vector3(at.x + tip.x, ORBIT_Y, at.z + tip.y)
 	var v := launch_velocity(chosen[0], chosen[1])
-	props.show_velocity(at, v[0], v[1], OrbitArrowSurface.OFFSET + chosen[1] * OrbitArrowSurface.SCALE - KNOB_SIZE * 0.5)
+	props.show_velocity(at, v[0], v[1], _arrow_length(chosen[1]))
 	if holding == "":
 		return
-	var key := PackedFloat64Array([chosen[0], chosen[1], radius_at(at.x)])
-	if key != _preview:
-		_preview = key
-		var preview := PhysicsLaws.orbit_analyze(key[2], 0.0, v[0], v[1], 0.0, 0.0, MU, CRASH_RADIUS)
-		props.set_guide(key[2])
-		props.set_path(preview.path, preview.outcome)
+	var radius := radius_at(at.x)
+	if _preview.size() == 3 and _preview[0] == chosen[0] and _preview[1] == chosen[1] and _preview[2] == radius:
+		return
+	_preview.resize(3)
+	_preview[0] = chosen[0]
+	_preview[1] = chosen[1]
+	_preview[2] = radius
+	var preview := PhysicsLaws.orbit_analyze(radius, 0.0, v[0], v[1], 0.0, 0.0, MU, CRASH_RADIUS)
+	props.set_guide(radius)
+	props.set_path(preview.path, preview.outcome)
 
 
 ## ready (waiting), held, orbiting (bound, flying), leaving (unbound, flying), crash, far.
@@ -230,10 +239,6 @@ func _main_body() -> RigidBody3D:
 	return planet
 
 
-func graph_x_max() -> float:
-	return float(definition.get("graph", {}).get("x", {}).get("max", 20.0))
-
-
 ## Start radius for a planet centre at world x on the 0.5 m grid (whole cells), RADIUS_MIN..RADIUS_MAX.
 static func radius_at(world_x: float) -> float:
 	return clampf(roundi(world_x * RADIUS_CELLS) / RADIUS_CELLS, RADIUS_MIN, RADIUS_MAX)
@@ -256,8 +261,21 @@ func _build_world() -> void:
 	driver.reset()
 
 
+## The knob's surface through the planet (rebuilt only when the planet stands elsewhere).
 func _arrow_surface() -> OrbitArrowSurface:
-	return OrbitArrowSurface.new(planet.global_position, KNOB_SIZE * 0.5)
+	if _surface == null or _surface_at != planet.global_position:
+		_surface_at = planet.global_position
+		_surface = OrbitArrowSurface.new(_surface_at, KNOB_SIZE * 0.5)
+	return _surface
+
+
+## Length of the velocity arrow of launch speed `launch_speed` (m): from the planet centre up to
+## the knob's near face (the knob sits OFFSET + speed * SCALE out), the same before the launch and
+## in flight so the arrow does not jump when the knob goes; 0 for a planet at rest.
+static func _arrow_length(launch_speed: float) -> float:
+	if launch_speed == 0.0:
+		return 0.0
+	return OrbitArrowSurface.OFFSET + launch_speed * OrbitArrowSurface.SCALE - KNOB_SIZE * 0.5
 
 
 # --- manipulation -------------------------------------------------------------------------------

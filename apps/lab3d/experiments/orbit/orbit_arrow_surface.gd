@@ -28,7 +28,13 @@ func _init(center := Vector3.ZERO, knob_half := 0.0) -> void:
 ## (direction deg in 0..360, speed m/s) on the grid for a knob at plane point `p`: whole 5 deg and
 ## 0.1 m/s cells (64-bit: [direction, speed]; a Vector2 would round them to 32 bit).
 static func launch_of(p: Vector2) -> PackedFloat64Array:
+	var launch := PackedFloat64Array([0.0, 0.0])
+	launch_into(p, launch)
+	return launch
+
+
+## launch_of() written into `out` (two elements), for callers that run every frame.
+static func launch_into(p: Vector2, out: PackedFloat64Array) -> void:
 	var q := polar_point(p, OFFSET, SCALE)
-	var angle := fposmod(roundf(q.x / ANGLE_STEP) * ANGLE_STEP, 360.0)
-	var speed := clampf(roundi(q.y / SPEED_STEP) / (1.0 / SPEED_STEP), 0.0, SPEED_MAX)
-	return PackedFloat64Array([angle, speed])
+	out[0] = fposmod(roundf(q.x / ANGLE_STEP) * ANGLE_STEP, 360.0)
+	out[1] = clampf(roundi(q.y / SPEED_STEP) / (1.0 / SPEED_STEP), 0.0, SPEED_MAX)

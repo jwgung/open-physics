@@ -45,6 +45,11 @@ var cur_distance := 10.0
 var cur_target := Vector3.ZERO
 var shake := 0.0                # vertical offset of the drawn view (m), see nudge()
 var _shake_v := 0.0
+## Manipulation assist (begin_assist): the goal view before the correction, and the follow
+## target held still while an object is dragged.
+var _assist_saved: Dictionary = {}
+var _assist_active := false
+var _held_target := Vector3.ZERO
 
 
 ## Reads definition.camera (see content/experiments/*.json) and jumps to the default mode.
@@ -140,8 +145,77 @@ func nudge(strength: float) -> void:
 
 
 ## Mode and view, to rebuild the camera later (App keeps it across a 3D view rebuild).
+## Manipulation assist (Task 2b, apps/lab3d/README.md "보조 시점"): while an object is dragged the
+## view must show the surface it moves on. If the current goal view looks at the plane with
+## `plane_normal` at less than ASSIST_PLANE_DEG, or along `line_axis` (a line the object moves on,
+## or the height handle's vertical) within ASSIST_LINE_DEG, the goal turns to the nearest yaw/pitch
+## inside the experiment's limits that satisfies both (pass Vector3.ZERO to skip one). A view that
+## already satisfies them is left alone. The follow target is held still until end_assist(), so
+## the camera does not chase the object under the finger. Returns true if the view was turned.
+const ASSIST_PLANE_DEG := 25.0
+const ASSIST_LINE_DEG := 35.0
+const ASSIST_STEP_DEG := 2.5
+
+
+func begin_assist(plane_normal: Vector3, line_axis: Vector3) -> bool:
+	_held_target = _goal_target()
+	_assist_active = true
+	_assist_saved = {}
+	if assist_ok(goal_yaw, goal_pitch, plane_normal, line_axis):
+		return false
+	var best := Vector2(goal_yaw, goal_pitch)
+	var best_cost := INF
+	var step := deg_to_rad(ASSIST_STEP_DEG)
+	var yaw := yaw_range.x
+	while yaw <= yaw_range.y + 0.0001:
+		var pitch := pitch_range.x
+		while pitch <= pitch_range.y + 0.0001:
+			var cost := absf(angle_difference(goal_yaw, yaw)) + absf(pitch - goal_pitch)
+			if cost < best_cost and assist_ok(yaw, pitch, plane_normal, line_axis):
+				best_cost = cost
+				best = Vector2(yaw, pitch)
+			pitch += step
+		yaw += step
+	if best_cost == INF:
+		return false
+	_assist_saved = {"yaw": goal_yaw, "pitch": goal_pitch}
+	goal_yaw = best.x
+	goal_pitch = best.y
+	return true
+
+
+## Ends the assist: a turned view eases back to where it was, the follow target moves again.
+func end_assist() -> void:
+	if not _assist_saved.is_empty():
+		goal_yaw = _assist_saved.yaw
+		goal_pitch = _assist_saved.pitch
+	_assist_saved = {}
+	_assist_active = false
+
+
+func is_assisting() -> bool:
+	return _assist_active
+
+
+## Whether a view at (yaw, pitch) sees the plane / line well enough (see begin_assist).
+static func assist_ok(yaw: float, pitch: float, plane_normal: Vector3, line_axis: Vector3) -> bool:
+	var look := view_direction(yaw, pitch)
+	if plane_normal != Vector3.ZERO and absf(look.dot(plane_normal.normalized())) < sin(deg_to_rad(ASSIST_PLANE_DEG)):
+		return false
+	if line_axis != Vector3.ZERO and absf(look.dot(line_axis.normalized())) > cos(deg_to_rad(ASSIST_LINE_DEG)):
+		return false
+	return true
+
+
+## Unit direction the camera looks in at (yaw, pitch) (from the eye to the target).
+static func view_direction(yaw: float, pitch: float) -> Vector3:
+	return -Vector3(sin(yaw) * cos(pitch), -sin(pitch), cos(yaw) * cos(pitch))
+
+
 func get_state() -> Dictionary:
-	return {"mode": mode, "yaw": goal_yaw, "pitch": goal_pitch, "distance": goal_distance, "pan": pan}
+	var yaw: float = _assist_saved.get("yaw", goal_yaw)
+	var pitch: float = _assist_saved.get("pitch", goal_pitch)
+	return {"mode": mode, "yaw": yaw, "pitch": pitch, "distance": goal_distance, "pan": pan}
 
 
 func set_state(state: Dictionary) -> void:
@@ -173,6 +247,8 @@ func is_settled(epsilon := 0.001) -> bool:
 
 
 func _goal_target() -> Vector3:
+	if _assist_active:
+		return _held_target
 	if mode == "follow" and follow_source != null and is_instance_valid(follow_source):
 		return follow_source.follow_point() + pan
 	return base_target + pan

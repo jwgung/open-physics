@@ -9,6 +9,10 @@
 ##   pop()          the body was (re)placed: grows in from POP_START with an overshoot
 ##   stretch()      the body was let go: short stretch upwards
 ##   puff(s)        small dust puff under the body (0..1)
+##   hold(on)       picked up by a finger (Task 2b): the mesh floats HOLD_LIFT above the body;
+##                  hold(false) lowers it again
+##   settle()       put down by a finger: lowers the mesh with a small squash and dust
+##   wobble()       cannot be placed here: a short sideways shake
 ##   automatic      landing on the ground (fast downward speed stopping near ground_y): squash by
 ##                  the fall speed + dust + `landed(strength)`; coming to rest after that: wobble
 ## Springs closer to rest than SETTLED_VALUE / SETTLED_SPEED stop updating (set_process(false)).
@@ -31,6 +35,13 @@ const POP_START := 0.5          # reset: starts at half size, overshoots to +16 
 const LAND_SPEED := 1.2         # m/s downward speed that counts as a landing
 const LAND_FULL_SPEED := 6.0    # m/s for a full-strength landing
 const REST_SPEED := 0.15        # m/s
+const HOLD_LIFT := 0.12         # m the mesh floats above a held body
+const LIFT_K := 400.0           # critically damped (2 sqrt(k) = 40): reaches the lift in ~0.15 s
+const LIFT_DAMP := 40.0
+const WOBBLE_KICK := 1.6        # m/s sideways: ~4 cm shake
+const WOBBLE_K := 900.0         # ~0.2 s period, gone in ~0.4 s
+const WOBBLE_DAMP := 14.0
+const SETTLE_KICK := 3.0        # put down: -10 % squash
 const SETTLED_VALUE := 0.002    # springs closer than this to rest (and slower than SETTLED_SPEED) stop updating
 const SETTLED_SPEED := 0.05
 
@@ -43,6 +54,11 @@ var _squash := 0.0              # +: taller/thinner, -: flatter/wider
 var _squash_v := 0.0
 var _pop := 1.0
 var _pop_v := 0.0
+var _lift := 0.0                # mesh offset along the surface normal (m), see hold()
+var _lift_v := 0.0
+var _lift_goal := 0.0
+var _wobble := 0.0              # sideways mesh offset (m), see wobble()
+var _wobble_v := 0.0
 var _scale := Vector3.ONE       # current squash scale along (sxz, sy, sxz), sy along `_normal`
 var _normal := Vector3.UP       # surface normal under the body (world)
 var _shadow_xf := Transform3D() # body transform at the last shadow update
@@ -119,6 +135,30 @@ func stretch() -> void:
 	set_process(true)
 
 
+func hold(on: bool) -> void:
+	_lift_goal = HOLD_LIFT if on else 0.0
+	if on:
+		_squash_v += STRETCH_KICK * 0.6
+	set_process(true)
+
+
+func settle() -> void:
+	_lift_goal = 0.0
+	_squash_v -= SETTLE_KICK
+	set_process(true)
+	puff(0.3)
+
+
+func wobble() -> void:
+	_wobble_v += WOBBLE_KICK
+	set_process(true)
+
+
+## True while a reaction is still moving the mesh (tests).
+func is_animating() -> bool:
+	return is_processing()
+
+
 func puff(strength: float) -> void:
 	if body == null:
 		return
@@ -166,11 +206,20 @@ func _process(delta: float) -> void:
 	_squash = clampf(_squash + _squash_v * dt, -SQUASH_LIMIT, SQUASH_LIMIT)
 	_pop_v += (-SPRING_K * 0.7 * (_pop - 1.0) - SPRING_DAMP * 0.8 * _pop_v) * dt
 	_pop += _pop_v * dt
-	if absf(_squash) < SETTLED_VALUE and absf(_squash_v) < SETTLED_SPEED and absf(_pop - 1.0) < SETTLED_VALUE and absf(_pop_v) < SETTLED_SPEED:
+	_lift_v += (-LIFT_K * (_lift - _lift_goal) - LIFT_DAMP * _lift_v) * dt
+	_lift += _lift_v * dt
+	_wobble_v += (-WOBBLE_K * _wobble - WOBBLE_DAMP * _wobble_v) * dt
+	_wobble += _wobble_v * dt
+	if absf(_squash) < SETTLED_VALUE and absf(_squash_v) < SETTLED_SPEED and absf(_pop - 1.0) < SETTLED_VALUE and absf(_pop_v) < SETTLED_SPEED \
+			and absf(_lift - _lift_goal) < SETTLED_VALUE and absf(_lift_v) < SETTLED_SPEED and absf(_wobble) < SETTLED_VALUE and absf(_wobble_v) < SETTLED_SPEED:
 		_squash = 0.0
 		_squash_v = 0.0
 		_pop = 1.0
 		_pop_v = 0.0
+		_lift = _lift_goal
+		_lift_v = 0.0
+		_wobble = 0.0
+		_wobble_v = 0.0
 		set_process(false)   # at rest: one last write below, then nothing until the next kick
 	var sy := (1.0 + _squash) * _pop
 	var sxz := (1.0 - _squash * 0.5) * _pop
@@ -182,7 +231,11 @@ func _process(delta: float) -> void:
 	for r in 3:
 		for c in 3:
 			m[c][r] += (sy - sxz) * u[r] * u[c]
-	mesh.transform = Transform3D(m, u * _half_extent(_normal) * (sy - 1.0))
+	var side := _normal.cross(Vector3.FORWARD)
+	if side.length_squared() < 0.01:
+		side = _normal.cross(Vector3.RIGHT)
+	var offset := u * (_half_extent(_normal) * (sy - 1.0) + _lift) + body.global_basis.inverse() * side.normalized() * _wobble
+	mesh.transform = Transform3D(m, offset)
 
 
 ## Half extent of the body (a cube of `size`) along the world direction `dir`.

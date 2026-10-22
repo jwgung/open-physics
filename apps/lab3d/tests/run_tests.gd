@@ -7,6 +7,8 @@
 ##    benchmark spec section 4 table and holds/slides at each material's critical angle.
 ## 3. shell: content registry, font coverage, camera modes/limits, gesture classification,
 ##    portrait/landscape layout.
+## 4. manipulation (Task 2b, tests/manipulation_checks.gd): projection, snap, assist, drag/cancel/
+##    height handle/overlap through the real input path, displayed numbers after a new start.
 ## Times are engine fixed steps (60 Hz), independent of rendering FPS.
 extends SceneTree
 
@@ -60,6 +62,11 @@ func _run() -> void:
 	_check_wheel_zoom(definition)
 	_check_settings_marker(definition)
 	_check_bench_report()
+	print("== manipulation: projection, snap, cancel, height handle, new start positions ==")
+	var checks: GDScript = load("res://tests/manipulation_checks.gd")
+	_expect(checks != null and checks.can_instantiate(), "manipulation checks compile", "")
+	if checks != null and checks.can_instantiate():
+		await checks.new(self, _expect, _vectors).run(definition)
 	print("RESULT: %s (%d failure(s))" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
 

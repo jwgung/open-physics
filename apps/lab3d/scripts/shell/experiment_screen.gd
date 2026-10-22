@@ -19,6 +19,8 @@ var apply_launch_args := false
 var definition: Dictionary
 var experiment: Experiment
 var view: View3D
+## One-finger object manipulation (null when the experiment declares no `manipulation`).
+var manipulator: Manipulator
 
 var _top_bar: PanelContainer
 var _panel: PanelContainer
@@ -35,6 +37,7 @@ var _sections: Dictionary = {}          # section id -> card (for --scroll-to)
 var _refresh_left := 0.0
 var _auto_release_every := 0.0
 var _auto_release_left := 0.0
+var _demo_release_left := -1.0          # --auto-drag: seconds until the placed object is released
 var _state: Dictionary = {}             # capture_state() of a screen being rebuilt
 var _updating := false                  # a control/action is running: refresh once afterwards
 var _graph_revision := -2               # Experiment.graph_revision() of the series on the graph
@@ -53,7 +56,7 @@ func capture_state() -> Dictionary:
 	var controls := {}
 	for control in definition.controls:
 		controls[control.id] = experiment.control_value(control.id)
-	return {"controls": controls, "camera": view.rig.get_state()}
+	return {"controls": controls, "camera": view.rig.get_state(), "placements": experiment.placements()}
 
 
 func _ready() -> void:
@@ -67,6 +70,14 @@ func _ready() -> void:
 	experiment.state_changed.connect(_on_state_changed)
 	experiment.impact.connect(view.rig.nudge)
 	view.set_world(experiment)
+	if definition.has("manipulation"):
+		manipulator = Manipulator.new()
+		manipulator.name = "Manipulator"
+		view.viewport.add_child(manipulator)
+		manipulator.setup(view, experiment)
+		view.single_pointer.connect(manipulator.handle_pointer)
+		manipulator.changed.connect(_refresh)
+		manipulator.demo_placed.connect(func() -> void: _demo_release_left = 0.4)
 	view.rig.follow_source = experiment
 	view.rig.configure(definition.camera)
 	view.rig.mode_changed.connect(_on_mode_changed)
@@ -87,6 +98,9 @@ func _restore_state() -> void:
 	_updating = true
 	for id in controls:
 		experiment.set_control(id, controls[id])
+	var placements: Dictionary = _state.get("placements", {})
+	for id in placements:
+		experiment.manipulation_placed(id, placements[id])
 	_updating = false
 	view.rig.set_state(_state.get("camera", {}))   # emits mode_changed; setup() refreshes once
 
@@ -109,6 +123,9 @@ func _apply_launch_args() -> void:
 	if every.is_valid_float():
 		_auto_release_every = float(every)
 		_auto_release_left = 1.0
+	var drag_every := Quality.cmdline_value("auto-drag")
+	if drag_every.is_valid_float() and manipulator != null:
+		manipulator.start_demo(float(drag_every))
 
 
 func _process(delta: float) -> void:
@@ -125,6 +142,10 @@ func _process(delta: float) -> void:
 		if _auto_release_left <= 0.0:
 			_auto_release_left = _auto_release_every
 			experiment.run_action("release")
+	if _demo_release_left >= 0.0:
+		_demo_release_left -= delta
+		if _demo_release_left < 0.0:
+			experiment_action("release")
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -313,6 +334,7 @@ func _build_conditions() -> Control:
 
 
 func experiment_action(id: String) -> void:
+	_drop_held_object()
 	_updating = true
 	experiment.run_action(id)
 	_updating = false
@@ -320,12 +342,19 @@ func experiment_action(id: String) -> void:
 
 
 func _set_control(id: String, value: Variant) -> void:
+	_drop_held_object()
 	_updating = true
 	experiment.set_control(id, value)
 	_updating = false
 	# Only this control's conditions changed: sync it, then redraw the readouts and the series.
 	_sync_control(id)
 	_update_readouts(true)
+
+
+## A control or action changes the experiment under a held object: put it back first.
+func _drop_held_object() -> void:
+	if manipulator != null:
+		manipulator.cancel()
 
 
 ## state_changed during our own control/action call is covered by that call's single refresh.

@@ -27,6 +27,10 @@
 ## 11. orbit lab (Task 4d, tests/orbit_lab_checks.gd): the model and the engine planet step by step
 ##    against the TS-core vectors (tests/orbit_lab_vectors.json), Kepler periods, escape and crash
 ##    from the engine planet, panel, art, a fresh screen, the input path, the demo.
+## 12. constraints lab (Task 4e, tests/constraints_lab_checks.gd): the string and rod pendulum models
+##    and engine bobs step by step against the TS-core vectors (tests/constraints_lab_vectors.json),
+##    the fixed length, small- and large-angle periods and energy from the engine bobs, panel, art,
+##    a fresh screen, the input path, the demo.
 ## Times are engine fixed steps (60 Hz), independent of rendering FPS.
 extends SceneTree
 
@@ -120,6 +124,11 @@ func _run() -> void:
 	_expect(orbit != null and orbit.can_instantiate(), "orbit lab checks compile", "")
 	if orbit != null and orbit.can_instantiate():
 		await orbit.new(self, _expect).run()
+	print("== constraints lab (Task 4e) ==")
+	var constraints: GDScript = load("res://tests/constraints_lab_checks.gd")
+	_expect(constraints != null and constraints.can_instantiate(), "constraints lab checks compile", "")
+	if constraints != null and constraints.can_instantiate():
+		await constraints.new(self, _expect).run()
 	print("RESULT: %s (%d failure(s))" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
 

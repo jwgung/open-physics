@@ -284,7 +284,9 @@ func _begin(id: String, kind: String, position: Vector2) -> void:
 		and surface.clamp_soft(p, SOFT_MARGIN).distance_to(p) < REGION_EPS
 	height = 0.0
 	if rule.height_max > 0.0 and on_surface:
-		height = clampf(above, 0.0, rule.height_max)   # picked up where it is (e.g. on a block); the step applies to the handle
+		# Picked up where it is (e.g. on a block); the step applies to the handle. A few mm of contact
+		# slack on the surface itself counts as resting on it.
+		height = 0.0 if above < ON_SURFACE_TOL else clampf(above, 0.0, rule.height_max)
 	_finger = position
 	_finger_camera = view.rig.global_transform
 	var ray := _finger_ray(position)

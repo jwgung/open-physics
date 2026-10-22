@@ -830,6 +830,14 @@ func check_review3(definition: Dictionary) -> void:
 	_touch(screen, 0, _at(screen, on_block), false)
 	expect.call(m.mode == "" and is_equal_approx(picked_h, 0.6) and was_valid and not marked_blocked and red.global_position.is_equal_approx(on_block),
 		"a box picked up on the block keeps its height (0.6 m), is not blocked and stays when let go", "height %.3f, valid %s, at %s" % [picked_h, was_valid, str(red.global_position)])
+	# A box resting on the floor with a few mm of contact slack is picked at height 0, not 0.004 m.
+	var slack := Vector3(1.75, 0.254, 1.25)
+	red.global_transform = Transform3D(Basis(), slack)
+	await tree.physics_frame
+	_touch(screen, 0, _at(screen, slack), true)
+	var slack_h: float = m.height
+	_touch(screen, 0, _at(screen, slack), false)
+	expect.call(slack_h == 0.0, "a box resting on the floor with mm of contact slack is picked at height 0", "%.4f" % slack_h)
 	# The first target being invalid does not shake the box; turning from valid to invalid does.
 	var juice: ArtJuice = lab.juices.red
 	red.global_transform = Transform3D(Basis(), orange.global_position + Vector3(0.1, 0.0, 0.0))
@@ -862,15 +870,16 @@ func check_review3(definition: Dictionary) -> void:
 	holder.shape = original
 	m._query_shapes.erase("red")
 	expect.call(shrunk is CapsuleShape3D and is_equal_approx(shrunk.radius, 0.29) and is_equal_approx(shrunk.height, 0.98), "the overlap query shrinks a capsule (radius and height)", "")
-	# A measurement action is the experiment's own change: it keeps the selection when nothing is held and
-	# puts a held object back first.
+	# A measurement action is the experiment's own change: it clears the selection (so the handle does
+	# not follow a falling body) and puts a held object back first.
 	m.select("red")
 	screen._run_measured_action("drop")
-	var kept: bool = m.selected_id == "red"
-	m.select("")
+	var cleared: bool = m.selected_id == ""
+	screen.experiment.run_action("reset")
+	await tree.physics_frame
 	_touch(screen, 0, _at(screen, orange.global_position), true)
 	var holding: bool = m.mode == "drag"
 	screen._run_measured_action("reset")
-	expect.call(kept and holding and m.mode == "", "a measurement action skips the button's deselect when nothing is held, and cancels a held object", "kept %s, holding %s, mode '%s'" % [kept, holding, m.mode])
+	expect.call(cleared and holding and m.mode == "", "a measurement action clears the selection when nothing is held, and cancels a held object", "cleared %s, holding %s, mode '%s'" % [cleared, holding, m.mode])
 	_touch(screen, 0, Vector2.ZERO, false)
 	await _close(screen)

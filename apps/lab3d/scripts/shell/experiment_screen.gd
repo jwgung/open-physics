@@ -338,12 +338,15 @@ func _build_conditions() -> Control:
 
 
 ## An action fired by a measurement hook (--auto-release, --auto-drag): the experiment's own change,
-## as in Task 2a, without the UI work of a button press (cancel, deselect, full refresh) unless
-## an object is held (then it goes back first, as for a button).
+## as in Task 2a, without the UI work of a button press (cancel, full refresh) unless an object is
+## held (then it goes back first, as for a button). A selection is still cleared so the height
+## handle does not follow a body the action sets moving.
 func _run_measured_action(id: String) -> void:
 	if manipulator != null and manipulator.mode != "":
 		experiment_action(id)
 		return
+	if manipulator != null and manipulator.selected_id != "":
+		manipulator.select("")
 	experiment.run_action(id)
 
 

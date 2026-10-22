@@ -18,6 +18,8 @@ const SIDEBAR_SLIDE_S := 0.22
 const OVERLAY_MARGIN := 12.0
 const KEY_CARD_WIDTH := 200.0
 const TIP_SECONDS := 8.0
+const TIP_MAX_WIDTH := 440.0
+const TIP_MIN_WIDTH := 300.0   # narrower than this beside the actions: the tip goes above them
 const DEMO_RELEASE_DELAY_S := 0.4   # --auto-drag: the auto-release waits this long after the demo put its object down
 
 ## Set by App for the screen it opens from --experiment: then the launch args (--ctl-*, --camera,
@@ -340,7 +342,7 @@ func _observation(id: String) -> Dictionary:
 
 ## Overlays are placed by hand at their minimum sizes: title bar top-left, settings and the
 ## sidebar button top-right, the key cards under the title bar, the actions bottom-right and the
-## gesture tip bottom-left in the space left of them.
+## gesture tip bottom-left (beside the actions, or above them when the view is too narrow).
 func _fit_overlays() -> void:
 	if _title_bar == null:
 		return
@@ -355,11 +357,15 @@ func _fit_overlays() -> void:
 	_key_row.position = Vector2(m, m + maxf(_title_bar.size.y, _top_buttons.size.y) + 8.0)
 	_action_row.size = _action_row.get_combined_minimum_size()
 	_action_row.position = Vector2(width - _action_row.size.x - m, view.size.y - _action_row.size.y - m)
-	var tip_width := minf(440.0, width - _action_row.size.x - m * 3.0)
+	# Beside the actions when there is room, otherwise above them (a narrow view with many actions:
+	# orbit's three buttons beside the open sidebar on a tablet).
+	var beside := width - _action_row.size.x - m * 3.0
+	var tip_width := minf(TIP_MAX_WIDTH, beside if beside >= TIP_MIN_WIDTH else width - m * 2.0)
 	# An autowrap label's minimum height depends on its width: set the width first.
-	_tip.size = Vector2(maxf(tip_width, 120.0), 0.0)
+	_tip.size = Vector2(tip_width, 0.0)
 	_tip.size.y = _tip.get_minimum_size().y
-	_tip.position = Vector2(m, view.size.y - _tip.size.y - m)
+	var bottom := view.size.y - m if beside >= TIP_MIN_WIDTH else _action_row.position.y - 8.0
+	_tip.position = Vector2(m, bottom - _tip.size.y)
 
 
 func _scroll_to(section: String) -> void:

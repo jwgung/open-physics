@@ -1027,7 +1027,7 @@ func _check_layout(definition: Dictionary) -> void:
 func _check_key_cards() -> void:
 	var host := Control.new()
 	host.theme = load(UI_THEME).build()
-	host.size = PHONE_LANDSCAPE
+	host.size = TABLET_LANDSCAPE   # the narrowest view: the tablet's beside the open sidebar
 	root.add_child(host)
 	for definition in ExperimentRegistry.load_all():
 		var screen: Control = load(EXPERIMENT_SCREEN).new()
@@ -1039,17 +1039,21 @@ func _check_key_cards() -> void:
 		screen.open_sidebar(false)
 		await process_frame
 		await process_frame
+		var tip: Control = screen._tip
+		var tip_clear: bool = not tip.visible or (not tip.get_rect().intersects(screen._action_row.get_rect()) \
+			and not tip.get_rect().intersects(screen._key_row.get_rect()) and tip.size.x >= 300.0 \
+			and Rect2(Vector2.ZERO, screen.view.size).encloses(tip.get_rect()))
 		var sidebar_fits: bool = is_equal_approx(screen._sidebar.size.x, screen.sidebar_width()) \
-			and is_equal_approx(screen._sidebar.position.x + screen._sidebar.size.x, PHONE_LANDSCAPE.x)
+			and is_equal_approx(screen._sidebar.position.x + screen._sidebar.size.x, TABLET_LANDSCAPE.x)
 		var same := true
 		var shown := PackedStringArray()
 		for id in definition.key_observations:
 			var card: String = screen._key_labels[id].text
 			same = same and card == screen._observation_labels[id].text and card != ""
 			shown.append(card)
-		_expect(definition.camera.default_mode == "front" and screen.view.rig.mode == "front" and same and sidebar_fits \
+		_expect(definition.camera.default_mode == "front" and screen.view.rig.mode == "front" and same and sidebar_fits and tip_clear \
 			and definition.key_observations.size() >= 2 and definition.key_observations.size() <= 3,
-			"%s: front camera, key cards %s = panel values, the open sidebar keeps its width" % [definition.id, definition.key_observations],
+			"%s: front camera, key cards %s = panel values, the open sidebar keeps its width, the tip clears the actions and cards" % [definition.id, definition.key_observations],
 			"%s; sidebar %.0f units" % [", ".join(shown), screen._sidebar.size.x])
 		screen.queue_free()
 		await process_frame

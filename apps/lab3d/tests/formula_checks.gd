@@ -298,41 +298,103 @@ func check_contact_force() -> void:
 	await tree.process_frame
 
 
-## collision: head-on spheres (1 kg at 3.4 m/s, 2 kg at -1.7 m/s) leave with the TS world outcome
-## for e = 1 and e = 0.88, also when the Jolt materials are not mapped (bounce 0.88 + 0.88 = 1).
+## collision: spheres (1 kg, r 0.6 and 2 kg, r 0.8) leave with the TS world outcome, whatever their
+## Jolt materials (bounce 0: resolved over two steps; bounce 0.88 each: Jolt e = 1), for a slow touch
+## below the 1 m/s threshold (several contact steps), a start in deep overlap, and under gravity
+## (velocities = a TS MultiBodyWorld run with gravity). The materials stay the bodies' own.
 func check_collision() -> void:
 	var target: Dictionary = vectors.scenes.collision
-	for case in [["elastic", target.elastic, true], ["rubber", target.rubber, true], ["rubber, unmapped materials", target.rubber, false]]:
+	var head_on: Array = target.velocities
+	var cases := [
+		["elastic, bounce 0", target.elastic, head_on, 0.0, 6.0, 0.0],
+		["rubber, bounce 0", target.rubber, head_on, 0.0, 6.0, 0.0],
+		["rubber, bounce 0.88 each", target.rubber, head_on, 0.88, 6.0, 0.0],
+		["slow 0.7 m/s, e = 0", target.slow, target.slow.velocities, 0.0, 1.65, 0.0],
+		["rubber, deep overlap at the start", target.rubber, head_on, 0.0, 1.35, 0.0],
+		["rubber, under gravity", target.gravity, head_on, 0.0, 6.0, 1.0],
+	]
+	for case in cases:
 		var outcome: Dictionary = case[1]
+		var velocities: Array = case[2]
 		var world := _world()
-		var a := _body(world, target.masses[0], Vector3(-3.0, 1.0, 0.0), 0.6, 0.0, false)
-		var b := _body(world, target.masses[1], Vector3(3.0, 1.0, 0.0), 0.8, 0.0, false)
+		var a := _body(world, target.masses[0], Vector3(-0.5 * case[4], 6.0, 0.0), 0.6, 0.0, false)
+		var b := _body(world, target.masses[1], Vector3(0.5 * case[4], 6.0, 0.0), 0.8, 0.0, false)
 		for body in [a, b]:
-			body.gravity_scale = 0.0
+			body.gravity_scale = case[5]
+			body.physics_material_override.bounce = case[3]
 		var corrector := CollisionCorrector.new()
 		corrector.setup(a, b, 0.6, 0.8, outcome.e, outcome.e)
 		corrector.threshold = target.threshold
-		if not case[2]:
-			for body in [a, b]:
-				body.physics_material_override.bounce = outcome.e
 		var driver := FormulaDriver.new()
 		driver.correctors.append(corrector)
 		world.add_child(driver)
-		a.linear_velocity = Vector3(target.velocities[0], 0.0, 0.0)
-		b.linear_velocity = Vector3(target.velocities[1], 0.0, 0.0)
+		a.linear_velocity = Vector3(velocities[0], 0.0, 0.0)
+		b.linear_velocity = Vector3(velocities[1], 0.0, 0.0)
 		driver.running = true
-		await _steps(90)
-		var after := [a.linear_velocity.x, b.linear_velocity.x]
-		var error := maxf(absf(after[0] - float(outcome.after[0])), absf(after[1] - float(outcome.after[1])))
+		if case[5] > 0.0:
+			# Read after the same number of engine steps as the TS run (one per corrector step).
+			while corrector.steps < int(outcome.steps):
+				await tree.physics_frame
+		else:
+			await _steps(90)
 		var engine: Array = corrector.events[0].engine if corrector.events.size() > 0 else [Vector3.ZERO, Vector3.ZERO]
+		var contact_steps: int = corrector.events[0].steps if corrector.events.size() > 0 else 0
+		var error := 0.0
+		var detail := ""
+		if case[5] > 0.0:
+			# The TS world target holds both components after the same number of 60 Hz steps.
+			var want: Array = outcome.after
+			var got := [a.linear_velocity.x, a.linear_velocity.y, b.linear_velocity.x, b.linear_velocity.y]
+			for i in 4:
+				error = maxf(error, absf(got[i] - float(want[i])))
+			detail = "%s vs TS world %s" % [str(got), str(want)]
+		else:
+			var after := [a.linear_velocity.x, b.linear_velocity.x]
+			error = maxf(absf(after[0] - float(outcome.after[0])), absf(after[1] - float(outcome.after[1])))
+			var momentum: float = target.masses[0] * after[0] + target.masses[1] * after[1]
+			var momentum_before: float = target.masses[0] * float(velocities[0]) + target.masses[1] * float(velocities[1])
+			expect.call(absf(momentum - momentum_before) <= 1e-4, "collision (%s): momentum conserved" % case[0], "%.6f vs %.6f kg m/s" % [momentum, momentum_before])
+			detail = "%.4f / %.4f m/s vs %.4f / %.4f" % [after[0], after[1], outcome.after[0], outcome.after[1]]
 		var shown := corrector.formula_values()
 		expect.call(corrector.events.size() == 1 and error <= 1e-4 and absf(float(shown.get("velocity_a", INF)) - float(outcome.after[0])) <= 1e-6,
 			"collision (%s, e = %.2f): velocities after = TS world outcome" % [case[0], outcome.e],
-			"%.4f / %.4f m/s vs %.4f / %.4f (engine %.4f / %.4f), %d event(s)" % [after[0], after[1], outcome.after[0], outcome.after[1], engine[0].x, engine[1].x, corrector.events.size()])
-		var momentum: float = target.masses[0] * after[0] + target.masses[1] * after[1]
-		expect.call(absf(momentum - float(target.momentum)) <= 1e-4, "collision (%s): momentum conserved" % case[0], "%.6f vs %.6f kg m/s" % [momentum, target.momentum])
+			"%s (engine %.4f / %.4f over %d contact step(s)), %d event(s)" % [detail, engine[0].x, engine[1].x, contact_steps, corrector.events.size()])
 		world.queue_free()
 		await tree.process_frame
+	await _check_collision_materials()
+
+
+## The collision corrector leaves the bodies' materials alone: a ball of a corrected pair bounces
+## on the floor exactly like an uncorrected twin with the same material.
+func _check_collision_materials() -> void:
+	var world := _world()
+	_floor(world, 0.0)
+	var paired := _body(world, 1.0, Vector3(0.0, 2.0, 0.0), 0.3, 0.0, false)
+	var twin := _body(world, 1.0, Vector3(3.0, 2.0, 0.0), 0.3, 0.0, false)
+	var partner := _body(world, 1.0, Vector3(-6.0, 2.0, 0.0), 0.3, 0.0, false)
+	partner.gravity_scale = 0.0
+	for body in [paired, twin, partner]:
+		body.physics_material_override.bounce = 0.3
+		body.physics_material_override.friction = 0.4
+	var material := paired.physics_material_override
+	var corrector := CollisionCorrector.new()
+	corrector.setup(paired, partner, 0.3, 0.3, 0.88, 0.88)
+	var driver := FormulaDriver.new()
+	driver.correctors.append(corrector)
+	world.add_child(driver)
+	driver.running = true
+	var worst := 0.0
+	var rebound := 0.0
+	for i in 90:
+		await tree.physics_frame
+		worst = maxf(worst, (paired.linear_velocity - twin.linear_velocity).length())
+		rebound = maxf(rebound, paired.linear_velocity.y)
+	expect.call(paired.physics_material_override == material and is_equal_approx(material.bounce, 0.3) and is_equal_approx(material.friction, 0.4)
+		and is_equal_approx(partner.physics_material_override.bounce, 0.3), "collision: setup() keeps the bodies' own materials", "bounce %.2f, friction %.2f" % [material.bounce, material.friction])
+	expect.call(worst <= 1e-5 and rebound > 1.0 and corrector.events.is_empty(), "collision: floor bounce of a corrected body = its own material (uncorrected twin)",
+		"max |dv| %s m/s, rebound %.3f m/s, %d event(s)" % [String.num_scientific(worst), rebound, corrector.events.size()])
+	world.queue_free()
+	await tree.process_frame
 
 
 ## spring (force injection): period and energy of an undamped 1 kg, k = 5 N/m oscillator.

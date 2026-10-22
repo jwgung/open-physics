@@ -1,17 +1,27 @@
 ## Collision correction (method "collision"): two movable bodies (spheres) that hit each other.
-## Jolt detects the contact and resolves it in the step it happens. Its restitution rule differs
-## from the TS world (Godot-Jolt combines materials as min(bounceA + bounceB, 1); TS uses
-## min(eA, eB) and e = 0 below a 1 m/s closing speed, which equals Jolt's bounce velocity threshold),
-## so setup() maps the TS pair onto the Jolt materials (bounce = e on A, 0 on B, friction 0) and the
-## corrector then replaces the engine's outcome with the formula outcome:
-## at the first pre-step after a step in which the bodies stopped closing in on each other while
-## touching, both velocities are set to PhysicsLaws.world_collision_velocities applied along the
-## contact normal (tangential components unchanged) from the velocities saved before that step.
-## Positions of that one step keep the engine's outcome (an error <= |dv| dt).
+## Jolt detects and resolves the contact with the bodies' own materials: setup() does not change
+## them, so contacts with the floor, walls and other bodies keep their own bounce and friction. Only
+## the outcome of the A-B contact is replaced. Jolt's rule differs from the TS world (Godot-Jolt
+## combines materials as min(bounceA + bounceB, 1) and has friction; TS uses min(eA, eB), e = 0
+## below a 1 m/s closing speed, which equals Jolt's bounce velocity threshold, and no friction), and
+## a pair with bounce 0 is resolved over two steps (speculative contact, then the hit).
+## Each fixed step, before the physics server steps:
+## - the velocities the bodies start the step with are kept (`_prev`). A step whose relative normal
+##   velocity changed more than the external forces explain while the surfaces touch had an A-B
+##   contact impulse: the velocities from before that step are frozen (`_before`) until the bodies
+##   stop closing in, however many steps the engine takes;
+## - then both velocities are set to v_free + n (u' - u) along the contact normal n, where v_free is
+##   the frozen velocity plus the external velocity change of the contact steps (engine gravity,
+##   constant force), u its normal component and u' the PhysicsLaws.world_collision_velocities
+##   outcome (TS world order: integrate, then resolve). The engine's normal and friction impulses of
+##   those steps are discarded; tangential motion and the external forces stay.
+## Positions of the contact steps keep the engine's outcome (an error <= |dv| dt per step).
 class_name CollisionCorrector
 extends FormulaCorrector
 
-const TOUCH_TOLERANCE := 0.05   # m between the surfaces that still counts as touching
+const TOUCH_TOLERANCE := 0.05     # m between the surfaces that still counts as touching
+const IMPULSE_TOLERANCE := 1e-4   # m/s of unexplained relative normal velocity change = a contact impulse
+const MAX_CONTACT_STEPS := 30     # resolve anyway if the bodies keep closing in for this long
 
 var body_a: RigidBody3D
 var body_b: RigidBody3D
@@ -20,17 +30,23 @@ var radius_b := 0.5
 var restitution_a := 1.0        # TS material restitution of each body
 var restitution_b := 1.0
 var threshold := 1.0            # TS restitution velocity threshold (48 px/s = 1 m/s)
-## Collisions handled since reset: {step, normal, before: [va, vb], engine: [va, vb], formula: [va, vb]}.
+## Collisions handled since reset: {step, steps (contact steps), normal, before: [va, vb] (frozen),
+## engine: [va, vb], formula: [va, vb], normal_before, normal_after}.
 var events: Array[Dictionary] = []
-var _saved_a := Vector3.ZERO
-var _saved_b := Vector3.ZERO
-var _was_closing := false
+var _prev_a := Vector3.ZERO
+var _prev_b := Vector3.ZERO
+var _has_prev := false
+var _engaged := false
+var _before_a := Vector3.ZERO
+var _before_b := Vector3.ZERO
+var _contact_steps := 0
 
 
 func _init() -> void:
 	method = "collision"
 
 
+## Binds the pair and its TS restitutions. The bodies' physics materials are left as they are.
 func setup(a: RigidBody3D, b: RigidBody3D, ra: float, rb: float, ea: float, eb: float) -> void:
 	body_a = a
 	body_b = b
@@ -38,19 +54,15 @@ func setup(a: RigidBody3D, b: RigidBody3D, ra: float, rb: float, ea: float, eb: 
 	radius_b = rb
 	restitution_a = ea
 	restitution_b = eb
-	var combined := minf(ea, eb)   # TS rule above the threshold; Jolt: bounce A + bounce B
-	for pair in [[a, combined], [b, 0.0]]:
-		var material := PhysicsMaterial.new()
-		material.friction = 0.0
-		material.bounce = pair[1]
-		pair[0].physics_material_override = material
 	reset()
 
 
 func reset() -> void:
 	reset_history()
 	events.clear()
-	_was_closing = false
+	_has_prev = false
+	_engaged = false
+	_contact_steps = 0
 
 
 ## Unit normal from A to B (scalar doubles) and the gap between the surfaces.
@@ -69,40 +81,56 @@ static func _dot(v: Vector3, n: PackedFloat64Array) -> float:
 	return float(v.x) * n[0] + float(v.y) * n[1] + float(v.z) * n[2]
 
 
+## Velocity change of one step from the forces the engine adds besides contacts.
+static func _external_dv(body: RigidBody3D, dt: float) -> Vector3:
+	return (body.get_gravity() * body.gravity_scale + body.constant_force / body.mass) * dt
+
+
 func step(dt: float) -> void:
 	var contact := _contact()
 	var normal: PackedFloat64Array = contact[0]
 	var gap: float = contact[1]
 	var va := body_a.linear_velocity
 	var vb := body_b.linear_velocity
-	var relative := _dot(vb, normal) - _dot(va, normal)
-	var closing := relative < 0.0
-	# After the contact step the bodies may already have separated by up to (relative speed) * dt.
-	var reach := TOUCH_TOLERANCE + (absf(relative) + absf(_dot(_saved_b, normal) - _dot(_saved_a, normal))) * dt
-	if _was_closing and not closing and gap <= reach:
-		_resolve(normal, va, vb)
-		va = body_a.linear_velocity
-		vb = body_b.linear_velocity
+	if _has_prev:
+		var relative := _dot(vb, normal) - _dot(va, normal)
+		var expected := _dot(_prev_b + _external_dv(body_b, dt), normal) - _dot(_prev_a + _external_dv(body_a, dt), normal)
+		# After the contact step the bodies may already have separated by up to (relative speed) * dt.
+		var reach := TOUCH_TOLERANCE + absf(relative) * dt
+		if not _engaged and expected < 0.0 and relative - expected > IMPULSE_TOLERANCE and gap <= reach:
+			_engaged = true
+			_before_a = _prev_a
+			_before_b = _prev_b
+			_contact_steps = 0
+		if _engaged:
+			_contact_steps += 1
+			if relative >= -IMPULSE_TOLERANCE or _contact_steps >= MAX_CONTACT_STEPS:
+				_resolve(normal, va, vb, dt)
+				va = body_a.linear_velocity
+				vb = body_b.linear_velocity
 	record(gap)
 	steps += 1
-	_saved_a = va
-	_saved_b = vb
-	_was_closing = _dot(vb, normal) - _dot(va, normal) < 0.0
+	_prev_a = va
+	_prev_b = vb
+	_has_prev = true
 
 
-func _resolve(normal: PackedFloat64Array, engine_a: Vector3, engine_b: Vector3) -> void:
-	var ua := _dot(_saved_a, normal)
-	var ub := _dot(_saved_b, normal)
+func _resolve(normal: PackedFloat64Array, engine_a: Vector3, engine_b: Vector3, dt: float) -> void:
+	_engaged = false
+	var free_a := _before_a + _external_dv(body_a, dt) * _contact_steps
+	var free_b := _before_b + _external_dv(body_b, dt) * _contact_steps
+	var ua := _dot(free_a, normal)
+	var ub := _dot(free_b, normal)
 	var after := PhysicsLaws.world_collision_velocities(body_a.mass, body_b.mass, ua, 0.0, ub, 0.0, 1.0, 0.0,
 		restitution_a, restitution_b, threshold)
 	var n := Vector3(normal[0], normal[1], normal[2])
-	var formula_a := _saved_a + n * (after[0] - ua)
-	var formula_b := _saved_b + n * (after[2] - ub)
+	var formula_a := free_a + n * (after[0] - ua)
+	var formula_b := free_b + n * (after[2] - ub)
 	body_a.linear_velocity = formula_a
 	body_b.linear_velocity = formula_b
 	events.append({
-		"step": steps, "normal": n,
-		"before": [_saved_a, _saved_b], "engine": [engine_a, engine_b], "formula": [formula_a, formula_b],
+		"step": steps, "steps": _contact_steps, "normal": n,
+		"before": [_before_a, _before_b], "engine": [engine_a, engine_b], "formula": [formula_a, formula_b],
 		"normal_before": [ua, ub], "normal_after": [after[0], after[2]],
 	})
 

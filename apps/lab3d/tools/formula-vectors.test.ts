@@ -320,6 +320,24 @@ function buoyancy(): Case[] {
   return cases;
 }
 
+/**
+ * world.ts MultiBodyWorld with uniform gravity: spheres A (-3, 6) at (3.4, 0) m/s and B (3, 6) at
+ * (-1.7, 0) m/s (radii 0.6 / 0.8, e = 0.88) fall side by side and collide in the air (horizontal
+ * normal). Returns the velocities [vax, vay, vbx, vby] after `steps` 60 Hz steps (TS world order:
+ * integrate, then resolve collisions).
+ */
+function worldCollisionUnderGravity(steps: number): number[] {
+  const gravity = new UniformGravity({ x: 0, y: -G });
+  const gravityLaw = { id: gravity.id, force: gravity.force.bind(gravity), forceOnBody: (body: Body, _bodies: readonly Body[], context: { time: number; dt: number }) => gravity.force(body.state, context) };
+  const world = new CollisionProbe([gravityLaw], undefined, [], RESTITUTION_THRESHOLD);
+  const a: Body = { id: "a", radius: 0.6, restitution: 0.88, state: state(-3, 6, 3.4, 0, 1) };
+  const b: Body = { id: "b", radius: 0.8, restitution: 0.88, state: state(3, 6, -1.7, 0, 2) };
+  world.addBody(a);
+  world.addBody(b);
+  for (let step = 0; step < steps; step += 1) world.step(DT);
+  return [a.state.velocity.x, a.state.velocity.y, b.state.velocity.x, b.state.velocity.y];
+}
+
 /** Targets for the representative Jolt scenes (one per correction method), from the TS core. */
 function scenes() {
   const v0 = { x: 3, y: 4 };
@@ -332,6 +350,7 @@ function scenes() {
   const pushAccel = push.force(state(0, 0, 1, 0, pushMass), { time: 0, dt: DT }).vector.x / pushMass;
   const elastic = worldCollision(1, 2, [3.4, 0], [-1.7, 0], 0, 1, 1).expect as number[];
   const rubber = worldCollision(1, 2, [3.4, 0], [-1.7, 0], 0, 0.88, 0.88).expect as number[];
+  const slow = worldCollision(1, 2, [0.4, 0], [-0.3, 0], 0, 0.88, 0.88).expect as number[];
   const springOmega = angularFrequency(5, 1);
   const pendulumLength = 2;
   const pendulumModel = new PendulumModel({ x: 0, y: 0 }, pendulumLength, 0.1, 0);
@@ -368,6 +387,9 @@ function scenes() {
       threshold: RESTITUTION_THRESHOLD,
       elastic: { e: 1, after: [elastic[0], elastic[2]] },
       rubber: { e: 0.88, after: [rubber[0], rubber[2]] },
+      // 0.7 m/s closing: below the 1 m/s threshold, e = 0 (Jolt resolves this over several steps).
+      slow: { e: 0.88, velocities: [0.4, -0.3], after: [slow[0], slow[2]] },
+      gravity: { e: 0.88, steps: 80, after: worldCollisionUnderGravity(80) },
       momentum: momentum(1, { x: 3.4, y: 0 }).x + momentum(2, { x: -1.7, y: 0 }).x,
     },
     force_injection: {

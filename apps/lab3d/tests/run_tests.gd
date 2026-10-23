@@ -94,6 +94,7 @@ func _run() -> void:
 	await _check_button_feedback()
 	await _check_slide_in()
 	await _check_banner_collapsed()
+	await _check_list_cards()
 	await _check_launch_args_flag(definition)
 	await _check_graph_redraw(definition)
 	_check_wheel_zoom(definition)
@@ -487,6 +488,58 @@ func _check_slide_in() -> void:
 
 
 ## The list banner draws nothing for a collapsed rect (no polygon errors in the log).
+## Experiment list cards in one line (2026-10-23 user request): [icon] [title / question] [실험 시작] on
+## a phone (1560x720) and a tablet (1152x720): the button is right of the text block and centred on
+## its height, the icon too; a tap on the card (not on the button) starts the experiment once, a drag
+## does not.
+func _check_list_cards() -> void:
+	var problems := []
+	var root_size := root.size
+	for size: Vector2 in [PHONE_LANDSCAPE, TABLET_LANDSCAPE]:
+		root.size = Vector2i(size)
+		var host := Control.new()
+		host.theme = load(UI_THEME).build()
+		host.size = size
+		root.add_child(host)
+		var list := ListScreen.new()
+		list.definitions = ExperimentRegistry.load_all()
+		host.add_child(list)
+		await process_frame
+		await process_frame
+		var chosen := []
+		list.experiment_chosen.connect(func(d: Dictionary) -> void: chosen.append(d.id))
+		var cards := list.find_children("Card_*", "", true, false)
+		if cards.size() != list.definitions.size():
+			problems.append("%d cards" % cards.size())
+		for card: Control in cards:
+			var text: Control = card.find_child("Text", true, false)
+			var start: Control = card.find_child("Start", true, false)
+			var badge: Control = card.find_child("Badge", true, false)
+			var t := text.get_global_rect()
+			var b := start.get_global_rect()
+			var i := badge.get_global_rect()
+			var centred := absf(b.get_center().y - t.get_center().y) <= 2.0 and absf(i.get_center().y - t.get_center().y) <= 2.0
+			if not (b.position.x >= t.end.x - 0.5 and centred and b.end.x <= card.get_global_rect().end.x and i.end.x <= t.position.x + 0.5):
+				problems.append("%s %s: text %s, button %s, icon %s" % [size, card.name, t, b, i])
+		# A tap on the first visible card's text starts it; a drag over it does not.
+		var first: Control = cards[0]
+		var at: Vector2 = (first.find_child("Text", true, false) as Control).get_global_rect().get_center()
+		for step in [[at, true], [at, false], [at, true], [at + Vector2(0, 60), false]]:
+			var e := InputEventMouseButton.new()
+			e.button_index = MOUSE_BUTTON_LEFT
+			e.position = step[0]
+			e.global_position = step[0]
+			e.pressed = step[1]
+			root.push_input(e)
+			await process_frame
+		if chosen != [list.definitions[0].id]:
+			problems.append("%s tap / drag chose %s" % [size, chosen])
+		host.queue_free()
+		await process_frame
+	root.size = root_size
+	_expect(problems.is_empty(), "experiment list: [icon] [title / question] [실험 시작] in one line, button and icon centred on the text, phone and tablet; a tap on the card starts it, a drag does not", "; ".join(problems))
+
+
 func _check_banner_collapsed() -> void:
 	var banner := IslandBanner.new()
 	banner.custom_minimum_size = Vector2.ZERO

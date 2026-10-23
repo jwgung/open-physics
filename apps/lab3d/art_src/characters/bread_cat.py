@@ -2,7 +2,7 @@
 
 Run (headless):
     blender -b --factory-startup -P apps/lab3d/art_src/characters/bread_cat.py -- \
-        [--out apps/lab3d/assets/characters/bread_cat.glb] [--mouth omega|smile|calm] [--palette cheese|cream]
+        [--out apps/lab3d/assets/characters/bread_cat.glb] [--mouth omega|smile|calm] [--palette cheese|cream] [--eyes sparkle|dot]
 
 Nothing depends on a hand-made .blend: geometry, UVs and the single texture atlas (face, fur stripes,
 bag print, baguette scoring) are produced by this file. Other scripts may `import` it and call
@@ -192,7 +192,7 @@ def value_noise(u, v, freq, seed):
     return (a * (1 - xf) + b * xf) * (1 - yf) + (c * (1 - xf) + d * xf) * yf
 
 
-def paint_head(P, mouth):
+def paint_head(P, mouth, eyes="sparkle"):
     u, v = region_grid(R_HEAD)
     lon = (u - 0.5) * 2 * math.pi
     lat = (v - 0.5) * math.pi
@@ -240,6 +240,11 @@ def paint_head(P, mouth):
         blend(img, smooth_fill(sdf, 0.02) * front, hexc(P["blush"]), 0.75)
     # eyes: big glossy, a touch taller than wide, warm lower gradient
     for s in (-1, 1):
+        if eyes == "dot":  # variant: small simple storybook eyes, one highlight dot
+            ex, ez = s * 0.092, -0.008
+            blend(img, smooth_fill(sd_ellipse(qx, qz, ex, ez, 0.022, 0.026), aa) * front, hexc(P["eye"]))
+            blend(img, smooth_fill(sd_ellipse(qx, qz, ex - 0.007, ez + 0.009, 0.0065, 0.007), aa) * front, np.ones(3))
+            continue
         ex, ez, rx, rz = s * 0.098, 0.0, 0.046, 0.053
         sdf = sd_ellipse(qx, qz, ex, ez, rx, rz)
         m = smooth_fill(sdf, aa) * front
@@ -375,9 +380,9 @@ def paint_bag_front(P):
     return img
 
 
-def build_atlas(P, mouth):
+def build_atlas(P, mouth, eyes="sparkle"):
     canvas = np.zeros((TEX, TEX, 3))
-    for rect, fn in ((R_HEAD, lambda: paint_head(P, mouth)), (R_BODY, lambda: paint_body(P)),
+    for rect, fn in ((R_HEAD, lambda: paint_head(P, mouth, eyes)), (R_BODY, lambda: paint_body(P)),
                      (R_ARM, lambda: paint_arm(P)), (R_TAIL, lambda: paint_tail(P)),
                      (R_BAGU, lambda: paint_baguette(P)), (R_BAGF, lambda: paint_bag_front(P))):
         x0, y0, x1, y1 = rect
@@ -783,9 +788,9 @@ def empty(name, loc_world, parent, parent_pivot, size=0.03):
     return ob
 
 
-def build(mouth="omega", palette="cheese"):
+def build(mouth="omega", palette="cheese", eyes="sparkle"):
     P = PALETTES[palette]
-    img = build_atlas(P, mouth)
+    img = build_atlas(P, mouth, eyes)
     mat = make_material(img)
     origin = Vector((0, 0, 0))
     root = empty("BreadCat", origin, None, origin, 0.2)
@@ -852,7 +857,7 @@ def stats():
 
 def parse_args():
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
-    opts = {"out": None, "mouth": "omega", "palette": "cheese"}
+    opts = {"out": None, "mouth": "omega", "palette": "cheese", "eyes": "sparkle"}
     i = 0
     while i < len(argv):
         k = argv[i].lstrip("-")
@@ -866,7 +871,7 @@ def parse_args():
 if __name__ == "__main__":
     opts = parse_args()
     clear_scene()
-    build(opts["mouth"], opts["palette"])
+    build(opts["mouth"], opts["palette"], opts["eyes"])
     print("BREADCAT_STATS", stats())
     if opts["out"]:
         export_glb(opts["out"])

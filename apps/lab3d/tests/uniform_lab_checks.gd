@@ -382,9 +382,9 @@ func check_projectile_zero_g() -> void:
 	await _free(lab)
 
 
-## After the landing the ball rolls on (Task 4f: the first bounce turns it until v = omega r, no
-## rolling resistance) until the island's box stops it, and a second throw flies exactly like the
-## first (the reset restores every state, also the ball's turn).
+## After the landing the ball rolls on (Task 4f: the first bounce turns it until v = omega r), the
+## fence at the island's end sends it back and it stays on the island (not stopped and hidden), and a
+## second throw flies exactly like the first (the reset restores every state, also the ball's turn).
 func check_projectile_settles() -> void:
 	var lab: Experiment = await _lab("projectile")
 	lab.release()
@@ -398,7 +398,7 @@ func check_projectile_settles() -> void:
 		await tree.physics_frame
 	var landed := c.landed_step
 	var first: PackedVector3Array = c.offsets.slice(0, landed)
-	var stopped: bool = lab.ball.freeze and not lab._ball_visual.visible and lab.status() == "landed"
+	var stopped: bool = not lab.ball.freeze and lab._ball_visual.visible and lab.status() == "landed" and lab.ball.global_position.x < lab.FENCE_X - lab.BALL_RADIUS + 1e-4 and c.rolling.wall_times.size() >= 1
 	lab.release()   # the same corrector again: its history restarts
 	var turned_back: bool = lab.ball.global_basis.is_equal_approx(Basis())
 	await _until_step(c, landed)
@@ -408,7 +408,7 @@ func check_projectile_settles() -> void:
 		diff = maxf(diff, (first[k] - again[k]).length())
 	expect.call(absf(roll_speed - want) <= 1e-5 and absf(PhysicsLaws.rolling_speed(lab.BALL_RADIUS, -spin) - roll_speed) <= 1e-5 and rolling.slip() == 0.0
 		and stopped and not lab.out_of_bounds and turned_back and diff <= 1e-6,
-		"projectile: the landed ball rolls on at 5/7 vx = omega r until the island's edge stops it ('landed'); the next throw starts unturned and flies the same",
+		"projectile: the landed ball rolls on at 5/7 vx = omega r, the fence sends it back and it stays on the island ('landed'); the next throw starts unturned and flies the same",
 		"roll %.5f m/s (5/7 vx %.5f), omega r %.5f, flight diff %s m (%d / %d samples)" % [roll_speed, want, -spin * lab.BALL_RADIUS, str(diff), first.size(), again.size()])
 	await _free(lab)
 

@@ -8,7 +8,9 @@
 ##   MultiMesh, updated only when a condition or the start changes) and a white ring where the
 ##   formula lands,
 ## - white distance ticks on the floor every metre (every 5 m longer), the island and the ball's
-##   ArtJuice.
+##   ArtJuice,
+## - the fences at both ends of the throw line (Task 4f): white board walls between blue posts, one
+##   mesh; a landed ball bounces back from their faces (RollingContact; the engine has no fence body).
 class_name ProjectileProps
 extends PadProps
 
@@ -26,6 +28,7 @@ var pad: MeshInstance3D
 var arrow: VelocityArrow
 var path: MultiMeshInstance3D
 var ring: MeshInstance3D
+var fence: MeshInstance3D
 
 
 func ticks_mesh() -> Mesh:
@@ -36,6 +39,29 @@ func ticks_mesh() -> Mesh:
 		var depth := 0.4 if long else 0.22
 		b.add_rounded_box(Transform3D(Basis(), Vector3(x, 0.006, TICKS_Z + depth * 0.5)),
 			Vector3(0.06, 0.02, depth), 0.0, 1, ArtPalette.WHITE)
+	return b.commit()
+
+
+## Both fences in the lab's space: a wall of three white boards (`thickness` along x, `width` along z,
+## `height` tall) between blue posts every metre, its face towards the throw at x = `right_face` (it
+## stands at x >= right_face) and x = `left_face` (it stands at x <= left_face).
+static func fence_mesh(right_face: float, left_face: float, height: float, width: float, thickness: float) -> Mesh:
+	var b := ArtKit.builder()
+	b.ao_height = 0.3
+	for face_side in [[right_face, 1.0], [left_face, -1.0]]:
+		var face: float = face_side[0]
+		var side: float = face_side[1]
+		var x := face + side * thickness * 0.5
+		var boards := 3
+		var board_h := (height - 0.04) / boards
+		for i in boards:
+			b.add_rounded_box(Transform3D(Basis(), Vector3(x, 0.02 + board_h * (i + 0.5), 0.0)),
+				Vector3(thickness, board_h - 0.03, width), 0.0, 1, ArtPalette.WHITE)
+		var posts := int(width) + 1
+		for i in posts:
+			var z := -width * 0.5 + width * i / float(posts - 1)
+			b.add_rounded_box(Transform3D(Basis(), Vector3(x + side * thickness * 0.5, (height + 0.1) * 0.5, z)),
+				Vector3(0.16, height + 0.1, 0.16), 0.02, 1, ArtPalette.BLUE)
 	return b.commit()
 
 
@@ -94,6 +120,9 @@ func dress(experiment: Node3D, ball: RigidBody3D, ball_visual: MeshInstance3D, b
 	path.material_override = ArtKit.lit_material()
 	path.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	experiment.add_child(path)
+	fence = ArtKit.instance(fence_mesh(experiment.FENCE_X, experiment.FENCE_LEFT_X, experiment.FENCE_HEIGHT, experiment.FENCE_WIDTH, experiment.FENCE_THICKNESS))
+	fence.name = "Fences"
+	experiment.add_child(fence)
 	ring = ArtKit.instance(ring_mesh())
 	ring.name = "LandingRing"
 	ring.visible = false

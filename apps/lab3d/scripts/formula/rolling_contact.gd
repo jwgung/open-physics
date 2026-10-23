@@ -14,7 +14,9 @@
 ##            5 mu g / (2 r)) until u = 0 at t = 2 |u| / (7 mu g),
 ##   roll     v = omega r, slowed by rolling resistance mu_roll m g (a = mu_roll g) until it stops at
 ##            v0^2 / (2 mu_roll g) (0: no resistance, it rolls on),
-##   rest     nothing changes.
+##   rest     nothing changes,
+##   fence    (when wall_x is set) the ball's front reaching the fence face below its top: back at
+##            e_w v and the Coulomb impulse along the face (a rolling ball hops back a little).
 ## The body (dynamic, engine friction and bounce 0) is put on the model each step: its velocity is
 ## set so that the engine's symplectic step (v += field dt, x += v dt) ends at the model's position,
 ## and its angular velocity so that it ends at the model's turn about z. The engine therefore never
@@ -37,6 +39,13 @@ var mu := 0.6
 var mu_roll := 0.05
 ## Restitution of a bounce on the floor.
 var restitution := 0.6
+## Fences (Task 4f, the projectile island's ends): world x of the faces towards the ball, right
+## (wall_x, the ball meets it moving +x) and left (wall_left_x, moving -x); +-INF: none. Their top
+## above the floor and their restitution.
+var wall_x := INF
+var wall_left_x := -INF
+var wall_top := 0.0
+var wall_restitution := 0.6
 ## World height of the floor surface.
 var floor_y := 0.0
 ## Field strength (m/s^2, straight down) of the run.
@@ -51,6 +60,8 @@ var impact_times := PackedFloat64Array()
 var impact_speeds := PackedFloat64Array()
 var roll_time := -1.0
 var stop_time := -1.0
+var wall_times := PackedFloat64Array()
+var wall_speeds := PackedFloat64Array()
 
 var _origin := Vector3.ZERO     # body centre at the release
 var _h0 := 0.0                  # bottom height above the floor at the release
@@ -67,6 +78,7 @@ var _vy := 0.0
 var _w := 0.0
 var _th := 0.0
 var _ground := false
+var _wall_side := 1.0
 
 
 ## The ball is let go from where it is with `velocity` (x, y used) and `spin` (rad/s about z).
@@ -82,6 +94,8 @@ func release(body: RigidBody3D, velocity: Vector3, field: float, spin := 0.0) ->
 	active = false
 	impact_times.clear()
 	impact_speeds.clear()
+	wall_times.clear()
+	wall_speeds.clear()
 	roll_time = -1.0
 	stop_time = -1.0
 	body.angular_velocity = Vector3(0.0, 0.0, spin)
@@ -147,25 +161,116 @@ func _inertia() -> float:
 	return PhysicsLaws.solid_sphere_moment_of_inertia(mass, radius)
 
 
-## Advances the model to time t1 (events in closed form).
+## Advances the model to time t1. Every piece has constant accelerations (air: -g; slide: kinetic
+## friction; roll: rolling resistance with omega = -v / r; rest: none), so the state and the next
+## event (floor impact, end of the slip, stop, fence) are closed forms.
 func _advance(t1: float) -> void:
 	var guard := 0
 	while _t < t1 and guard < 10000:
 		guard += 1
-		var span := t1 - _t
+		var left := t1 - _t
+		var ax := 0.0
+		var ay := 0.0
+		var aw := 0.0
+		var d_end := INF
+		var kind := 0   # 1 floor impact, 2 slip ends, 3 stop
 		if not _ground:
-			var tau := (_vy + sqrt(_vy * _vy + 2.0 * g * _y)) / g if g > 0.0 else INF
-			var s := minf(span, tau)
-			_x += _vx * s
-			_y += _vy * s - 0.5 * g * s * s
-			_vy -= g * s
-			_th += _w * s
-			_t += s
-			if tau <= span:
-				_y = 0.0
-				_impact()
+			ay = -g
+			if g > 0.0:
+				d_end = (_vy + sqrt(_vy * _vy + 2.0 * g * maxf(0.0, _y))) / g
+				kind = 1
 		else:
-			_ground_step(span)
+			var u := _vx + radius * _w
+			if absf(u) > 1e-12 and mu > 0.0 and g > 0.0:
+				ax = -mu * g * signf(u)
+				aw = radius * mass * ax / _inertia()
+				d_end = absf(u) / absf(ax + radius * aw)
+				kind = 2
+			elif _vx != 0.0 and mu_roll > 0.0 and g > 0.0:
+				ax = -mu_roll * g * signf(_vx)
+				aw = -ax / radius
+				d_end = absf(_vx) / (mu_roll * g)
+				kind = 3
+		var d_wall := _wall_time(ax, ay, minf(d_end, left))
+		var d := minf(left, minf(d_end, d_wall))
+		_x += _vx * d + 0.5 * ax * d * d
+		_y += _vy * d + 0.5 * ay * d * d
+		_th += _w * d + 0.5 * aw * d * d
+		_vx += ax * d
+		_vy += ay * d
+		_w += aw * d
+		_t += d
+		if d_wall <= d:
+			_wall_impact()
+		elif d_end <= d:
+			match kind:
+				1:
+					_y = 0.0
+					_impact()
+				2:
+					_w = -_vx / radius   # rolling from here (no leftover slip from rounding)
+					if roll_time < 0.0:
+						roll_time = _t
+				3:
+					_vx = 0.0
+					_w = 0.0
+					if stop_time < 0.0:
+						stop_time = _t
+
+
+## Time until the ball reaches a fence face (its front at the right face moving +x, or its back at
+## the left face moving -x) within `limit`, with its bottom below the fence top then; INF when not
+## (moving away, stopping short, or passing over the top). Sets _wall_side (+1 right, -1 left).
+func _wall_time(ax: float, ay: float, limit: float) -> float:
+	var best := INF
+	for side in [1.0, -1.0]:
+		var face: float = wall_x if side > 0.0 else wall_left_x
+		if not is_finite(face):
+			continue
+		# Along the outward direction `side`: distance to go, speed and acceleration.
+		var gap: float = side * ((face - side * radius - _origin.x) - _x)
+		var v: float = side * _vx
+		var a: float = side * ax
+		if gap < -1e-9 or (v <= 0.0 and a <= 0.0):
+			continue
+		var s := INF
+		if absf(a) < 1e-15:
+			if v > 0.0:
+				s = gap / v
+		else:
+			var disc := v * v + 2.0 * a * gap
+			if disc >= 0.0:
+				s = (-v + sqrt(disc)) / a   # the first root after now (also while slowing down)
+		if s < 0.0 or s > limit or s >= best:
+			continue
+		if _y + _vy * s + 0.5 * ay * s * s < wall_top:
+			best = s
+			_wall_side = side
+	return best
+
+
+## Impact on a fence face (normal against the motion, contact at the ball's equator): back at e_w v
+## (the web's wall rule: v *= -e, no threshold) and the Coulomb friction impulse along the face
+## (vertical), |P| <= mu (1 + e_w) v, no more than ends the slip there. A rolling ball (topspin) is
+## pushed up a little and hops back.
+func _wall_impact() -> void:
+	var v := absf(_vx)
+	wall_times.append(_t)
+	wall_speeds.append(v)
+	var jn := (1.0 + wall_restitution) * v
+	_vx = -_wall_side * wall_restitution * v
+	# Contact point at side * (r, 0, 0): omega x r = (0, side * omega_z r, 0).
+	var u := _vy + _wall_side * radius * _w
+	if u != 0.0:
+		var inertia := _inertia()
+		var stick := absf(u) / (1.0 + mass * radius * radius / inertia)
+		var p := minf(mu * jn, stick) * -signf(u)
+		_vy += p
+		_w += _wall_side * radius * mass * p / inertia
+	if _vy > 0.0 and _ground:
+		_ground = false      # lifted off the floor by the fence's friction
+	elif _ground:
+		_vy = 0.0
 
 
 ## Floor impact with the current downward speed: bounce or stay, and the friction impulse.
@@ -197,51 +302,3 @@ func _friction_impulse(jn: float) -> void:
 		_w = -_vx / radius
 		if roll_time < 0.0:
 			roll_time = _t
-
-
-## On the floor for `span` seconds: slide (kinetic friction) -> roll (rolling resistance) -> rest.
-func _ground_step(span: float) -> void:
-	var left := span
-	var guard := 0
-	while left > 0.0 and guard < 8:
-		guard += 1
-		var u := _vx + radius * _w
-		if absf(u) > 1e-12 and mu > 0.0 and g > 0.0:
-			var a := -mu * g * signf(u)
-			var alpha := radius * mass * a / _inertia()
-			var t_stick := absf(u) / absf(a + radius * alpha)
-			var stuck := t_stick <= left
-			var d := t_stick if stuck else left
-			_x += _vx * d + 0.5 * a * d * d
-			_th += _w * d + 0.5 * alpha * d * d
-			_vx += a * d
-			_w += alpha * d
-			_t += d
-			left -= d
-			if stuck:
-				_w = -_vx / radius   # rolling from here (no leftover slip from rounding)
-				if roll_time < 0.0:
-					roll_time = _t
-		elif _vx != 0.0 and mu_roll > 0.0 and g > 0.0:
-			var a := -mu_roll * g * signf(_vx)
-			var t_stop := absf(_vx) / (mu_roll * g)
-			var stops := t_stop <= left
-			var d := t_stop if stops else left
-			var dx := _vx * d + 0.5 * a * d * d
-			_x += dx
-			_th -= dx / radius
-			_vx += a * d
-			_w = -_vx / radius
-			_t += d
-			left -= d
-			if stops:
-				_vx = 0.0
-				_w = 0.0
-				if stop_time < 0.0:
-					stop_time = _t
-		else:
-			# Rolling without resistance (or no field), or at rest.
-			_x += _vx * left
-			_th += _w * left
-			_t += left
-			left = 0.0

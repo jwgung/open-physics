@@ -16,6 +16,19 @@ const START_HEIGHT := 0.5           # launch height (ball bottom above the floor
 const BOUNCE := 0.6
 const KNOB_SIZE := 0.3
 const KNOB_LAYER := 2               # the knob is pickable but never hit by the ball (mask 1)
+## Fences at both ends of the throw line (Task 4f; 2026-10-23 user decision): faces towards the throw
+## at x = FENCE_X (the ball rolls into it moving +x) and FENCE_LEFT_X, FENCE_HEIGHT tall. A landed
+## ball bounces back from them by the formula (RollingContact: the ball's restitution, Coulomb
+## friction along the face) and stops on the island by rolling resistance. Flights are not touched
+## (no engine body): on earth and jupiter no throw reaches the fence line in flight; on the moon long
+## throws fly over it or, low ones, through it (docs/formula-correction.md "Task 4f").
+## 1.5 m: of the heights scanned (0.75, 1.0, 1.1, 1.2, 1.25, 1.5 m) the lowest at which no earth /
+## jupiter ball bounces over it after landing (1.2 m: 2 of 4641 earth throws do, 0.75 m: 6).
+const FENCE_X := 12.0
+const FENCE_LEFT_X := -12.5
+const FENCE_HEIGHT := 1.5
+const FENCE_WIDTH := 6.0
+const FENCE_THICKNESS := 0.15
 ## A ball leaving this box (beyond the island) is stopped and hidden: "섬 밖으로 날아감".
 const BOUNDS_X := Vector2(-14.0, 12.5)
 const BOUNDS_Y := Vector2(-3.0, 30.0)
@@ -329,6 +342,11 @@ func _process(_delta: float) -> void:
 func _build_world() -> void:
 	make_floor(Vector3(30.0, 0.4, 22.0))
 	ball = make_ball("Ball", 1.0, BOUNCE)
+	var contact := (ball.corrector as UniformFieldCorrector).rolling
+	contact.wall_x = FENCE_X
+	contact.wall_left_x = FENCE_LEFT_X
+	contact.wall_top = FENCE_HEIGHT
+	contact.wall_restitution = BOUNCE   # the web's wall rule: the ball's own restitution
 	# The whole drawn path (PATH_MAX_S) stays in the history: the measured landing distance reads it.
 	(ball.corrector as UniformFieldCorrector).history_steps = int(PATH_MAX_S * Engine.physics_ticks_per_second) + 2
 	_ball_visual = ArtKit.instance(ball_mesh(ArtPalette.RED))

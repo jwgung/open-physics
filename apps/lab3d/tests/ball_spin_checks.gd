@@ -167,6 +167,7 @@ func run() -> void:
 	await check_flight_spin()
 	await check_contact_against_oracle()
 	await check_where_throws_stop()
+	await check_fences()
 	await check_mesh_is_body()
 	await check_free_fall_no_spin()
 	await check_collision_mesh_rolls()
@@ -302,6 +303,9 @@ func check_contact_against_oracle() -> void:
 		var c: UniformFieldCorrector = lab.corrector()
 		if run[4] != null:
 			c.rolling.mu = run[4]
+		# The floor laws alone here (the fences have their own check below).
+		c.rolling.wall_x = INF
+		c.rolling.wall_left_x = -INF
 		var o := _Oracle.new(lab.launch_height(), lab.launch_velocity().x, lab.launch_velocity().y, lab.g, lab.BOUNCE,
 			c.rolling.mu, lab.ROLLING_RESISTANCE, r)
 		juice_landings[0] = 0
@@ -331,6 +335,8 @@ func check_contact_against_oracle() -> void:
 			o.roll_at, "%.3f s" % o.stop_at if o.stop_at >= 0.0 else "—", got[3], " (left the island)" if lab.ball.freeze else ""])
 		lab.run_action("reset")
 		c.rolling.mu = lab.BALL_FRICTION
+		c.rolling.wall_x = lab.FENCE_X
+		c.rolling.wall_left_x = lab.FENCE_LEFT_X
 	expect.call(worst[0] <= 1e-4 and worst[1] <= 1e-4 and worst[2] <= 1e-5 and events_ok and landed_ok,
 		"ball contact: after the landing the engine ball follows the textbook bounces (e v at the formula times, stop below 1 m/s), Coulomb impulses, slide -> roll and rolling resistance step by step, never into the floor; landing step and reaction still come",
 		"position %s m, turn %s rad, below the floor %s m; %s" % [String.num_scientific(worst[0]), String.num_scientific(worst[1]), String.num_scientific(worst[2]), "; ".join(details)])
@@ -380,7 +386,82 @@ func check_where_throws_stop() -> void:
 		ok = ok and absf(rest[0] - o.segments[-2][1] - stop_dist) <= 1e-9
 		lines.append("%s: rolls from x %.2f m at %.3f m/s, stops after %.2f m (v^2 / 2 mu_r g) at x %.2f m, %.2f s -> %s" % [run[0],
 			run[4] + o.segments[-2][1], roll_v, stop_dist, stop_x, o.stop_at, "on the island" if stop_x <= lab.BOUNDS_X.y else "leaves the island (edge 12.5 m)"])
-	expect.call(ok, "ball rolling: where thrown balls stop (stop distance v^2 / (2 mu_r g) after the last bounce)", "; ".join(lines))
+	expect.call(ok, "ball rolling: where thrown balls would stop without the fences (stop distance v^2 / (2 mu_r g) after the last bounce)", "; ".join(lines))
+	await _free(lab)
+
+
+# --- 3b. fences --------------------------------------------------------------------------------
+
+## The projectile island's fences (2026-10-23 user decision). A level roll into the right fence
+## against closed forms: contact time and speed (slide, then roll with resistance), back at e v,
+## the Coulomb impulse along the face lifting a topspinning ball (vy = min(mu (1 + e) v, 2/7 v))
+## and its hop as a parabola; then the default and the farthest throws come to rest on the island
+## between the fences (engine ball at rest).
+func check_fences() -> void:
+	var lab: Experiment = await _lab("projectile")
+	var r: float = lab.BALL_RADIUS
+	var g: float = lab.g
+	var mu: float = lab.BALL_FRICTION
+	var mu_r: float = lab.ROLLING_RESISTANCE
+	var e: float = lab.BOUNCE
+	var details := []
+	# Level roll from the floor at x -3 with 9 m/s.
+	lab.set_control("angle", 0.0)
+	lab.set_control("speed", 9.0)
+	lab.manipulation_placed("ball", Transform3D(Basis(), Vector3(-3.0, r, 0.0)))
+	var rec := _recorder(lab, lab.ball)
+	lab.release()
+	var c: UniformFieldCorrector = lab.corrector()
+	var v0 := 9.0
+	var ts := PhysicsLaws.slide_to_roll_time(v0, mu, g)
+	var xs := v0 * ts - 0.5 * mu * g * ts * ts
+	var vr := PhysicsLaws.rolling_speed_after_slip(v0, v0)
+	var gap: float = (lab.FENCE_X - r) - (-3.0) - xs           # rolling distance to the fence
+	var a := mu_r * g
+	var tr := (vr - sqrt(vr * vr - 2.0 * a * gap)) / a   # first root of vr t - a t^2 / 2 = gap
+	var t_wall := ts + tr
+	var v_wall := vr - a * tr
+	var vy_up := minf(mu * (1.0 + e) * v_wall, 2.0 / 7.0 * v_wall)
+	var hop := 2.0 * vy_up / g
+	while c.steps - 1 < ceili((t_wall + hop) * STEP_HZ) + 2:
+		await tree.physics_frame
+	var model: RollingContact = c.rolling
+	var wall_ok := model.wall_times.size() >= 1 and absf(model.wall_times[0] - t_wall) <= 1e-9 and absf(model.wall_speeds[0] - v_wall) <= 1e-9
+	var worst_hop := 0.0
+	var top := -INF
+	for i in rec.steps.size():
+		var t := rec.steps[i] / float(STEP_HZ)
+		if t <= t_wall or t >= t_wall + hop:
+			continue
+		var d := t - t_wall
+		worst_hop = maxf(worst_hop, absf(rec.positions[i].x - ((lab.FENCE_X - r) - e * v_wall * d)))
+		worst_hop = maxf(worst_hop, absf(rec.positions[i].y - r - (vy_up * d - 0.5 * g * d * d)))
+		top = maxf(top, rec.positions[i].y - r)
+	rec.queue_free()
+	details.append("roll into the fence: contact %.4f s at %.4f m/s (closed form %.4f s, %.4f m/s), back at %.4f m/s, hop up %.4f m/s (%.3f m high)" % [
+		model.wall_times[0] if model.wall_times.size() > 0 else -1.0, model.wall_speeds[0] if model.wall_speeds.size() > 0 else -1.0, t_wall, v_wall, e * v_wall, vy_up, vy_up * vy_up / (2.0 * g)])
+	# Rest on the island: the default and the farthest throws.
+	var rest_ok := true
+	for run in [["default 45° 9 m/s 0.5 m", 45.0, 9.0, 0.5, -6.0], ["farthest 45° 9 m/s 3 m", 45.0, 9.0, 3.0, -3.0], ["fast level 0° 9 m/s 3 m", 0.0, 9.0, 3.0, -3.0]]:
+		lab.set_control("angle", run[1])
+		lab.set_control("speed", run[2])
+		lab.manipulation_placed("ball", Transform3D(Basis(), Vector3(run[4], run[3] + r, 0.0)))
+		lab.release()
+		var cc: UniformFieldCorrector = lab.corrector()
+		var guard := 0
+		while cc.rolling.stop_time < 0.0 and not lab.ball.freeze and guard < 40 * STEP_HZ:
+			await tree.physics_frame
+			guard += 1
+		for i in 3:
+			await tree.physics_frame
+		var x: float = lab.ball.global_position.x
+		var still: bool = lab.ball.linear_velocity.length() < 1e-4
+		var on: bool = not lab.ball.freeze and x > lab.FENCE_LEFT_X + r - 1e-4 and x < lab.FENCE_X - r + 1e-4 and still and lab.status() == "landed"
+		rest_ok = rest_ok and on
+		details.append("%s: %d fence hits, rests at x %.2f m after %.2f s%s" % [run[0], cc.rolling.wall_times.size(), x, cc.rolling.stop_time, "" if on else " (NOT ON THE ISLAND)"])
+	expect.call(wall_ok and worst_hop <= 1e-4 and rest_ok,
+		"ball fences: a roll meets the fence at the closed-form time and speed, bounces back at e v and hops by the Coulomb impulse; the default and farthest throws rest on the island",
+		"hop vs closed form %s m; %s" % [String.num_scientific(worst_hop), "; ".join(details)])
 	await _free(lab)
 
 

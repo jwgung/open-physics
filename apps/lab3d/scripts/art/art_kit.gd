@@ -8,6 +8,7 @@ class_name ArtKit
 extends RefCounted
 
 const SHADER := preload("res://scripts/art/art_lit.gdshader")
+const TEXTURE_SHADER := preload("res://scripts/art/art_lit_tex.gdshader")
 ## The island top (build_island): a 14-sided prism of circumradius ISLAND_RADIUS around its centre.
 const ISLAND_RADIUS := 11.0
 const ISLAND_SIDES := 14
@@ -32,6 +33,22 @@ static func lit_material() -> ShaderMaterial:
 		_lit.set_shader_parameter("softness", LIGHT_SOFTNESS)
 		_lit.set_shader_parameter("sky_fill", SKY_FILL)
 	return _lit
+
+
+## The same light on a textured model (art_lit_tex.gdshader: a model with one texture atlas and
+## smooth normals, the bread cat): a softer ramp and a lighter shade side than the faceted props.
+static func lit_texture_material(texture: Texture2D, softness := 0.18, shade_mix := 0.6) -> ShaderMaterial:
+	var m := ShaderMaterial.new()
+	m.shader = TEXTURE_SHADER
+	m.set_shader_parameter("albedo_texture", texture)
+	m.set_shader_parameter("sun_dir", SUN_DIR)
+	m.set_shader_parameter("lit_color", ArtPalette.LIGHT)
+	m.set_shader_parameter("shade_color", ArtPalette.SHADE)
+	m.set_shader_parameter("threshold", LIGHT_THRESHOLD)
+	m.set_shader_parameter("softness", softness)
+	m.set_shader_parameter("sky_fill", SKY_FILL)
+	m.set_shader_parameter("shade_mix", shade_mix)
+	return m
 
 
 ## Unshaded alpha-blended vertex colour (blob shadows on the ground). It is in the transparent

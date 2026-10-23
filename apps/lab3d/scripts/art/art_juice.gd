@@ -15,6 +15,8 @@
 ##   wobble()       cannot be placed here: a short sideways shake
 ##   bump(dir, s)   hit by another body along the world direction `dir` (0..1): squash along `dir`
 ##                  (the collision lab's balls), with a small dust puff
+##   set_carry(v)   a hand carries the mesh `v` (world) away from the body (the bread cat's
+##                  throw, Task 4g); the body itself stays where it is
 ##   automatic      landing on the ground (fast downward speed stopping near ground_y): squash by
 ##                  the fall speed + dust + `landed(strength)`; coming to rest after that: wobble
 ## Springs closer to rest than SETTLED_VALUE / SETTLED_SPEED stop updating (set_process(false)).
@@ -73,6 +75,9 @@ var _bump_dir := Vector3.RIGHT  # world direction of the last bump
 var _scale := Vector3.ONE       # current squash scale along (sxz, sy, sxz), sy along `_normal`
 var _normal := Vector3.UP       # surface normal under the body (world)
 var _shadow_xf := Transform3D() # body transform at the last shadow update
+var _carry := Vector3.ZERO      # world offset of the mesh from the body, see set_carry()
+var _m := Basis.IDENTITY        # last squash transform of the mesh (body space)
+var _offset := Vector3.ZERO     # last squash offset of the mesh (body space)
 var _prev_vy := 0.0
 var _landed := false
 var _resting := false
@@ -281,8 +286,28 @@ func _process(delta: float) -> void:
 		side = _normal.cross(Vector3.RIGHT)
 	# The bottom stays on the surface: the mesh is moved along `u` by how far the whole transform
 	# (also the bump's widening across the surface) pushed its lowest point below the unscaled one.
-	var offset := u * (_support(m, u) - _support(Basis.IDENTITY, u) + _lift) + body.global_basis.inverse() * side.normalized() * _wobble
-	mesh.transform = Transform3D(m, offset)
+	_m = m
+	_offset = u * (_support(m, u) - _support(Basis.IDENTITY, u) + _lift) + body.global_basis.inverse() * side.normalized() * _wobble
+	_write_mesh()
+
+
+## Moves the mesh `offset` (world) away from the body, keeping its squash (Vector3.ZERO: back on
+## the body). Only the mesh moves; the body, its shape and its shadow stay.
+func set_carry(offset: Vector3) -> void:
+	_carry = offset
+	if mesh != null and body != null:
+		_write_mesh()
+
+
+func carry() -> Vector3:
+	return _carry
+
+
+func _write_mesh() -> void:
+	var offset := _offset
+	if _carry != Vector3.ZERO:
+		offset += body.global_basis.inverse() * _carry
+	mesh.transform = Transform3D(_m, offset)
 
 
 ## Half extent of the body (a cube of `size`, or a sphere: round_body) along the world direction `dir`.

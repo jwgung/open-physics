@@ -15,6 +15,11 @@
 ## another ball touched in the air is not a landing.
 ## Displayed numbers (formula_values) come from PhysicsLaws at the sample time (until the contact),
 ## with the field the engine applies to the body (strength and direction, read on release).
+## Optional `rolling` (Task 4f, the guided labs' balls): from the formula landing time on, a 64-bit
+## model of the bounces, slide, roll and stop on the level floor puts the body on its path every
+## step (RollingContact); the body has no engine friction or bounce and turns freely. The landing
+## step is then the first sample at or after the formula touch (the engine never reaches the floor
+## to report it).
 class_name UniformFieldCorrector
 extends FormulaCorrector
 
@@ -39,6 +44,8 @@ var offsets: PackedVector3Array = PackedVector3Array()
 var _engine_field := Vector3.ZERO
 ## Bodies a landing can be on (the ground); empty = any body.
 var surfaces: Array[Node3D] = []
+## Formula ground friction and spin of a ball (null: the engine's contacts alone).
+var rolling: RollingContact = null
 ## Bodies touching the released body after its first released step (see the header); one leaves the
 ## set once the body is apart from it.
 var _start_contacts: Array[Node3D] = []
@@ -74,17 +81,26 @@ func release(body: RigidBody3D, velocity: Vector3) -> void:
 	body.freeze = false
 	body.sleeping = false
 	body.linear_velocity = velocity
+	if rolling:
+		rolling.release(body, velocity, g)
 
 
 func apply(body: RigidBody3D, step_dt: float) -> void:
 	dt = step_dt
+	var factor := start_factor(steps == 0)
 	var offset := body.global_position - origin
 	record(offset.y)
 	if offsets.size() < history_steps:
 		offsets.append(offset)
 	if in_flight:
 		_check_landing(body)
-	var factor := start_factor(steps == 0)
+	if rolling:
+		rolling.apply(body, steps, step_dt, _engine_field * factor * step_dt)
+		if rolling.active:
+			in_flight = false     # the floor contact is the model's from here
+			var touch := rolling.landing_step(dt)
+			if landed_step < 0 and touch >= 0 and steps >= touch:
+				landed_step = touch   # the first sample at or after the formula touch
 	if factor != 1.0:
 		body.apply_central_force((factor - 1.0) * mass * _engine_field)   # net force m g / 2 on the first step
 	steps += 1

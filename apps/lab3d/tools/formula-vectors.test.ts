@@ -43,7 +43,7 @@ import {
   pendulumPeriod,
   periodFromAngularFrequency,
 } from "../../../src/physics/laws/oscillation";
-import { torque } from "../../../src/physics/laws/rotation";
+import { rollingSpeed, torque } from "../../../src/physics/laws/rotation";
 import { tsApexTime, tsLandingTime } from "./ts-oracle";
 import { AnchoredSpringLaw, BuoyancyRegionLaw, PushFrictionLaw } from "../../../src/physics/laws/world-mechanics";
 
@@ -130,6 +130,10 @@ function projectile(): Case[] {
       cases.push({ law: "apex_time", args: [vy, -g], expect: vy > 0 ? tsApexTime(vy, -g) : 0 });
       cases.push({ law: "apex_rise", args: [vy, -g], expect: vy > 0 ? constantAccelerationDisplacement({ x: 0, y: vy }, { x: 0, y: -g }, tsApexTime(vy, -g)).y : 0 });
     }
+  }
+  // Task 4f: the landed ball rolls without slipping, v = r omega (ball radius 0.25 m).
+  for (const omega of [0, 4, 18.18, -25.71]) {
+    cases.push({ law: "rolling_speed", args: [0.25, omega], expect: rollingSpeed(0.25, omega) });
   }
   // landing_time outside the labs' everyday range (review of PR #9): the first root t > 0 for any
   // signs, t = 0 for a start on the level moving below it, INF ("inf") when the level is never met.

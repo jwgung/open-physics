@@ -22,6 +22,13 @@ const GRAPH_EVERY_STEPS := 6  # graph sample every 6 fixed steps (10 Hz), like t
 const BALL_LAYER := 3
 ## Seconds the fixed-step clock may be short of a formula landing time and still count as there.
 const LANDING_SLACK := 1e-9
+## Kinetic friction between a ball and the floor (RollingContact; Task 4f). The value both
+## materials had in the engine before (0.6 each, Jolt's combined 0.6).
+const BALL_FRICTION := 0.6
+## Rolling resistance coefficient on the grass (RollingContact.mu_roll: a rolling ball slows by
+## mu_roll g). 0.05: a short-mown green (Stimpmeter about 10-12 ft, a = v^2 / 2d with the 6 ft/s
+## ramp speed gives 0.05-0.06); longer grass is higher (docs/formula-correction.md "Task 4f").
+const ROLLING_RESISTANCE := 0.05
 
 ## Field the balls feel (m/s^2, downwards) and the selected gravity option id.
 var g := 9.81
@@ -224,24 +231,25 @@ func make_floor(size: Vector3) -> StaticBody3D:
 	return floor_body
 
 
-## A ball for the uniform-field correction: sphere of BALL_RADIUS, no damping, no rotation (a toy
-## ball that slides after landing; the free flight has no rotation anyway, and ArtJuice squashes
-## along the surface normal), frozen until released, contact reports on (landing: on the floor made
-## by make_floor before, which a lab can add its own surfaces to).
+## A ball for the uniform-field correction: sphere of BALL_RADIUS, no damping, frozen until
+## released, contact reports on (landing: on the floor made by make_floor before, which a lab can
+## add its own surfaces to). It turns freely; engine friction and bounce are off: from the formula
+## landing time on, the bounces (restitution `bounce`), friction, slide, roll and stop are the
+## formula's (RollingContact; BALL_FRICTION, ROLLING_RESISTANCE; Task 4f), no spin in the air. The
+## mesh (with its white band) is the body's child, so what is seen turning is the body itself.
 func make_ball(ball_name: String, mass: float, bounce: float) -> FormulaBody:
 	var ball := FormulaBody.new()
 	ball.name = ball_name
 	ball.mass = mass
 	_setup_free_body(ball)
-	ball.lock_rotation = true
 	ball.freeze = true
 	ball.contact_monitor = true
 	ball.max_contacts_reported = 4
 	ball.collision_layer = 1 << (BALL_LAYER - 1)
 	ball.collision_mask = 1   # the world (floor); other balls and handles are on other layers
 	var material := PhysicsMaterial.new()
-	material.friction = 0.6
-	material.bounce = bounce
+	material.friction = 0.0   # engine friction off (Jolt combines it with the floor's 0.6 to 0)
+	material.bounce = 0.0     # the bounce is the formula's (RollingContact.restitution)
 	ball.physics_material_override = material
 	var shape := CollisionShape3D.new()
 	var sphere := SphereShape3D.new()
@@ -253,16 +261,23 @@ func make_ball(ball_name: String, mass: float, bounce: float) -> FormulaBody:
 		corrector.surfaces.assign([floor_body])   # landing on the ground only, not on another ball
 	# The graph window (+ a sample at its end) is all the lab reads from the history.
 	corrector.history_steps = int(graph_x_max() * Engine.physics_ticks_per_second) + 2
+	corrector.rolling = RollingContact.new()
+	corrector.rolling.radius = BALL_RADIUS
+	corrector.rolling.mu = BALL_FRICTION
+	corrector.rolling.mu_roll = ROLLING_RESISTANCE
+	corrector.rolling.restitution = bounce
+	corrector.rolling.floor_y = 0.0
 	ball.corrector = corrector
 	return ball
 
 
-## Stops a ball where it is (frozen, no velocity) with a fresh corrector history: not released.
+## Stops a ball where it is (frozen, no velocity, unturned) with a fresh corrector history: not
+## released.
 static func hold_ball(ball: FormulaBody, at: Vector3) -> void:
 	ball.freeze = true
 	ball.linear_velocity = Vector3.ZERO
 	ball.angular_velocity = Vector3.ZERO
-	ball.global_position = at
+	ball.global_transform = Transform3D(Basis(), at)
 	var corrector := ball.corrector as UniformFieldCorrector
 	corrector.reset_history()
 	corrector.offsets.clear()
@@ -272,9 +287,13 @@ static func hold_ball(ball: FormulaBody, at: Vector3) -> void:
 	corrector.initial_velocity = Vector3.ZERO
 
 
-## Low-poly ball mesh (art-direction section 3: a sphere with 4 rings x 7 sides, one colour).
+## Low-poly ball mesh (art-direction section 3: a sphere with 4 rings x 7 sides, one colour) with a
+## white band around its x axis, like the collision lab's balls, so its turn is seen (Task 4f).
 static func ball_mesh(color: Color) -> Mesh:
 	var b := ArtKit.builder()
 	b.ao_height = BALL_RADIUS * 1.2
 	b.add_sphere(Transform3D.IDENTITY, BALL_RADIUS, 4, 7, color)
+	b.ao_min = 1.0
+	var along_x := Basis(Vector3.BACK, -PI * 0.5)
+	b.add_cylinder(Transform3D(along_x, Vector3(-BALL_RADIUS * 0.1, 0.0, 0.0)), BALL_RADIUS * 1.02, BALL_RADIUS * 1.02, BALL_RADIUS * 0.2, 7, ArtPalette.WHITE, false)
 	return b.commit()

@@ -13,6 +13,10 @@
 ##    guided mechanics experiments and one representative Jolt scene per correction method.
 ## 6. uniform-field labs (Task 4a, tests/uniform_lab_checks.gd): free fall and projectile displays and
 ##    motion against the TS-core vectors (tests/uniform_labs_vectors.json), art, manipulation.
+## 6b. ball spin and rolling (Task 4f, tests/ball_spin_checks.gd): no turn in the air (a given spin
+##    stays), slide -> roll at 5/7 v0 after t* = 2 v0 / (7 mu g) from the engine ball, the Coulomb
+##    friction impulse of a bounce, the mesh turns with the body, free-fall balls never turn, the
+##    collision lab's meshes roll with v = omega r.
 ## 7. push friction lab (Task 4b, tests/friction_lab_checks.gd): displays and motion against the TS-core
 ##    vectors (tests/friction_lab_vectors.json), threshold, heat, track end, art, the handle input path.
 ## 8. collision lab (Task 4c, tests/collision_lab_checks.gd): the model and the engine balls step by
@@ -110,6 +114,11 @@ func _run() -> void:
 	_expect(uniform != null and uniform.can_instantiate(), "uniform lab checks compile", "")
 	if uniform != null and uniform.can_instantiate():
 		await uniform.new(self, _expect).run()
+	print("== ball spin and rolling (Task 4f): free fall, projectile, collision ==")
+	var spin: GDScript = load("res://tests/ball_spin_checks.gd")
+	_expect(spin != null and spin.can_instantiate(), "ball spin checks compile", "")
+	if spin != null and spin.can_instantiate():
+		await spin.new(self, _expect).run()
 	print("== push friction lab (Task 4b) ==")
 	var friction: GDScript = load("res://tests/friction_lab_checks.gd")
 	_expect(friction != null and friction.can_instantiate(), "friction lab checks compile", "")

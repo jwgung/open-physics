@@ -8,7 +8,9 @@
 ##   MultiMesh, updated only when a condition or the start changes) and a white ring where the
 ##   formula lands,
 ## - white distance ticks on the floor every metre (every 5 m longer), the island and the ball's
-##   ArtJuice.
+##   ArtJuice,
+## - the fences at both ends of the throw line (Task 4f): white board walls between blue posts, one
+##   mesh; a landed ball bounces back from their faces (RollingContact; the engine has no fence body).
 class_name ProjectileProps
 extends PadProps
 
@@ -19,6 +21,14 @@ const DOT_RADIUS := 0.05
 const TICKS_FROM := -8
 const TICKS_TO := 12
 const TICKS_Z := 0.9
+## Centre of the island (its top is ArtKit.ISLAND_RADIUS around it): the fences stand inside.
+const ISLAND_CENTER := Vector3(0.5, 0.0, -0.8)
+## Fence boards: the gap under the lowest and between them (m); the posts' square section and the
+## least distance of a post's side from the throw line z = 0 (more than the ball radius 0.25 m).
+const BOARD_FOOT := 0.02
+const BOARD_GAP := 0.03
+const POST_SIZE := 0.16
+const POST_CLEAR := 0.27
 
 var juice: ArtJuice
 var post: MeshInstance3D
@@ -26,6 +36,9 @@ var pad: MeshInstance3D
 var arrow: VelocityArrow
 var path: MultiMeshInstance3D
 var ring: MeshInstance3D
+var fence: MeshInstance3D
+## The last formula dot drawn (where the preview path ends: the landing or a fence; tests).
+var path_end := Vector3.INF
 
 
 func ticks_mesh() -> Mesh:
@@ -36,6 +49,35 @@ func ticks_mesh() -> Mesh:
 		var depth := 0.4 if long else 0.22
 		b.add_rounded_box(Transform3D(Basis(), Vector3(x, 0.006, TICKS_Z + depth * 0.5)),
 			Vector3(0.06, 0.02, depth), 0.0, 1, ArtPalette.WHITE)
+	return b.commit()
+
+
+## Both fences in the lab's space, centred on z = 0 (the throw line): a wall of three white boards
+## (`thickness` along x, from the floor gap up to exactly `height`, the model's wall_top) between blue
+## posts about every metre, its face towards the throw at x = `right_face` (it stands at
+## x >= right_face, `right_width` along z) and x = `left_face` (x <= left_face, `left_width`). The
+## posts (0.1 m above the boards) come in an even number, so none stands on the throw line: the
+## nearest is POST_CLEAR or more from z = 0, beyond the ball (the model has boards only).
+static func fence_mesh(right_face: float, left_face: float, height: float, right_width: float, left_width: float, thickness: float) -> Mesh:
+	var b := ArtKit.builder()
+	b.ao_height = 0.3
+	for face_side in [[right_face, 1.0, right_width], [left_face, -1.0, left_width]]:
+		var face: float = face_side[0]
+		var side: float = face_side[1]
+		var width: float = face_side[2]
+		var x := face + side * thickness * 0.5
+		var boards := 3
+		var slot := (height - BOARD_FOOT) / boards
+		for i in boards:
+			# Board i from its gap below up to the top of its slot: the top board ends at `height`.
+			b.add_rounded_box(Transform3D(Basis(), Vector3(x, BOARD_FOOT + slot * (i + 1) - (slot - BOARD_GAP) * 0.5, 0.0)),
+				Vector3(thickness, slot - BOARD_GAP, width), 0.0, 1, ArtPalette.WHITE)
+		var posts := maxi(2, ceili(width) + 1)
+		posts += posts % 2   # even: no post on z = 0
+		for i in posts:
+			var z := -width * 0.5 + width * i / float(posts - 1)
+			b.add_rounded_box(Transform3D(Basis(), Vector3(x + side * thickness * 0.5, (height + 0.1) * 0.5, z)),
+				Vector3(POST_SIZE, height + 0.1, POST_SIZE), 0.02, 1, ArtPalette.BLUE)
 	return b.commit()
 
 
@@ -67,7 +109,7 @@ func ring_mesh() -> Mesh:
 
 
 func dress(experiment: Node3D, ball: RigidBody3D, ball_visual: MeshInstance3D, ball_size: float) -> void:
-	ArtKit.add_world(experiment, Vector3(0.5, 0.0, -0.8))
+	ArtKit.add_world(experiment, ISLAND_CENTER)
 	var ticks := ArtKit.instance(ticks_mesh())
 	ticks.name = "DistanceTicks"
 	experiment.add_child(ticks)
@@ -94,6 +136,9 @@ func dress(experiment: Node3D, ball: RigidBody3D, ball_visual: MeshInstance3D, b
 	path.material_override = ArtKit.lit_material()
 	path.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	experiment.add_child(path)
+	fence = ArtKit.instance(fence_mesh(experiment.FENCE_X, experiment.FENCE_LEFT_X, experiment.FENCE_HEIGHT, experiment.FENCE_WIDTH, experiment.FENCE_LEFT_WIDTH, experiment.FENCE_THICKNESS))
+	fence.name = "Fences"
+	experiment.add_child(fence)
 	ring = ArtKit.instance(ring_mesh())
 	ring.name = "LandingRing"
 	ring.visible = false
@@ -101,6 +146,7 @@ func dress(experiment: Node3D, ball: RigidBody3D, ball_visual: MeshInstance3D, b
 	juice = ArtJuice.new()
 	juice.name = "BallJuice"
 	experiment.add_child(juice)
+	juice.round_body = true   # the ball turns (Task 4f): its extent is the same in every direction
 	juice.setup(ball, ball_visual, ball_size, 0.0, ball.collision_mask)   # not the arrow knob (its own layer)
 
 
@@ -132,6 +178,7 @@ func set_path(points: PackedVector3Array, landing: Variant) -> void:
 	for i in count:
 		multimesh.set_instance_transform(i, Transform3D(Basis(), points[i]))
 	multimesh.visible_instance_count = count
+	path_end = points[count - 1] if count > 0 else Vector3.INF
 	ring.visible = landing != null
 	if landing != null:
 		ring.position = landing

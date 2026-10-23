@@ -180,7 +180,7 @@ func check_free_fall_cases() -> void:
 				var field: String = "height_red" if key == "height" else key
 				worst_display = maxf(worst_display, _err(shown[field], float(sample[key])))
 			worst_display = maxf(worst_display, _err(shown.time, float(sample.t)))
-			worst_display = maxf(worst_display, maxf(_err(shown.height_orange, float(sample.height)), _err(shown.height_pink, float(sample.height))))
+			worst_display = maxf(worst_display, maxf(_err(shown.height_purple, float(sample.height)), _err(shown.height_yellow, float(sample.height))))
 			var k := int(sample.step)
 			var want := float(sample.height) - float(case.height)
 			for id in lab.ORDER:
@@ -382,27 +382,34 @@ func check_projectile_zero_g() -> void:
 	await _free(lab)
 
 
-## After the landing the ball comes to rest near the landing point (friction, no bounce away off the
-## island) and a second throw flies exactly like the first (the reset restores every state).
+## After the landing the ball rolls on (Task 4f: the first bounce turns it until v = omega r), the
+## fence at the island's end sends it back and it stays on the island (not stopped and hidden), and a
+## second throw flies exactly like the first (the reset restores every state, also the ball's turn).
 func check_projectile_settles() -> void:
 	var lab: Experiment = await _lab("projectile")
 	lab.release()
+	var c: UniformFieldCorrector = lab.corrector()
+	await _until_step(c, roundi(lab.flight_time() * STEP_HZ) + 30)
+	var rolling: RollingContact = c.rolling
+	var roll_speed: float = lab.ball.linear_velocity.x
+	var spin: float = lab.ball.angular_velocity.z
+	var want := PhysicsLaws.rolling_speed_after_slip(lab.launch_vx(), lab.launch_vx())   # no spin before: 5/7 vx
 	for i in 4 * STEP_HZ:
 		await tree.physics_frame
-	var c: UniformFieldCorrector = lab.corrector()
-	var landed_x: float = lab.ball_center().x + c.offsets[c.landed_step].x
-	var rest: Vector3 = lab.ball.global_position
-	var rest_speed: float = lab.ball.linear_velocity.length()
 	var landed := c.landed_step
 	var first: PackedVector3Array = c.offsets.slice(0, landed)
+	var stopped: bool = not lab.ball.freeze and lab._ball_visual.visible and lab.status() == "landed" and lab.ball.global_position.x < lab.FENCE_X - lab.BALL_RADIUS + 1e-4 and c.rolling.wall_times.size() >= 1
 	lab.release()   # the same corrector again: its history restarts
+	var turned_back: bool = lab.ball.global_basis.is_equal_approx(Basis())
 	await _until_step(c, landed)
 	var again: PackedVector3Array = c.offsets.slice(0, landed)
 	var diff := INF if first.size() != again.size() else 0.0
 	for k in mini(first.size(), again.size()):
 		diff = maxf(diff, (first[k] - again[k]).length())
-	expect.call(absf(rest.x - landed_x) < 3.0 and rest_speed < 0.2 and not lab.out_of_bounds and diff <= 1e-6,
-		"projectile: the landed ball rests near its landing point; the next throw flies the same", "landed x %.2f, rest x %.2f, v %.3f m/s, flight diff %s m (%d / %d samples)" % [landed_x, rest.x, rest_speed, str(diff), first.size(), again.size()])
+	expect.call(absf(roll_speed - want) <= 1e-5 and absf(PhysicsLaws.rolling_speed(lab.BALL_RADIUS, -spin) - roll_speed) <= 1e-5 and rolling.slip() == 0.0
+		and stopped and not lab.out_of_bounds and turned_back and diff <= 1e-6,
+		"projectile: the landed ball rolls on at 5/7 vx = omega r, the fence sends it back and it stays on the island ('landed'); the next throw starts unturned and flies the same",
+		"roll %.5f m/s (5/7 vx %.5f), omega r %.5f, flight diff %s m (%d / %d samples)" % [roll_speed, want, -spin * lab.BALL_RADIUS, str(diff), first.size(), again.size()])
 	await _free(lab)
 
 
@@ -444,7 +451,7 @@ func check_free_fall_height_clamp() -> void:
 	var lab: Experiment = await _lab("free-fall")
 	lab.set_control("height", -5.0)
 	var low: float = lab.height
-	var low_starts: bool = lab.starts.red.y == low and lab.starts.pink.y == low
+	var low_starts: bool = lab.starts.red.y == low and lab.starts.yellow.y == low
 	lab.set_control("height", 99.0)
 	var high: float = lab.height
 	lab.set_control("height", 3.0)
@@ -478,15 +485,15 @@ func check_first_release_from_floor() -> void:
 	lab = await _lab("free-fall")
 	lab.manipulation_placed("red", Transform3D(Basis(), Vector3(1.5, lab.BALL_RADIUS, 0.0)))
 	lab.release()
-	var orange: UniformFieldCorrector = lab.corrector_of("orange")
+	var purple: UniformFieldCorrector = lab.corrector_of("purple")
 	for i in 2 * STEP_HZ:
-		if orange.landed_step >= 0:
+		if purple.landed_step >= 0:
 			break
 		await tree.physics_frame
 	var want := roundi(PhysicsLaws.landing_time(0.0, -9.81, 5.0) * STEP_HZ)
-	expect.call(lab.corrector_of("red").landed_step < 0 and lab.has_landed("red") and absi(orange.landed_step - want) <= 2,
+	expect.call(lab.corrector_of("red").landed_step < 0 and lab.has_landed("red") and absi(purple.landed_step - want) <= 2,
 		"landing: a fresh free-fall lab with a ball on the floor reports no engine landing for it; the dropped ones land at their formula time",
-		"red %d, orange %d (formula %d)" % [lab.corrector_of("red").landed_step, orange.landed_step, want])
+		"red %d, purple %d (formula %d)" % [lab.corrector_of("red").landed_step, purple.landed_step, want])
 	await _free(lab)
 	# 1 mm up: the floor is touched inside the first (seeding) step, so the engine reports nothing and
 	# the formula clock decides.
@@ -504,7 +511,7 @@ func check_first_release_from_floor() -> void:
 ## landings are on the floor (corrector.surfaces) only.
 func check_free_fall_neighbours() -> void:
 	var lab: Experiment = await _lab("free-fall")
-	lab.manipulation_placed("pink", Transform3D(Basis(), Vector3(-0.5, 5.0 + lab.BALL_RADIUS, 0.0)))
+	lab.manipulation_placed("yellow", Transform3D(Basis(), Vector3(-0.5, 5.0 + lab.BALL_RADIUS, 0.0)))
 	lab.manipulation_placed("red", Transform3D(Basis(), Vector3(0.5, 3.0 + lab.BALL_RADIUS, 0.0)))
 	lab.release()
 	var ball_contacts := 0   # balls are on their own layer, out of each other's mask
@@ -563,21 +570,21 @@ func check_free_fall_drop_lines() -> void:
 	var screen: Control = await _open(ExperimentRegistry.find("free-fall"))
 	var lab: Experiment = screen.experiment
 	var m: Manipulator = screen.manipulator
-	var pink: RigidBody3D = lab.balls.pink
-	var above_orange := Vector3(0.0, pink.global_position.y, 0.0)
-	lab.manipulation_placed("orange", Transform3D(Basis(), Vector3(0.0, 2.0 + lab.BALL_RADIUS, 0.0)))
-	_swipe(screen, _at(screen, pink.global_position), _at(screen, above_orange))
-	var blocked: bool = m.active_id == "pink" and not m.valid
-	var beside := Vector3(-0.5, pink.global_position.y, 0.0)
+	var yellow: RigidBody3D = lab.balls.yellow
+	var above_purple := Vector3(0.0, yellow.global_position.y, 0.0)
+	lab.manipulation_placed("purple", Transform3D(Basis(), Vector3(0.0, 2.0 + lab.BALL_RADIUS, 0.0)))
+	_swipe(screen, _at(screen, yellow.global_position), _at(screen, above_purple))
+	var blocked: bool = m.active_id == "yellow" and not m.valid
+	var beside := Vector3(-0.5, yellow.global_position.y, 0.0)
 	var event := InputEventScreenDrag.new()   # the same finger moves on (no new press)
 	event.index = 0
 	event.position = _at(screen, beside)
 	screen.view._gui_input(event)
-	var allowed: bool = m.active_id == "pink" and m.valid
+	var allowed: bool = m.active_id == "yellow" and m.valid
 	_touch(screen, 0, _at(screen, beside), false)
-	expect.call(blocked and allowed and is_equal_approx(lab.starts.pink.x, -0.5)
+	expect.call(blocked and allowed and is_equal_approx(lab.starts.yellow.x, -0.5)
 		and not lab.placement_allowed("red", Transform3D(Basis(), Vector3(0.0, 6.0, 0.0))),
-		"landing: a ball cannot be placed on another ball's drop line (above or below); beside it is allowed", "blocked %s, allowed %s, pink x %.2f, selected %s" % [blocked, allowed, lab.starts.pink.x, m.selected_id])
+		"landing: a ball cannot be placed on another ball's drop line (above or below); beside it is allowed", "blocked %s, allowed %s, yellow x %.2f, selected %s" % [blocked, allowed, lab.starts.yellow.x, m.selected_id])
 	await _close(screen)
 
 
@@ -758,8 +765,8 @@ func check_free_fall_manipulation() -> void:
 	_swipe(screen, knob_at, down, 6)
 	_touch(screen, 0, down, false)
 	var h: float = lab.starts.red.y
-	expect.call(absf(h - 3.0) < 0.26 and is_equal_approx(fmod(h, 0.5), 0.0) and lab.starts.orange.y == 5.0 and is_equal_approx(red.global_position.x, 2.5),
-		"free fall: the height handle sets one ball's drop height in 0.5 m steps", "red %.2f m, orange %.2f m" % [h, lab.starts.orange.y])
+	expect.call(absf(h - 3.0) < 0.26 and is_equal_approx(fmod(h, 0.5), 0.0) and lab.starts.purple.y == 5.0 and is_equal_approx(red.global_position.x, 2.5),
+		"free fall: the height handle sets one ball's drop height in 0.5 m steps", "red %.2f m, purple %.2f m" % [h, lab.starts.purple.y])
 	# Drop: the red ball lands first, at the TS landing time of its own height (±2 steps).
 	screen.experiment_action("release")
 	for i in 3 * STEP_HZ:
@@ -767,18 +774,18 @@ func check_free_fall_manipulation() -> void:
 			break
 		await tree.physics_frame
 	var red_land: int = lab.corrector_of("red").landed_step
-	var orange_land: int = lab.corrector_of("orange").landed_step
+	var purple_land: int = lab.corrector_of("purple").landed_step
 	var want := roundi(PhysicsLaws.landing_time(0.0, -9.81, h) * STEP_HZ)
-	expect.call(red_land > 0 and absi(red_land - want) <= 2 and orange_land > red_land and float(lab.observations().fall_time) == PhysicsLaws.landing_time(0.0, -9.81, h),
-		"free fall: after the handle the lower ball lands first at its own formula time", "red step %d (formula %d), orange %d" % [red_land, want, orange_land])
+	expect.call(red_land > 0 and absi(red_land - want) <= 2 and purple_land > red_land and float(lab.observations().fall_time) == PhysicsLaws.landing_time(0.0, -9.81, h),
+		"free fall: after the handle the lower ball lands first at its own formula time", "red step %d (formula %d), purple %d" % [red_land, want, purple_land])
 	# Picking up a landed ball puts every ball back at its start (the picked one at its own height).
 	_swipe(screen, _at(screen, red.global_position), _at(screen, red.global_position + Vector3(0.05, 0, 0)), 2)
-	var reset_ok: bool = not lab.released and lab.balls.orange.global_position.is_equal_approx(lab.starts.orange + Vector3.UP * lab.BALL_RADIUS)
+	var reset_ok: bool = not lab.released and lab.balls.purple.global_position.is_equal_approx(lab.starts.purple + Vector3.UP * lab.BALL_RADIUS)
 	_touch(screen, 0, _at(screen, red.global_position), false)
 	expect.call(reset_ok and absf(red.global_position.y - (h + lab.BALL_RADIUS)) < 1e-5, "free fall: picking up a landed ball stops the run and lifts it from its start height", str(red.global_position))
 	# The height slider lines all three up again.
 	screen._set_control("height", 4.0)
-	expect.call(lab.starts.red.y == 4.0 and lab.starts.pink.y == 4.0 and is_equal_approx(red.global_position.x, 2.5),
+	expect.call(lab.starts.red.y == 4.0 and lab.starts.yellow.y == 4.0 and is_equal_approx(red.global_position.x, 2.5),
 		"free fall: the height condition lines the three balls up again (positions kept)", str(lab.starts))
 	await _close(screen)
 

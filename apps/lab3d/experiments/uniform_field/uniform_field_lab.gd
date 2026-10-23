@@ -236,7 +236,7 @@ func make_floor(size: Vector3) -> StaticBody3D:
 ## add its own surfaces to). It turns freely; engine friction and bounce are off: from the formula
 ## landing time on, the bounces (restitution `bounce`), friction, slide, roll and stop are the
 ## formula's (RollingContact; BALL_FRICTION, ROLLING_RESISTANCE; Task 4f), no spin in the air. The
-## mesh (with its white band) is the body's child, so what is seen turning is the body itself.
+## mesh (a yarn ball, ball_visual) is the body's child, so what is seen turning is the body itself.
 func make_ball(ball_name: String, mass: float, bounce: float) -> FormulaBody:
 	var ball := FormulaBody.new()
 	ball.name = ball_name
@@ -287,13 +287,21 @@ static func hold_ball(ball: FormulaBody, at: Vector3) -> void:
 	corrector.initial_velocity = Vector3.ZERO
 
 
-## Low-poly ball mesh (art-direction section 3: a sphere with 4 rings x 7 sides, one colour) with a
-## white band around its x axis, like the collision lab's balls, so its turn is seen (Task 4f).
-static func ball_mesh(color: Color) -> Mesh:
-	var b := ArtKit.builder()
-	b.ao_height = BALL_RADIUS * 1.2
-	b.add_sphere(Transform3D.IDENTITY, BALL_RADIUS, 4, 7, color)
-	b.ao_min = 1.0
-	var along_x := Basis(Vector3.BACK, -PI * 0.5)
-	b.add_cylinder(Transform3D(along_x, Vector3(-BALL_RADIUS * 0.1, 0.0, 0.0)), BALL_RADIUS * 1.02, BALL_RADIUS * 1.02, BALL_RADIUS * 0.2, 7, ArtPalette.WHITE, false)
-	return b.commit()
+## The yarn ball model (Task 4g, 2026-10-23 user request: the balls are yarn balls, which cats like):
+## art_src/props/yarn_ball.py -> assets/props/yarn_ball.glb, a sphere of exactly BALL_RADIUS with a
+## grey wound-yarn texture. Loaded once.
+const YARN_SCENE := preload("res://assets/props/yarn_ball.glb")
+static var _yarn_mesh: Mesh
+
+
+## The ball's look: the yarn ball in `color` (the texture times the colour, the island light; the
+## strands in many directions show the ball turning). Only the mesh: the body's sphere shape, mass
+## and radius are make_ball's.
+static func ball_visual(color: Color) -> MeshInstance3D:
+	if _yarn_mesh == null:
+		var model: Node = YARN_SCENE.instantiate()
+		_yarn_mesh = (model.find_children("*", "MeshInstance3D", true, false)[0] as MeshInstance3D).mesh
+		model.free()
+	var material := ArtKit.lit_texture_material((_yarn_mesh.surface_get_material(0) as BaseMaterial3D).albedo_texture, 0.18, 0.6)
+	material.set_shader_parameter("tint", color)
+	return ArtKit.instance(_yarn_mesh, material)

@@ -10,13 +10,13 @@
 ##    roll along the floor, a slipping bounce (small mu), free fall drops; landing reactions and the
 ##    landing step still come.
 ## 3. where the thrown ball stops: the default and the farthest throw (reported).
-## 4. what is seen turning is the body: the mesh (white band) is its child with no turn of its own.
+## 4. what is seen turning is the body: the mesh (the yarn ball) is its child with no turn of its own.
 ## 5. free fall: the three balls never turn and do not drift sideways through their bounces.
 ## 6. collision lab (model driven): each ball's mesh turns by its travel over its radius (v = omega r).
 ## 7. colours (2026-10-23 user request): the free-fall balls and the development scene's boxes are
 ##    red / yellow / violet, and every label (ball names, observations, graph series and colours,
-##    option notes) names the colour the mesh has; the balls have a white band, the drop pads are
-##    white / grey.
+##    option notes) names the colour the mesh has; the balls are yarn balls (Task 4g: the yarn model,
+##    textured, as big as the ball), the drop pads are white / grey.
 extends RefCounted
 
 const STEP_HZ := 60
@@ -1005,13 +1005,27 @@ static func _has_yellow(mesh: Mesh) -> bool:
 	return false
 
 
-## The mesh has white vertices (a white band).
-static func _has_white(mesh: Mesh) -> bool:
-	for surface in mesh.get_surface_count():
-		for c: Color in mesh.surface_get_arrays(surface)[Mesh.ARRAY_COLOR]:
-			if c.s < 0.05 and c.linear_to_srgb().v > 0.9:
-				return true
-	return false
+## A ball's colour: the yarn ball's tint (Task 4g; the texture is grey).
+static func _ball_colour(visual: MeshInstance3D) -> Color:
+	var m := visual.material_override as ShaderMaterial
+	return m.get_shader_parameter("tint") if m != null else Color.BLACK
+
+
+## "" when `visual` is the yarn ball: the yarn model's mesh (at most 400 triangles) with the textured
+## island light, its extent the ball's diameter (what is seen is the physics size: within 2 %, no
+## thread sticking out).
+static func _yarn_problem(visual: MeshInstance3D, radius: float) -> String:
+	var mesh := visual.mesh
+	if mesh != UniformFieldLab._yarn_mesh or mesh.surface_get_array_index_len(0) / 3 > 400:
+		return "not the yarn mesh"
+	var m := visual.material_override as ShaderMaterial
+	if m == null or m.shader != ArtKit.TEXTURE_SHADER or m.get_shader_parameter("albedo_texture") == null:
+		return "not the yarn material"
+	var size := mesh.get_aabb().size
+	for a in 3:
+		if absf(size[a] - 2.0 * radius) > 0.04 * radius:
+			return "size %s" % size
+	return ""
 
 
 ## Same colour to the 8-bit linear vertex colours (dark channels lose up to ~5/255 in sRGB).
@@ -1034,7 +1048,7 @@ func check_ball_colours() -> void:
 		var colour: Color = COLOURS[id]
 		if lab.BALLS[id].color != colour or lab.BALLS[id].name != words[0]:
 			problems.append("%s: BALLS %s %s" % [id, lab.BALLS[id].name, lab.BALLS[id].color.to_html(false)])
-		var mesh_colour := _mesh_colour((lab.balls[id].get_node("Visual") as MeshInstance3D).mesh)
+		var mesh_colour := _ball_colour(lab.balls[id].get_node("Visual") as MeshInstance3D)
 		if not _near(mesh_colour, colour):
 			problems.append("%s: mesh %s" % [id, mesh_colour.to_html(false)])
 		if Color(series[id].color) != Color(colour.to_html(false)) or series[id].label != "%s 공" % words[1]:
@@ -1056,16 +1070,18 @@ func check_ball_colours() -> void:
 	for old in ["분홍", "주황", "ff4fa3", "ff7a1a"]:
 		if JSON.stringify(definition).contains(old):
 			problems.append("free-fall definition still has %s" % old)
-	# Every ball has its white band (the turn is seen); the drop pads are white / grey, no ball colour.
+	# Every ball is a yarn ball (the strands show the turn); the drop pads are white / grey, no ball colour.
 	for id in lab.ORDER:
-		if not _has_white((lab.balls[id].get_node("Visual") as MeshInstance3D).mesh):
-			problems.append("%s: no white band" % id)
+		var yarn := _yarn_problem(lab.balls[id].get_node("Visual") as MeshInstance3D, lab.BALL_RADIUS)
+		if yarn != "":
+			problems.append("%s: %s" % [id, yarn])
 		if _max_saturation((lab.props.pads[id] as MeshInstance3D).mesh) > 0.3 or _has_yellow((lab.props.pads[id] as MeshInstance3D).mesh):
 			problems.append("%s: the pad is coloured" % id)
 	await _free(lab)
 	var pj: Experiment = await _lab("projectile")
-	if not _has_white(pj._ball_visual.mesh):   # (no launch pad since Task 4g: the bread cat holds the ball)
-		problems.append("projectile ball band")
+	var pj_yarn := _yarn_problem(pj._ball_visual, pj.BALL_RADIUS)   # (no launch pad since Task 4g)
+	if pj_yarn != "" or not _near(_ball_colour(pj._ball_visual), ArtPalette.RED):
+		problems.append("projectile ball: %s %s" % [pj_yarn, _ball_colour(pj._ball_visual).to_html(false)])
 	await _free(pj)
 	var dev: Experiment = await _lab("manipulation-dev")
 	for entry in dev.definition.observations:

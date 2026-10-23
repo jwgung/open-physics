@@ -226,7 +226,7 @@ func _build_world() -> void:
 	for id in ORDER:
 		var spec: Dictionary = BALLS[id]
 		var ball := make_ball(id.capitalize(), spec.mass, BOUNCE)
-		var visual := ArtKit.instance(ball_mesh(spec.color))
+		var visual := ball_visual(spec.color)
 		visual.name = "Visual"
 		ball.add_child(visual)
 		add_child(ball)

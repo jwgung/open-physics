@@ -398,7 +398,7 @@ func _build_world() -> void:
 	contact.wall_thickness = FENCE_THICKNESS   # its top and back are boards too
 	# The whole drawn path (PATH_MAX_S) stays in the history: the measured landing distance reads it.
 	(ball.corrector as UniformFieldCorrector).history_steps = int(PATH_MAX_S * Engine.physics_ticks_per_second) + 2
-	_ball_visual = ArtKit.instance(ball_mesh(ArtPalette.RED))
+	_ball_visual = ball_visual(ArtPalette.RED)
 	_ball_visual.name = "Visual"
 	ball.add_child(_ball_visual)
 	add_child(ball)

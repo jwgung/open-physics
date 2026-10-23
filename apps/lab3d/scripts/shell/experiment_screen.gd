@@ -66,6 +66,7 @@ var _auto_release_every := 0.0
 var _auto_release_left := 0.0
 var _demo_release_left := -1.0          # --auto-drag: seconds until the placed object is released
 var _state: Dictionary = {}             # capture_state() of a screen being rebuilt
+var _camera_home: Dictionary = {}       # the camera when the screen opened: 처음으로 snaps back to it
 var _updating := false                  # a control/action is running: refresh once afterwards
 var _graph_revision := -2               # Experiment.graph_revision() of the series on the graph
 
@@ -118,6 +119,7 @@ func _ready() -> void:
 		_restore_state()
 	elif apply_launch_args:
 		_apply_launch_args()
+	_camera_home = view.rig.get_state()
 	_refresh()
 	Bench.reset(definition.get("bench_id", definition.id))
 
@@ -525,22 +527,37 @@ func _run_measured_action(id: String) -> void:
 		return
 	if manipulator != null and manipulator.selected_id != "":
 		manipulator.select("")
+	experiment.mark_bodies()
 	experiment.run_action(id)
+	if id == "reset":
+		experiment.resync_bodies()
 
 
 func experiment_action(id: String) -> void:
 	_drop_held_object()
 	_updating = true
+	experiment.mark_bodies()
 	experiment.run_action(id)
 	_updating = false
+	if id == "reset":
+		experiment.resync_bodies()   # the bodies are at their start from this frame on (BodyResync)
+		_snap_camera_home()
 	_refresh()
+
+
+## 처음으로: the camera back to the view the screen opened with, at once (no easing).
+func _snap_camera_home() -> void:
+	if not _camera_home.is_empty():
+		view.rig.set_state(_camera_home)
 
 
 func _set_control(id: String, value: Variant) -> void:
 	_drop_held_object()
 	_updating = true
+	experiment.mark_bodies()
 	experiment.set_control(id, value)
 	_updating = false
+	experiment.resync_bodies()   # a condition change puts the bodies back (BodyResync)
 	# Only this control's conditions changed: sync it, then redraw the readouts and the series.
 	_sync_control(id)
 	_update_readouts(true)

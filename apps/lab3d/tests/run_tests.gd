@@ -166,6 +166,11 @@ func _run() -> void:
 		await pulley.new(self, _expect).run()
 	# Last: opening every experiment's screen changes the shared physics world's history (Jolt body
 	# ids), which would move the engine-twin noise of the checks above (all within tolerance).
+	print("== 처음으로: real touch, frames without a step, every experiment (Task 4g bug fix) ==")
+	var reset_checks: GDScript = load("res://tests/reset_checks.gd")
+	_expect(reset_checks != null and reset_checks.can_instantiate(), "reset checks compile", "")
+	if reset_checks != null and reset_checks.can_instantiate():
+		await reset_checks.new(self, _expect).run()
 	print("== key cards and front camera, every experiment (Task 2d) ==")
 	await _check_key_cards()
 	await _check_gesture_tip()

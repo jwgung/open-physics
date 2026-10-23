@@ -19,9 +19,28 @@ var definition: Dictionary = {}
 var engine_g: float = ProjectSettings.get_setting("physics/3d/default_gravity", 9.81)
 ## status() as of the last _update_status().
 var _last_status := ""
+## Keeps put-back bodies in place for a few steps after a reset from outside the step (BodyResync).
+var _resync: BodyResync
 ## begin_batch() depth: while open, _restart() only marks the run for one restart in end_batch().
 var _batch := 0
 var _batch_dirty := false
+
+
+## The screen calls this right after it reset or rearranged the experiment from outside the physics
+## step (처음으로, a condition, an object put down): the frozen bodies keep the poses they have now
+## for the next steps, so the engine's report of the step under way cannot move them back (BodyResync).
+## Call mark_bodies() before the change and resync_bodies() after it.
+func mark_bodies() -> void:
+	if _resync == null:
+		_resync = BodyResync.new()
+		add_child(_resync)
+	_resync.mark(self)
+
+
+func resync_bodies() -> void:
+	if _resync == null:
+		mark_bodies()
+	_resync.hold(self)
 
 
 ## Adds a box collision shape of `size` to a body (floors, blocks, boxes of the experiments).

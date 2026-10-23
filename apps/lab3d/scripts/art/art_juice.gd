@@ -6,7 +6,7 @@
 ## "Up" is the surface normal under the body (world up on the ground, the incline's normal on the
 ## incline), not the body's own y axis, so a body that landed rotated still flattens against the
 ## surface and its dust appears under it.
-##   pop()          the body was (re)placed: grows in from POP_START with an overshoot
+##   pop()          the body was (re)placed: at once at rest and full size (no grow-in since Task 4g)
 ##   stretch()      the body was let go: short stretch upwards
 ##   puff(s)        small dust puff under the body (0..1)
 ##   hold(on)       picked up by a finger (Task 2b): the mesh floats HOLD_LIFT above the body;
@@ -35,7 +35,6 @@ const STRETCH_KICK := 3.5       # release: +12 % taller
 const LAND_KICK := 9.0          # landing: -8 % (strength 0.25) to -30 % (strength 1)
 const REST_KICK := 2.0          # coming to rest: -7 % wobble
 const SQUASH_LIMIT := 0.38
-const POP_START := 0.5          # reset: starts at half size, overshoots to +16 %, settles in ~0.45 s
 const LAND_SPEED := 1.2         # m/s downward speed that counts as a landing
 const LAND_FULL_SPEED := 6.0    # m/s for a full-strength landing
 const REST_SPEED := 0.15        # m/s
@@ -143,15 +142,24 @@ func rearm() -> void:
 	_resting = false
 
 
+## The body was put back (처음으로, a condition change): at once at full size and at rest, no
+## grow-in (2026-10-23 user decision "누르자마자 처음 상태로": nothing eases back after a reset).
 func pop() -> void:
 	rearm()
 	_squash = 0.0
 	_squash_v = 0.0
-	_pop = POP_START
+	_pop = 1.0
 	_pop_v = 0.0
-	set_process(true)
+	_lift = _lift_goal
+	_lift_v = 0.0
+	_wobble = 0.0
+	_wobble_v = 0.0
+	_bump = 0.0
+	_bump_v = 0.0
+	set_process(true)   # one write of the rest pose, then it stops (settled)
 	if is_inside_tree():
 		_update_shadow()   # the body was moved: do not leave the shadow behind for a frame
+		_process(0.0)      # the mesh at rest pose this frame
 
 
 func stretch() -> void:

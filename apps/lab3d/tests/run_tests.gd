@@ -95,6 +95,7 @@ func _run() -> void:
 	await _check_slide_in()
 	await _check_banner_collapsed()
 	await _check_list_cards()
+	_check_art_atlases()
 	await _check_launch_args_flag(definition)
 	await _check_graph_redraw(definition)
 	_check_wheel_zoom(definition)
@@ -350,7 +351,7 @@ func _check_juice_rotated_landing() -> void:
 	body_box.size = Vector3.ONE * 0.4
 	body_shape.shape = body_box
 	body.add_child(body_shape)
-	var visual := ArtKit.instance(InclineProps.new().box_mesh(0.4))
+	var visual := ArtKit.instance(ArtKit.parcel_mesh(0.4))
 	body.add_child(visual)
 	world.add_child(body)
 	body.global_transform = Transform3D(Basis(Vector3.BACK, PI * 0.5), Vector3(0.0, 2.5, 0.0))
@@ -534,10 +535,72 @@ func _check_list_cards() -> void:
 			await process_frame
 		if chosen != [list.definitions[0].id]:
 			problems.append("%s tap / drag chose %s" % [size, chosen])
+		# A scroll (PR #16 review): a finger down on a card drags the list up 200 units and lifts. The
+		# card moves with the finger (its local press and release points are the same), so only the
+		# screen points tell it is not a tap. Headless has no touchscreen, so the ScrollContainer does
+		# not drag-scroll by itself: the test moves the list as it does (scroll_vertical) between the
+		# finger's events.
+		chosen.clear()
+		var scroll: ScrollContainer = list.find_children("*", "ScrollContainer", true, false)[0]
+		var from: Vector2 = (cards[1].find_child("Text", true, false) as Control).get_global_rect().get_center()
+		await _mouse_at(from, true)
+		for i in range(1, 9):
+			scroll.scroll_vertical = 25 * i
+			await _mouse_at(from - Vector2(0, 25.0 * i), true, true)
+		await _mouse_at(from - Vector2(0, 200), false)
+		if scroll.scroll_vertical != 200 or not chosen.is_empty():
+			problems.append("%s scroll drag: scrolled %d, chose %s" % [size, scroll.scroll_vertical, chosen])
+		# After the scroll a plain tap still starts the card under the finger.
+		var under: Control = null
+		for card: Control in cards:
+			if card.get_global_rect().has_point(from):
+				under = card
+		await _mouse_at(from, true)
+		await _mouse_at(from, false)
+		if under == null or chosen != [String(under.name).trim_prefix("Card_")]:
+			problems.append("%s tap after scrolling chose %s (under %s)" % [size, chosen, under.name if under else "none"])
 		host.queue_free()
 		await process_frame
 	root.size = root_size
-	_expect(problems.is_empty(), "experiment list: [icon] [title / question] [실험 시작] in one line, button and icon centred on the text, phone and tablet; a tap on the card starts it, a drag does not", "; ".join(problems))
+	_expect(problems.is_empty(), "experiment list: [icon] [title / question] [실험 시작] in one line, button and icon centred on the text, phone and tablet; a tap on the card starts it (also after scrolling), a drag or a scroll drag over it does not", "; ".join(problems))
+
+
+## The glb atlases import unchanged (PR #16 review): fix_alpha_border would overwrite the RGB of the
+## alpha-0 pixels (the parcel box's tape mask: the shader paints the accent there, but filtering
+## and mipmaps blend in those overwritten colours, a cardboard fringe at the tape's edges).
+func _check_art_atlases() -> void:
+	var problems := []
+	for path in ["res://assets/props/parcel_box_parcel_box_atlas.png", "res://assets/props/yarn_ball_yarn_ball_atlas.png",
+			"res://assets/characters/bread_cat_bread_cat_atlas.png"]:
+		var source := Image.load_from_file(ProjectSettings.globalize_path(path))
+		var imported := (load(path) as Texture2D).get_image()
+		imported.clear_mipmaps()
+		imported.convert(source.get_format())
+		var worst := 0.0
+		for y in range(0, source.get_height(), 2):
+			for x in range(0, source.get_width(), 2):
+				var a := source.get_pixel(x, y)
+				var b := imported.get_pixel(x, y)
+				worst = maxf(worst, maxf(absf(a.r - b.r), maxf(absf(a.g - b.g), absf(a.b - b.b))))
+		if worst > 1.5 / 255.0:
+			problems.append("%s: RGB off by %d / 255" % [path.get_file(), roundi(worst * 255.0)])
+	_expect(problems.is_empty(), "art atlases import with their RGB unchanged, also under alpha 0 (no fix_alpha_border: the parcel tape has no cardboard fringe)", "; ".join(problems))
+
+
+## A left-button press / release (or, `motion`, a move with the button held) at `at`, pushed into the viewport.
+func _mouse_at(at: Vector2, pressed: bool, motion := false) -> void:
+	var e: InputEventMouse
+	if motion:
+		e = InputEventMouseMotion.new()
+		e.button_mask = MOUSE_BUTTON_MASK_LEFT
+	else:
+		e = InputEventMouseButton.new()
+		e.button_index = MOUSE_BUTTON_LEFT
+		e.pressed = pressed
+	e.position = at
+	e.global_position = at
+	root.push_input(e)
+	await process_frame
 
 
 func _check_banner_collapsed() -> void:

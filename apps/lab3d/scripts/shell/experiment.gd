@@ -19,28 +19,31 @@ var definition: Dictionary = {}
 var engine_g: float = ProjectSettings.get_setting("physics/3d/default_gravity", 9.81)
 ## status() as of the last _update_status().
 var _last_status := ""
-## Keeps put-back bodies in place for a few steps after a reset from outside the step (BodyResync).
+## Keeps the bodies an input-driven change moved where it put them until the next fixed step (BodyResync).
 var _resync: BodyResync
 ## begin_batch() depth: while open, _restart() only marks the run for one restart in end_batch().
 var _batch := 0
 var _batch_dirty := false
 
 
-## The screen calls this right after it reset or rearranged the experiment from outside the physics
-## step (처음으로, a condition, an object put down): the frozen bodies keep the poses they have now
-## for the next steps, so the engine's report of the step under way cannot move them back (BodyResync).
-## Call mark_bodies() before the change and resync_bodies() after it.
-func mark_bodies() -> void:
+## Runs `change`, a change of this experiment from input, between two fixed steps: an action
+## (run_action), a condition (set_control), an object picked up, put down or put back
+## (manipulation_started / _placed / _cancelled, with the manipulator's own move of the body). The
+## bodies it moved keep their new poses, so the engine's report of the step under way cannot move
+## them back (BodyResync). Every such path of the shell (ExperimentScreen, Manipulator) goes through
+## here; a lab never calls it for its own changes inside the step.
+func change_from_input(change: Callable) -> void:
 	if _resync == null:
 		_resync = BodyResync.new()
 		add_child(_resync)
 	_resync.mark(self)
-
-
-func resync_bodies() -> void:
-	if _resync == null:
-		mark_bodies()
+	change.call()
 	_resync.hold(self)
+
+
+## The bodies still waiting for the next fixed step to be put back (tests).
+func held_bodies() -> Array:
+	return _resync.held_bodies() if _resync != null and _resync.holding() else []
 
 
 ## Adds a box collision shape of `size` to a body (floors, blocks, boxes of the experiments).

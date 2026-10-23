@@ -3,8 +3,8 @@
 ## follow_source.follow_point()), orbit (제한 회전: wherever the user turned it, within the
 ## experiment's yaw/pitch limits). Preset views and limits come from the experiment's
 ## definition.camera; a view may look at its own `target` (default: camera.target), e.g. the
-## front view a little higher so the top of the apparatus clears the key cards (Task 2d). Gestures change the view directly (no lag); mode switches ease over
-## ~0.4 s. Angles: yaw 0 looks along -z (camera on +z), pitch < 0 is above the target.
+## front view a little higher so the top of the apparatus clears the key cards (Task 2d).
+## Gestures change the view directly (no lag); mode switches ease over ~0.4 s. Angles: yaw 0 looks along -z (camera on +z), pitch < 0 is above the target.
 class_name CameraRig
 extends Camera3D
 
@@ -23,6 +23,10 @@ const PAN_PER_UNIT := 0.0016    # world units per UI unit per metre of distance
 const NUDGE_SPEED := 2.4        # m/s downward kick at strength 1
 const NUDGE_K := 300.0
 const NUDGE_DAMP := 20.0
+## Vertical field of view for a view at least REFERENCE_ASPECT wide (the tablet's full landscape
+## screen, 16:10; wider phone screens see more to the sides).
+const FOV_DEG := 50.0
+const REFERENCE_ASPECT := 1.6
 
 var mode := "front"
 var follow_source: Object       # any object with follow_point() -> Vector3 (the experiment)
@@ -81,14 +85,9 @@ func _ready() -> void:
 	_apply()
 
 
-## Field of view: FOV_DEG vertical for a view at least REFERENCE_ASPECT wide (the tablet's full
-## landscape screen, 16:10; wider phone screens see more to the sides). A narrower view (the
+## Field of view: see FOV_DEG / REFERENCE_ASPECT. A view narrower than REFERENCE_ASPECT (the
 ## tablet's 3D view beside the open sidebar is about square) keeps the horizontal field of a
-## REFERENCE_ASPECT view instead, so the whole apparatus stays in frame when the sidebar opens.
-const FOV_DEG := 50.0
-const REFERENCE_ASPECT := 1.6
-
-
+## REFERENCE_ASPECT view, so the whole apparatus stays in frame when the sidebar opens.
 func fit_aspect(view_size: Vector2) -> void:
 	if view_size.x >= view_size.y * REFERENCE_ASPECT:
 		keep_aspect = Camera3D.KEEP_HEIGHT

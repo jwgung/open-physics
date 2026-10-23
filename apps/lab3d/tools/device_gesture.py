@@ -15,6 +15,7 @@ by the current display rotation (`dumpsys input` SurfaceOrientation) before it i
 import argparse
 import os
 import json
+import math
 import re
 import subprocess
 import tempfile
@@ -114,13 +115,30 @@ def commands(paths, starts, quarter_turns):
     return lines
 
 
+def parse_tap_point(parser: argparse.ArgumentParser, text: str | None) -> tuple[float, float]:
+    """tap --at X,Y: required, two finite numbers inside the landscape screen (SM-P200 1920x1200)."""
+    if not text:
+        parser.error("tap needs --at X,Y")
+    pieces = text.split(",")
+    try:
+        x, y = (float(v) for v in pieces)
+    except ValueError:
+        parser.error(f"--at must be two numbers X,Y (got {text!r})")
+    if not (math.isfinite(x) and math.isfinite(y)):
+        parser.error("--at must be finite numbers")
+    width, height = NATURAL[1], NATURAL[0]
+    if not (0 <= x < width and 0 <= y < height):
+        parser.error(f"--at {x:g},{y:g} is outside the {width}x{height} landscape screen")
+    return x, y
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("gesture", choices=sorted(GESTURES) + ["tap"])
     parser.add_argument("--at", help="tap: X,Y in landscape screen pixels")
     args = parser.parse_args()
     if args.gesture == "tap":
-        x, y = (float(v) for v in args.at.split(","))
+        x, y = parse_tap_point(parser, args.at)
         paths, starts = [[(x, y), (x, y)]], [0.0, 0.0]
     else:
         paths, starts = GESTURES[args.gesture], STARTS.get(args.gesture, [0.0, 0.0])

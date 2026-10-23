@@ -97,7 +97,7 @@ func fit_aspect(view_size: Vector2) -> void:
 		fov = rad_to_deg(2.0 * atan(tan(deg_to_rad(FOV_DEG) * 0.5) * REFERENCE_ASPECT))
 
 
-## Switches mode. Preset modes reset pan and zoom to the preset ("정면으로" is set_mode("front")).
+## Switches mode. Preset modes reset pan and zoom to the preset (the sidebar's camera section is the way back to the front view).
 ## `instant` skips the transition.
 func set_mode(new_mode: String, instant := false) -> void:
 	if new_mode not in MODES:

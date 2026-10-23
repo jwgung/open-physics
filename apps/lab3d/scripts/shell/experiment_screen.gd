@@ -35,6 +35,8 @@ var manipulator: Manipulator
 
 # 3D overlays (children of the view, placed by _fit_overlays).
 var _title_bar: PanelContainer
+var _back_button: Button
+var _title_label: Label
 var _top_buttons: HBoxContainer
 var _sidebar_button: Button
 var _key_row: HBoxContainer
@@ -187,6 +189,12 @@ func _unhandled_input(event: InputEvent) -> void:
 		back_requested.emit()
 
 
+## The screen's own "← 목록" button goes the same way as Android back / Esc: an open sidebar closes first.
+func _on_back_pressed() -> void:
+	if not handle_back():
+		back_requested.emit()
+
+
 ## Back (Android back, Esc): closes an open sidebar first. Returns true if it did.
 func handle_back() -> bool:
 	if not is_sidebar_open():
@@ -286,9 +294,11 @@ func _build_view_overlays() -> void:
 	var title_row := Ui.hbox(4)
 	_title_bar.add_child(title_row)
 	var back := Ui.button("← 목록", "FlatButton", 56)
-	back.pressed.connect(back_requested.emit)
+	back.pressed.connect(_on_back_pressed)
 	title_row.add_child(back)
+	_back_button = back
 	var title := Ui.label(definition.title, "HeadingLabel")
+	_title_label = title
 	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	title.clip_text = true
@@ -341,8 +351,7 @@ func _build_view_overlays() -> void:
 	_tip = Ui.label(short_tip, "HintLabel", true)
 	_tip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	view.add_child(_tip)
-	_tip.visible = _tip.text != "" and not _tips_shown.has(definition.id)
-	_tips_shown[definition.id] = true
+	_tip.visible = _tip.text != "" and not _tips_shown.has(definition.id)   # recorded in _hide_tip(), once it was seen
 	view.resized.connect(_fit_overlays)
 	# Wrapped card texts settle their height after the first layout pass (and change with status texts).
 	_key_row.minimum_size_changed.connect(_fit_overlays)
@@ -365,8 +374,20 @@ func _fit_overlays() -> void:
 	var width := view.size.x
 	_top_buttons.size = _top_buttons.get_combined_minimum_size()
 	_top_buttons.position = Vector2(width - _top_buttons.size.x - m, m)
+	# The title bar takes the room left of the top buttons. When even its minimum does not fit (a very
+	# small window), the title text goes first, then the back button's text is clipped, so the bar
+	# never reaches under the buttons.
+	var room := width - _top_buttons.size.x - m * 3.0
+	_title_label.visible = true
+	_back_button.clip_text = false
 	var title_min := _title_bar.get_combined_minimum_size()
-	_title_bar.size = Vector2(clampf(width - _top_buttons.size.x - m * 3.0, title_min.x, 560.0), title_min.y)
+	if title_min.x > room:
+		_title_label.visible = false
+		title_min = _title_bar.get_combined_minimum_size()
+		if title_min.x > room:
+			_back_button.clip_text = true
+			title_min = _title_bar.get_combined_minimum_size()
+	_title_bar.size = Vector2(clampf(room, title_min.x, 560.0), title_min.y)
 	_title_bar.position = Vector2(m, m)
 	_key_row.size = _key_row.get_combined_minimum_size()
 	_key_row.position = Vector2(m, m + maxf(_title_bar.size.y, _top_buttons.size.y) + 8.0)
@@ -711,10 +732,13 @@ func _on_mode_changed(mode: String) -> void:
 		_mode_buttons[id].set_pressed_no_signal(id == mode)
 
 
-## Fades the hint out on its own node (no screen-wide layer), then hides it.
+## Fades the hint out on its own node (no screen-wide layer), then hides it. This is when the hint
+## counts as seen (the timer ran out or the first gesture closed it): a screen rebuilt before that
+## (a condition change redraws it from the saved state) shows the hint again.
 func _hide_tip() -> void:
 	if not _tip.visible or _tip_tween != null:
 		return
+	_tips_shown[definition.id] = true
 	if not is_inside_tree():
 		_tip.visible = false
 		return

@@ -155,6 +155,9 @@ func _run() -> void:
 	print("== key cards and front camera, every experiment (Task 2d) ==")
 	await _check_key_cards()
 	await _check_gesture_tip()
+	await _check_tip_rebuild()
+	await _check_back_button()
+	await _check_small_window_title()
 	print("RESULT: %s (%d failure(s))" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -619,7 +622,9 @@ func _check_shared_content(incline: Dictionary) -> void:
 			var shown: Variant = lab.get("app", {}).get(key, lab[key]) if key in ExperimentRegistry.APP_OVERRIDES else lab[key]
 			same = same and str(definition[key]) == str(shown)
 			raw_texts = raw_texts or raw.has(key)
-		same = same and definition.get("tip", "") == lab.get("app", {}).get("tip", "")
+		same = same and definition.get("tip", "") == lab.get("app", {}).get("tip", "") \
+			and definition.get("tip_short", "") == lab.get("app", {}).get("tip_short", "")
+		raw_texts = raw_texts or raw.has("tip") or raw.has("tip_short")
 	_expect(same and not raw_texts, "listed experiments take every text from the shared lab content (none written in the experiment file)", "")
 	# The incline's panel texts are unchanged by the move (values as they were in incline-friction.json).
 	_expect(incline.title == "빗면을 얼마나 기울이면 미끄러질까?" and incline.steps.size() == 3 and incline.terms.size() == 4
@@ -634,6 +639,16 @@ func _check_shared_content(incline: Dictionary) -> void:
 	problems.append_array(ExperimentRegistry.resolve(unknown)[1])
 	_expect(problems.size() == 2 and "duplicates" in problems[0] and "not in" in problems[1],
 		"registry rejects texts written next to `content` and an unknown lab id", ", ".join(problems))
+	# tip and tip_short come from the shared lab's app block only: a file writing either is rejected too.
+	var written := PackedStringArray()
+	for key in ["tip", "tip_short"]:
+		var with_text := raw_incline.duplicate(true)
+		with_text[key] = "직접 쓴 안내"
+		var found: PackedStringArray = ExperimentRegistry.resolve(with_text)[1]
+		written.append("%s:%d" % [key, found.size()])
+		if found.size() != 1 or key not in found[0]:
+			written.append("BAD")
+	_expect("BAD" not in written, "registry rejects `tip` and `tip_short` written next to `content`", ", ".join(written))
 	_check_app_overrides(file)
 
 
@@ -1124,6 +1139,108 @@ func _check_gesture_tip() -> void:
 	fresh.queue_free()
 	await process_frame
 	host.queue_free()
+
+
+## The hint counts as seen once it closed (timer or first gesture), not when the screen was built:
+## a screen rebuilt before that (a condition change redraws it from the saved state) shows it again.
+func _check_tip_rebuild() -> void:
+	var host := Control.new()
+	host.theme = load(UI_THEME).build()
+	host.size = TABLET_LANDSCAPE
+	root.add_child(host)
+	var screen_class: GDScript = load(EXPERIMENT_SCREEN)
+	screen_class.reset_tips_shown()
+	var definition := ExperimentRegistry.find("incline-friction")
+	var first: Control = screen_class.new()
+	first.setup(definition)
+	host.add_child(first)
+	for i in 3:
+		await process_frame
+	var shown_first: bool = first._tip.visible
+	var state: Dictionary = first.capture_state()
+	first.queue_free()
+	await process_frame
+	var second: Control = screen_class.new()
+	second.setup(definition, state)
+	host.add_child(second)
+	for i in 3:
+		await process_frame
+	var shown_again: bool = second._tip.visible   # never closed before the rebuild
+	second.view.gesture_used.emit()
+	for i in 40:
+		await process_frame
+	var closed: bool = not second._tip.visible
+	var state2: Dictionary = second.capture_state()
+	second.queue_free()
+	await process_frame
+	var third: Control = screen_class.new()
+	third.setup(definition, state2)
+	host.add_child(third)
+	for i in 3:
+		await process_frame
+	var hidden_after_seen: bool = not third._tip.visible
+	_expect(shown_first and shown_again and closed and hidden_after_seen,
+		"gesture hint: a screen rebuilt before the hint closed shows it again; once it closed, a rebuild does not",
+		"first %s, rebuilt %s, closed %s, rebuilt after %s" % [shown_first, shown_again, closed, not hidden_after_seen])
+	third.queue_free()
+	await process_frame
+	host.queue_free()
+
+
+## The screen's "← 목록" button goes the way of Android back: an open sidebar closes first, the
+## screen is left only when it is closed.
+func _check_back_button() -> void:
+	var host := Control.new()
+	host.theme = load(UI_THEME).build()
+	host.size = TABLET_LANDSCAPE
+	root.add_child(host)
+	var screen: Control = load(EXPERIMENT_SCREEN).new()
+	screen.setup(ExperimentRegistry.find("incline-friction"))
+	host.add_child(screen)
+	var left := [0]
+	screen.back_requested.connect(func() -> void: left[0] += 1)
+	for i in 3:
+		await process_frame
+	screen.open_sidebar(false)
+	await process_frame
+	screen._back_button.pressed.emit()
+	var closed_first: bool = not screen.is_sidebar_open() and left[0] == 0
+	for i in 30:
+		await process_frame
+	screen._back_button.pressed.emit()
+	_expect(closed_first and left[0] == 1,
+		"the 목록 button closes an open sidebar first, and leaves the screen when it is closed",
+		"left after first press %s, after second %d" % [not closed_first, left[0]])
+	host.queue_free()
+	await process_frame
+
+
+## Small windows (desktop): the title bar gives way to the top buttons instead of lying under them,
+## with the sidebar open or closed.
+func _check_small_window_title() -> void:
+	var worst := ""
+	for width in [700.0, 400.0, 300.0]:
+		for open in [false, true]:
+			var host := Control.new()
+			host.theme = load(UI_THEME).build()
+			host.size = Vector2(width, 720.0)
+			root.add_child(host)
+			var screen: Control = load(EXPERIMENT_SCREEN).new()
+			screen.setup(ExperimentRegistry.find("incline-friction"))
+			host.add_child(screen)
+			for i in 3:
+				await process_frame
+			if open:
+				screen.open_sidebar(false)
+				for i in 3:
+					await process_frame
+			var bar: Rect2 = screen._title_bar.get_rect()
+			var buttons: Rect2 = screen._top_buttons.get_rect()
+			if bar.intersects(buttons) or bar.position.x < 0.0:
+				worst += " %d%s: bar %s buttons %s" % [int(width), "+sidebar" if open else "", bar, buttons]
+			host.queue_free()
+			await process_frame
+	_expect(worst == "", "small windows (700..300 units, sidebar open or closed): the title bar never overlaps the top buttons", worst)
 
 
 func _has_label_text(node: Node, text: String) -> bool:

@@ -27,7 +27,7 @@ const RELEASE_DIR_DEG := 10.0  # deg: paw direction over the last frame vs the l
 ## Frames (at 60 fps) before the release frame after "공 놓기": CatActor.WINDUP_S + SWING_S = 0.48 s
 ## (the release is on the 29th frame; exact, so a one-frame-late release fails).
 const THROW_FRAMES := 28
-## The BreadCat look (the user's glb, 2026-10-23): 3,290 model vertices + the shadow.
+## The BreadCat look (the user's glb, 2026-10-23; outline-ready rebuild 2026-10-24): 3,184 model vertices + the shadow.
 const CAT_VERTS_MAX := 3500
 const PHONE := Vector2(1560, 720)
 const TABLET := Vector2(1152, 720)

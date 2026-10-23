@@ -30,7 +30,12 @@ Conventions:
             PointerTip      (empty at the stick's red tip)
 - Rest pose = paws hanging by the tummy. To point, swing ArmR about the shoulder so PointerTip
   aims at the target: `pose_point()` below does exactly that on the Blender objects.
-- Budget (SM-P200 low): 7 meshes, 1 material, 1 texture (1024 px), < 6000 triangles.
+- Budget (SM-P200 low): 7 meshes, 1 material, 1 texture (1024 px), < 6000 triangles (5,866): the
+  segments go to the silhouette (head ring 40 x 24, ears, paws), hidden parts stay coarse (head
+  below -62 deg, body underside, tail puff).
+- Outline mesh contract (same as bread_cat.py): closed shells, outward faces, smooth shading only,
+  so every glTF vertex at one position has the same NORMAL and an inverted hull grown along NORMAL
+  (VERTEX += NORMAL * width, cull_front) has no cracks along the UV seams.
 """
 
 import math
@@ -239,7 +244,9 @@ def ellipsoid(bm, centre, radii, uv, segs=12, rings=8, rot=None, shape=None):
 
 
 def make_head(bm, monocle=True):
-    build_sphere(bm, head_point, lambda u, v: region_uv(R_HEAD, u, v), segs=36, rings=20)
+    # The head ring is the silhouette: 40 x 24 rings (6.4 deg apart); below -62 deg the head sits in
+    # the body / scarf, so the sphere stops there with a hidden cap.
+    build_sphere(bm, head_point, lambda u, v: region_uv(R_HEAD, u, v), segs=40, rings=24, lat_min=math.radians(-62))
     if monocle:
         make_monocle_chain(bm)
 
@@ -266,7 +273,7 @@ def make_monocle_chain(bm):
     build_tube(bm, smooth, [0.0026] * len(smooth), 5, lambda u, v: gold, up_hint=Vector((0, -1, 0)))
 
 
-ES = 18  # ear ring segments
+ES = 16  # ear ring segments
 EAR_T = [0.0, 0.07, 0.16, 0.27, 0.39, 0.51, 0.62, 0.72, 0.80, 0.865, 0.915, 0.952, 0.978, 0.994]
 EAR_LEN = 0.56
 EAR_W = 0.150   # long and wide (reference), round tip
@@ -341,7 +348,7 @@ def make_scarf(bm):
     build_tube(bm, loop, [0.036] * len(loop), 8, lambda u, v: red, up_hint=Vector((0, 0, 1)), squash=0.55,
                cap_start=False, cap_end=False)
     knot = Vector((0.095, -0.200, SCARF_Z - 0.02))
-    ellipsoid(bm, knot, (0.040, 0.030, 0.036), dark, 12, 7)
+    ellipsoid(bm, knot, (0.040, 0.030, 0.036), dark, 10, 6)
     for k, (dxz, ang) in enumerate((((0.025, -0.115), -25), ((0.075, -0.100), -50))):  # hanging down
         a = knot + Vector((0.0, -0.005, -0.01))
         b = knot + Vector((dxz[0], -0.006 - 0.008 * k, dxz[1]))
@@ -350,12 +357,13 @@ def make_scarf(bm):
 
 
 def make_body(bm):
-    build_sphere(bm, body_point, lambda u, v: region_uv(R_BODY, u, v), segs=26, rings=15)
+    # the underside below -65 deg (between and under the feet) never shows: a hidden cap there
+    build_sphere(bm, body_point, lambda u, v: region_uv(R_BODY, u, v), segs=26, rings=13, lat_min=math.radians(-65))
     white = swatch_uv("white")
     for s in (-1, 1):  # small round feet
         rot = Matrix.Rotation(s * math.radians(14), 3, "Z")
         ellipsoid(bm, Vector((s * 0.105, -0.080, 0.048)), (0.078, 0.105, 0.052), white, 14, 8, rot)
-    ellipsoid(bm, Vector((0.0, 0.205, 0.17)), (0.065, 0.058, 0.062), white, 12, 8)  # tail puff
+    ellipsoid(bm, Vector((0.0, 0.205, 0.17)), (0.065, 0.058, 0.062), white, 10, 6)  # tail puff (behind)
     make_scarf(bm)
 
 
@@ -404,7 +412,7 @@ def make_arm(bm, side):
     build_tube(bm, pts, radii, 14, lambda u, v: region_uv(R_ARM, u, v), up_hint=Vector((0, 0, 1)))
     ax = arm_axis(side)
     rot = Vector((1, 0, 0)).rotation_difference(ax).to_matrix()
-    ellipsoid(bm, H, (PAW_R * 1.10, PAW_R, PAW_R * 0.95), swatch_uv("white"), 14, 8, rot)
+    ellipsoid(bm, H, (PAW_R * 1.10, PAW_R, PAW_R * 0.95), swatch_uv("white"), 16, 10, rot)  # round where it meets the arm
     return H + ax * PAW_R * 1.10  # the paw's front surface
 
 

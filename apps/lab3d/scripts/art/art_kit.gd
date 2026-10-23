@@ -17,7 +17,14 @@ const LIGHT_THRESHOLD := 0.55
 const LIGHT_SOFTNESS := 0.03
 const SKY_FILL := 0.1
 
+## The yarn ball (Task 4g, 2026-10-23 user request: every ball is a yarn ball, which cats like):
+## art_src/props/yarn_ball.py -> assets/props/yarn_ball.glb, a sphere of radius YARN_RADIUS with a
+## grey wound-yarn texture. Loaded once.
+const YARN_SCENE := preload("res://assets/props/yarn_ball.glb")
+const YARN_RADIUS := 0.25
+
 static var _lit: ShaderMaterial
+static var _yarn_mesh: Mesh
 static var _shadow: StandardMaterial3D
 
 
@@ -49,6 +56,25 @@ static func lit_texture_material(texture: Texture2D, softness := 0.18, shade_mix
 	m.set_shader_parameter("sky_fill", SKY_FILL)
 	m.set_shader_parameter("shade_mix", shade_mix)
 	return m
+
+
+## A yarn ball of `radius` in `color` (the grey texture times the colour, the island light; the
+## strands in many directions show it turning). The node is scaled to the radius: a parent that
+## animates it (ArtJuice) must be another node.
+static func yarn_ball(radius: float, color: Color) -> MeshInstance3D:
+	if _yarn_mesh == null:
+		var model: Node = YARN_SCENE.instantiate()
+		_yarn_mesh = (model.find_children("*", "MeshInstance3D", true, false)[0] as MeshInstance3D).mesh
+		model.free()
+	var material := lit_texture_material((_yarn_mesh.surface_get_material(0) as BaseMaterial3D).albedo_texture, 0.18, 0.6)
+	material.set_shader_parameter("tint", color)
+	var ball := instance(_yarn_mesh, material)
+	ball.scale = Vector3.ONE * (radius / YARN_RADIUS)
+	return ball
+
+
+static func yarn_mesh() -> Mesh:
+	return _yarn_mesh
 
 
 ## Unshaded alpha-blended vertex colour (blob shadows on the ground). It is in the transparent

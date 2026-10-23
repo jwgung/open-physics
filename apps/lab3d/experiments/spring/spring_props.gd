@@ -84,13 +84,6 @@ static func coil_mesh(length: float) -> Mesh:
 	return b.commit()
 
 
-static func ball_mesh(radius: float) -> Mesh:
-	var b := ArtKit.builder()
-	b.ao_height = radius * 1.2
-	b.add_sphere(Transform3D.IDENTITY, radius, 4, 7, ArtPalette.ORANGE)
-	return b.commit()
-
-
 ## A bar of height 1 from its base (scaled along y).
 static func bar_mesh(color: Color, top: Color) -> Mesh:
 	var b := ArtKit.builder()
@@ -111,9 +104,12 @@ func dress(experiment: Node3D, ball: RigidBody3D, radius: float, anchor_x: float
 	coil.name = "Coil"
 	coil.position = Vector3(_coil_from, rod_y, 0.0)
 	experiment.add_child(coil)
-	var visual := ArtKit.instance(ball_mesh(radius))
+	var visual := Node3D.new()   # the juice squashes this node; the yarn ball (Task 4g) is scaled under it
 	visual.name = "Visual"
 	ball.add_child(visual)
+	var yarn := ArtKit.yarn_ball(radius, ArtPalette.ORANGE)
+	yarn.name = "Yarn"
+	visual.add_child(yarn)
 	juice = ArtJuice.new()
 	juice.name = "BallJuice"
 	juice.round_body = true

@@ -287,21 +287,7 @@ static func hold_ball(ball: FormulaBody, at: Vector3) -> void:
 	corrector.initial_velocity = Vector3.ZERO
 
 
-## The yarn ball model (Task 4g, 2026-10-23 user request: the balls are yarn balls, which cats like):
-## art_src/props/yarn_ball.py -> assets/props/yarn_ball.glb, a sphere of exactly BALL_RADIUS with a
-## grey wound-yarn texture. Loaded once.
-const YARN_SCENE := preload("res://assets/props/yarn_ball.glb")
-static var _yarn_mesh: Mesh
-
-
-## The ball's look: the yarn ball in `color` (the texture times the colour, the island light; the
-## strands in many directions show the ball turning). Only the mesh: the body's sphere shape, mass
-## and radius are make_ball's.
+## The ball's look: the yarn ball (ArtKit.yarn_ball, Task 4g) in `color`. Only the mesh: the body's
+## sphere shape, mass and radius are make_ball's.
 static func ball_visual(color: Color) -> MeshInstance3D:
-	if _yarn_mesh == null:
-		var model: Node = YARN_SCENE.instantiate()
-		_yarn_mesh = (model.find_children("*", "MeshInstance3D", true, false)[0] as MeshInstance3D).mesh
-		model.free()
-	var material := ArtKit.lit_texture_material((_yarn_mesh.surface_get_material(0) as BaseMaterial3D).albedo_texture, 0.18, 0.6)
-	material.set_shader_parameter("tint", color)
-	return ArtKit.instance(_yarn_mesh, material)
+	return ArtKit.yarn_ball(BALL_RADIUS, color)

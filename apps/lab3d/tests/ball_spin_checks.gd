@@ -1016,12 +1016,14 @@ static func _ball_colour(visual: MeshInstance3D) -> Color:
 ## thread sticking out).
 static func _yarn_problem(visual: MeshInstance3D, radius: float) -> String:
 	var mesh := visual.mesh
-	if mesh != UniformFieldLab._yarn_mesh or mesh.surface_get_array_index_len(0) / 3 > 400:
+	if mesh != ArtKit.yarn_mesh() or mesh.surface_get_array_index_len(0) / 3 > 400:
 		return "not the yarn mesh"
 	var m := visual.material_override as ShaderMaterial
 	if m == null or m.shader != ArtKit.TEXTURE_SHADER or m.get_shader_parameter("albedo_texture") == null:
 		return "not the yarn material"
-	var size := mesh.get_aabb().size
+	# A yarn ball that is a body's mesh (free fall, projectile: radius 0.25) carries the juice's
+	# squash in its scale; a scaled one (collision, spring) sits under the juice's node.
+	var size := mesh.get_aabb().size * (Vector3.ONE if visual.get_parent() is RigidBody3D else visual.scale)
 	for a in 3:
 		if absf(size[a] - 2.0 * radius) > 0.04 * radius:
 			return "size %s" % size
@@ -1083,6 +1085,19 @@ func check_ball_colours() -> void:
 	if pj_yarn != "" or not _near(_ball_colour(pj._ball_visual), ArtPalette.RED):
 		problems.append("projectile ball: %s %s" % [pj_yarn, _ball_colour(pj._ball_visual).to_html(false)])
 	await _free(pj)
+	# The other balls are yarn balls too (2026-10-23 user decision "공은 다 털실로"), in their colours.
+	var col: Experiment = await _lab("collision")
+	for pair in [[col.props.spin_a, col.RADIUS_A, ArtPalette.BLUE], [col.props.spin_b, col.RADIUS_B, ArtPalette.ORANGE]]:
+		var yarn_c := _yarn_problem(pair[0], pair[1])
+		if yarn_c != "" or not _near(_ball_colour(pair[0]), pair[2]):
+			problems.append("collision ball: %s %s" % [yarn_c, _ball_colour(pair[0]).to_html(false)])
+	await _free(col)
+	var spring: Experiment = await _lab("spring")
+	var spring_yarn: MeshInstance3D = spring.ball.get_node("Visual/Yarn")
+	var yarn_s := _yarn_problem(spring_yarn, spring.BALL_RADIUS)
+	if yarn_s != "" or not _near(_ball_colour(spring_yarn), ArtPalette.ORANGE):
+		problems.append("spring ball: %s" % yarn_s)
+	await _free(spring)
 	var dev: Experiment = await _lab("manipulation-dev")
 	for entry in dev.definition.observations:
 		var id: String = entry.id

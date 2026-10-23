@@ -16,12 +16,14 @@ const START_HEIGHT := 0.5           # launch height (ball bottom above the floor
 const BOUNCE := 0.6
 const KNOB_SIZE := 0.3
 const KNOB_LAYER := 2               # the knob is pickable but never hit by the ball (mask 1)
-## Fences at both ends of the throw line (Task 4f; 2026-10-23 user decision): faces towards the throw
-## at x = FENCE_X (the ball rolls into it moving +x) and FENCE_LEFT_X, FENCE_HEIGHT tall. A landed
-## ball bounces back from them by the formula (RollingContact: the ball's restitution, Coulomb
-## friction along the face) and stops on the island by rolling resistance. Flights are not touched
-## (no engine body): on earth and jupiter no throw reaches the fence line in flight; on the moon long
-## throws fly over it or, low ones, through it (docs/formula-correction.md "Task 4f").
+## Fences at both ends of the throw line (Task 4f; 2026-10-23 user decision): boards FENCE_THICKNESS
+## thick with faces towards the throw at x = FENCE_X (the ball meets it moving +x) and FENCE_LEFT_X,
+## FENCE_HEIGHT tall. The formula ball model (RollingContact) bounces any ball that meets one, on its
+## face, top or top corner, with the ball's restitution and Coulomb friction along the surface; the
+## engine has no fence body. A landed ball stops on the island by rolling resistance. A flight that
+## meets a fence (the moon's long low throws, and low throws in zero gravity) is the formula's up to
+## the contact, then the model's ("울타리에 맞음"); one that clears the top flies on as before
+## (docs/formula-correction.md "Task 4f"). The launch preview's dots end at the contact.
 ## Both stand wholly on the island top (inside its 14-sided top, ArtKit.ISLAND_RADIUS around
 ## ProjectileProps.ISLAND_CENTER; tests/ball_spin_checks.gd checks every fence vertex), so the right
 ## one is at 9.5 m and narrower on the left. 1.8 m: at these faces the lowest of the heights scanned
@@ -290,15 +292,24 @@ func follow_point() -> Vector3:
 	return ball.global_position if ball else global_position
 
 
-## Formula path dots from the launch to the landing (or up to PATH_MAX_S / the island's edge).
+## Formula path dots from the launch to the landing or the fence contact (or up to PATH_MAX_S /
+## the island's edge).
 func formula_path() -> PackedVector3Array:
+	var vx := launch_vx()
 	var vy := launch_vy()
 	var height := launch_height()
-	return _fill_path(ball_center(), launch_vx(), vy, height, flight_time_for(vy, height))
+	var center := ball_center()
+	return _fill_path(center, vx, vy, height, minf(flight_time_for(vy, height), fence_time_for(center.x, vx, vy, height)))
+
+
+## Formula time at which a launch from the ball centre x `x` with (vx, vy) from `height` meets a
+## fence in flight (INF: it lands first or clears the top; RollingContact.flight_fence_time).
+func fence_time_for(x: float, vx: float, vy: float, height: float) -> float:
+	return corrector().rolling.flight_fence_time(x, height, vx, vy, g)
 
 
 ## Fills (and returns) the reused path buffer: PATH_DOTS points of the flight from the ball centre
-## `c`, launched with (vx, vy) from `height`, until `landing`. A copy already handed out keeps its
+## `c`, launched with (vx, vy) from `height`, until `landing` (the floor or a fence). A copy already handed out keeps its
 ## points (copy on write), so the buffer only allocates when the dot count grows.
 func _fill_path(c: Vector3, vx: float, vy: float, height: float, landing: float) -> PackedVector3Array:
 	_path.clear()
@@ -336,12 +347,16 @@ func _show_preview(bottom: Vector3, angle: float, launch_speed: float, place_kno
 	var vy := vy_of(angle, launch_speed)
 	var height := snapped_height(bottom.y)
 	var landing := flight_time_for(vy, height)
+	var fence := fence_time_for(center.x, vx, vy, height)
+	# The dots end where the flight meets a fence; the ring marks the formula landing only when the
+	# ball gets there (no fence first) and it lies between the fences (a throw over the top lands
+	# behind the board).
 	var ring: Variant = null
-	if is_finite(landing):
+	if is_finite(landing) and not is_finite(fence):
 		var x := center.x + PhysicsLaws.constant_acceleration_displacement(vx, 0.0, landing)
-		if x <= BOUNDS_X.y:
+		if x < FENCE_X and x > FENCE_LEFT_X:
 			ring = Vector3(x, 0.0, center.z)
-	projectile_props().set_path(_fill_path(center, vx, vy, height, landing), ring)
+	projectile_props().set_path(_fill_path(center, vx, vy, height, minf(landing, fence)), ring)
 
 
 ## While a finger holds the ball or the knob, the launch preview follows it: a dragged ball takes
@@ -366,6 +381,7 @@ func _build_world() -> void:
 	contact.wall_left_x = FENCE_LEFT_X
 	contact.wall_top = FENCE_HEIGHT
 	contact.wall_restitution = BOUNCE   # the web's wall rule: the ball's own restitution
+	contact.wall_thickness = FENCE_THICKNESS   # its top and back are boards too
 	# The whole drawn path (PATH_MAX_S) stays in the history: the measured landing distance reads it.
 	(ball.corrector as UniformFieldCorrector).history_steps = int(PATH_MAX_S * Engine.physics_ticks_per_second) + 2
 	_ball_visual = ArtKit.instance(ball_mesh(ArtPalette.RED))

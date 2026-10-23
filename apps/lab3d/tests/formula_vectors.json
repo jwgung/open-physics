@@ -18,7 +18,8 @@
       "kinetic_energy",
       "landing_time",
       "apex_time",
-      "apex_rise"
+      "apex_rise",
+      "rolling_speed"
     ],
     "collision": [
       "post_collision_velocity_1d",
@@ -1743,6 +1744,42 @@
         -24.79
       ],
       "expect": 0
+    },
+    {
+      "experiment": "projectile",
+      "law": "rolling_speed",
+      "args": [
+        0.25,
+        0
+      ],
+      "expect": 0
+    },
+    {
+      "experiment": "projectile",
+      "law": "rolling_speed",
+      "args": [
+        0.25,
+        4
+      ],
+      "expect": 1
+    },
+    {
+      "experiment": "projectile",
+      "law": "rolling_speed",
+      "args": [
+        0.25,
+        18.18
+      ],
+      "expect": 4.545
+    },
+    {
+      "experiment": "projectile",
+      "law": "rolling_speed",
+      "args": [
+        0.25,
+        -25.71
+      ],
+      "expect": -6.4275
     },
     {
       "experiment": "projectile",

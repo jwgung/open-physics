@@ -22,6 +22,9 @@ const GRAPH_EVERY_STEPS := 6  # graph sample every 6 fixed steps (10 Hz), like t
 const BALL_LAYER := 3
 ## Seconds the fixed-step clock may be short of a formula landing time and still count as there.
 const LANDING_SLACK := 1e-9
+## Kinetic friction between a ball and the floor (RollingContact; Task 4f). The value both
+## materials had in the engine before (0.6 each, Jolt's combined 0.6).
+const BALL_FRICTION := 0.6
 
 ## Field the balls feel (m/s^2, downwards) and the selected gravity option id.
 var g := 9.81
@@ -224,23 +227,24 @@ func make_floor(size: Vector3) -> StaticBody3D:
 	return floor_body
 
 
-## A ball for the uniform-field correction: sphere of BALL_RADIUS, no damping, no rotation (a toy
-## ball that slides after landing; the free flight has no rotation anyway, and ArtJuice squashes
-## along the surface normal), frozen until released, contact reports on (landing: on the floor made
-## by make_floor before, which a lab can add its own surfaces to).
+## A ball for the uniform-field correction: sphere of BALL_RADIUS, no damping, frozen until
+## released, contact reports on (landing: on the floor made by make_floor before, which a lab can
+## add its own surfaces to). It turns freely and the engine friction is off: the ground friction and
+## spin are the formula's (RollingContact, BALL_FRICTION; Task 4f): no spin in the air, a bounce or
+## a slide turns it until it rolls with v = omega r. The mesh is the body's child, so what is seen
+## turning is the body itself.
 func make_ball(ball_name: String, mass: float, bounce: float) -> FormulaBody:
 	var ball := FormulaBody.new()
 	ball.name = ball_name
 	ball.mass = mass
 	_setup_free_body(ball)
-	ball.lock_rotation = true
 	ball.freeze = true
 	ball.contact_monitor = true
 	ball.max_contacts_reported = 4
 	ball.collision_layer = 1 << (BALL_LAYER - 1)
 	ball.collision_mask = 1   # the world (floor); other balls and handles are on other layers
 	var material := PhysicsMaterial.new()
-	material.friction = 0.6
+	material.friction = 0.0   # engine friction off (Jolt combines it with the floor's 0.6 to 0)
 	material.bounce = bounce
 	ball.physics_material_override = material
 	var shape := CollisionShape3D.new()
@@ -253,16 +257,20 @@ func make_ball(ball_name: String, mass: float, bounce: float) -> FormulaBody:
 		corrector.surfaces.assign([floor_body])   # landing on the ground only, not on another ball
 	# The graph window (+ a sample at its end) is all the lab reads from the history.
 	corrector.history_steps = int(graph_x_max() * Engine.physics_ticks_per_second) + 2
+	corrector.rolling = RollingContact.new()
+	corrector.rolling.radius = BALL_RADIUS
+	corrector.rolling.mu = BALL_FRICTION
 	ball.corrector = corrector
 	return ball
 
 
-## Stops a ball where it is (frozen, no velocity) with a fresh corrector history: not released.
+## Stops a ball where it is (frozen, no velocity, unturned) with a fresh corrector history: not
+## released.
 static func hold_ball(ball: FormulaBody, at: Vector3) -> void:
 	ball.freeze = true
 	ball.linear_velocity = Vector3.ZERO
 	ball.angular_velocity = Vector3.ZERO
-	ball.global_position = at
+	ball.global_transform = Transform3D(Basis(), at)
 	var corrector := ball.corrector as UniformFieldCorrector
 	corrector.reset_history()
 	corrector.offsets.clear()

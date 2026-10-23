@@ -101,6 +101,7 @@ func dress(experiment: Node3D, ball: RigidBody3D, ball_visual: MeshInstance3D, b
 	juice = ArtJuice.new()
 	juice.name = "BallJuice"
 	experiment.add_child(juice)
+	juice.round_body = true   # the ball turns (Task 4f): its extent is the same in every direction
 	juice.setup(ball, ball_visual, ball_size, 0.0, ball.collision_mask)   # not the arrow knob (its own layer)
 
 

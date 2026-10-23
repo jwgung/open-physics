@@ -382,27 +382,34 @@ func check_projectile_zero_g() -> void:
 	await _free(lab)
 
 
-## After the landing the ball comes to rest near the landing point (friction, no bounce away off the
-## island) and a second throw flies exactly like the first (the reset restores every state).
+## After the landing the ball rolls on (Task 4f: the first bounce turns it until v = omega r, no
+## rolling resistance) until the island's box stops it, and a second throw flies exactly like the
+## first (the reset restores every state, also the ball's turn).
 func check_projectile_settles() -> void:
 	var lab: Experiment = await _lab("projectile")
 	lab.release()
+	var c: UniformFieldCorrector = lab.corrector()
+	await _until_step(c, roundi(lab.flight_time() * STEP_HZ) + 30)
+	var rolling: RollingContact = c.rolling
+	var roll_speed: float = lab.ball.linear_velocity.x
+	var spin: float = lab.ball.angular_velocity.z
+	var want := PhysicsLaws.rolling_speed_after_slip(lab.launch_vx(), lab.launch_vx())   # no spin before: 5/7 vx
 	for i in 4 * STEP_HZ:
 		await tree.physics_frame
-	var c: UniformFieldCorrector = lab.corrector()
-	var landed_x: float = lab.ball_center().x + c.offsets[c.landed_step].x
-	var rest: Vector3 = lab.ball.global_position
-	var rest_speed: float = lab.ball.linear_velocity.length()
 	var landed := c.landed_step
 	var first: PackedVector3Array = c.offsets.slice(0, landed)
+	var stopped: bool = lab.ball.freeze and not lab._ball_visual.visible and lab.status() == "landed"
 	lab.release()   # the same corrector again: its history restarts
+	var turned_back: bool = lab.ball.global_basis.is_equal_approx(Basis())
 	await _until_step(c, landed)
 	var again: PackedVector3Array = c.offsets.slice(0, landed)
 	var diff := INF if first.size() != again.size() else 0.0
 	for k in mini(first.size(), again.size()):
 		diff = maxf(diff, (first[k] - again[k]).length())
-	expect.call(absf(rest.x - landed_x) < 3.0 and rest_speed < 0.2 and not lab.out_of_bounds and diff <= 1e-6,
-		"projectile: the landed ball rests near its landing point; the next throw flies the same", "landed x %.2f, rest x %.2f, v %.3f m/s, flight diff %s m (%d / %d samples)" % [landed_x, rest.x, rest_speed, str(diff), first.size(), again.size()])
+	expect.call(absf(roll_speed - want) <= 1e-5 and absf(PhysicsLaws.rolling_speed(lab.BALL_RADIUS, -spin) - roll_speed) <= 1e-5 and rolling.slip() == 0.0
+		and stopped and not lab.out_of_bounds and turned_back and diff <= 1e-6,
+		"projectile: the landed ball rolls on at 5/7 vx = omega r until the island's edge stops it ('landed'); the next throw starts unturned and flies the same",
+		"roll %.5f m/s (5/7 vx %.5f), omega r %.5f, flight diff %s m (%d / %d samples)" % [roll_speed, want, -spin * lab.BALL_RADIUS, str(diff), first.size(), again.size()])
 	await _free(lab)
 
 

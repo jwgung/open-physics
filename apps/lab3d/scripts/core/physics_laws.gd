@@ -120,6 +120,29 @@ static func kinetic_energy(mass: float, speed: float) -> float:
 static func tangential_speed(radius: float, angular_velocity: float) -> float:
 	return radius * angular_velocity
 
+## rotation.ts rollingSpeed: rolling without slipping, v = r omega (Task 4f: the landed ball).
+static func rolling_speed(radius: float, angular_velocity: float) -> float:
+	return radius * angular_velocity
+
+## Solid sphere about its centre: I = 2/5 m r^2 (Task 4f: the free-fall and projectile balls).
+## Not in the TS core (rotation.ts has point mass, disk, hoop and rod): textbook value, checked by
+## tests/ball_spin_checks.gd against the slide-to-roll results below.
+static func solid_sphere_moment_of_inertia(mass: float, radius: float) -> float:
+	return 0.4 * mass * radius * radius
+
+## Ball on a level floor with slip speed `slip` = v + r omega_z (contact point speed, m/s) and
+## kinetic friction mu: friction mu m g slows v by mu g and turns omega by 5 mu g / (2 r) until the
+## slip is gone, after t = 2 |slip| / (7 mu g) (solid sphere; the slip falls at 7 mu g / 2). Task 4f,
+## textbook (not in the TS core).
+static func slide_to_roll_time(slip: float, mu: float, g: float) -> float:
+	return 2.0 * absf(slip) / (7.0 * mu * g)
+
+## Speed of the same ball once it rolls: v - 2/7 slip (any friction impulses conserve
+## v - 2/7 slip, and the slip ends at 0). A ball that starts sliding without spin rolls at 5/7 v0.
+## Task 4f, textbook (not in the TS core).
+static func rolling_speed_after_slip(v0: float, slip: float) -> float:
+	return v0 - 2.0 / 7.0 * slip
+
 ## mechanics.ts centripetalForce: F = m v^2 / r
 static func centripetal_force(mass: float, speed: float, radius: float) -> float:
 	return mass * (speed * speed / radius)

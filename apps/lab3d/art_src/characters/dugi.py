@@ -25,7 +25,8 @@ Conventions:
             HandL / HandR   (empty at the paw tip: pointing tip / grip point)
 - Rest pose = arms folded (ArmL's forearm in front, lower). To point, straighten the forearm about
   the elbow (rotate it so it continues the upper arm) and swing the arm about the shoulder toward
-  the target: `pose_point()` below does exactly that on the Blender objects.
+  the target: `pose_point()` below does exactly that on the Blender objects; `pose_reach()` swings just
+  a forearm (the free paw resting on the tummy while the other arm points).
 - Budget (SM-P200 low): 7 meshes, 1 material, 1 texture (1024 px), < 6000 triangles.
 """
 
@@ -83,18 +84,18 @@ def region_grid(rect):
 # --------------------------------------------------------------------------------------------
 
 HEAD_R = 0.300
-HEAD_SX, HEAD_SY, HEAD_SZ = 1.16, 0.96, 0.88
+HEAD_SX, HEAD_SY, HEAD_SZ = 1.12, 0.98, 0.95
 HEAD_C = Vector((0.0, -0.01, 0.835))
 NECK = Vector((0.0, 0.0, 0.590))
-BODY_C = Vector((0.0, 0.01, 0.350))
-BODY_R = Vector((0.225, 0.195, 0.290))
+BODY_C = Vector((0.0, 0.01, 0.325))
+BODY_R = Vector((0.260, 0.230, 0.270))
 EYE_X, EYE_Z, EYE_RX, EYE_RZ = 0.115, 0.012, 0.050, 0.058
 NOSE_Z = -0.052
 
 
 def head_point(d):
     x, y, z = d
-    cheek = 1.0 + 0.08 * max(0.0, -z + 0.10) * (1.0 - abs(y))
+    cheek = 1.0 + 0.16 * max(0.0, -z + 0.15) * (1.0 - 0.6 * abs(y))  # plump lower cheeks
     sx = HEAD_SX * cheek
     sy = HEAD_SY * (0.90 if y < 0 else 1.0)
     sz = HEAD_SZ * (0.90 if z < 0 else 1.0)
@@ -110,7 +111,7 @@ def face_dir(qx, qz):
 
 def body_point(d):
     lower = max(0.0, -d.z)
-    w = 1.0 + 0.16 * lower - 0.06 * max(0.0, d.z) ** 2  # pear: fuller bottom, narrower shoulders
+    w = 1.0 + 0.12 * lower - 0.03 * max(0.0, d.z) ** 2  # round bean: a little fuller low, no waist
     return BODY_C + Vector((d.x * BODY_R.x * w, d.y * BODY_R.y * w, d.z * BODY_R.z))
 
 
@@ -231,7 +232,7 @@ def ellipsoid(bm, centre, radii, uv, segs=12, rings=8, rot=None, shape=None):
 
 
 def make_head(bm, glasses):
-    build_sphere(bm, head_point, lambda u, v: region_uv(R_HEAD, u, v), segs=32, rings=18)
+    build_sphere(bm, head_point, lambda u, v: region_uv(R_HEAD, u, v), segs=36, rings=20)
     if not glasses:
         return
     frame = swatch_uv("frame")
@@ -252,7 +253,7 @@ def make_head(bm, glasses):
         N = 24
         loop = [c + (ax1 * math.cos(2 * math.pi * i / N) + ax2 * math.sin(2 * math.pi * i / N)) * rim_r
                 for i in range(N + 1)]
-        build_tube(bm, loop, [wire] * len(loop), 6, lambda u, v: frame, up_hint=n, cap_start=False, cap_end=False)
+        build_tube(bm, loop, [wire] * len(loop), 5, lambda u, v: frame, up_hint=n, cap_start=False, cap_end=False)
         rims.append((c, ax1, n))
     # bridge: a little arch between the rims
     (cl, axl, _), (cr, axr, _) = rims
@@ -260,7 +261,7 @@ def make_head(bm, glasses):
     b = cr - axr * rim_r * 0.98 * (1 if axr.x > 0 else -1)
     a, b = (a, b) if a.x < b.x else (b, a)
     mid = (a + b) / 2 + Vector((0, -0.006, 0.020))
-    build_tube(bm, bezier(a, a.lerp(mid, 0.7), b.lerp(mid, 0.7), b, 5), [wire] * 5, 6, lambda u, v: frame)
+    build_tube(bm, bezier(a, a.lerp(mid, 0.7), b.lerp(mid, 0.7), b, 5), [wire] * 5, 5, lambda u, v: frame)
     # temples: from each outer rim edge back over the cheek into the head side
     for c, ax, n in rims:
         out = Vector((math.copysign(1, c.x), 0, 0))
@@ -273,11 +274,11 @@ def make_head(bm, glasses):
             d = sph_dir(sgn * lon, 0.10 + 0.02 * (1 - i / 5))
             q = head_point(d)
             pts.append(q + (q - HEAD_C).normalized() * (0.009 if i < 5 else -0.012))
-        build_tube(bm, pts, [wire] * len(pts), 6, lambda u, v: frame)
+        build_tube(bm, pts, [wire] * len(pts), 5, lambda u, v: frame)
 
 
 ES = 16  # ear ring segments
-EAR_T = [0.0, 0.06, 0.14, 0.24, 0.36, 0.48, 0.60, 0.71, 0.80, 0.87, 0.925, 0.965]
+EAR_T = [0.0, 0.07, 0.16, 0.27, 0.39, 0.51, 0.62, 0.72, 0.80, 0.865, 0.915, 0.952, 0.978, 0.994]
 EAR_LEN = 0.60
 EAR_W = 0.128
 
@@ -306,8 +307,8 @@ def make_ear(bm, side):
         tan = (at(min(t + 0.01, 1)) - at(max(t - 0.01, 0))).normalized()
         fwd = (fwd0 - tan * fwd0.dot(tan)).normalized()
         sideax = fwd.cross(tan).normalized() * side  # outward
-        w = EAR_W * math.sqrt(max(0.0, 1 - ((t - 0.44) / 0.565) ** 2))
-        w = max(w, 0.058 * (1 - t))
+        w = EAR_W * math.sqrt(max(0.0, 1 - ((t - 0.44) / 0.56) ** 2))  # reaches 0 at the tip: a round end
+        w = max(w, 0.066 * (1 - t) ** 0.5 * (t < 0.5))
         d = 0.42 * w
         row = []
         for j in range(ES):
@@ -335,12 +336,12 @@ def make_ear(bm, side):
 
 
 def make_body(bm):
-    build_sphere(bm, body_point, lambda u, v: region_uv(R_BODY, u, v), segs=20, rings=12)
+    build_sphere(bm, body_point, lambda u, v: region_uv(R_BODY, u, v), segs=22, rings=13)
     fur = swatch_uv("fur"); white = swatch_uv("white")
     for s in (-1, 1):  # feet: soft ovals toeing out a little
         rot = Matrix.Rotation(s * math.radians(12), 3, "Z")
-        ellipsoid(bm, Vector((s * 0.112, -0.08, 0.052)), (0.088, 0.130, 0.056), white, 12, 8, rot)
-    ellipsoid(bm, Vector((0.0, 0.185, 0.20)), (0.075, 0.065, 0.070), white, 12, 8)  # tail puff
+        ellipsoid(bm, Vector((s * 0.115, -0.085, 0.060)), (0.095, 0.120, 0.066), white, 14, 9, rot)
+    ellipsoid(bm, Vector((0.0, 0.205, 0.20)), (0.080, 0.070, 0.076), white, 14, 10)  # tail puff
     # bow tie under the chin
     bow = swatch_uv("bow"); dark = swatch_uv("bow_dark")
     knot = Vector((0.0, -0.165, 0.585))
@@ -353,30 +354,48 @@ def make_body(bm):
     ellipsoid(bm, knot + Vector((0, -0.012, 0)), (0.030, 0.026, 0.034), dark, 10, 6)
 
 
-SHOULDER = {1: Vector((0.135, -0.01, 0.515)), -1: Vector((-0.135, -0.01, 0.515))}
-ELBOW = {1: Vector((0.232, -0.165, 0.390)), -1: Vector((-0.228, -0.140, 0.445))}
-HAND = {1: Vector((-0.090, -0.285, 0.418)), -1: Vector((0.095, -0.238, 0.478))}
-ARM_R = 0.054
+SHOULDER = {1: Vector((0.160, -0.02, 0.490)), -1: Vector((-0.160, -0.02, 0.490))}
+ELBOW = {1: Vector((0.272, -0.190, 0.390)), -1: Vector((-0.266, -0.165, 0.440))}
+HAND = {1: Vector((-0.010, -0.312, 0.415)), -1: Vector((0.025, -0.278, 0.472))}
+ARM_R = 0.064
+PAW_R = 0.074
+
+
+def capsule(pts, radii, start=True, end=True):
+    """Extend a tube's centre line with quarter-circle rings so its ends are round domes (sausage)."""
+    pts, radii = list(pts), list(radii)
+    for at_end in ((False,) if start else ()) + ((True,) if end else ()):
+        i, j = (-1, -2) if at_end else (0, 1)
+        ax = (pts[i] - pts[j]).normalized()
+        r = radii[i]
+        dome = [(pts[i] + ax * r * math.cos(f), r * math.sin(f)) for f in (math.radians(a) for a in (30, 55, 75))]
+        if at_end:
+            pts += [p for p, _ in dome]; radii += [q for _, q in dome]
+        else:
+            pts = [p for p, _ in reversed(dome)] + pts; radii = [q for _, q in reversed(dome)] + radii
+    return pts, radii
 
 
 def make_upper_arm(bm, side):
+    """Short round sausage from the shoulder to the elbow; its elbow dome hides inside the forearm's."""
     S, E = SHOULDER[side], ELBOW[side]
-    pts = [S.lerp(E, t / 4) for t in range(5)]
-    build_tube(bm, pts, [ARM_R * (1.02 - 0.05 * t / 4) for t in range(5)], 12, lambda u, v: swatch_uv("fur"),
-               up_hint=Vector((0, -1, 0)))
+    pts, radii = capsule([S.lerp(E, t / 2) for t in range(3)], [ARM_R, ARM_R * 0.98, ARM_R * 0.95])
+    build_tube(bm, pts, radii, 12, lambda u, v: swatch_uv("fur"), up_hint=Vector((0, -1, 0)))
 
 
 def make_forearm(bm, side):
+    """Plump sausage forearm with a round dome at the elbow (a clean joint at any bend) and a round
+    bean paw; returns the paw tip (HandL / HandR)."""
     E, H = ELBOW[side], HAND[side]
-    ellipsoid(bm, E, (ARM_R * 0.98,) * 3, swatch_uv("fur"), 12, 6)
-    n = 7
-    pts = [E.lerp(H, i / (n - 1)) for i in range(n)]
-    radii = []
-    for i in range(n):
-        t = i / (n - 1)
-        radii.append(ARM_R * (0.94 + 0.30 * math.exp(-((t - 0.86) / 0.14) ** 2)) * (0.85 if t > 0.95 else 1.0))
-    build_tube(bm, pts, radii, 12, lambda u, v: region_uv(R_ARM, u, v), up_hint=Vector((0, 0, 1)), squash=1.1)
-    return H + (H - E).normalized() * radii[-1] * 0.35
+    n = 4
+    line = [E.lerp(H, i / (n - 1)) for i in range(n)]
+    radii = [ARM_R * (1.0 + 0.05 * math.sin(math.pi * i / (n - 1))) for i in range(n)]
+    pts, radii = capsule(line, radii, end=False)
+    build_tube(bm, pts, radii, 14, lambda u, v: region_uv(R_ARM, u, v), up_hint=Vector((0, 0, 1)))
+    ax = (H - E).normalized()
+    rot = Vector((1, 0, 0)).rotation_difference(ax).to_matrix()
+    ellipsoid(bm, H, (PAW_R * 1.10, PAW_R, PAW_R * 0.95), swatch_uv("white"), 14, 8, rot)
+    return H + ax * PAW_R * 1.0
 
 
 # --------------------------------------------------------------------------------------------
@@ -462,6 +481,15 @@ def pose_point(arm, forearm, hand, target):
     bpy.context.view_layer.update()
     H = hand.matrix_world.translation.copy()
     _rotate_about_origin(arm, (H - S).rotation_difference(Vector(target) - S))
+    bpy.context.view_layer.update()
+
+
+def pose_reach(forearm, hand, target):
+    """Swing only the forearm about the elbow so the paw heads for `target` (e.g. a paw on the tummy)."""
+    bpy.context.view_layer.update()
+    E = forearm.matrix_world.translation.copy()
+    H = hand.matrix_world.translation.copy()
+    _rotate_about_origin(forearm, (H - E).rotation_difference(Vector(target) - E))
     bpy.context.view_layer.update()
 
 

@@ -25,6 +25,7 @@ Conventions (see also the module docstring of the Godot side when it loads this 
           Tail2             (mesh, pivot at the tail joint)
             TailTip         (empty)
 - Bag front: one toast slice (2026-10-23 user decision).
+- Head: nearly round with plump lower cheeks and round-tipped ears (2026-10-23 user feedback: rounder is cuter).
 - Budget (SM-P200 low): 8 meshes, 1 material, 1 texture (1024 px), < 6000 triangles.
 """
 
@@ -99,8 +100,8 @@ def swatch_uv(name):
 
 HEAD_R = 0.275
 FACE_R = 0.235  # face features are authored for this radius and scale with the head
-HEAD_SX, HEAD_SY, HEAD_SZ = 1.16, 0.98, 0.90
-HEAD_C = Vector((0.0, -0.01, 0.995))
+HEAD_SX, HEAD_SY, HEAD_SZ = 1.09, 0.98, 0.96
+HEAD_C = Vector((0.0, -0.01, 0.980))
 NECK = Vector((0.0, 0.0, 0.78))
 BODY_C = Vector((0.0, 0.03, 0.62))
 BODY_R = Vector((0.19, 0.15, 0.20))
@@ -118,11 +119,12 @@ def sph_dir(lon, lat):
 def head_point(d):
     x, y, z = d
     r = HEAD_R
-    # chibi: wide, a bit squat, slightly fuller lower cheeks, flatter face plane.
-    cheek = 1.0 + 0.07 * max(0.0, -z + 0.15) * (1.0 - abs(y))
+    # chibi: nearly round (2026-10-23 user feedback: a round face is cuter), plump lower cheeks
+    # (widest a little below the eyes, so the face does not narrow toward the chin), softly flat face.
+    cheek = 1.0 + 0.11 * math.exp(-((z + 0.25) / 0.45) ** 2) * (1.0 - 0.5 * abs(y))
     sx = HEAD_SX * cheek
-    sy = HEAD_SY * (0.90 if y < 0 else 1.0)
-    sz = HEAD_SZ * (0.92 if z < 0 else 1.0)
+    sy = HEAD_SY * (0.93 if y < 0 else 1.0) * (1.0 + 0.04 * math.exp(-((z + 0.25) / 0.45) ** 2))
+    sz = HEAD_SZ * (0.97 if z < 0 else 1.0)
     return HEAD_C + Vector((x * r * sx, y * r * sy, z * r * sz))
 
 
@@ -511,7 +513,7 @@ ES = 14  # ear ring segments
 
 
 def make_head(bm):
-    build_sphere(bm, head_point, lambda u, v: region_uv(R_HEAD, u, v), segs=32, rings=18)
+    build_sphere(bm, head_point, lambda u, v: region_uv(R_HEAD, u, v), segs=32, rings=18)  # (vertex budget: the app's cat draws <= 3500 vertices)
     pink = swatch_uv("pink"); fur = swatch_uv("fur")
     for side in (-1, 1):
         base_d = sph_dir(side * 0.60, 0.88)
@@ -519,8 +521,9 @@ def make_head(bm):
         up = Vector((side * 0.42, 0.10, 1.0)).normalized()
         fwd = Vector((0, -1, 0)); fwd = (fwd - up * fwd.dot(up)).normalized()
         side_ax = up.cross(fwd)
-        prof = [(0.0, 1.0), (0.2, 0.97), (0.40, 0.90), (0.55, 0.80), (0.70, 0.66), (0.80, 0.53),
-                (0.88, 0.40), (0.94, 0.27), (0.98, 0.14)]
+        # rounded tip: the last rings close in like a quarter circle instead of a cone point
+        prof = [(0.0, 1.0), (0.2, 0.97), (0.40, 0.90), (0.55, 0.80), (0.68, 0.68), (0.78, 0.56),
+                (0.86, 0.45), (0.92, 0.35), (0.96, 0.25), (0.985, 0.15)]
 
         def ear(scale_w, scale_d, height, push, uv):
             rings = []
@@ -532,7 +535,7 @@ def make_head(bm):
                         + fwd * (math.sin(a) * 0.050 * s * scale_d + push)
                     row.append(bm.verts.new(p))
                 rings.append(row)
-            tip = bm.verts.new(base + up * height * 1.02 + fwd * push)
+            tip = bm.verts.new(base + up * height * 0.995 + fwd * push)
             for i in range(len(rings) - 1):
                 for j in range(ES):
                     k = (j + 1) % ES

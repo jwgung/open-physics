@@ -2,13 +2,13 @@
 
 Run (headless):
     blender -b --factory-startup -P apps/lab3d/art_src/characters/dugi.py -- \
-        [--out apps/lab3d/assets/characters/dugi.glb] [--monocle on|off] [--mouth open|calm]
+        [--out apps/lab3d/assets/characters/dugi.glb] [--monocle on|off] [--mouth open|calm] [--pointer on|off]
 
 A creamy white chibi rabbit from the same storybook as the bread cat (2026-10-23 user reference
 1792701655210.png): a round head a little wider than the small bean body, long wide ears (pink
 inside, round tips, gently spread), small dark bean eyes with one highlight dot, pink blush and
-nose, a small open smile with a tongue and two front teeth, a red scarf with a knot, arms folded
-across the chest; a monocle on the eye at the viewer's right (2026-10-23 user decision, like the
+nose, a small open smile with a tongue and two front teeth, a red scarf with a knot, short stubby
+arms with the paws on the tummy; a monocle on the eye at the viewer's right (2026-10-23 user decision, like the
 reference dog's) for the know-it-all scientist: the rim drawn on the face, a thin gold chain mesh down
 to the scarf (optional). Same style and conventions as bread_cat.py,
 whose generic helpers (painting SDFs, bmesh sphere / tube builders) this file imports; geometry, UVs
@@ -24,13 +24,12 @@ Conventions:
       Body                  (mesh: body, feet, tail puff, scarf; pivot on the ground -> lean / bob)
         Head                (mesh incl. the monocle chain, pivot at the neck -> nod / tilt)
           EarL / EarR       (mesh, pivot at the ear root -> perk up / flop / wiggle)
-        ArmL / ArmR         (upper arm mesh, pivot at the shoulder; L = Dugi's left = +X)
-          ForearmL / R      (mesh incl. the paw, pivot at the elbow)
-            HandL / HandR   (empty at the paw tip: pointing tip / grip point)
-- Rest pose = arms folded (ArmL's forearm in front, lower). To point, straighten the forearm about
-  the elbow (rotate it so it continues the upper arm) and swing the arm about the shoulder toward
-  the target: `pose_point()` below does exactly that on the Blender objects; `pose_reach()` swings just
-  a forearm (the free paw resting on the tummy while the other arm points).
+        ArmL / ArmR         (one-segment arm mesh incl. the paw, pivot at the shoulder; L = Dugi's left = +X)
+          HandL / HandR     (empty at the paw tip: grip point)
+          Pointer           (ArmR only, optional: stick mesh, pivot in the paw -> hide when not pointing)
+            PointerTip      (empty at the stick's red tip)
+- Rest pose = paws hanging by the tummy. To point, swing ArmR about the shoulder so PointerTip
+  aims at the target: `pose_point()` below does exactly that on the Blender objects.
 - Budget (SM-P200 low): 7 meshes, 1 material, 1 texture (1024 px), < 6000 triangles.
 """
 
@@ -203,7 +202,7 @@ def paint_body():
 
 
 def paint_arm():
-    """Forearm tube: u = around (0 = top), v = elbow (0) -> paw tip (1)."""
+    """Arm tube: u = around (0 = top), v = shoulder (0) -> paw tip (1)."""
     u, v = region_grid(R_ARM)
     img = np.zeros(u.shape + (3,)); img[...] = hexc(P["fur"])
     return img
@@ -360,11 +359,13 @@ def make_body(bm):
     make_scarf(bm)
 
 
-# Short stubby chibi arms: shoulder -> paw tip, straightened, <= 0.6 x the head diameter. Folded
-# like the reference: ArmL's forearm in front and lower, the paws tucked toward the other elbow.
+# Short stubby chibi arms, one segment each (user: "관절을 하나 빼란거야"): shoulder -> paw, no
+# elbow, about half the earlier reach. At rest each paw hangs on its own side of the tummy.
 SHOULDER = {1: Vector((0.170, -0.090, 0.425)), -1: Vector((-0.170, -0.090, 0.425))}
-ELBOW = {1: Vector((0.228, -0.205, 0.350)), -1: Vector((-0.224, -0.185, 0.395))}
-HAND = {1: Vector((0.052, -0.282, 0.395)), -1: Vector((-0.020, -0.262, 0.372))}  # an X, like the reference
+HAND = {1: Vector((0.205, -0.180, 0.330)), -1: Vector((-0.205, -0.180, 0.330))}
+# Pointer stick held in the right paw (user: "가리키고 싶으면 손가락 봉같은걸 하나 주자"), lying along
+# the arm so swinging the arm at a target aims the stick's red tip at it.
+POINTER_LEN, POINTER_R, POINTER_TIP_R = 0.36, 0.009, 0.020
 ARM_R = 0.054
 PAW_R = 0.058
 
@@ -384,31 +385,38 @@ def capsule(pts, radii, start=True, end=True):
     return pts, radii
 
 
+def arm_axis(side):
+    return (HAND[side] - SHOULDER[side]).normalized()
+
+
 def arm_reach(side):
-    """Shoulder -> elbow -> paw tip along the arm (its length when straightened)."""
-    tip = HAND[side] + (HAND[side] - ELBOW[side]).normalized() * PAW_R * 1.10
-    return (ELBOW[side] - SHOULDER[side]).length + (tip - ELBOW[side]).length
+    """Shoulder -> paw tip along the (straight, single-segment) arm."""
+    return (HAND[side] - SHOULDER[side]).length + PAW_R * 1.10
 
 
-def make_upper_arm(bm, side):
-    """Short round sausage from the shoulder to the elbow; its elbow dome hides inside the forearm's."""
-    S, E = SHOULDER[side], ELBOW[side]
-    pts, radii = capsule([S.lerp(E, t / 2) for t in range(3)], [ARM_R, ARM_R * 0.98, ARM_R * 0.95])
-    build_tube(bm, pts, radii, 12, lambda u, v: swatch_uv("fur"), up_hint=Vector((0, -1, 0)))
-
-
-def make_forearm(bm, side):
-    """Plump sausage forearm with a round dome at the elbow and a round bean paw; returns the paw tip."""
-    E, H = ELBOW[side], HAND[side]
+def make_arm(bm, side):
+    """Plump sausage from a round shoulder dome to a round bean paw; returns the paw tip."""
+    S, H = SHOULDER[side], HAND[side]
     n = 4
-    line = [E.lerp(H, i / (n - 1)) for i in range(n)]
+    line = [S.lerp(H, i / (n - 1)) for i in range(n)]
     radii = [ARM_R * (1.0 + 0.05 * math.sin(math.pi * i / (n - 1))) for i in range(n)]
     pts, radii = capsule(line, radii, end=False)
     build_tube(bm, pts, radii, 14, lambda u, v: region_uv(R_ARM, u, v), up_hint=Vector((0, 0, 1)))
-    ax = (H - E).normalized()
+    ax = arm_axis(side)
     rot = Vector((1, 0, 0)).rotation_difference(ax).to_matrix()
     ellipsoid(bm, H, (PAW_R * 1.10, PAW_R, PAW_R * 0.95), swatch_uv("white"), 14, 8, rot)
     return H + ax * PAW_R * 1.10  # the paw's front surface
+
+
+def make_pointer(bm, side):
+    """Thin brown stick through the paw along the arm, a red ball at its tip; returns the tip."""
+    ax = arm_axis(side)
+    start = HAND[side] - ax * PAW_R * 0.6
+    end = start + ax * POINTER_LEN
+    build_tube(bm, [start.lerp(end, t / 3) for t in range(4)], [POINTER_R] * 4, 6,
+               lambda u, v: swatch_uv("frame"), up_hint=Vector((0, 0, 1)))
+    ellipsoid(bm, end, (POINTER_TIP_R,) * 3, swatch_uv("scarf"), 8, 6)
+    return end + ax * POINTER_TIP_R
 
 
 # --------------------------------------------------------------------------------------------
@@ -456,7 +464,7 @@ def empty(name, loc_world, parent, parent_pivot, size=0.03):
     return ob
 
 
-def build(monocle=True, mouth="open"):
+def build(monocle=True, mouth="open", pointer=True):
     img = build_atlas(mouth, monocle)
     mat = make_material(img)
     origin = Vector((0, 0, 0))
@@ -469,11 +477,13 @@ def build(monocle=True, mouth="open"):
         bm = new_bm(); base = make_ear(bm, side)
         mesh_object("Ear" + nm, bm, base, head, NECK, mat)
     for side, nm in ((1, "L"), (-1, "R")):
-        bm = new_bm(); make_upper_arm(bm, side)
+        bm = new_bm(); tip = make_arm(bm, side)
         arm = mesh_object("Arm" + nm, bm, SHOULDER[side], body, origin, mat)
-        bm = new_bm(); tip = make_forearm(bm, side)
-        fore = mesh_object("Forearm" + nm, bm, ELBOW[side], arm, SHOULDER[side], mat)
-        empty("Hand" + nm, tip, fore, ELBOW[side])
+        empty("Hand" + nm, tip, arm, SHOULDER[side])
+        if side == -1 and pointer:
+            bm = new_bm(); ptip = make_pointer(bm, side)
+            stick = mesh_object("Pointer", bm, HAND[side], arm, SHOULDER[side], mat)
+            empty("PointerTip", ptip, stick, HAND[side])
     return root, img
 
 
@@ -484,25 +494,12 @@ def _rotate_about_origin(ob, q):
     ob.matrix_world = Matrix.Translation(loc) @ q.to_matrix().to_4x4() @ Matrix.Translation(-loc) @ mw
 
 
-def pose_point(arm, forearm, hand, target):
-    """Straighten the forearm, then swing the arm about the shoulder so the paw points at `target`."""
+def pose_point(arm, tip, target):
+    """Swing the arm about the shoulder so `tip` (the paw, or the PointerTip) points at `target`."""
     bpy.context.view_layer.update()
     S = arm.matrix_world.translation.copy()
-    E = forearm.matrix_world.translation.copy()
-    H = hand.matrix_world.translation.copy()
-    _rotate_about_origin(forearm, (H - E).rotation_difference(E - S))
-    bpy.context.view_layer.update()
-    H = hand.matrix_world.translation.copy()
-    _rotate_about_origin(arm, (H - S).rotation_difference(Vector(target) - S))
-    bpy.context.view_layer.update()
-
-
-def pose_reach(forearm, hand, target):
-    """Swing only the forearm about the elbow so the paw heads for `target` (e.g. a paw on the tummy)."""
-    bpy.context.view_layer.update()
-    E = forearm.matrix_world.translation.copy()
-    H = hand.matrix_world.translation.copy()
-    _rotate_about_origin(forearm, (H - E).rotation_difference(Vector(target) - E))
+    T = tip.matrix_world.translation.copy()
+    _rotate_about_origin(arm, (T - S).rotation_difference(Vector(target) - S))
     bpy.context.view_layer.update()
 
 
@@ -528,7 +525,7 @@ def stats():
 
 def parse_args():
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
-    opts = {"out": None, "monocle": "on", "mouth": "open"}
+    opts = {"out": None, "monocle": "on", "mouth": "open", "pointer": "on"}
     i = 0
     while i < len(argv):
         k = argv[i].lstrip("-")
@@ -542,7 +539,7 @@ def parse_args():
 if __name__ == "__main__":
     opts = parse_args()
     bc.clear_scene()
-    build(opts["monocle"] != "off", opts["mouth"])
+    build(opts["monocle"] != "off", opts["mouth"], opts["pointer"] != "off")
     print("DUGI_STATS", stats())
     if opts["out"]:
         bc.export_glb(opts["out"])

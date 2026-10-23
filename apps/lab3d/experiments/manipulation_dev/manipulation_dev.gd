@@ -10,8 +10,8 @@ const AREA := Vector2(4.0, 3.0)   # half size of the floor area the boxes can be
 ## id -> [size (m), colour, top colour, start position (x, z)]
 const BOXES := {
 	"red": [0.5, ArtPalette.RED, ArtPalette.RED_TOP, Vector2(-2.0, 0.5)],
-	"orange": [0.4, ArtPalette.ORANGE, ArtPalette.ORANGE_TOP, Vector2(0.0, 1.5)],
-	"pink": [0.6, ArtPalette.PINK, ArtPalette.PINK_TOP, Vector2(-0.75, -1.5)],
+	"yellow": [0.4, ArtPalette.YELLOW, ArtPalette.YELLOW_TOP, Vector2(0.0, 1.5)],
+	"purple": [0.6, ArtPalette.VIOLET, ArtPalette.VIOLET_TOP, Vector2(-0.75, -1.5)],
 }
 const BLOCK_SIZE := Vector3(1.0, 0.6, 1.0)
 const BLOCK_AT := Vector3(1.75, 0.3, -0.75)

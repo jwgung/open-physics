@@ -508,7 +508,7 @@ func check_dev_scene() -> void:
 	var lab: Experiment = screen.experiment
 	var m: Manipulator = screen.manipulator
 	var red: RigidBody3D = lab.bodies.red
-	var orange: RigidBody3D = lab.bodies.orange
+	var yellow: RigidBody3D = lab.bodies.yellow
 	# Floor drag with the 0.25 m grid.
 	var goal := Vector3(-1.1, 0.25, 0.4)   # -> (-1.0, 0.5) on the grid
 	_swipe(screen, _at(screen, red.global_position), _at(screen, goal))
@@ -533,12 +533,12 @@ func check_dev_scene() -> void:
 	_touch(screen, 1, Vector2(100, 100), false)
 	_touch(screen, 0, knob_at + Vector2(0, -120), false)
 	# Overlap: another box's place is blocked; the fixed block too (on the floor), but above it is free.
-	var orange_at := orange.global_position
+	var yellow_at := yellow.global_position
 	var grounded_red := Vector3(-2.0, 0.25, 0.5)
 	red.global_transform = Transform3D(Basis(), grounded_red)   # back on the floor (height 0)
-	_swipe(screen, _at(screen, red.global_position), _at(screen, Vector3(orange_at.x, 0.25, orange_at.z)))
+	_swipe(screen, _at(screen, red.global_position), _at(screen, Vector3(yellow_at.x, 0.25, yellow_at.z)))
 	var blocked_by_box: bool = not m.valid
-	_touch(screen, 0, _at(screen, Vector3(orange_at.x, 0.25, orange_at.z)), false)
+	_touch(screen, 0, _at(screen, Vector3(yellow_at.x, 0.25, yellow_at.z)), false)
 	expect.call(blocked_by_box and red.global_position.is_equal_approx(grounded_red), "placing onto another box is blocked (box goes back)", str(red.global_position))
 	var block_top := Vector3(1.75, 0.25, -0.75)
 	_swipe(screen, _at(screen, red.global_position), _at(screen, block_top))
@@ -741,8 +741,8 @@ func check_review2() -> void:
 	wall.add_child(shape)
 	lab.add_child(wall)
 	var eye: Vector3 = screen.view.rig.global_position
-	var orange: RigidBody3D = lab.bodies.orange
-	wall.global_position = orange.global_position.lerp(eye, 0.5)
+	var yellow: RigidBody3D = lab.bodies.yellow
+	wall.global_position = yellow.global_position.lerp(eye, 0.5)
 	await tree.physics_frame
 	await tree.physics_frame
 	var wall_at := _at(screen, wall.global_position)
@@ -753,20 +753,20 @@ func check_review2() -> void:
 	await tree.physics_frame
 	await tree.physics_frame
 	# Without the wall, a finger a little beside the box (an empty floor hit) still picks it.
-	var beside := _at(screen, orange.global_position) + Vector2(20.0, 10.0)
+	var beside := _at(screen, yellow.global_position) + Vector2(20.0, 10.0)
 	_touch(screen, 0, beside, true)
 	var picked_near: String = m.active_id
 	_touch(screen, 0, beside, false)
-	expect.call(picked_behind == "" and picked_near == "orange", "a wall in front of a box is not picked through; a finger beside it on the floor still picks it", "behind '%s', near '%s'" % [picked_behind, picked_near])
+	expect.call(picked_behind == "" and picked_near == "yellow", "a wall in front of a box is not picked through; a finger beside it on the floor still picks it", "behind '%s', near '%s'" % [picked_behind, picked_near])
 	# A low, flat view: a finger just below the box hits the floor far in front of it, which is not
 	# an obstacle between the camera and the box.
 	screen.view.rig.set_mode("front", true)
 	await tree.process_frame
-	var below := _at(screen, orange.global_position) + Vector2(0.0, 30.0)
+	var below := _at(screen, yellow.global_position) + Vector2(0.0, 30.0)
 	_touch(screen, 0, below, true)
 	var picked_low: String = m.active_id
 	_touch(screen, 0, below, false)
-	expect.call(picked_low == "orange", "in a low view a finger just below the box (on the floor in front) still picks it", "'%s'" % picked_low)
+	expect.call(picked_low == "yellow", "in a low view a finger just below the box (on the floor in front) still picks it", "'%s'" % picked_low)
 	# The auto-drag demo reports a put-down only when the box was put down: not when the place is refused.
 	var placed := [0]
 	m.demo_placed.connect(func() -> void: placed[0] += 1)
@@ -775,7 +775,7 @@ func check_review2() -> void:
 	for i in 200:
 		m._process(1.0 / 60.0)
 	var accepted: int = placed[0]
-	var blocker: RigidBody3D = lab.bodies.pink   # pink goes to the demo's far stop: the place is taken
+	var blocker: RigidBody3D = lab.bodies.purple   # purple goes to the demo's far stop: the place is taken
 	var surface: ManipSurface = lab.manipulation_surface("floor")
 	var goal := surface.nearest_inside(surface.region_max)
 	blocker.global_transform = surface.pose(goal, 0.3)
@@ -861,7 +861,7 @@ func check_review3(definition: Dictionary) -> void:
 	lab = screen.experiment
 	m = screen.manipulator
 	var red: RigidBody3D = lab.bodies.red
-	var orange: RigidBody3D = lab.bodies.orange
+	var yellow: RigidBody3D = lab.bodies.yellow
 	# A box lying on the block (0.6 m up) is picked at that height (not rounded to the 0.25 m step), is not
 	# marked blocked and stays there when let go.
 	var on_block := Vector3(1.75, 0.85, -0.75)
@@ -884,7 +884,7 @@ func check_review3(definition: Dictionary) -> void:
 	expect.call(slack_h == 0.0, "a box resting on the floor with mm of contact slack is picked at height 0", "%.4f" % slack_h)
 	# The first target being invalid does not shake the box; turning from valid to invalid does.
 	var juice: ArtJuice = lab.juices.red
-	red.global_transform = Transform3D(Basis(), orange.global_position + Vector3(0.1, 0.0, 0.0))
+	red.global_transform = Transform3D(Basis(), yellow.global_position + Vector3(0.1, 0.0, 0.0))
 	await tree.physics_frame
 	juice._wobble_v = 0.0
 	_touch(screen, 0, _at(screen, red.global_position), true)
@@ -894,9 +894,9 @@ func check_review3(definition: Dictionary) -> void:
 	var free_at := Vector3(-3.0, 0.25, -1.5)
 	red.global_transform = Transform3D(Basis(), free_at)
 	await tree.physics_frame
-	_swipe(screen, _at(screen, free_at), _at(screen, orange.global_position), 4)
+	_swipe(screen, _at(screen, free_at), _at(screen, yellow.global_position), 4)
 	var later_shake: float = juice._wobble_v
-	_touch(screen, 0, _at(screen, orange.global_position), false)
+	_touch(screen, 0, _at(screen, yellow.global_position), false)
 	expect.call(not first_valid and first_shake == 0.0 and later_shake > 0.0,
 		"an invalid first target does not shake the box; moving onto a blocked place does", "valid %s, first %.2f, later %.2f" % [first_valid, first_shake, later_shake])
 	# The overlap query shrinks a capsule like the other shapes.
@@ -921,7 +921,7 @@ func check_review3(definition: Dictionary) -> void:
 	var cleared: bool = m.selected_id == ""
 	screen.experiment.run_action("reset")
 	await tree.physics_frame
-	_touch(screen, 0, _at(screen, orange.global_position), true)
+	_touch(screen, 0, _at(screen, yellow.global_position), true)
 	var holding: bool = m.mode == "drag"
 	screen._run_measured_action("reset")
 	expect.call(cleared and holding and m.mode == "", "a measurement action clears the selection when nothing is held, and cancels a held object", "cleared %s, holding %s, mode '%s'" % [cleared, holding, m.mode])

@@ -1,5 +1,5 @@
 ## Guided free-fall lab (Phase 1 Task 4a; web preset "free-fall"): three balls of different mass
-## (pink 0.5 kg, orange 1 kg, red = the "mass" control, 3 kg by default, like the web's light /
+## (yellow 0.5 kg, violet "보라" 1 kg, red = the "mass" control, 3 kg by default, like the web's light /
 ## reference / heavy balls) are dropped together in the chosen field and land at the same time.
 ## Conditions: gravity (the web's buttons), the drop height of all three (slider) and the red ball's
 ## mass. Each ball can be dragged sideways along the floor line under it and raised with its height
@@ -11,11 +11,11 @@ extends UniformFieldLab
 
 ## Left to right. mass: kg (the red one follows the "mass" control).
 const BALLS := {
-	"pink": {"x": -1.5, "mass": 0.5, "color": ArtPalette.PINK, "name": "분홍"},
-	"orange": {"x": 0.0, "mass": 1.0, "color": ArtPalette.ORANGE, "name": "주황"},
+	"yellow": {"x": -1.5, "mass": 0.5, "color": ArtPalette.YELLOW, "name": "노랑"},
+	"purple": {"x": 0.0, "mass": 1.0, "color": ArtPalette.VIOLET, "name": "보라"},
 	"red": {"x": 1.5, "mass": 3.0, "color": ArtPalette.RED, "name": "빨강"},
 }
-const ORDER := ["pink", "orange", "red"]
+const ORDER := ["yellow", "purple", "red"]
 const LINE_X := 3.0              # the balls move along the floor line x = -3..3 m (z = 0)
 const BOUNCE := 0.5               # the web's wood balls (restitution 0.5)
 
@@ -186,8 +186,8 @@ func observations() -> Dictionary:
 		"time": shown_time(),
 		"state": state_text,
 		"height_red": h_red,
-		"height_orange": formula_height("orange", ball_time("orange") if released else 0.0),
-		"height_pink": formula_height("pink", ball_time("pink") if released else 0.0),
+		"height_purple": formula_height("purple", ball_time("purple") if released else 0.0),
+		"height_yellow": formula_height("yellow", ball_time("yellow") if released else 0.0),
 		"fall_time": fall if is_finite(fall) else "닿지 않아요",
 		"speed": speed,
 		"momentum": PhysicsLaws.momentum(m, speed),
@@ -197,7 +197,7 @@ func observations() -> Dictionary:
 	}
 
 
-## Engine landing times of the three balls (the "시뮬레이션" readout): "분홍 1.02 · 주황 … s"; a
+## Engine landing times of the three balls (the "시뮬레이션" readout): "노랑 1.02 · 보라 … s"; a
 ## ball shows "—" until it has a measured landing step (measured_landing_step).
 func measured_landings() -> String:
 	if not released:

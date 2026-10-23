@@ -37,9 +37,9 @@
     {
       "id": "mass", "type": "choice", "label": "빨간 공 무게", "default": "heavy",
       "options": [
-        { "id": "light", "label": "가벼움", "kg": 0.5, "note": "빨간 공 0.5 kg · 주황 공 1 kg · 분홍 공 0.5 kg" },
-        { "id": "normal", "label": "보통", "kg": 1.0, "note": "빨간 공 1 kg · 주황 공 1 kg · 분홍 공 0.5 kg" },
-        { "id": "heavy", "label": "무거움", "kg": 3.0, "note": "빨간 공 3 kg · 주황 공 1 kg · 분홍 공 0.5 kg" }
+        { "id": "light", "label": "가벼움", "kg": 0.5, "note": "빨간 공 0.5 kg · 보라 공 1 kg · 노란 공 0.5 kg" },
+        { "id": "normal", "label": "보통", "kg": 1.0, "note": "빨간 공 1 kg · 보라 공 1 kg · 노란 공 0.5 kg" },
+        { "id": "heavy", "label": "무거움", "kg": 3.0, "note": "빨간 공 3 kg · 보라 공 1 kg · 노란 공 0.5 kg" }
       ]
     }
   ],
@@ -54,8 +54,8 @@
     { "id": "state", "label": "공 상태" },
     { "id": "fall_time", "label": "빨간 공이 바닥까지 √(2h₀/g)", "unit": "s", "digits": 2 },
     { "id": "height_red", "label": "빨간 공 높이 h", "unit": "m", "digits": 2 },
-    { "id": "height_orange", "label": "주황 공 높이", "unit": "m", "digits": 2 },
-    { "id": "height_pink", "label": "분홍 공 높이", "unit": "m", "digits": 2 },
+    { "id": "height_purple", "label": "보라 공 높이", "unit": "m", "digits": 2 },
+    { "id": "height_yellow", "label": "노란 공 높이", "unit": "m", "digits": 2 },
     { "id": "speed", "label": "빨간 공 속력 v = gt", "unit": "m/s", "digits": 2 },
     { "id": "momentum", "label": "빨간 공 운동량 p = mv", "unit": "kg·m/s", "digits": 2 },
     { "id": "kinetic", "label": "빨간 공 운동 에너지 ½mv²", "unit": "J", "digits": 1 },
@@ -67,8 +67,8 @@
     "x": { "label": "시간 t", "unit": "s", "max": 3.0 },
     "y": { "label": "높이 h", "unit": "m", "min_max": 1.0 },
     "series": [
-      { "id": "pink", "label": "분홍 공", "color": "#ff4fa3", "style": "line" },
-      { "id": "orange", "label": "주황 공", "color": "#ff7a1a", "style": "line" },
+      { "id": "yellow", "label": "노란 공", "color": "#ffc61a", "style": "line" },
+      { "id": "purple", "label": "보라 공", "color": "#4b2a9a", "style": "line" },
       { "id": "red", "label": "빨간 공", "color": "#ff3b3b", "style": "line" },
       { "id": "measured", "label": "시뮬레이션", "color": "#1b2a4a", "style": "points" }
     ]
@@ -76,8 +76,8 @@
   "manipulation": {
     "objects": [
       { "id": "red", "surface": "line", "snap": 0.5, "height": { "max": 8.0, "step": 0.5 } },
-      { "id": "orange", "surface": "line", "snap": 0.5, "height": { "max": 8.0, "step": 0.5 } },
-      { "id": "pink", "surface": "line", "snap": 0.5, "height": { "max": 8.0, "step": 0.5 } }
+      { "id": "purple", "surface": "line", "snap": 0.5, "height": { "max": 8.0, "step": 0.5 } },
+      { "id": "yellow", "surface": "line", "snap": 0.5, "height": { "max": 8.0, "step": 0.5 } }
     ],
     "demo_action": "release"
   }

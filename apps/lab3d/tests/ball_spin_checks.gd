@@ -12,6 +12,9 @@
 ## 4. what is seen turning is the body: the mesh is its child with no turn of its own.
 ## 5. free fall: the three balls never turn and do not drift sideways through their bounces.
 ## 6. collision lab (model driven): each ball's mesh turns by its travel over its radius (v = omega r).
+## 7. colours (2026-10-23 user request): the free-fall balls and the development scene's boxes are
+##    red / yellow / violet, and every label (ball names, observations, graph series and colours,
+##    option notes) names the colour the mesh has.
 extends RefCounted
 
 const STEP_HZ := 60
@@ -63,6 +66,7 @@ func run() -> void:
 	await check_mesh_is_body()
 	await check_free_fall_no_spin()
 	await check_collision_mesh_rolls()
+	await check_ball_colours()
 
 
 # --- helpers ----------------------------------------------------------------------------------
@@ -333,3 +337,78 @@ func check_collision_mesh_rolls() -> void:
 	expect.call(worst <= 1e-5 and moved > 1.0,
 		"ball spin: the collision lab's balls (model driven) turn by travel / radius: rolling, v = omega r", "max %s rad over %.2f m" % [String.num_scientific(worst), moved])
 	await _free(lab)
+
+
+# --- 7. colours ---------------------------------------------------------------------------------
+
+const COLOUR_WORDS := {"red": ["빨강", "빨간"], "yellow": ["노랑", "노란"], "purple": ["보라", "보라"]}
+const COLOURS := {"red": ArtPalette.RED, "yellow": ArtPalette.YELLOW, "purple": ArtPalette.VIOLET}
+
+
+## Brightest vertex colour of a mesh in sRGB (the builder stores linear colours; the baked shading only
+## darkens the palette colour).
+static func _mesh_colour(mesh: Mesh) -> Color:
+	var best := Color.BLACK
+	for surface in mesh.get_surface_count():
+		for c: Color in mesh.surface_get_arrays(surface)[Mesh.ARRAY_COLOR]:
+			if c.get_luminance() > best.get_luminance():
+				best = c
+	return best.linear_to_srgb()
+
+
+## Same colour to the 8-bit linear vertex colours (dark channels lose up to ~5/255 in sRGB).
+static func _near(a: Color, b: Color) -> bool:
+	return maxf(maxf(absf(a.r - b.r), absf(a.g - b.g)), absf(a.b - b.b)) <= 6.0 / 255.0
+
+
+func check_ball_colours() -> void:
+	var lab: Experiment = await _lab("free-fall")
+	var definition: Dictionary = lab.definition
+	var problems := []
+	var series := {}
+	for entry in definition.graph.series:
+		series[entry.id] = entry
+	var labels := {}
+	for entry in definition.observations:
+		labels[entry.id] = entry.label
+	for id in lab.ORDER:
+		var words: Array = COLOUR_WORDS[id]
+		var colour: Color = COLOURS[id]
+		if lab.BALLS[id].color != colour or lab.BALLS[id].name != words[0]:
+			problems.append("%s: BALLS %s %s" % [id, lab.BALLS[id].name, lab.BALLS[id].color.to_html(false)])
+		var mesh_colour := _mesh_colour((lab.balls[id].get_node("Visual") as MeshInstance3D).mesh)
+		if not _near(mesh_colour, colour):
+			problems.append("%s: mesh %s" % [id, mesh_colour.to_html(false)])
+		if Color(series[id].color) != Color(colour.to_html(false)) or series[id].label != "%s 공" % words[1]:
+			problems.append("%s: graph %s %s" % [id, series[id].label, series[id].color])
+		if not str(labels["height_" + id]).begins_with("%s 공" % words[1]):
+			problems.append("%s: observation %s" % [id, labels["height_" + id]])
+	for option in definition.controls[2].options:
+		for id in lab.ORDER:
+			if not str(option.note).contains("%s 공" % COLOUR_WORDS[id][1]):
+				problems.append("note %s lacks %s" % [option.note, id])
+	var text: String = lab.measured_landings()
+	lab.release()
+	for i in 2 * STEP_HZ:
+		await tree.physics_frame
+	text = lab.measured_landings()
+	for id in lab.ORDER:
+		if not text.contains(COLOUR_WORDS[id][0]):
+			problems.append("landings '%s' lacks %s" % [text, COLOUR_WORDS[id][0]])
+	for old in ["분홍", "주황", "ff4fa3", "ff7a1a"]:
+		if JSON.stringify(definition).contains(old):
+			problems.append("free-fall definition still has %s" % old)
+	await _free(lab)
+	var dev: Experiment = await _lab("manipulation-dev")
+	for entry in dev.definition.observations:
+		var id: String = entry.id
+		if COLOURS.has(id):
+			if not str(entry.label).begins_with("%s 상자" % COLOUR_WORDS[id][1]):
+				problems.append("dev label %s" % entry.label)
+			var box_colour := _mesh_colour((dev.bodies[id].get_node("Visual") as MeshInstance3D).mesh)   # the lighter top face
+			if not (_near(box_colour, dev.BOXES[id][1]) or _near(box_colour, dev.BOXES[id][2])) or dev.BOXES[id][1] != COLOURS[id]:
+				problems.append("dev box %s colour %s" % [id, box_colour.to_html(false)])
+	await _free(dev)
+	expect.call(problems.is_empty(),
+		"ball colours: free-fall balls red / yellow / violet (development boxes too), and every name, label, graph series and note matches the mesh colour",
+		"; ".join(problems))

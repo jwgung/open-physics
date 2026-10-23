@@ -40,11 +40,11 @@
     { "id": "drop", "label": "상자 떨어뜨리기", "style": "primary" },
     { "id": "reset", "label": "처음으로" }
   ],
-  "key_observations": ["red", "orange", "pink"],
+  "key_observations": ["red", "yellow", "purple"],
   "observations": [
     { "id": "red", "label": "빨간 상자 높이", "unit": "m", "digits": 2 },
-    { "id": "orange", "label": "주황 상자 높이", "unit": "m", "digits": 2 },
-    { "id": "pink", "label": "분홍 상자 높이", "unit": "m", "digits": 2 }
+    { "id": "yellow", "label": "노란 상자 높이", "unit": "m", "digits": 2 },
+    { "id": "purple", "label": "보라 상자 높이", "unit": "m", "digits": 2 }
   ],
   "graph": {
     "title": "상자 높이",
@@ -57,8 +57,8 @@
   "manipulation": {
     "objects": [
       { "id": "red", "surface": "floor", "snap": 0.25, "height": { "max": 2.0, "step": 0.25 } },
-      { "id": "orange", "surface": "floor", "snap": 0.25, "height": { "max": 2.0, "step": 0.25 } },
-      { "id": "pink", "surface": "floor", "snap": 0.25, "height": { "max": 2.0, "step": 0.25 } }
+      { "id": "yellow", "surface": "floor", "snap": 0.25, "height": { "max": 2.0, "step": 0.25 } },
+      { "id": "purple", "surface": "floor", "snap": 0.25, "height": { "max": 2.0, "step": 0.25 } }
     ]
   }
 }

@@ -101,11 +101,9 @@ static func post_pose(pivot_height: float, angle_deg: float) -> Vector2:
 	return Vector2(-atan2(to_axle.x, to_axle.y), to_axle.length() - POST_INSET)
 
 
+## The box: a parcel box (Task 4g, 2026-10-23 user decision), the cube baked to `size`.
 func box_mesh(size: float) -> Mesh:
-	var b := ArtKit.builder()
-	b.ao_height = size * 0.6
-	b.add_rounded_box(Transform3D.IDENTITY, Vector3.ONE * size, 0.05, 1, ArtPalette.RED, ArtPalette.RED_TOP)
-	return b.commit()
+	return ArtKit.parcel_mesh(size)
 
 
 ## Island, static shadows, the incline's moving shadow and the box reactions.

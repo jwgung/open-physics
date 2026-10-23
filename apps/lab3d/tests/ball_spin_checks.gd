@@ -1104,8 +1104,9 @@ func check_ball_colours() -> void:
 		if COLOURS.has(id):
 			if not str(entry.label).begins_with("%s 상자" % COLOUR_WORDS[id][1]):
 				problems.append("dev label %s" % entry.label)
-			var box_colour := _mesh_colour((dev.bodies[id].get_node("Visual") as MeshInstance3D).mesh)   # the lighter top face
-			if not (_near(box_colour, dev.BOXES[id][1]) or _near(box_colour, dev.BOXES[id][2])) or dev.BOXES[id][1] != COLOURS[id]:
+			var box_mat := (dev.bodies[id].get_node("Visual") as MeshInstance3D).material_override as ShaderMaterial
+			var box_colour: Color = box_mat.get_shader_parameter("accent") if box_mat != null else Color.BLACK   # its parcel tape (Task 4g)
+			if not _near(box_colour, dev.BOXES[id][1]) or dev.BOXES[id][1] != COLOURS[id]:
 				problems.append("dev box %s colour %s" % [id, box_colour.to_html(false)])
 	await _free(dev)
 	expect.call(problems.is_empty(),

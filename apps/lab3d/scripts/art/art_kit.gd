@@ -23,7 +23,14 @@ const SKY_FILL := 0.1
 const YARN_SCENE := preload("res://assets/props/yarn_ball.glb")
 const YARN_RADIUS := 0.25
 
+## The parcel box (Task 4g, 2026-10-23 user decision: the boxes look like parcels):
+## art_src/props/parcel_box.py -> assets/props/parcel_box.glb, a 1 m cube with a cardboard texture
+## whose tape and label stripe (alpha 0) take an accent colour.
+const PARCEL_SCENE := preload("res://assets/props/parcel_box.glb")
+
 static var _lit: ShaderMaterial
+static var _parcel_src: Mesh
+static var _parcel_meshes := {}   # size -> the parcel baked to it
 static var _yarn_mesh: Mesh
 static var _shadow: StandardMaterial3D
 
@@ -75,6 +82,28 @@ static func yarn_ball(radius: float, color: Color) -> MeshInstance3D:
 
 static func yarn_mesh() -> Mesh:
 	return _yarn_mesh
+
+
+## The parcel box mesh baked to a cube of `size` (uniform: the texture is not stretched; cached).
+static func parcel_mesh(size: float) -> Mesh:
+	if _parcel_src == null:
+		var model: Node = PARCEL_SCENE.instantiate()
+		_parcel_src = (model.find_children("*", "MeshInstance3D", true, false)[0] as MeshInstance3D).mesh
+		model.free()
+	if not _parcel_meshes.has(size):
+		var st := SurfaceTool.new()
+		st.append_from(_parcel_src, 0, Transform3D(Basis.from_scale(Vector3.ONE * size), Vector3.ZERO))
+		_parcel_meshes[size] = st.commit()
+	return _parcel_meshes[size]
+
+
+## A parcel box of `size` with its tape and label stripe in `accent` (brown packing tape by default;
+## the development scene's boxes are told apart by it). The island light like the faceted props.
+static func parcel_box(size: float, accent := ArtPalette.TAPE) -> MeshInstance3D:
+	var mesh := parcel_mesh(size)
+	var material := lit_texture_material((_parcel_src.surface_get_material(0) as BaseMaterial3D).albedo_texture, LIGHT_SOFTNESS, 1.0)
+	material.set_shader_parameter("accent", accent)
+	return instance(mesh, material)
 
 
 ## Unshaded alpha-blended vertex colour (blob shadows on the ground). It is in the transparent

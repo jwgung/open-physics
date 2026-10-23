@@ -10,6 +10,9 @@ render_mode unshaded, cull_back, specular_disabled;
 // SM-P200 the colours came out encoded twice, too light), so the shader decodes it itself.
 uniform sampler2D albedo_texture : filter_linear_mipmap, repeat_disable;
 uniform vec4 tint : source_color = vec4(1.0);
+// Where the texture's alpha is 0 the colour is multiplied by `accent` instead of `tint` (the parcel
+// box's tape and label stripe, Task 4g); alpha 1 everywhere else and in the other models.
+uniform vec4 accent : source_color = vec4(1.0);
 uniform vec3 sun_dir = vec3(-0.35, 0.85, 0.45);
 uniform vec4 lit_color : source_color = vec4(1.0);
 uniform vec4 shade_color : source_color = vec4(0.49, 0.557, 0.847, 1.0);
@@ -29,9 +32,10 @@ void vertex() {
 }
 
 void fragment() {
-	vec3 srgb = texture(albedo_texture, UV).rgb;
+	vec4 tex = texture(albedo_texture, UV);
+	vec3 srgb = tex.rgb;
 	vec3 linear = mix(pow((srgb + 0.055) / 1.055, vec3(2.4)), srgb / 12.92, lessThan(srgb, vec3(0.04045)));
-	vec3 color = linear * tint.rgb * light;
+	vec3 color = linear * mix(accent.rgb, tint.rgb, tex.a) * light;
 	// Compatibility writes unshaded ALBEDO to its sRGB output unconverted (art_lit.gdshader).
 	if (OUTPUT_IS_SRGB) {
 		color = mix(1.055 * pow(max(color, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, color * 12.92, lessThan(color, vec3(0.0031308)));

@@ -54,10 +54,7 @@ func _ready() -> void:
 		body.freeze_mode = RigidBody3D.FREEZE_MODE_STATIC
 		body.freeze = true
 		_add_box_shape(body, Vector3.ONE * size)
-		var mb := ArtKit.builder()
-		mb.ao_height = size * 0.6
-		mb.add_rounded_box(Transform3D.IDENTITY, Vector3.ONE * size, 0.05, 1, spec[1], spec[2])
-		var visual := ArtKit.instance(mb.commit())
+		var visual := ArtKit.parcel_box(size, spec[1])   # a parcel box, told apart by its tape colour (Task 4g)
 		visual.name = "Visual"
 		body.add_child(visual)
 		add_child(body)

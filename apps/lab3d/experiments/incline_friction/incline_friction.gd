@@ -280,7 +280,7 @@ func _build_world() -> void:
 	_setup_free_body(box)
 	box.freeze = true
 	_add_box_shape(box, Vector3.ONE * BOX)
-	var box_visual := ArtKit.instance(props.box_mesh(BOX))
+	var box_visual := ArtKit.parcel_box(BOX)   # a parcel box (Task 4g)
 	box_visual.name = "Visual"
 	box.add_child(box_visual)
 	add_child(box)

@@ -56,11 +56,9 @@ func track_mesh(length: float, start_x: float) -> Mesh:
 	return b.commit()
 
 
+## The box: a parcel box (Task 4g, 2026-10-23 user decision), the cube baked to `size`.
 func box_mesh(size: float) -> Mesh:
-	var b := ArtKit.builder()
-	b.ao_height = size * 0.6
-	b.add_rounded_box(Transform3D.IDENTITY, Vector3.ONE * size, 0.06, 1, ArtPalette.ORANGE, ArtPalette.ORANGE_TOP)
-	return b.commit()
+	return ArtKit.parcel_mesh(size)
 
 
 ## The handle (mesh origin = the pick box centre, `height` tall): blue foot on the floor, white post,

@@ -20,6 +20,7 @@ import re
 import subprocess
 import tempfile
 
+VIRTUAL_NAME = "Open Physics test touch"   # the HID screen registered below
 NATURAL = (1200, 1920)   # SM-P200 natural (portrait) panel size in pixels
 STEPS = 24
 FRAME_MS = 16
@@ -41,11 +42,37 @@ GESTURES = {
 STARTS = {"drag-cancel": [0.0, 0.5]}
 
 
+def parse_rotation(text: str) -> int:
+    """Quarter turns (0-3) of the built-in touchscreen from `dumpsys input` text.
+
+    Each input device has its own `SurfaceOrientation:` line under its touch mapper, so the value is
+    read from the device blocks ("Device N: name") of touch screens, not the first line anywhere
+    (a second display, the virtual screen this script registers on an earlier run, a stylus). The
+    block of this script's own virtual device is skipped. Exits with an error when no touch screen
+    block shows an orientation, or when several disagree: a silent 0 would send every point
+    to the wrong place on a rotated screen.
+    """
+    blocks = re.split(r"(?m)^\s*Device -?\d+:", text)[1:]
+    found = set()
+    for block in blocks:
+        if VIRTUAL_NAME in block.splitlines()[0]:
+            continue
+        if "Touch Input Mapper" not in block and "touchscreen" not in block.lower():
+            continue
+        found.update(int(m) for m in re.findall(r"SurfaceOrientation:\s*(\d)", block))
+    if not found:
+        raise SystemExit("device_gesture: no touch screen with a SurfaceOrientation in `dumpsys input` "
+                         "(is a device connected and awake, and is the screen on?)")
+    if len(found) > 1:
+        raise SystemExit(f"device_gesture: touch screens disagree on SurfaceOrientation ({sorted(found)}); "
+                         "cannot tell which one the app is shown on")
+    return found.pop()
+
+
 def rotation() -> int:
     """Current display rotation in quarter turns (0-3) from `dumpsys input`."""
     text = subprocess.run(["adb", "shell", "dumpsys input"], check=True, capture_output=True, text=True).stdout
-    found = re.search(r"SurfaceOrientation:\s*(\d)", text)
-    return int(found.group(1)) if found else 0
+    return parse_rotation(text)
 
 
 def to_natural(point, quarter_turns):
@@ -97,7 +124,7 @@ def point_at(waypoints, t):
 
 
 def commands(paths, starts, quarter_turns):
-    lines = [{"id": 1, "command": "register", "name": "Open Physics test touch", "vid": 0x18D1, "pid": 0x7A01,
+    lines = [{"id": 1, "command": "register", "name": VIRTUAL_NAME, "vid": 0x18D1, "pid": 0x7A01,
               "bus": "usb", "descriptor": DESCRIPTOR}, {"id": 1, "command": "delay", "duration": 1500}]
     for step in range(STEPS + 1):
         t = step / STEPS

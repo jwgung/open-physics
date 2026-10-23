@@ -93,7 +93,7 @@ static func shared_labs() -> Dictionary:
 
 
 ## [definition, problems]: an experiment file with `content` gets the texts of that shared lab
-## (SHARED_KEYS, and `tip` from the lab's app.tip); it must not write them itself. Files without
+## (SHARED_KEYS, and `tip` / `tip_short` from the lab's app.tip / app.tip_short); it must not write them itself. Files without
 ## `content` are returned as they are. A lab's `app.steps` (three texts) or `app.observe` replaces
 ## the shared text in the 3D app only; the web never reads `app`.
 static func resolve(raw: Dictionary) -> Array:
@@ -105,7 +105,7 @@ static func resolve(raw: Dictionary) -> Array:
 		problems.append("content %s not in %s" % [raw.content, SHARED_CONTENT_PATH])
 		return [raw, problems]
 	var definition := raw.duplicate(true)
-	for key in SHARED_KEYS + ["tip"]:
+	for key in SHARED_KEYS + ["tip", "tip_short"]:
 		if raw.has(key):
 			problems.append("%s duplicates the shared content (%s)" % [key, raw.content])
 	for key in SHARED_KEYS:

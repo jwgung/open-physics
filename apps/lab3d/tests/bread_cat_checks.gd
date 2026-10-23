@@ -41,6 +41,7 @@ func _init(scene_tree: SceneTree, expect_fn: Callable) -> void:
 
 func run() -> void:
 	await check_throw()
+	await check_launch_heights()
 	await check_throw_cancel()
 	await check_push()
 	await check_push_motion_unchanged()
@@ -68,6 +69,7 @@ func _free(node: Node) -> void:
 const THROWS := [
 	["earth", 45.0, 9.0, 0.5], ["moon", 30.0, 7.5, 1.5], ["jupiter", 60.0, 6.0, 0.5],
 	["earth", 0.0, 9.0, 0.0], ["earth", 90.0, 5.0, 3.0], ["zero", 15.0, 3.0, 0.5], ["earth", 75.0, 9.0, 0.25],
+	["earth", 45.0, 9.0, 1.0], ["earth", 30.0, 6.0, 2.0],
 ]
 
 
@@ -159,6 +161,33 @@ func check_throw() -> void:
 		"bread cat: the ball leaves the paw on the release frame at the launch point (held point = ball = launch point, before any step), %d frames (%.2f s) after 공 놓기" % [THROW_FRAMES, THROW_FRAMES / 60.0],
 		"max %s m;%s" % [String.num_scientific(worst_release), detail_release])
 	expect.call(same, "bread cat: the thrown run (engine position every step, panel values, 3 s) is the same as a direct release", detail if detail != "" else "%d throws" % THROWS.size())
+
+
+## The paw is the launch point at every launch height (2026-10-23 user decision: no launch post):
+## from the floor up to 3 m the held point = the ball's centre, and above the paw's reach from the
+## floor the cat stands on bread crates whose top is exactly under its bag (no crates when it stands
+## on the floor), at most CRATE_H each.
+func check_launch_heights() -> void:
+	var lab: Experiment = await _lab("projectile")
+	var cat: CatActor = lab.props.cat
+	var crates: MeshInstance3D = lab.props.cat_stand
+	var worst := 0.0
+	var fit := true
+	var detail := ""
+	for h in [0.0, 0.5, 1.0, 2.0, 3.0]:
+		lab.manipulation_placed("ball", Transform3D(Basis(), Vector3(lab.START_X, h + lab.BALL_RADIUS, 0.0)))
+		await tree.process_frame
+		worst = maxf(worst, cat.held_point().distance_to(lab.ball.global_position))
+		var on_crates: bool = cat.stand_height > 0.01
+		fit = fit and crates.visible == on_crates and (not on_crates or (absf(crates.scale.y - cat.position.y) < 1e-6
+			and crates.position.x == cat.position.x and crates.position.z == cat.position.z
+			and cat.stand_height / ceili(cat.stand_height / ProjectileProps.CRATE_H - 1e-6) <= ProjectileProps.CRATE_H + 1e-6))
+		fit = fit and lab.find_children("LaunchPost", "", true, false).is_empty() and lab.find_children("LaunchPad", "", true, false).is_empty()
+		detail += " h %.1f: crates %.2f m," % [h, cat.stand_height if on_crates else 0.0]
+	expect.call(worst <= RELEASE_TOL and fit,
+		"bread cat: the paw is the launch point at launch heights 0-3 m (no launch post / pad), crates under the cat as tall as needed",
+		"max %s m;%s" % [String.num_scientific(worst), detail])
+	await _free(lab)
 
 
 ## "처음으로" and picking up the ball stop a throw: no late release; a second press during the throw

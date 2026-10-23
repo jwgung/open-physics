@@ -37,7 +37,7 @@ static func lit_material() -> ShaderMaterial:
 
 ## The same light on a textured model (art_lit_tex.gdshader: a model with one texture atlas and
 ## smooth normals, the bread cat): a softer ramp and a lighter shade side than the faceted props.
-static func lit_texture_material(texture: Texture2D, softness := 0.18, shade_mix := 0.6) -> ShaderMaterial:
+static func lit_texture_material(texture: Texture2D, softness := 0.18, shade_mix := 0.35) -> ShaderMaterial:
 	var m := ShaderMaterial.new()
 	m.shader = TEXTURE_SHADER
 	m.set_shader_parameter("albedo_texture", texture)

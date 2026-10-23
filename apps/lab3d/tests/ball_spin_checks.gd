@@ -1064,8 +1064,8 @@ func check_ball_colours() -> void:
 			problems.append("%s: the pad is coloured" % id)
 	await _free(lab)
 	var pj: Experiment = await _lab("projectile")
-	if not _has_white(pj._ball_visual.mesh) or _has_yellow(pj.props.pad.mesh):   # (its arm is blue)
-		problems.append("projectile ball band / pad colour")
+	if not _has_white(pj._ball_visual.mesh):   # (no launch pad since Task 4g: the bread cat holds the ball)
+		problems.append("projectile ball band")
 	await _free(pj)
 	var dev: Experiment = await _lab("manipulation-dev")
 	for entry in dev.definition.observations:

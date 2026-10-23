@@ -38,6 +38,8 @@ const WATER := Color("39a6f0")        # water of the buoyancy tank (walls and fl
 const WATER_TOP := Color("8fd3ff")    # the water surface (waterline strips, the ring around a floating body)
 const SPACE := Color("27357a")        # the orbit lab's space stage (deep blue, never black)
 const SPACE_TOP := Color("2f3f8f")
+const CRATE := Color("d08a45")        # the bread cat's wooden bread crates (Task 4g), planks
+const CRATE_TOP := Color("e3a35e")    # their top edges
 
 # Lighting (art_lit.gdshader) and contact
 const LIGHT := Color("ffffff")        # lit side multiplier

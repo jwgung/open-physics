@@ -1,6 +1,6 @@
 # Open Physics 3D (apps/lab3d)
 
-역학 3D 실험 앱이다. Godot 4.7.2 + Jolt, GDScript. Phase 1 Task 2a에서 셸 뼈대(실험 등록, 카메라·제스처, 2D 패널, 품질 설정)와 첫 실험(빗면 마찰)을 만들었고, Task 2c에서 시각 스타일(잔디 섬: 선명한 원색, 각진 로우폴리, 하늘에 뜬 잔디 섬)과 연출을 정했다. Task 2b에서 한 손가락으로 물체를 집어 정해진 면 위로 옮기는 조작(조작 평면·스냅·높이 손잡이·보조 시점)을 더했다. Task 3에서 역학 안내형 10개 실험이 쓸 공식 보정 계층(`scripts/formula/`)과 TS↔GDScript parity, CI를 만들었다([공식 보정](docs/formula-correction.md)). Task 4a에서 실험 문구를 웹 2D와 공유하는 JSON으로 빼고(1절 "콘텐츠 공유"), 균일장 실험 두 개(자유 낙하, 던지기)를 더했다(1절 "실험 목록"). Task 4b에서 접촉 힘 실험 마찰 밀기를, Task 4c에서 충돌 실험을, Task 4d에서 공식 모델 구동 실험 셋(용수철, 부력, 궤도: `BodyModelDriver`. 힘 주입 보정기는 대표 장면·빈 실험실용)을, Task 4e에서 해석 모델 구동 실험 셋(줄·막대 진자, 지렛대, 도르래)을 더했다. 기준은 [아트 디렉션](docs/art-direction.md)이다. 계획과 진행은 [Phase 1 문서](../../docs/3d-phase1/README.md), 스택 결정은 [ADR 0001](../../docs/adr/0001-3d-app-stack.md)에 있다.
+역학 3D 실험 앱이다. Godot 4.7.2 + Jolt, GDScript. Phase 1 Task 2a에서 셸 뼈대(실험 등록, 카메라·제스처, 2D 패널, 품질 설정)와 첫 실험(빗면 마찰)을 만들었고, Task 2c에서 시각 스타일(잔디 섬: 선명한 원색, 각진 로우폴리, 하늘에 뜬 잔디 섬)과 연출을 정했다. Task 2b에서 한 손가락으로 물체를 집어 정해진 면 위로 옮기는 조작(조작 평면·스냅·높이 손잡이·보조 시점)을 더했다. Task 3에서 역학 안내형 10개 실험이 쓸 공식 보정 계층(`scripts/formula/`)과 TS↔GDScript parity, CI를 만들었다([공식 보정](docs/formula-correction.md)). Task 4a에서 실험 문구를 웹 2D와 공유하는 JSON으로 빼고(1절 "콘텐츠 공유"), 균일장 실험 두 개(자유 낙하, 던지기)를 더했다(1절 "실험 목록"). Task 4b에서 접촉 힘 실험 마찰 밀기를, Task 4c에서 충돌 실험을, Task 4d에서 공식 모델 구동 실험 셋(용수철, 부력, 궤도: `BodyModelDriver`. 힘 주입 보정기는 대표 장면·빈 실험실용)을, Task 4e에서 해석 모델 구동 실험 셋(줄·막대 진자, 지렛대, 도르래)을 더했다. Task 2d에서 앱을 가로 전용으로 바꾸고 실험 화면을 3D 전체 + 핵심 관찰값 카드 + 오른쪽 사이드바로 개편했다(1절 "레이아웃과 해상도"). 기준은 [아트 디렉션](docs/art-direction.md)이다. 계획과 진행은 [Phase 1 문서](../../docs/3d-phase1/README.md), 스택 결정은 [ADR 0001](../../docs/adr/0001-3d-app-stack.md)에 있다.
 
 - Android: arm64-v8a release APK(디버그 키스토어 서명, 배포용 아님). 렌더러는 품질 단계가 정한다(low = Compatibility, medium·high = Mobile).
 - 모든 작업은 헤드리스 CLI(`godot --headless`)로 한다. 에디터 GUI를 쓰지 않는다.
@@ -46,17 +46,17 @@ apps/lab3d/
   docs/formula-correction.md          공식 보정: Jolt 조사, 보정 방식, 실험 10개 표, 테스트 파이프라인
 ```
 
-화면 흐름은 실험 목록 → 실험 화면이고, 두 화면 모두 위쪽 `설정`에서 품질 설정 화면으로 간다. Android 뒤로 가기는 실험 → 목록 → 종료 순서다. 실험 화면에서 설정을 열어도 실험 화면은 해제되지 않고 보관돼, 돌아오면 각도·재질·놓기 상태·카메라가 그대로다. 같은 렌더러에서 품질(medium ↔ high)을 바꾸면 3D 뷰를 다시 만들며 이때는 조건 값과 카메라만 유지한다. 렌더러가 바뀌는 재시작은 앱이 다시 뜨므로 실험 화면 상태는 유지되지 않고 설정 화면으로 돌아온다. 실행 인자(`--ctl-*`, `--camera` 등)는 `--experiment`로 연 실험 화면에만 적용한다.
+화면 흐름은 실험 목록 → 실험 화면이고, 두 화면 모두 위쪽 `설정`에서 품질 설정 화면으로 간다. Android 뒤로 가기는 실험 → 목록 → 종료 순서다(실험 화면에서 사이드바가 열려 있으면 먼저 사이드바를 닫는다). 실험 화면에서 설정을 열어도 실험 화면은 해제되지 않고 보관돼, 돌아오면 각도·재질·놓기 상태·카메라가 그대로다. 같은 렌더러에서 품질(medium ↔ high)을 바꾸면 3D 뷰를 다시 만들며 이때는 조건 값·카메라·사이드바 열림만 유지한다. 렌더러가 바뀌는 재시작은 앱이 다시 뜨므로 실험 화면 상태는 유지되지 않고 설정 화면으로 돌아온다. 실행 인자(`--ctl-*`, `--camera` 등)는 `--experiment`로 연 실험 화면에만 적용한다.
 
 ### 셸과 실험의 경계
 
-셸(`ExperimentScreen`)이 카메라·제스처·2D 패널·품질을 맡고, 실험은 3D 월드와 물리만 맡는다.
+셸(`ExperimentScreen`)이 카메라·제스처·2D 화면(3D 위 카드·버튼, 사이드바)·품질을 맡고, 실험은 3D 월드와 물리만 맡는다.
 
 | 셸이 하는 일 | 실험이 답하는 것(`Experiment`) |
 |---|---|
-| 패널에 질문·조건·관찰값·그래프·설명을 그린다 | `set_control(id, value)` · `control_value(id)` · `run_action(id)` |
+| 3D 위에 핵심 관찰값 카드(`key_observations`)·액션 버튼을, 사이드바에 질문·시점·조건·관찰값·그래프·설명을 그린다 | `set_control(id, value)` · `control_value(id)` · `run_action(id)` |
 | 관찰값·그래프를 10 Hz로 갱신한다 | `observations()` → `{id: 숫자 또는 문자열}`, `graph_series()` → `{시리즈 id: PackedVector2Array}` |
-| 카메라 모드·제한·"정면으로"를 처리한다 | `follow_point()`(따라가기 대상), JSON의 `camera` |
+| 카메라 모드·제한을 처리한다(기본 정면) | `follow_point()`(따라가기 대상), JSON의 `camera` |
 | 3D를 품질 단계 해상도의 SubViewport에 그린다 | 장면은 `ArtKit`·`ArtMeshBuilder`로 꾸민다(엔진 조명·그림자 없음, [아트 디렉션](docs/art-direction.md)) |
 | 착지 때 카메라를 살짝 흔든다(`CameraRig.nudge`) | `impact(strength)` 신호(연출용, 선택) |
 | 한 손가락 조작: 집기·끌기·스냅·미리보기·높이 손잡이·취소·보조 시점(`Manipulator`) | JSON `manipulation`의 규칙, `manipulation_body`·`manipulation_surface`·`manipulation_juice`, 결과 통보(`manipulation_started`·`_placed`·`_cancelled`), 추가 규칙 `placement_allowed`, 화면 재구성 때 유지할 `placements()` |
@@ -91,6 +91,27 @@ apps/lab3d/
 - 용수철·부력·궤도(Task 4d): 한 바디를 64비트 공식 모델에 매 스텝 놓는 `BodyModelDriver`로 구동한다(충돌 레일 구동과 같은 방식, 엔진 바디는 얼린 키네마틱·충돌 없음). 용수철 `SpringModel`은 AnchoredSpringLaw(k = 5 N/m)의 정확한 해(감쇠 b = 0.45는 감쇠 진동 해), 부력 `BuoyancyModel`은 BuoyancyRegionLaw(잠긴 비율 선형, 물 저항 1.8/s)와 중력의 반암시적 오일러 4번 나눔(웹 바닥 규칙 e 0.5·1 m/s 미만 정지), 궤도 `OrbitModel`은 PointGravityField(GM 27)의 속도 Verlet 8번 나눔. 웹의 명시적 오일러는 에너지가 늘거나(용수철 10초에 +52 %) 궤도가 퍼지고(반지름 3 → 3.83 m, 20초) 부력 깊이가 0.72 m 벗어나 따르지 않았다. 표시 수치는 모두 공식 모델 값이고 "시뮬레이션" 관찰값은 없다. 조건을 바꾸거나 물체를 집으면 새 출발 자리로 돌아간다. 오라클·측정: [공식 보정 4절 Task 4d](docs/formula-correction.md#실험-구현-task-4d-용수철-부력-궤도).
 - 진자·지렛대·도르래(Task 4e): 웹 공식 모델을 64비트로 진행하고 엔진 바디(얼린 키네마틱, 충돌 없음)를 매 스텝 그 자세에 둔다(4c·4d와 같음). 진자 `PendulumLabModel`은 웹 `PendulumModel`의 운동 방정식을 RK4로 스텝당 4번 나눠 적분하고(웹 60 Hz 반암시적 오일러는 2 m 진자가 20초에 2.3 cm 벗어나 따르지 않음), 두 추를 `BodyModelGroupDriver`가 구동한다. 끄는 동안 추는 원 위에만 있어 고정점–추 거리가 늘 L이다. 지렛대 `LeverLabModel`은 `LeverChallenge`(필요한 힘에서 멈추는 힘, 들림 각 0.18 rad), 도르래 `PulleyLabModel`은 `PulleyAdvantageChallenge`(당긴 줄은 5 cm 칸 수로 셈)다. 지렛대·도르래 그래프는 손잡이를 잡은 동안만 시간이 흐르는 10초 창이고(웹도 끄는 동안 그래프 시간이 흐름), 조건이 바뀌면 그 시각에 점이 하나 더해진다(시계가 멈춘 채 같은 시각에 거듭 바뀌면 전·후 두 점만 두고 마지막 점을 덮어쓰며, 점은 최대 512개). 두 실험의 손잡이·시계·그래프는 공용 베이스 `PressHandleLab`(`scripts/shell/press_handle_lab.gd`)이 맡고, 막대·짐은 자세가 바뀔 때만 엔진에서 옮긴다. 지렛대 손잡이 힘은 조건마다 가장 작은 눈금(2 cm당 5·10·20·50 N)을 골라 끝까지 누르면 필요한 힘(최대 1588 N)에 닿는다. 사용자 결정(2026-10-23): 도르래는 손잡이 이동 = 당긴 줄, 짐 1/n을 유지하되 웹 배율(n/4)을 전제한 단계 3·관찰 문구를 앱 전용(`app.steps`·`app.observe`)으로 물리대로 바꾸고, 지렛대·진자는 동작을 유지하되 지렛대 관찰에 "손잡이를 누르고 있는 동안"을 덧붙인다. 오라클·측정·웹과 다르게 정한 점: [공식 보정 4절 Task 4e](docs/formula-correction.md#실험-구현-task-4e-진자지렛대도르래).
 - 끄는 동안 공은 바닥 선을 따라 움직인다(자유 낙하). 5 m 높이에 든 공을 바닥과 나란한 평면으로 끌면 카메라 높이와 거의 같아 평면을 옆에서 보게 되기 때문이다. 높이는 손잡이로 바꾼다.
+
+### 핵심 관찰값과 정면 시점 (Task 2d)
+
+실험 화면에 늘 보이는 값은 실험 정의의 `key_observations`(2~3개)다. 실험 질문에 답하는 값을 골랐고, 카드 글자는 사이드바 관찰 타일과 같다(같은 서식 함수 `ExperimentScreen.format_observation`). 기본 시점은 모두 정면이다.
+
+| 실험 | 질문 | 핵심 관찰값 (id) | 정면 시점 조정 |
+|---|---|---|---|
+| 자유 낙하 | 가벼운 공과 무거운 공은 바닥에 닿는 시간이 다를까? | 놓은 뒤 시간 t (`time`), 빨간 공이 바닥까지 √(2h₀/g) (`fall_time`), 빨간 공 속력 v = gt (`speed`) | 거리 13.5 → 16 m, 대상 높이 4.6 m(8 m 높이 자가 카드 아래에 보임) |
+| 던지기 | 어느 방향으로 던질 때 가장 멀리 갈까? | 날아가는 거리 R (`range`), 비행 시간 T (`flight_time`), 착지 거리(시뮬레이션) (`landing`) | 거리 13.5 → 14.5 m, 대상 높이 2.6 m |
+| 충돌 | 두 공의 무게가 달라지면 충돌 뒤 움직임은? | 충돌 뒤 속도 A·B (`after_a`, `after_b`), 운동량 합 · 충돌 뒤 (`p_after`) | 그대로 |
+| 용수철 | 더 멀리 당기면 얼마나 빨라질까? | 늘어난 길이 x (`extension`), 속력 (`speed`), 역학적 에너지 K + U (`total`) | 그대로 |
+| 마찰 밀기 | 버티다가 움직이기 시작하는 힘은? | 내가 주는 힘 F (`applied`), 최대 정지 마찰력 (`max_static`), 상자 상태 (`state`) | 그대로 |
+| 지렛대 | 받침점에서 멀리 누르면 더 쉬울까? | 받침점–힘점 거리 r₁ (`effort_arm`), 필요한 힘 F₂r₂/r₁ (`required`), 내가 누르는 힘 F₁ (`applied`) | 그대로 |
+| 궤도 | 발사를 조금 바꾸면 충돌·공전·이탈 중 무엇이 될까? | 상태 (`state`), 발사 속력 (`launch_speed`), 탈출 속력 (`escape_speed`) | 내려다보는 각 −10° → −40°(공전면이 보이고, 손잡이를 끌 때 보조 시점이 돌지 않음) |
+| 부력 | 무게를 바꾸면 잠기는 정도가 어떻게 달라질까? | 지금 잠긴 깊이 (`depth`), 뜰 때 잠기는 깊이 (`floating_depth`), 부력 (`buoyant`) | 그대로 |
+| 줄·막대 | 줄과 막대에 매단 추는 어떤 길로 움직일까? | 줄·막대 고정점–추 거리 (`rope_distance`, `rod_distance`), 작은 각도 주기 (`small_period`) | 그대로 |
+| 도르래 | 받치는 줄을 늘리면 필요한 힘은? | 받치는 줄 n (`strands`), 필요한 힘 F = mg/n (`required`), 짐이 올라간 높이 (`lift`) | 거리 10.5 → 12 m, 대상 높이 2.9 m(위 보가 카드에 안 가림) |
+| 빗면 마찰 | 어느 각도에서 미끄러지기 시작할까? | 임계각 θc (`critical_angle`), 상자 상태 (`state`), 가속도 a (`acceleration`) | 그대로 |
+
+- 개발 장면(`manipulation-dev`, 목록에 없음)은 바닥 조작 확인용이라 3/4 시점을 유지했다(정면은 바닥을 스치듯 본다). 핵심 값은 세 상자 높이다.
+
 
 ### 콘텐츠 공유 (Task 4a)
 
@@ -130,7 +151,8 @@ apps/lab3d/
 | 따라가기 | `follow_point()`(빗면에서는 상자)를 따라간다 |
 | 제한 회전 | 사용자가 돌린 시점. `yaw_range_deg`·`pitch_range_deg`·`distance_range`·`pan_radius` 안에서만 움직인다 |
 
-- `정면으로` 버튼은 3D 뷰 오른쪽 위에 항상 있다. 정면 모드 + 이동·확대 초기화다.
+- 모든 실험의 기본 시점은 정면이다(Task 2d, `camera.default_mode: "front"`). `정면으로` 버튼은 없앴다. 시점 칩(정면·3/4·위·옆·따라가기·제한 회전)은 사이드바 맨 위 "시점" 카드에 있고, 사이드바를 열면 3D 뷰가 옆에 남아 있어 바뀐 시점을 바로 본다. 정면 칩이 정면 + 이동·확대 초기화다.
+- 시점마다 `target`(선택, `[x, y, z]`)을 두면 그 시점은 그 점을 본다(없으면 `camera.target`). 정면 시점을 조금 높여 장치 위쪽이 핵심 카드에 가리지 않게 할 때 쓴다(자유 낙하·던지기·도르래). 궤도는 공전면이 보이게 정면 시점을 40° 내려다본다.
 - 빗면의 기본 시점(Task 2c): 대상 (0.8, 2.8, 0), 3/4 거리 8.5 m, 정면 9.5 m, 옆 12 m, 따라가기 4 m. 상자(0.4 m)와 연출이 보이게 Task 2a(11 m)보다 당겼다.
 - 터치: 두 손가락을 함께 끌면 회전(시점이 프리셋이면 `제한 회전`으로 바뀐다), 벌리거나 오므리면 확대·축소, 그 상태로 손가락을 옮기면 이동, 비틀면 좌우 회전(시작 대비 8°를 넘긴 만큼만 돌려, 확대만 할 때 손 떨림으로 프리셋이 바뀌지 않는다). 두 손가락 제스처는 처음 14 UI 단위 움직임으로 회전과 확대·이동 중 하나로 정한다. 한 손가락을 고정하고 다른 손가락만 움직여도(28 단위 이상) 확대·이동으로 인식한다.
 - 한 손가락은 카메라에 쓰지 않는다. `View3D.single_pointer` 신호로 물체 조작(아래 "조작")에 쓴다. 빈 곳 한 손가락 드래그는 아무 일도 하지 않는다.
@@ -177,8 +199,11 @@ apps/lab3d/
 
 ### 레이아웃과 해상도
 
-- `window/stretch`는 `canvas_items` + `expand`, 기준 크기 720×720이다. 화면의 짧은 변이 항상 720 UI 단위라 세로·가로에서 글자 크기가 같다(SM-P200에서 1 단위 = 1.67 px).
-- 세로(폰·태블릿 세로): 위쪽 3D 뷰(본문 높이의 46%), 아래 스크롤 패널. 가로(태블릿): 왼쪽 3D 뷰, 오른쪽 470 단위 패널.
+- 앱은 가로 전용이다(Task 2d). `display/window/handheld/orientation=4`(sensor landscape: 가로 두 방향만)로 Android export(매니페스트 `screenOrientation`)와 iOS export(`UISupportedInterfaceOrientations`, iOS 프리셋은 아직 없음)가 같은 설정을 쓴다. 목록·설정 화면도 가로다. 세로 레이아웃은 없다.
+- `window/stretch`는 `canvas_items` + `expand`, 기준 크기 720×720이다. 화면의 짧은 변(가로 화면의 높이)이 항상 720 UI 단위다(SM-P200에서 1 단위 = 1.67 px). 폰 2340×1080은 1560×720 단위, 태블릿 1920×1200은 1152×720 단위다.
+- 실험 화면(사이드바 닫힘, 기본): 3D 뷰가 화면 전체다. 그 위에 왼쪽 위 `← 목록`·제목, 오른쪽 위 `설정`·`설명·조건`(사이드바 열기), 제목 아래 핵심 관찰값 카드 2~3개(폭 200, 사이드바 패널과 같은 글자), 오른쪽 아래 실험 액션 버튼(놓기·처음으로 등), 왼쪽 아래 조작 안내(8초 또는 첫 제스처 뒤 사라짐. 액션 버튼 옆 폭이 300 단위보다 좁으면 버튼 위로 올라감). 카드는 터치를 3D로 통과시킨다.
+- 사이드바(오른쪽, 470 단위 또는 화면 폭의 42% 중 작은 값): 질문, 시점, 조건 바꾸기, 관찰(전체), 그래프, 설명(단계·관찰 포인트·법칙·용어). `닫기`로 닫는다. 열고 닫을 때 사이드바 노드의 위치만 0.22초 Tween으로 옮긴다(전체 화면 반투명 레이어 없음).
+- 사이드바가 열리면 3D 뷰가 왼쪽 남은 영역으로 줄어든다(사이드바가 3D 위에 겹치지 않음). 근거: 장면의 물체가 사이드바 뒤에 가리지 않고, 사이드바는 바탕을 칠하지 않아(clear color가 비침) 겹쳐 칠하는 면적이 늘지 않으며, 3D SubViewport도 작아진다. 뷰 크기는 열 때 한 번(시작에), 닫을 때 한 번(끝에)만 바꾸고 슬라이드 중에는 바꾸지 않는다(크기를 바꿀 때마다 SubViewport를 다시 할당). 3D 뷰가 16:10보다 좁아지면(태블릿에서 사이드바를 열면 거의 정사각형) 16:10 화면의 가로 시야(73.4°)를 유지해 장치 전체가 화면에 남는다(`CameraRig.fit_aspect`).
 - low에서도 UI는 원본 해상도로 그린다. 3D만 SubViewport에서 화면 픽셀의 45%로 그린 뒤 늘린다. 근거는 [UI 해상도 결정](docs/ui-resolution.md)이다.
 - 배경은 전체 화면 사각형이 아니라 clear color다. 원본 해상도에서는 전체 화면 레이어 하나가 SM-P200의 60 fps 예산을 넘긴다(같은 문서).
 
@@ -204,7 +229,7 @@ Godot 바이너리·export 템플릿은 스파이크와 같은 것을 쓴다(`sp
 
 ```bash
 GODOT=~/.local/share/godot-spike/godot
-$GODOT --path apps/lab3d                                   # 데스크톱(720×1280 창)
+$GODOT --path apps/lab3d                                   # 데스크톱(1280×720 창)
 $GODOT --path apps/lab3d -- --experiment=incline-friction  # 실험 화면으로 바로
 ```
 
@@ -225,10 +250,10 @@ adb shell am start -n org.openphysics.lab3d/com.godot.game.GodotAppLauncher \
 | `--screen=settings` | 설정 화면으로 시작 |
 | `--quality=<low\|medium\|high>` | 품질 단계(저장된다) |
 | `--fps=1` | fps 표시 |
-| `--orientation=<portrait\|landscape>` | 화면 방향 고정(스크린샷용, 기본은 센서) |
 | `--camera=<front\|three_quarter\|top\|side\|follow\|orbit>` | 카메라 모드 |
 | `--ctl-<조건 id>=<값>` | 조건 값(예: `--ctl-angle=30`, `--ctl-material=rubber`) |
-| `--scroll-to=<conditions\|observations\|graph\|explanation>` | 패널 스크롤 위치 |
+| `--sidebar=open` | 사이드바를 연 채 시작 |
+| `--scroll-to=<camera\|conditions\|observations\|graph\|explanation>` | 사이드바를 열고 그 카드로 스크롤 |
 | `--auto-release=<초>` | 그 간격으로 상자를 다시 놓는다(측정용) |
 | `--auto-drag=<초>` | 그 간격으로 첫 조작 물체를 손가락 입력 경로 그대로 1초 동안 끌어 놓고(영역 끝과 40% 지점을 번갈아), 0.4초 뒤 `상자 놓기`를 누른다(측정용, `bench_device.sh` 기본) |
 | `--q-<항목>=<값>` | 품질 단계 항목 덮어쓰기(측정용) |
@@ -248,7 +273,7 @@ npm test                           # 루트: TS 테스트 + apps/lab3d/tools/{in
 | parity | `tests/run_tests.gd` | GDScript `PhysicsLaws`가 벡터와 같은 값(최대 차이 0) |
 | 빗면 공식 일치 | `tests/run_tests.gd` | 앱의 빗면 실험(Jolt + 공식 보정)이 측정 기준 4절 표(26° 정지, 27° 1초 안에 미끄러짐, 35° 가속도·이동 거리 ±1%, 20° 10초 ≤ 1 mm)를 재현. 재질별로 임계각 −0.5° 정지, +0.5° 미끄러짐, 40°에서 s(1s)·s(1.5s) ±1%, 그래프 점이 공식과 일치 |
 | 아트는 보이는 것만 | `tests/run_tests.gd` | 아트가 충돌 객체를 더하지 않음, 연출은 상자 메시만 바꾸고 충돌 모양은 그대로, 연출을 끈 실행과 운동·그래프·표시 값이 같음, 카메라 착지 반응이 모드·목표를 바꾸지 않음 |
-| 셸 | `tests/run_tests.gd` | 레지스트리 검증, 글꼴 서브셋이 쓰는 글자를 모두 포함, 카메라 모드 전환·제한·정면으로·따라가기, 제스처 분류(한 손가락은 카메라 불변), 세로·가로 레이아웃 |
+| 셸 | `tests/run_tests.gd` | 레지스트리 검증, 글꼴 서브셋이 쓰는 글자를 모두 포함, 카메라 모드 전환·제한·정면 초기화·시점별 target·따라가기, 제스처 분류(한 손가락은 카메라 불변), 가로 레이아웃(폰 1560×720·태블릿 1152×720 단위: 3D 전체·사이드바 닫힘, `정면으로`·3D 위 시점 칩 없음, 제목·버튼·카드·액션이 뷰 안에서 안 겹침, 사이드바 슬라이드·뷰 한 번 축소·닫으면 복귀, 좁은 뷰 가로 시야 유지), `key_observations` 검증, 실험 11개 모두 정면 기본·카드 값 = 패널 값·열린 사이드바 폭 유지 |
 | 조작 | `tests/manipulation_checks.gd`(`run_tests.gd`가 부름) | 투영(바로 아래, 물체 중심 높이, 스치는 광선·뒤쪽 광선은 무시, 선 위 가장 가까운 점), 격자 스냅·영역·여유 0.6 m, 레지스트리의 `manipulation` 검사와 숨은 개발 장면, 보조 시점(필요할 때만 돌고 되돌아옴, 따라가기 대상 고정). 실제 입력 경로(View3D 터치 → Manipulator → 실험)로: 빗면 끌어 놓기·0.5 m 눈금 스냅·놓을 수 없는 곳(남색 표시·흔들림·제자리 복귀)·두 번째 손가락과 시스템 취소·마우스·미끄러지는 상자 집기·조작 중 조건 변경·화면 재구성 유지. 개발 장면: 바닥 격자, 높이 손잡이(높이만, 0.25 m 단위), 높이 조작 중 두 손가락 취소, 다른 상자·블록과 겹침 금지, 블록 위 높이에 놓기, 영역 밖 금지, 빈 곳 탭으로 선택 해제, 떨어뜨리기. 리뷰 반영: 착지한 상자를 끌어 놓은 뒤 다시 착지 반응, 자동 놓기 타이머의 조작 취소, 높이 상한 초과 금지, 액션 때 손잡이 숨김, 떨어지는 상자 미저장, 손잡이 막대 기준 높이 끌기, 조작 중 사용자가 돌린 시점 유지, 보조 시점 탐색 횟수. 3차 리뷰 반영: 블록 위 상자 집기 높이 유지, 첫 목표가 막힌 곳이면 흔들지 않음, 눈금=스냅 격자·규칙 한 곳에서 읽기, 캡슐 축소, 놓기·취소 때 패널 갱신 1회, 데모 후속 액션 선언 |
 | 공식 벡터 생성·감시 (Task 3) | `tools/formula-vectors.test.ts`(루트 `npm test`) | TS 코어 함수·클래스(`src/physics/laws`, `world.ts` 충돌, `PendulumModel`, `Lever`·`Pulley`·`OrbitChallenge`)로 10개 실험의 법칙 사례 583개와 대표 장면 목표값을 만들어 `tests/formula_vectors.json`과 비교. 10개 실험이 모두 법칙을 갖는지 |
 | 공식 parity (Task 3) | `tests/formula_checks.gd`(`run_tests.gd`가 부름) | 실험마다 그 실험이 쓰는 `PhysicsLaws` 함수가 벡터와 상대 오차 1e-9 이내(측정 최대 3e-13), 벡터의 법칙에 포트가 모두 있음 |
@@ -295,20 +320,21 @@ python3 -I apps/lab3d/tools/device_gesture.py orbit  # orbit | pinch | pinch-fix
 ```
 
 - 다른 실험: `OPBENCH_EXPERIMENT=free-fall OPBENCH_SUSTAINED=0 apps/lab3d/tools/bench_device.sh low 3 90 60`(던지기는 `projectile`, 마찰 밀기는 `friction`, 충돌은 `collision`, 용수철·부력·궤도는 `spring`·`buoyancy`·`orbit`, 진자·지렛대·도르래는 `constraints`·`rotation`·`pulley`). 장면 이름은 실험 정의의 `bench_id`(`FF`·`PJ`·`FR`·`CO`·`S3`, 앱이 기록하는 이름)에서 읽고, 빗면 전용 `--ctl-angle=30`은 `incline-friction`일 때만 기본으로 붙는다(`OPBENCH_CTL`로 바꿈). 기본 결과 폴더는 실험·조작 방식별 `spikes/bench/results/lab3d-<실험>-<drag|release>`이고, 이미 같은 등급·장면 결과가 있는 폴더(기록된 기준선 `phase1-task*` 포함)에는 쓰지 않는다(`OPBENCH_OVERWRITE=1`일 때만 덮어씀). `--auto-drag=4`가 실험의 첫 조작 물체(자유 낙하 빨간 공, 던지기 공, 마찰 밀기 손잡이, 충돌 공 A)를 4초마다 끌어 놓고 0.4초 뒤 `demo_action`(공 놓기, 마찰 밀기는 `처음으로`)을 누른다. 마찰 밀기는 손잡이를 끝(+4 m, 80 N: 상자가 미끄러짐)과 40% 지점(−0.8 m, −16 N: 버팀)으로 번갈아 끈다. 충돌은 공 A를 자기 구간 끝(x −0.5 m)과 40% 지점(−4 m)으로 번갈아 옮기고 `출발`을 눌러 4초마다 충돌·벽 튐을 되풀이한다. 진자는 줄 추를 원 위 두 각도로 옮겨 놓고(두 추가 출발), 지렛대는 손잡이를 끝까지(250 N, 들림)와 40 %(100 N)로 번갈아 누르고, 도르래는 손잡이를 끝까지와 40 %로 당긴 뒤 `처음으로`를 누른다. Task 4a 결과는 [phase1-task4a](../../spikes/bench/results/phase1-task4a/README.md).
-- `bench_device.sh`는 패널을 관찰값·그래프 위치로 스크롤하고(`--scroll-to=observations`), 각도 30°에서 4초마다 상자를 손가락 입력 경로로 끌어 새 출발 위치에 놓고 0.4초 뒤 놓기를 눌러(`--auto-drag=4`) 끌기·보조 시점·물리·관찰값·그래프가 계속 바뀌는 상태로 잰다. Task 2a·2c는 `OPBENCH_PLAY=--auto-release=4`(4초마다 다시 놓기만)로 쟀다. 빗면의 OPBENCH 장면 이름은 `S3`(측정 기준의 안내형 빗면)다.
-- 한 손가락 끌기는 `adb shell input swipe x1 y1 x2 y2 <ms>`로 재생한다. `device_gesture.py drag-cancel`은 빗면 상자(20°, 기본 시점)를 끄는 중 두 번째 손가락을 대 취소를 재생한다.
-- `device_gesture.py`는 Android `hid` 명령으로 2점 가상 멀티터치 화면을 등록해 두 손가락 제스처를 재생한다. `adb shell input`은 한 손가락만 되고, 실제 터치스크린 노드 쓰기는 SELinux가 막는다. 좌표는 세로 기준 SM-P200 화면 픽셀이다.
+- `bench_device.sh`는 가로 기본 화면(사이드바 닫힘)에서 잰다. `OPBENCH_SIDEBAR=open`이면 사이드바를 열어 관찰값·그래프 위치로 스크롤하고(`--scroll-to=observations`, 기본 결과 폴더에 `-sidebar`), Task 2d 이전(세로, 패널 스크롤)과 비교할 때 쓴다. 각도 30°에서 4초마다 상자를 손가락 입력 경로로 끌어 새 출발 위치에 놓고 0.4초 뒤 놓기를 눌러(`--auto-drag=4`) 끌기·보조 시점·물리·관찰값·그래프가 계속 바뀌는 상태로 잰다. Task 2a·2c는 `OPBENCH_PLAY=--auto-release=4`(4초마다 다시 놓기만)로 쟀다. 빗면의 OPBENCH 장면 이름은 `S3`(측정 기준의 안내형 빗면)다.
+- 한 손가락 끌기는 `adb shell input swipe x1 y1 x2 y2 <ms>`로 재생한다. `device_gesture.py drag-cancel`은 빗면 상자(20°, 기본 정면 시점)를 끄는 중 두 번째 손가락을 대 취소를 재생한다.
+- `device_gesture.py`는 Android `hid` 명령으로 2점 가상 멀티터치 화면을 등록해 두 손가락 제스처를 재생한다. `adb shell input`은 한 손가락만 되고, 실제 터치스크린 노드 쓰기는 SELinux가 막는다. 좌표는 가로 기준 SM-P200 화면 픽셀(1920×1200)이고, 가상 화면은 자연 방향(세로) 좌표로 보고하므로 `dumpsys input`의 현재 회전으로 바꿔 보낸다. `tap --at X,Y`는 그 점을 한 번 누른다.
 - 결과: [Phase 1 Task 2a 측정 결과](../../spikes/bench/results/phase1-task2a/README.md), [Task 2c(잔디 섬 스타일)](../../spikes/bench/results/phase1-task2c/README.md), [Task 2b(조작)](../../spikes/bench/results/phase1-task2b/README.md).
 
 ## 5. 실험 추가
 
-1. `content/experiments/<id>.json`을 만든다. 필드는 `incline-friction.json`을 따른다. 문구는 `content`에 공유 실험 id를 적어 `content/mechanics-labs.json`에서 가져온다(웹 2D 실험이면 `labs`의 그 항목에 3D 조작 안내 `app.tip`을 더하고, 3D 전용이면 `app_labs`에 더한다, 1절 "콘텐츠 공유"). 합친 정의에서 `ExperimentRegistry.validate()`가 검사하는 필수 필드는 `id`, `title`, `category`, `question`, `steps`, `observe`, `law`, `scene`, `camera`, `controls`, `actions`, `observations`, `graph`다. 나머지(`icon`, `terms`, `tip`)는 선택이다.
+1. `content/experiments/<id>.json`을 만든다. 필드는 `incline-friction.json`을 따른다. 문구는 `content`에 공유 실험 id를 적어 `content/mechanics-labs.json`에서 가져온다(웹 2D 실험이면 `labs`의 그 항목에 3D 조작 안내 `app.tip`을 더하고, 3D 전용이면 `app_labs`에 더한다, 1절 "콘텐츠 공유"). 합친 정의에서 `ExperimentRegistry.validate()`가 검사하는 필수 필드는 `id`, `title`, `category`, `question`, `steps`, `observe`, `law`, `scene`, `camera`, `controls`, `actions`, `observations`, `key_observations`, `graph`다. 나머지(`icon`, `terms`, `tip`)는 선택이다.
    - 문구(공유 파일): `title`, `category`, `icon`, `question`, `steps`(3개), `observe`, `terms`, `law`(`title`·`description`·`equation`), `app.tip`
    - `scene`: 실험 스크립트 경로, `bench_id`: OPBENCH 장면 이름
-   - `camera`: `target`, `distance`, `distance_range`, `yaw_range_deg`, `pitch_range_deg`, `pan_radius`, `default_mode`, `views`(front·three_quarter·top·side·follow의 `yaw_deg`·`pitch_deg`, 선택 `distance`)
+   - `camera`: `target`, `distance`, `distance_range`, `yaw_range_deg`, `pitch_range_deg`, `pan_radius`, `default_mode`(안내형 실험은 `front`), `views`(front·three_quarter·top·side·follow의 `yaw_deg`·`pitch_deg`, 선택 `distance`·`target`). 정면 시점에서 장치가 핵심 카드(왼쪽 위)·액션 버튼(오른쪽 아래)에 가리지 않는지 폰 가로(2340×1080)·태블릿 가로(1920×1200)에서 확인한다
    - `controls`: `slider`(`min`·`max`·`step`·`default`·`unit`·`digits`) 또는 `choice`(`options`·`default`). `options` 항목은 `id`·`label`이고, 재질 선택처럼 실험이 쓰는 계수(`mu_s`·`mu_k`)를 함께 둘 수 있다
    - `actions`: 버튼(`id`·`label`, `style: "primary"`)
    - `observations`: `id`·`label`·`unit`·`digits`(문자열 값이면 단위 없음)
+   - `key_observations`: 3D 위 카드로 늘 보일 관찰값 id 2~3개(실험 질문에 답하는 값). 레지스트리가 개수·중복·id를 검사한다
    - `graph`: `title`, `x`(`label`·`unit`·`max`), `y`(`label`·`unit`·`min_max`), `series`(`id`·`label`·`color`·`style: line|points`)
 2. `content/experiments/index.json`의 `experiments`에 파일 이름을 더한다. 목록 화면은 이 순서와 `category`로 묶어 보여준다.
 3. `experiments/<이름>/<이름>.gd`에 `extends Experiment` 스크립트를 만든다(공식 모델을 `BodyModelDriver`로 구동하는 안내형 실험은 `extends ModelDrivenLab`: `_ready()`·run 상태·그래프 장부·`release()`를 베이스가 맡고 `_build_world()`·`_load_model()`·`_graph_point()` 등을 채운다. 조건이 바뀌어 run을 다시 시작할 때는 `_restart()`와 `reset_run()`). `_ready()`에서 3D 월드를 만들고 `definition.controls`의 기본값으로 `set_control()`을 부른다. 보이는 소품·환경·연출은 `<이름>_props.gd`로 나눠 [아트 디렉션 9절](docs/art-direction.md#9-새-실험-소품-만드는-법)을 따른다. 바닥·마찰 없는 재질·보정 바디 설정과 상태 변화 알림은 `Experiment` 베이스의 `_add_floor()`·`_frictionless_material()`·`_setup_free_body()`·`_update_status()`(반응은 `_status_changed()`를 재정의)를 쓰고, 공식의 중력은 베이스의 `engine_g`에서 읽는다. 화면 숫자는 공식(`PhysicsLaws`)에서 내고, 엔진 측정값은 따로 표시한다(공식 보정 원칙, [CONTEXT](../../CONTEXT.md)).
@@ -324,6 +350,6 @@ python3 -I apps/lab3d/tools/device_gesture.py orbit  # orbit | pinch | pinch-fix
 - 조작은 물체를 면에 똑바로 세워 놓는다(면 좌표계 방향). 물체 회전·줄·용수철 연결·도구 팔레트는 Task 5다. 조작 대상의 충돌 모양은 바디의 첫 `CollisionShape3D`(상자·구·원기둥·캡슐, 원점에 놓인 것)로 본다.
 - 공식 보정 계층은 알려진 면 하나 위의 마찰, 알려진 두 구의 충돌, 실험이 정한 힘·모델만 다룬다. 빈 실험실(Task 5)의 일반 다접촉 마찰·조인트는 따로 설계한다([공식 보정 2절 한계](docs/formula-correction.md#한계)).
 - Web export와 iOS는 아직 만들지 않았다.
-- 가로 모드에서는 패널이 조건 카드까지만 한 화면에 보이고 관찰값·그래프는 스크롤해야 한다.
+- 사이드바에서는 시점·조건 카드까지만 한 화면에 보이고 관찰값·그래프는 스크롤해야 한다. 핵심 카드에 없는 값은 사이드바를 열어야 보인다.
 - 균일장 실험(Task 4a): 그래프 가로축이 3초로 고정이라 달에서 길게 나는 운동(던지기 T 최대 약 11초)은 앞부분만 그려진다. 공식 값(거리·시간·최고점)은 패널에 그대로 나온다. 실험 정의의 웹 2D 조건 중 웹 캔버스 크기에 따라 달라지는 출발 높이(웹 약 7.8 m)는 3D에서 0.5–8 m 조건으로 바꿨고, 던지기 출발 높이(웹 0.42 m)는 기본 0.5 m(손잡이 0.25 m 눈금)다.
 - 공은 회전을 잠갔다(착지 뒤 굴러가지 않고 미끄러진다). 자유 비행에는 회전이 없어 공식 운동과 무관하다.

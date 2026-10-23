@@ -53,4 +53,28 @@
 
 ## 5. 울타리 반영 뒤 (커밋 `21cd4f9`)
 
-기기 사용 금지(사용자 요청) 상태라 fps·스크린샷(울타리, 되튄 뒤 멈춘 공) 모두 **미측정**. 헤드리스 시험만 했다(공식 보정 4절 Task 4f "울타리").
+기기 사용 금지(사용자 요청) 상태라 이 커밋으로는 측정하지 않았다. 재허가 뒤 측정은 6절.
+
+## 6. 울타리·비행 중 울타리 반영 뒤 (커밋 `c313e43`) — SM-P200 재허가 뒤
+
+- 빌드: 커밋 `c313e43`의 release APK(착지 뒤 공 모델, 구름 저항, 흰 띠, 흰 받침판, 양끝 울타리, 날아가다 맞는 공). 같은 SM-P200, 2026-10-23 13:48–13:56. 기기 설정(밝기 128, `stay_on_while_plugged_in` 2, 1200x1920)은 전후 같다(변경하지 않음). 측정·촬영 중 호스트 Godot 없음. 끝난 뒤 adb 서버 종료.
+- `OPBENCH_EXPERIMENT=projectile OPBENCH_SUSTAINED=0 OPBENCH_RESULTS_DIR=$PWD/spikes/bench/results/phase1-ball-spin/fence apps/lab3d/tools/bench_device.sh low 1 90 10`(조건 1절과 같음, `--auto-drag=4`).
+
+| 실험 | 기록 초(30초 이후) | 평균 fps | 최저 초당 fps | 33 ms 넘는 프레임 | 1% low | p95 ms | 최고 °C | PSS MB |
+|---|---|---|---|---|---|---|---|---|
+| 던지기 PJ | 91 | **59.81** | 57.5 | 8 | 40.7 | 18.2 | 28.8 | 166 |
+
+기준(≥ 59.5) 충족. 자유 낙하는 4절(커밋 `4babeea`, 59.83 fps)이 마지막 측정이다(그 뒤 자유 낙하 코드는 바뀌지 않음: 울타리는 던지기 전용).
+
+| 파일 (`fence/screens/`) | 내용 |
+|---|---|
+| `free-fall-colours-white-pads.jpg` | 자유 낙하 대기: 노랑·보라·빨강 공(흰 띠)과 흰 받침판 |
+| `free-fall-bands-landed.jpg` | 착지 뒤 세 공 |
+| `projectile-band-rolling-front.jpg` | 던지기 착지 뒤 흰 띠 공이 구르는 모습(정면) |
+| `projectile-fence-follow.jpg` | 오른쪽 울타리 앞(따라가기 시점) |
+| `projectile-rested-band-follow.jpg` | 울타리에 되튄 뒤 섬 위에 멈춘 공(따라가기) |
+| `projectile-rested-fences-front.jpg` | 멈춘 공과 양끝 울타리(넓은 시점) |
+
+- 원본: `fence/lab3d-low-PJ-1.{jsonl,device.jsonl,perf.jsonl}`, `fence/gpu-clock-low.log`.
+- 날아가다 울타리에 맞는 장면(달 긴 던지기)은 발사 높이·자리를 실행 인자로 정할 수 없어 찍지 않았다(헤드리스 시험만).
+- 보인 점: 오른쪽 울타리(x 12.0–12.15 m)가 섬 가장자리에 붙어 따라가기 시점에서 섬 밖으로 걸쳐 보인다. 넓은 시점 `projectile-rested-fences-front.jpg` 일부 프레임은 따라가기가 아닌데도 시점이 멀어져 있다(원인 확인 안 함).

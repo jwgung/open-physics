@@ -304,9 +304,14 @@ func _begin(id: String, kind: String, position: Vector2) -> void:
 		var juice := experiment.manipulation_juice(id)
 		if juice:
 			juice.hold(true)
-		# The surface must face the camera enough to show the footprint (and a line must not run
-		# along the view, or the finger could not move the object along it).
-		view.rig.begin_assist(surface.normal(), surface.frame.basis.x if surface.is_line() else Vector3.ZERO)
+		# A plane must face the camera enough to show the footprint. A line (a floor lane, the incline's
+		# slope, a rod, a handle's stroke) needs only that it does not run along the view: the finger
+		# moves the object along it from any other direction, and the default front view (pitch
+		# -4..-8 deg) would otherwise turn the camera at every ordinary drag (Task 2d review).
+		if surface.is_line():
+			view.rig.begin_assist(Vector3.ZERO, surface.frame.basis.x)
+		else:
+			view.rig.begin_assist(surface.normal(), Vector3.ZERO)
 	else:
 		_held = surface.nearest_inside(p)
 		var s: Variant = _knob_line_point(position)

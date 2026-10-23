@@ -11,7 +11,7 @@
     "yaw_range_deg": [-100.0, 100.0],
     "pitch_range_deg": [-89.0, -2.0],
     "pan_radius": 6.0,
-    "default_mode": "three_quarter",
+    "default_mode": "front",
     "views": {
       "front": { "yaw_deg": 0.0, "pitch_deg": -8.0, "distance": 11.0 },
       "three_quarter": { "yaw_deg": 26.0, "pitch_deg": -24.0 },
@@ -38,6 +38,7 @@
     { "id": "release", "label": "놓기", "style": "primary" },
     { "id": "reset", "label": "처음으로" }
   ],
+  "key_observations": ["extension", "speed", "total"],
   "observations": [
     { "id": "state", "label": "상태" },
     { "id": "extension", "label": "늘어난 길이 x (+ 늘어남, − 눌림)", "unit": "m", "digits": 2 },

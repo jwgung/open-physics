@@ -11,9 +11,9 @@
     "yaw_range_deg": [-100.0, 100.0],
     "pitch_range_deg": [-89.0, -2.0],
     "pan_radius": 6.0,
-    "default_mode": "three_quarter",
+    "default_mode": "front",
     "views": {
-      "front": { "yaw_deg": 0.0, "pitch_deg": -4.0, "distance": 10.5 },
+      "front": { "yaw_deg": 0.0, "pitch_deg": -4.0, "distance": 12.0, "target": [0.0, 2.9, 0.0] },
       "three_quarter": { "yaw_deg": 24.0, "pitch_deg": -14.0 },
       "top": { "yaw_deg": 0.0, "pitch_deg": -89.0, "distance": 13.0 },
       "side": { "yaw_deg": 90.0, "pitch_deg": -10.0, "distance": 11.0 },
@@ -38,6 +38,7 @@
   "actions": [
     { "id": "reset", "label": "처음으로", "style": "primary" }
   ],
+  "key_observations": ["strands", "required", "lift"],
   "observations": [
     { "id": "state", "label": "상태" },
     { "id": "strands", "label": "짐을 받치는 줄 n", "unit": "줄", "digits": 0 },

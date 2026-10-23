@@ -11,9 +11,9 @@
     "yaw_range_deg": [-100.0, 100.0],
     "pitch_range_deg": [-89.0, -2.0],
     "pan_radius": 7.0,
-    "default_mode": "three_quarter",
+    "default_mode": "front",
     "views": {
-      "front": { "yaw_deg": 0.0, "pitch_deg": -10.0, "distance": 16.0 },
+      "front": { "yaw_deg": 0.0, "pitch_deg": -40.0, "distance": 16.0 },
       "three_quarter": { "yaw_deg": 26.0, "pitch_deg": -42.0 },
       "top": { "yaw_deg": 0.0, "pitch_deg": -89.0, "distance": 17.0 },
       "side": { "yaw_deg": 90.0, "pitch_deg": -14.0, "distance": 16.0 },
@@ -39,6 +39,7 @@
     { "id": "circular", "label": "원 궤도 속력으로" },
     { "id": "reset", "label": "처음으로" }
   ],
+  "key_observations": ["state", "launch_speed", "escape_speed"],
   "observations": [
     { "id": "state", "label": "상태" },
     { "id": "predicted", "label": "예상 결과" },

@@ -11,7 +11,7 @@
     "yaw_range_deg": [-100.0, 100.0],
     "pitch_range_deg": [-89.0, -2.0],
     "pan_radius": 5.0,
-    "default_mode": "three_quarter",
+    "default_mode": "front",
     "views": {
       "front": { "yaw_deg": 0.0, "pitch_deg": -6.0, "distance": 7.5 },
       "three_quarter": { "yaw_deg": 24.0, "pitch_deg": -20.0 },
@@ -38,6 +38,7 @@
     { "id": "release", "label": "놓기", "style": "primary" },
     { "id": "reset", "label": "처음으로" }
   ],
+  "key_observations": ["depth", "floating_depth", "buoyant"],
   "observations": [
     { "id": "state", "label": "상태" },
     { "id": "judgement", "label": "밀도로 본 결과" },

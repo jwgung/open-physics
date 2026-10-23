@@ -2,7 +2,9 @@
 # Measures the incline friction experiment on a connected Android device with the benchmark
 # procedure (docs/3d-phase0/benchmark-spec.md section 5, as used in Phase 1 Task 1):
 # shader-cache run, then <runs> x (app restart, 30 s warm-up, <seconds> s capture), then one
-# 600 s sustained capture. The panel shows the observations and the graph (--scroll-to), and the
+# 600 s sustained capture. The screen is landscape (the app is landscape only, Task 2d) with the
+# sidebar closed (the default screen: full 3D view, key cards, action buttons);
+# OPBENCH_SIDEBAR=open opens the sidebar at the observations and the graph (--scroll-to). The
 # box is dragged (put down, released 0.4 s later) every 4 s so the drag, physics, observations and
 # graph keep updating. OPBENCH_PLAY=--auto-release=4 re-releases only (the Task 2a/2c measurement:
 # the experiment's own release action, no UI work besides what the experiment emits).
@@ -14,7 +16,7 @@
 # Usage: apps/lab3d/tools/bench_device.sh <tier> [runs] [seconds] [rest_s]   e.g. low 3 90 60
 # Output: $OPBENCH_RESULTS_DIR/lab3d-<tier>-<scene>-*.jsonl, plus gpu-clock-<tier>.log ("<unix s>
 # <Mali kHz> <AP °C>" every 5 s). The default folder is per experiment and play mode,
-# spikes/bench/results/lab3d-<experiment>-<drag|release>, never a recorded baseline (phase1-task*):
+# spikes/bench/results/lab3d-<experiment>-<drag|release>[-sidebar], never a recorded baseline (phase1-task*):
 # a folder that already holds lab3d-<tier>-<scene>-* results is refused (OPBENCH_OVERWRITE=1 to
 # replace them). Summarise with node spikes/bench/summarize.mjs <dir>.
 set -uo pipefail
@@ -46,12 +48,17 @@ if [[ $experiment == incline-friction ]]; then
 else
   ctl=${OPBENCH_CTL-}
 fi
-export OPBENCH_RESULTS_DIR=${OPBENCH_RESULTS_DIR:-$repo/spikes/bench/results/lab3d-$experiment-$mode}
+case ${OPBENCH_SIDEBAR:-closed} in
+  open) sidebar=--scroll-to=observations; suffix=-sidebar ;;
+  closed) sidebar=; suffix= ;;
+  *) echo "bench_device: OPBENCH_SIDEBAR must be open or closed" >&2; exit 2 ;;
+esac
+export OPBENCH_RESULTS_DIR=${OPBENCH_RESULTS_DIR:-$repo/spikes/bench/results/lab3d-$experiment-$mode$suffix}
 if [[ ${OPBENCH_OVERWRITE:-0} != 1 ]] && compgen -G "$OPBENCH_RESULTS_DIR/lab3d-$tier-$scene-*" >/dev/null; then
   echo "bench_device: $OPBENCH_RESULTS_DIR already holds lab3d-$tier-$scene-* results (OPBENCH_OVERWRITE=1 replaces them)" >&2
   exit 2
 fi
-args="--experiment=$experiment,--quality=$tier,--orientation=portrait,--scroll-to=observations,$play${ctl:+,$ctl}"
+args="--experiment=$experiment,--quality=$tier${sidebar:+,$sidebar},$play${ctl:+,$ctl}"
 mkdir -p "$OPBENCH_RESULTS_DIR"
 
 adb_ready() { adb start-server >/dev/null 2>&1; adb wait-for-device; }

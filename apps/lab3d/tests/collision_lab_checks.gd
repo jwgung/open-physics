@@ -146,7 +146,7 @@ func _first_error(shown: Dictionary, first: Dictionary) -> float:
 func _open() -> Control:
 	var host := Control.new()
 	host.theme = load(UI_THEME).build()
-	host.size = Vector2(720, 1560)
+	host.size = Vector2(1560, 720)
 	tree.root.add_child(host)
 	var screen: Control = load(EXPERIMENT_SCREEN).new()
 	screen.setup(ExperimentRegistry.find("collision"))
@@ -530,7 +530,7 @@ func check_review() -> void:
 	var fresh: Experiment = await _lab()
 	var screen := Control.new()
 	screen.theme = load(UI_THEME).build()
-	screen.size = Vector2(720, 1560)
+	screen.size = Vector2(1560, 720)
 	tree.root.add_child(screen)
 	var restored: Control = load(EXPERIMENT_SCREEN).new()
 	restored.setup(ExperimentRegistry.find("collision"), {"controls": {"mass_a": 2.0, "mass_b": 1.5, "material_a": "wood", "material_b": "steel", "velocity_a": 2.0, "velocity_b": -1.0},

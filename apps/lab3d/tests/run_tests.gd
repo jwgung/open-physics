@@ -6,7 +6,7 @@
 ## 2. incline formula match: the app's experiment (Jolt + formula correction) reproduces the
 ##    benchmark spec section 4 table and holds/slides at each material's critical angle.
 ## 3. shell: content registry, font coverage, camera modes/limits, gesture classification,
-##    portrait/landscape layout.
+##    landscape layout (phone and tablet: full 3D view, key cards, sidebar), front default camera.
 ## 4. manipulation (Task 2b, tests/manipulation_checks.gd): projection, snap, assist, drag/cancel/
 ##    height handle/overlap through the real input path, displayed numbers after a new start.
 ## 5. formula correction layer (Task 3, tests/formula_checks.gd): PhysicsLaws parity for the 10
@@ -37,6 +37,8 @@
 ## 14. pulley lab (Task 4e, tests/pulley_lab_checks.gd): the pulley model and the engine load step by
 ##    step against the TS-core vectors (tests/pulley_lab_vectors.json), lift = rope / n, the rope
 ##    length and F d = m g h from the engine bodies, panel, art, hand-over-hand input, the demo.
+## 15. key cards (Task 2d): every listed experiment opens in the front view with 2-3 key cards that
+##    show the panel's text.
 ## Times are engine fixed steps (60 Hz), independent of rendering FPS.
 extends SceneTree
 
@@ -47,6 +49,9 @@ const VIEW_3D := "res://scripts/shell/view_3d.gd"
 const EXPERIMENT_SCREEN := "res://scripts/shell/experiment_screen.gd"
 const UI_THEME := "res://scripts/app/ui_theme.gd"
 const STEP_HZ := 60
+## Landscape screens in UI units (the short side is 720): phone 2340x1080, tablet 1920x1200 (SM-P200).
+const PHONE_LANDSCAPE := Vector2(1560, 720)
+const TABLET_LANDSCAPE := Vector2(1152, 720)
 
 var _failures := 0
 var _lab: Experiment
@@ -145,6 +150,14 @@ func _run() -> void:
 	_expect(pulley != null and pulley.can_instantiate(), "pulley lab checks compile", "")
 	if pulley != null and pulley.can_instantiate():
 		await pulley.new(self, _expect).run()
+	# Last: opening every experiment's screen changes the shared physics world's history (Jolt body
+	# ids), which would move the engine-twin noise of the checks above (all within tolerance).
+	print("== key cards and front camera, every experiment (Task 2d) ==")
+	await _check_key_cards()
+	await _check_gesture_tip()
+	await _check_tip_rebuild()
+	await _check_back_button()
+	await _check_small_window_title()
 	print("RESULT: %s (%d failure(s))" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -553,6 +566,25 @@ func _check_content() -> Dictionary:
 	views_missing.camera.views.erase("follow")
 	_expect(ExperimentRegistry.validate(views_missing).size() == 1 and "follow" in ExperimentRegistry.validate(views_missing)[0],
 		"registry requires a view for every preset camera mode", ", ".join(ExperimentRegistry.validate(views_missing)))
+	# Task 2d: key_observations are 2-3 distinct observation ids; a view target is [x, y, z].
+	var key_cases := {"one": ["state"], "four": ["state", "acceleration", "distance", "run"], "unknown": ["state", "speed"],
+		"duplicate": ["state", "state"], "missing": null}
+	var key_problems := PackedStringArray()
+	for case in key_cases:
+		var keyed := definition.duplicate(true)
+		if key_cases[case] == null:
+			keyed.erase("key_observations")
+		else:
+			keyed.key_observations = key_cases[case]
+		var found := ExperimentRegistry.validate(keyed)
+		if found.size() != 1 or not "key_observations" in found[0]:
+			key_problems.append("%s: %s" % [case, ", ".join(found)])
+	var bad_target := definition.duplicate(true)
+	bad_target.camera.views.front.target = [0.0, 1.0]
+	var target_found := ExperimentRegistry.validate(bad_target)
+	_expect(key_problems.is_empty() and target_found.size() == 1 and "front.target" in target_found[0],
+		"registry rejects key_observations that are not 2-3 distinct observation ids, and a malformed view target",
+		", ".join(key_problems) + " | " + ", ".join(target_found))
 	var not_experiment := definition.duplicate(true)
 	not_experiment.scene = "res://scripts/shell/graph_view.gd"   # exists, but does not extend Experiment
 	_expect(not ExperimentRegistry.validate(not_experiment).is_empty(), "registry rejects a scene script that is not an Experiment",
@@ -590,7 +622,9 @@ func _check_shared_content(incline: Dictionary) -> void:
 			var shown: Variant = lab.get("app", {}).get(key, lab[key]) if key in ExperimentRegistry.APP_OVERRIDES else lab[key]
 			same = same and str(definition[key]) == str(shown)
 			raw_texts = raw_texts or raw.has(key)
-		same = same and definition.get("tip", "") == lab.get("app", {}).get("tip", "")
+		same = same and definition.get("tip", "") == lab.get("app", {}).get("tip", "") \
+			and definition.get("tip_short", "") == lab.get("app", {}).get("tip_short", "")
+		raw_texts = raw_texts or raw.has("tip") or raw.has("tip_short")
 	_expect(same and not raw_texts, "listed experiments take every text from the shared lab content (none written in the experiment file)", "")
 	# The incline's panel texts are unchanged by the move (values as they were in incline-friction.json).
 	_expect(incline.title == "빗면을 얼마나 기울이면 미끄러질까?" and incline.steps.size() == 3 and incline.terms.size() == 4
@@ -605,6 +639,16 @@ func _check_shared_content(incline: Dictionary) -> void:
 	problems.append_array(ExperimentRegistry.resolve(unknown)[1])
 	_expect(problems.size() == 2 and "duplicates" in problems[0] and "not in" in problems[1],
 		"registry rejects texts written next to `content` and an unknown lab id", ", ".join(problems))
+	# tip and tip_short come from the shared lab's app block only: a file writing either is rejected too.
+	var written := PackedStringArray()
+	for key in ["tip", "tip_short"]:
+		var with_text := raw_incline.duplicate(true)
+		with_text[key] = "직접 쓴 안내"
+		var found: PackedStringArray = ExperimentRegistry.resolve(with_text)[1]
+		written.append("%s:%d" % [key, found.size()])
+		if found.size() != 1 or key not in found[0]:
+			written.append("BAD")
+	_expect("BAD" not in written, "registry rejects `tip` and `tip_short` written next to `content`", ", ".join(written))
 	_check_app_overrides(file)
 
 
@@ -700,7 +744,21 @@ func _check_camera(definition: Dictionary) -> void:
 	_expect(rig.pan.length() <= definition.camera.pan_radius + 1e-4, "pan stays inside pan_radius", "%.2f" % rig.pan.length())
 	rig.set_mode("front")
 	var front_distance: float = definition.camera.views.front.get("distance", definition.camera.distance)
-	_expect(rig.pan == Vector3.ZERO and is_equal_approx(rig.goal_distance, front_distance), "정면으로 resets pan and zoom", "%.2f" % rig.goal_distance)
+	_expect(rig.pan == Vector3.ZERO and is_equal_approx(rig.goal_distance, front_distance), "front mode resets pan and zoom", "%.2f" % rig.goal_distance)
+	# A view with its own target looks there; the others keep camera.target (Task 2d).
+	var aimed: Dictionary = definition.camera.duplicate(true)
+	aimed.views.front.target = [0.5, 4.0, 0.0]
+	rig.configure(aimed)
+	var front_at := rig._goal_target()
+	rig.set_mode("side", true)
+	var side_at := rig._goal_target()
+	rig.set_mode("front", true)
+	var round_trip := rig.get_state()
+	rig.set_mode("side", true)
+	rig.set_state(round_trip)
+	_expect(front_at.is_equal_approx(Vector3(0.5, 4.0, 0.0)) and side_at.is_equal_approx(rig.base_target) and rig._goal_target().is_equal_approx(front_at),
+		"a view's own target is used for that view only and survives a state round-trip", "front %s, side %s" % [front_at, side_at])
+	rig.configure(definition.camera)
 	rig.set_mode("follow")
 	target.position = Vector3(3, 1, 0)
 	_step(rig, 1.5)
@@ -915,27 +973,299 @@ func _drag(view: Control, index: int, position: Vector2) -> void:
 	view._gui_input(event)
 
 
+## Task 2d layout (landscape only), on a phone (2340x1080 -> 1560x720 units) and a tablet
+## (1920x1200 -> 1152x720): the 3D view fills the screen with the sidebar closed; over it the key
+## cards (same text as the panel tiles) and the action buttons; no "정면으로" and no camera chips
+## over the view; the sidebar opens and closes with a slide (only the sidebar moves, the view is
+## resized once), and the view never lies under the open sidebar.
 func _check_layout(definition: Dictionary) -> void:
 	var host := Control.new()
 	host.theme = load(UI_THEME).build()
 	root.add_child(host)
-	for size: Vector2 in [Vector2(720, 1560), Vector2(1152, 720)]:
+	for size: Vector2 in [PHONE_LANDSCAPE, TABLET_LANDSCAPE]:
+		var name := "phone" if size == PHONE_LANDSCAPE else "tablet"
 		host.size = size
 		var screen: Control = load(EXPERIMENT_SCREEN).new()
 		screen.setup(definition)
 		host.add_child(screen)
 		await process_frame
 		await process_frame
-		var panel: Control = screen._panel
-		var landscape := size.x > size.y
-		var placed: bool = panel.position.x > screen.view.position.x if landscape else panel.position.y > screen.view.position.y
-		var acceleration: Label = screen._observation_labels["acceleration"]
-		_expect(placed and screen.view.size.x > 300 and acceleration.text.ends_with("m/s²"),
-			"%s layout: view %s, panel at %s, observations filled" % ["landscape" if landscape else "portrait", screen.view.size, panel.position],
-			acceleration.text)
+		var view_rect := Rect2(Vector2.ZERO, screen.view.size)
+		_expect(screen.view.size == size and not screen._sidebar.visible and not screen.is_sidebar_open(),
+			"%s landscape: the 3D view fills the screen, sidebar closed" % name, "view %s" % screen.view.size)
+		var texts := _button_texts(screen)
+		var view_chips := _button_texts(screen.view).filter(func(t: String) -> bool: return t in CameraRig.MODE_LABELS.values())
+		_expect("정면으로" not in texts and view_chips.is_empty() and screen.view.rig.mode == "front",
+			"%s landscape: front camera, no 정면으로 button, no camera chips over the view" % name, "mode %s" % screen.view.rig.mode)
+		var overlays: Array[Control] = [screen._title_bar, screen._top_buttons, screen._key_row, screen._action_row]
+		var inside := overlays.all(func(c: Control) -> bool: return view_rect.encloses(c.get_rect()) and c.size.x > 0.0)
+		var apart := true
+		for i in overlays.size():
+			for j in range(i + 1, overlays.size()):
+				apart = apart and not overlays[i].get_rect().intersects(overlays[j].get_rect())
+		var actions_ok: bool = definition.actions.all(func(a: Dictionary) -> bool: return screen._action_buttons[a.id].get_parent() == screen._action_row)
+		var compact: bool = screen._key_row.size.y <= 160.0 and screen._key_row.size.x <= size.x - 470.0 - 24.0
+		_expect(inside and apart and actions_ok and compact and screen._key_row.get_child_count() == definition.key_observations.size(),
+			"%s landscape: title, buttons, %d key cards and the actions sit inside the view without overlapping" % [name, definition.key_observations.size()],
+			"key row %s, actions %s" % [screen._key_row.get_rect(), screen._action_row.get_rect()])
+		var h_closed := _horizontal_fov(screen.view)
+		screen.open_sidebar()
+		await process_frame
+		var side: float = screen.sidebar_width()
+		var mid_x: float = screen._sidebar.position.x
+		var shrunk_at_once: bool = is_equal_approx(screen.view.size.x, size.x - side)
+		for i in 20:
+			await process_frame
+		var open_ok: bool = screen.is_sidebar_open() and screen._sidebar.visible and is_equal_approx(screen._sidebar.position.x, size.x - side) \
+			and is_equal_approx(screen.view.size.x, size.x - side) and screen.view.size.y == size.y and not screen._sidebar_button.visible
+		_expect(open_ok and shrunk_at_once and mid_x > size.x - side and mid_x < size.x,
+			"%s landscape: the sidebar slides in (%.0f units), the view shrinks once to the area left of it" % [name, side],
+			"mid-slide x %.0f, open x %.0f, view %s" % [mid_x, screen._sidebar.position.x, screen.view.size])
+		var h_open := _horizontal_fov(screen.view)
+		_expect(h_open >= minf(h_closed, 73.3) and h_closed >= 73.3,
+			"%s landscape: the view beside the sidebar keeps at least the 16:10 screen's horizontal field of view (the whole apparatus stays in frame)" % name,
+			"closed %.1f deg, open %.1f deg" % [h_closed, h_open])
+		var back_closes: bool = screen.handle_back() and not screen.is_sidebar_open()
+		await process_frame
+		var kept_while_closing: bool = is_equal_approx(screen.view.size.x, size.x - side)
+		for i in 20:
+			await process_frame
+		_expect(back_closes and not screen.handle_back() and kept_while_closing and not screen.is_sidebar_open() and not screen._sidebar.visible \
+			and screen.view.size == size and screen._sidebar_button.visible,
+			"%s landscape: back closes the open sidebar (slides out, then the view fills the screen again); with it closed, back leaves the screen" % name,
+			"view %s" % screen.view.size)
 		screen.queue_free()
 		await process_frame
 	host.queue_free()
+
+
+## Every listed experiment: front camera by default, 2-3 key cards that show the panel's text.
+func _check_key_cards() -> void:
+	var host := Control.new()
+	host.theme = load(UI_THEME).build()
+	host.size = TABLET_LANDSCAPE   # the narrowest view: the tablet's beside the open sidebar
+	root.add_child(host)
+	for definition in ExperimentRegistry.load_all():
+		var screen: Control = load(EXPERIMENT_SCREEN).new()
+		screen.setup(definition)
+		host.add_child(screen)
+		await process_frame
+		await process_frame
+		screen._poll()
+		screen.open_sidebar(false)
+		await process_frame
+		await process_frame
+		var tip: Control = screen._tip
+		var tip_clear: bool = not tip.visible or (not tip.get_rect().intersects(screen._action_row.get_rect()) \
+			and not tip.get_rect().intersects(screen._key_row.get_rect()) and tip.size.x >= 300.0 \
+			and Rect2(Vector2.ZERO, screen.view.size).encloses(tip.get_rect()))
+		var sidebar_fits: bool = is_equal_approx(screen._sidebar.size.x, screen.sidebar_width()) \
+			and is_equal_approx(screen._sidebar.position.x + screen._sidebar.size.x, TABLET_LANDSCAPE.x)
+		var same := true
+		var shown := PackedStringArray()
+		for id in definition.key_observations:
+			var card: String = screen._key_labels[id].text
+			same = same and card == screen._observation_labels[id].text and card != ""
+			shown.append(card)
+		_expect(definition.camera.default_mode == "front" and screen.view.rig.mode == "front" and same and sidebar_fits and tip_clear \
+			and definition.key_observations.size() >= 2 and definition.key_observations.size() <= 3,
+			"%s: front camera, key cards %s = panel values, the open sidebar keeps its width, the tip clears the actions and cards" % [definition.id, definition.key_observations],
+			"%s; sidebar %.0f units" % [", ".join(shown), screen._sidebar.size.x])
+		screen.queue_free()
+		await process_frame
+	host.queue_free()
+
+
+## The gesture hint: short, shown only the first time an experiment opens in an app run, fades on
+## the first gesture or after TIP_SECONDS, never overlaps the cards or buttons; the sidebar keeps the full text.
+func _check_gesture_tip() -> void:
+	var host := Control.new()
+	host.theme = load(UI_THEME).build()
+	host.size = TABLET_LANDSCAPE
+	root.add_child(host)
+	var screen_class: GDScript = load(EXPERIMENT_SCREEN)
+	screen_class.reset_tips_shown()
+	var definitions := ExperimentRegistry.load_all()
+	var incline: Dictionary = {}
+	var other: Dictionary = {}
+	for definition in definitions:
+		if definition.id == "incline-friction":
+			incline = definition
+		elif other.is_empty() and definition.get("tip_short", "") != "":
+			other = definition
+	var first: Control = screen_class.new()
+	first.setup(incline)
+	host.add_child(first)
+	for i in 3:
+		await process_frame
+	var tip: Label = first._tip
+	var short_ok: bool = tip.visible and tip.text == incline.tip_short and tip.text.length() < incline.tip.length() \
+		and tip.get_line_count() <= 2 and tip.size.x <= 340.0
+	var clear: bool = not tip.get_rect().intersects(first._action_row.get_rect()) and not tip.get_rect().intersects(first._key_row.get_rect()) \
+		and not tip.get_rect().intersects(first._title_bar.get_rect()) and Rect2(Vector2.ZERO, first.view.size).encloses(tip.get_rect())
+	var in_sidebar := _has_label_text(first._sidebar, incline.tip)
+	_expect(short_ok and clear and in_sidebar,
+		"gesture hint: first open shows a short (<=2 lines) hint clear of cards and buttons; the sidebar keeps the full text",
+		"'%s' %d lines, width %.0f, clear %s, in sidebar %s" % [tip.text, tip.get_line_count(), tip.size.x, clear, in_sidebar])
+	first.view.gesture_used.emit()
+	for i in 40:
+		await process_frame
+	var faded: bool = not tip.visible
+	first.queue_free()
+	await process_frame
+	var again: Control = screen_class.new()
+	again.setup(incline)
+	host.add_child(again)
+	for i in 3:
+		await process_frame
+	again._set_control(incline.controls[0].id, again.experiment.control_value(incline.controls[0].id))
+	again._fit_overlays()
+	var hidden_again: bool = not again._tip.visible
+	again.queue_free()
+	await process_frame
+	var fresh: Control = screen_class.new()
+	fresh.setup(other)
+	host.add_child(fresh)
+	for i in 3:
+		await process_frame
+	var other_shown: bool = fresh._tip.visible
+	fresh._process(screen_class.TIP_SECONDS + 0.1)
+	for i in 40:
+		await process_frame
+	var timed_out: bool = not fresh._tip.visible
+	_expect(faded and hidden_again and other_shown and timed_out,
+		"gesture hint: fades on the first gesture, is not shown again on re-entry or after a condition change, another experiment still shows its own once, and the timer fades it",
+		"faded %s, again hidden %s, other shown %s, timed out %s" % [faded, hidden_again, other_shown, timed_out])
+	fresh.queue_free()
+	await process_frame
+	host.queue_free()
+
+
+## The hint counts as seen once it closed (timer or first gesture), not when the screen was built:
+## a screen rebuilt before that (a condition change redraws it from the saved state) shows it again.
+func _check_tip_rebuild() -> void:
+	var host := Control.new()
+	host.theme = load(UI_THEME).build()
+	host.size = TABLET_LANDSCAPE
+	root.add_child(host)
+	var screen_class: GDScript = load(EXPERIMENT_SCREEN)
+	screen_class.reset_tips_shown()
+	var definition := ExperimentRegistry.find("incline-friction")
+	var first: Control = screen_class.new()
+	first.setup(definition)
+	host.add_child(first)
+	for i in 3:
+		await process_frame
+	var shown_first: bool = first._tip.visible
+	var state: Dictionary = first.capture_state()
+	first.queue_free()
+	await process_frame
+	var second: Control = screen_class.new()
+	second.setup(definition, state)
+	host.add_child(second)
+	for i in 3:
+		await process_frame
+	var shown_again: bool = second._tip.visible   # never closed before the rebuild
+	second.view.gesture_used.emit()
+	for i in 40:
+		await process_frame
+	var closed: bool = not second._tip.visible
+	var state2: Dictionary = second.capture_state()
+	second.queue_free()
+	await process_frame
+	var third: Control = screen_class.new()
+	third.setup(definition, state2)
+	host.add_child(third)
+	for i in 3:
+		await process_frame
+	var hidden_after_seen: bool = not third._tip.visible
+	_expect(shown_first and shown_again and closed and hidden_after_seen,
+		"gesture hint: a screen rebuilt before the hint closed shows it again; once it closed, a rebuild does not",
+		"first %s, rebuilt %s, closed %s, rebuilt after %s" % [shown_first, shown_again, closed, not hidden_after_seen])
+	third.queue_free()
+	await process_frame
+	host.queue_free()
+
+
+## The screen's "← 목록" button goes the way of Android back: an open sidebar closes first, the
+## screen is left only when it is closed.
+func _check_back_button() -> void:
+	var host := Control.new()
+	host.theme = load(UI_THEME).build()
+	host.size = TABLET_LANDSCAPE
+	root.add_child(host)
+	var screen: Control = load(EXPERIMENT_SCREEN).new()
+	screen.setup(ExperimentRegistry.find("incline-friction"))
+	host.add_child(screen)
+	var left := [0]
+	screen.back_requested.connect(func() -> void: left[0] += 1)
+	for i in 3:
+		await process_frame
+	screen.open_sidebar(false)
+	await process_frame
+	screen._back_button.pressed.emit()
+	var closed_first: bool = not screen.is_sidebar_open() and left[0] == 0
+	for i in 30:
+		await process_frame
+	screen._back_button.pressed.emit()
+	_expect(closed_first and left[0] == 1,
+		"the 목록 button closes an open sidebar first, and leaves the screen when it is closed",
+		"left after first press %s, after second %d" % [not closed_first, left[0]])
+	host.queue_free()
+	await process_frame
+
+
+## Small windows (desktop): the title bar gives way to the top buttons instead of lying under them,
+## with the sidebar open or closed.
+func _check_small_window_title() -> void:
+	var worst := ""
+	for width in [700.0, 400.0, 300.0]:
+		for open in [false, true]:
+			var host := Control.new()
+			host.theme = load(UI_THEME).build()
+			host.size = Vector2(width, 720.0)
+			root.add_child(host)
+			var screen: Control = load(EXPERIMENT_SCREEN).new()
+			screen.setup(ExperimentRegistry.find("incline-friction"))
+			host.add_child(screen)
+			for i in 3:
+				await process_frame
+			if open:
+				screen.open_sidebar(false)
+				for i in 3:
+					await process_frame
+			var bar: Rect2 = screen._title_bar.get_rect()
+			var buttons: Rect2 = screen._top_buttons.get_rect()
+			if bar.intersects(buttons) or bar.position.x < 0.0:
+				worst += " %d%s: bar %s buttons %s" % [int(width), "+sidebar" if open else "", bar, buttons]
+			host.queue_free()
+			await process_frame
+	_expect(worst == "", "small windows (700..300 units, sidebar open or closed): the title bar never overlaps the top buttons", worst)
+
+
+func _has_label_text(node: Node, text: String) -> bool:
+	if node is Label and (node as Label).text == text:
+		return true
+	for child in node.get_children():
+		if _has_label_text(child, text):
+			return true
+	return false
+
+
+## Horizontal field of view (degrees) of a View3D's camera.
+func _horizontal_fov(view: Control) -> float:
+	var rig: Camera3D = view.rig
+	if rig.keep_aspect == Camera3D.KEEP_WIDTH:
+		return rig.fov
+	return rad_to_deg(2.0 * atan(tan(deg_to_rad(rig.fov) * 0.5) * view.size.x / view.size.y))
+
+
+## Texts of every Button under `node`.
+func _button_texts(node: Node) -> Array:
+	var result := []
+	for child in node.find_children("*", "Button", true, false):
+		result.append(child.text)
+	return result
 
 
 ## Launch args (--ctl-*, --camera) apply only to a screen that App opened with the flag.
@@ -946,7 +1276,7 @@ func _check_launch_args_flag(definition: Dictionary) -> void:
 	quality_script.set("_args_cache", PackedStringArray(["--ctl-angle=33", "--camera=top"]))
 	var host := Control.new()
 	host.theme = load(UI_THEME).build()
-	host.size = Vector2(720, 1560)
+	host.size = Vector2(1560, 720)
 	root.add_child(host)
 	var first: Control = screen_script.new()
 	first.setup(definition, {}, true)
@@ -978,7 +1308,7 @@ func _check_launch_args_flag(definition: Dictionary) -> void:
 func _check_graph_redraw(definition: Dictionary) -> void:
 	var host := Control.new()
 	host.theme = load(UI_THEME).build()
-	host.size = Vector2(720, 1560)
+	host.size = Vector2(1560, 720)
 	root.add_child(host)
 	var screen: Control = load(EXPERIMENT_SCREEN).new()
 	screen.setup(definition)

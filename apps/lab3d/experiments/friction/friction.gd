@@ -223,6 +223,7 @@ func _process(_delta: float) -> void:
 	if not holding_handle:
 		_place_handle()
 	props.update_rod(box.global_position, handle.global_position, model.holding and not ended)
+	props.update_cat(model.applied, model.max_static(), box.global_position.x, 0.0 if ended else model.velocity)
 
 
 ## The handle waits HANDLE_GAP beside the box's right face, on the floor.

@@ -116,6 +116,20 @@ func reset_run() -> void:
 	_mark_reset()
 
 
+## "공 놓기" (the action button): the bread cat throws the ball (ProjectileProps.throw); release()
+## runs on the frame the ball leaves its paw at the launch point, so the run (the formula clock, the
+## engine ball, the panel) is the same as a direct release from then on. Pressed again during the
+## throw it does nothing; "처음으로", a condition change or picking something up stops the throw.
+func run_action(id: String) -> void:
+	if id != "release":
+		super(id)
+		return
+	if released:
+		reset_run()
+	if not projectile_props().throwing():
+		projectile_props().throw(release)
+
+
 func release() -> void:
 	if released:
 		reset_run()
@@ -424,14 +438,26 @@ func manipulation_juice(id: String) -> ArtJuice:
 
 ## Picked up (the ball, also while flying or after landing, or the arrow knob): the throw stops
 ## and the ball waits at its launch point.
-func manipulation_started(_id: String) -> void:
-	if released:
-		reset_run()
+func manipulation_started(id: String) -> void:
+	if released or projectile_props().throwing():
+		reset_run()   # a throw in progress stops (no late release)
+	if id == "ball":
+		projectile_props().set_cat_grip(false)   # the finger holds the ball now
 	projectile_props().juice.rearm()
+
+
+func manipulation_cancelled(id: String) -> void:
+	projectile_props().cat_grip = true
+	super(id)
+
+
+func _status_changed(previous: String, current: String) -> void:
+	projectile_props().status_changed(previous, current)
 
 
 func manipulation_placed(id: String, transform: Transform3D) -> void:
 	_placed = true
+	projectile_props().cat_grip = true
 	if id == "ball":
 		start = transform.origin - Vector3.UP * BALL_RADIUS
 		start.y = snapped_height(start.y)

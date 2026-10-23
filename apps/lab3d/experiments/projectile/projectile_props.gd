@@ -11,6 +11,11 @@
 ##   ArtJuice,
 ## - the fences at both ends of the throw line (Task 4f): white board walls between blue posts, one
 ##   mesh; a landed ball bounces back from their faces (RollingContact; the engine has no fence body).
+## - the bread cat (CatActor wearing the BreadCat look, Task 4g) behind the launch point, holding
+##   the waiting ball in its left paw (on a blue stand when the ball is high): "공 놓기" makes it
+##   wind up and swing, and the ball leaves its paw at the launch point on the frame the lab
+##   releases it (throw()); it cheers when the ball lands. Only meshes: the ball body waits at the launch point the whole time (the paw
+##   carries the ball's mesh, ArtJuice.set_carry), and the formula clock starts at the release.
 class_name ProjectileProps
 extends PadProps
 
@@ -37,6 +42,12 @@ var arrow: VelocityArrow
 var path: MultiMeshInstance3D
 var ring: MeshInstance3D
 var fence: MeshInstance3D
+var cat: CatActor
+var cat_stand: MeshInstance3D
+## The cat grips the waiting ball (false while a finger holds the ball).
+var cat_grip := true
+var _ball: RigidBody3D
+var _launch_dir := Vector3.RIGHT   # direction of the arrow (the throw)
 ## The last formula dot drawn (where the preview path ends: the landing or a fence; tests).
 var path_end := Vector3.INF
 
@@ -78,6 +89,14 @@ static func fence_mesh(right_face: float, left_face: float, height: float, right
 			var z := -width * 0.5 + width * i / float(posts - 1)
 			b.add_rounded_box(Transform3D(Basis(), Vector3(x + side * thickness * 0.5, (height + 0.1) * 0.5, z)),
 				Vector3(POST_SIZE, height + 0.1, POST_SIZE), 0.02, 1, ArtPalette.BLUE)
+	return b.commit()
+
+
+## The cat's stand: a blue column of unit height (scaled to the cat's stand_height) under its base.
+static func cat_stand_mesh(footprint: Vector2) -> Mesh:
+	var b := ArtKit.builder()
+	b.ao_height = 0.25
+	b.add_rounded_box(Transform3D(Basis(), Vector3(0.0, 0.5, 0.0)), Vector3(footprint.x * 0.8, 1.0, footprint.y * 0.8), 0.0, 1, ArtPalette.BLUE, ArtPalette.BLUE_DARK)
 	return b.commit()
 
 
@@ -148,6 +167,15 @@ func dress(experiment: Node3D, ball: RigidBody3D, ball_visual: MeshInstance3D, b
 	experiment.add_child(juice)
 	juice.round_body = true   # the ball turns (Task 4f): its extent is the same in every direction
 	juice.setup(ball, ball_visual, ball_size, 0.0, ball.collision_mask)   # not the arrow knob (its own layer)
+	_ball = ball
+	cat = CatActor.new(BreadCat.new())
+	cat_stand = ArtKit.instance(cat_stand_mesh(cat.look.footprint))
+	cat_stand.name = "CatStand"
+	cat_stand.visible = false
+	experiment.add_child(cat_stand)
+	cat.look_target = ball
+	cat.carried = func(center: Vector3) -> void: juice.set_carry(center - _ball.global_position)
+	experiment.add_child(cat)
 
 
 ## The stand under a waiting ball whose bottom is at `bottom` (no stand for a ball on the floor).
@@ -160,11 +188,42 @@ func place_stand(bottom: Vector3) -> void:
 	post.scale = Vector3(1.0, maxf(bottom.y, 0.01), 1.0)
 	pad.position = bottom + Vector3(-POST_BACK, 0.0, 0.0)
 	pad.rotation = Vector3.ZERO
+	_hold_cat(bottom + Vector3.UP * juice.size * 0.5)
+
+
+## The cat holds (or, a finger holding the ball, stands by) a waiting ball centred at `center`; its
+## stand grows to the height it needs. The ball's mesh is back on its body.
+func _hold_cat(center: Vector3) -> void:
+	if cat == null:
+		return
+	juice.set_carry(Vector3.ZERO)
+	cat.hold(center, juice.size * 0.5, 0.0, cat_grip)
+	cat_stand.visible = cat.stand_height > 0.01
+	cat_stand.position = Vector3(cat.position.x, 0.0, cat.position.z)
+	cat_stand.scale = Vector3(1.0, maxf(cat.stand_height, 0.01), 1.0)
+
+
+## "공 놓기": the cat throws, and `release` (the lab's release) runs on the frame the ball leaves its
+## paw at the launch point.
+func throw(release: Callable) -> void:
+	cat.throw(_launch_dir, release)
+
+
+func throwing() -> bool:
+	return cat != null and cat.throwing()
+
+
+## A finger picks up (false) or puts down (true) the waiting ball: the cat lets it go / grips again.
+func set_cat_grip(on: bool) -> void:
+	cat_grip = on
+	if cat != null and not cat.throwing():
+		_hold_cat(cat.held_point() if on else _ball.global_position)
 
 
 ## The velocity arrow from the ball centre along (angle, speed), ending at the knob's near face.
 func set_arrow(center: Vector3, angle_deg: float, tip_length: float, knob_half: float) -> void:
 	arrow.point(center, angle_deg, tip_length - knob_half)
+	_launch_dir = Vector3(cos(deg_to_rad(angle_deg)), sin(deg_to_rad(angle_deg)), 0.0)
 
 
 func show_arrow(on: bool) -> void:
@@ -184,15 +243,25 @@ func set_path(points: PackedVector3Array, landing: Variant) -> void:
 		ring.position = landing
 
 
-## Release: the pad flips down and hides, the ball stretches, the arrow hides.
+## Release: the pad flips down and hides, the ball stretches, the arrow hides; a ball let go without
+## the cat's throw (tests, a direct release) leaves its paw too.
 func released() -> void:
 	show_arrow(false)
 	if pad.visible:
 		flip_pad("pad", pad, "rotation:z", -PI * 0.5)
+	juice.set_carry(Vector3.ZERO)
 	juice.stretch()
+	if cat != null:
+		cat.let_go(_launch_dir)
 
 
 func reset() -> void:
 	show_arrow(true)
 	juice.pop()
+
+
+## The ball landed (or met a fence): the cat cheers.
+func status_changed(_previous: String, status: String) -> void:
+	if cat != null and status in ["landed", "fence"]:
+		cat.cheer()
 

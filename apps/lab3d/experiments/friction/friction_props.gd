@@ -8,6 +8,10 @@
 ##   while friction holds the box, red once it moves (the web's line colours),
 ## - reactions: the box starts to move = dust puff + small stretch + red rod; it stops = settle;
 ##   a track end = wobble; grabbing the handle = the grip grows a little.
+## - the bread cat (CatActor wearing the BreadCat look, Task 4g) behind the box (-x): both paws on
+##   the box's left face (where the box mesh is, squash included), leaning into a push or back on a
+##   pull with the force's share of the maximum static friction, shuffling along while the box
+##   moves; a small hop when the box comes to rest. Only meshes: the force, the box and the panel are the lab's.
 class_name FrictionProps
 extends RefCounted
 
@@ -15,8 +19,15 @@ const TRACK_WIDTH := 1.6
 const ROD_RADIUS := 0.05
 const GRIP := Vector3(0.18, 0.18, 0.56)
 const GRAB_SCALE := 1.18
+## Height of the cat's paws on the box face (m above the floor).
+const CAT_HAND_Y := 0.62
+## Force (as a share of the maximum static friction) at which the cat leans fully.
+const CAT_FULL_EFFORT := 1.5
 
 var juice: ArtJuice
+var cat: CatActor
+var _box_visual: MeshInstance3D
+var _box_size := 0.7
 var rod_hold: MeshInstance3D    # blue rod (friction holds the box)
 var rod_move: MeshInstance3D    # red rod (the box moves)
 var _grip: MeshInstance3D
@@ -96,6 +107,25 @@ func dress(experiment: Node3D, box_body: RigidBody3D, box_visual: MeshInstance3D
 	juice.name = "BoxJuice"
 	experiment.add_child(juice)
 	juice.setup(box_body, box_visual, box_size)
+	_box_visual = box_visual
+	_box_size = box_size
+	cat = CatActor.new(BreadCat.new())
+	cat.push_face = cat_face_x
+	experiment.add_child(cat)   # after the juice: it reads the box mesh the juice moved this frame
+
+
+## The face of the box mesh the cat pushes (its -x face, where the squashed / wobbling mesh is now).
+func cat_face_x() -> float:
+	return (_box_visual.global_transform * Vector3(-_box_size * 0.5, 0.0, 0.0)).x
+
+
+## Poses the cat at the box: `force` (N, + = +x) against `max_static` sets the lean, `travel` (box x,
+## m) and `speed` (m/s) the shuffle.
+func update_cat(force: float, max_static: float, travel: float, speed: float) -> void:
+	if cat == null:
+		return
+	var effort := force / (max_static * CAT_FULL_EFFORT) if max_static > 0.0 else 0.0
+	cat.push(cat_face_x(), CAT_HAND_Y, effort, travel, speed, _box_visual.global_position.z)
 
 
 ## Places the rod from the box's right face (at its centre height) to the handle grip; the colour
@@ -134,6 +164,8 @@ func status_changed(previous: String, status: String) -> void:
 		juice.stretch()
 	elif status == "holding" and previous == "sliding":
 		juice.settle()
+		if cat != null:
+			cat.cheer(false)   # the paws stay on the box
 
 
 ## The box reached a track end and stopped at the bumper.

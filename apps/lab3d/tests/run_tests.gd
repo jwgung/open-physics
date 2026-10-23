@@ -124,6 +124,11 @@ func _run() -> void:
 	_expect(friction != null and friction.can_instantiate(), "friction lab checks compile", "")
 	if friction != null and friction.can_instantiate():
 		await friction.new(self, _expect).run()
+	print("== bread cat (Task 4g): throw / push in step with the model, no physics, layout ==")
+	var cat: GDScript = load("res://tests/bread_cat_checks.gd")
+	_expect(cat != null and cat.can_instantiate(), "bread cat checks compile", "")
+	if cat != null and cat.can_instantiate():
+		await cat.new(self, _expect).run()
 	print("== collision lab (Task 4c) ==")
 	var collision: GDScript = load("res://tests/collision_lab_checks.gd")
 	_expect(collision != null and collision.can_instantiate(), "collision lab checks compile", "")

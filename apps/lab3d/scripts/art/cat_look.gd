@@ -29,8 +29,6 @@ var rim := 0.76
 var hold_dir := Vector3(0.8, 0.3, 0.52)
 ## Rest direction of the right paw (mirrored in x for the left).
 var rest_dir := Vector3(-0.05, -0.55, 0.83)
-## Windup direction of the throwing arm from its shoulder (up beside and over the head).
-var windup_dir := Vector3(0.25, 0.85, -0.5)
 
 
 ## Builds the drawn nodes under `rig` (the node the actor turns and hops) and returns them:

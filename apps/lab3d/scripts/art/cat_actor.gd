@@ -11,8 +11,8 @@
 ##                           look's hold_dir from the shoulder); the actor is placed so its arm
 ##                           reaches it, raised off `floor` when the ball is high (the lab draws a
 ##                           stand of stand_height)
-##   throw(dir, on_release)  windup (the ball up over the head) and swing down and in along `dir` to
-##                           the hold pose; the ball (`carried`) follows the paw; on the frame the swing
+##   throw(dir, on_release)  windup (the ball up and back over the head) and an overhand swing that
+##                           reaches the hold pose moving along `dir`, fastest at the release; the ball (`carried`) follows the paw; on the frame the swing
 ##                           is back at the hold pose (the ball's launch point) on_release runs, then
 ##                           the arm follows through and rests
 ##   let_go(dir)             the ball was let go without a throw (the arm follows through)
@@ -31,10 +31,17 @@ const ARM_L := 1                    # left paw (+x): holds and throws the ball
 const ARM_HOLD := ARM_L
 ## Throw timing (s): windup, swing (the release is at its end), follow-through, back to rest.
 const WINDUP_S := 0.24
-const SWING_S := 0.16
+const SWING_S := 0.24
 const FOLLOW_S := 0.14
 const SETTLE_S := 0.3
-const SWING_LEAD := 0.45            # m before the launch point the swing comes in along the throw
+const SWING_STRAIGHT := 0.15       # m of straight swing along the throw before the launch point
+const SWING_LEAD := 0.2            # m the cubic's last control point lies before that straight part
+const SWING_BOW := 0.15             # m the swing curve bows out away from the body
+const WINDUP_UP := 0.45            # m the windup point is above the launch point,
+const WINDUP_BACK := 0.5           # back against the throw,
+const WINDUP_DEPTH := 0.55          # behind it
+const WINDUP_OUT := 0.15            # and out away from the body (clear of the head)
+const CURVE_SAMPLES := 96
 const FOLLOW_DEG := 40.0
 const CHEER_S := 0.45
 const CHEER_HOP := 0.08
@@ -44,9 +51,6 @@ const SHUFFLE_HOP := 0.035
 const BLINK_S := 0.13
 const HEAD_YAW_MAX := 1.0           # rad the head turns towards what it looks at
 const PUSH_HEAD_YAW := -1.05        # rad: a pushing actor (facing +x) looks towards the camera (+z)
-## How far the throwing arm stretches at the top of the windup (cartoon stretch: the ball goes up
-## over the head; it is 1 again before the release).
-const WINDUP_STRETCH := 1.7
 const PUSH_LEAN_DEG := 8.0          # a pushing actor leans towards the box this much at rest
 
 var look: CatLook
@@ -92,6 +96,9 @@ var _on_release := Callable()
 var _arm_dirs: Array[Vector3] = [Vector3.DOWN, Vector3.DOWN]
 var _stretch: Array[float] = [1.0, 1.0]   # arm length / its rest length
 var _follow_from := Vector3.DOWN    # arm direction at the end of the follow-through swing
+var _windup := Vector3.ZERO         # windup point of the throw (world)
+var _curve_points := PackedVector3Array()   # the swing curve sampled from the windup point (world)
+var _curve_length := PackedFloat32Array()   # arc length to each sample
 # push
 var _face_x := 0.0
 var _hand_y := 0.5
@@ -203,6 +210,8 @@ func throw(dir: Vector3, on_release: Callable) -> void:
 		on_release.call()
 		return
 	_set_swing(dir)
+	_windup = _windup_point()
+	_build_swing()
 	_on_release = on_release
 	_t = 0.0
 	mode = "throw"
@@ -299,32 +308,72 @@ func advance(delta: float) -> void:
 	_pose()
 
 
-## Where the held ball's centre is `t` s into the throw: an eased windup from the launch point up to
-## the look's windup_dir over the head (the arm stretching to WINDUP_STRETCH), then an accelerating
-## swing along a Bezier from there that comes in to the launch point along the throw direction
-## (through SWING_LEAD before it, but never from the body's side of it). At WINDUP_S + SWING_S it is
-## the launch point.
+## Where the held ball's centre is `t` s into the throw. Windup (WINDUP_S): from the launch point up
+## and back against the throw to the windup point (_windup_point), easing out to rest there. Swing
+## (SWING_S): from rest along a curve (_swing_curve) that ends at the launch point moving exactly along
+## the throw direction, its distance growing as (t / SWING_S)^2: the paw's speed rises steadily and is
+## the largest on the release frame. At WINDUP_S + SWING_S it is the launch point.
 func _throw_point(t: float) -> Vector3:
-	var s := shoulder(ARM_HOLD)
-	var reach := look.reach + _held_radius
-	var up := (rig_transform().basis * look.windup_dir).normalized()
-	var top := s + up * reach * WINDUP_STRETCH
 	if t < WINDUP_S:
 		var k := t / WINDUP_S
 		k = 1.0 - (1.0 - k) * (1.0 - k)
-		return s + _u.slerp(up, k) * reach * lerpf(1.0, WINDUP_STRETCH, k)
+		var lift := _held + Vector3.UP * maxf(_windup.y - _held.y, 0.0)
+		return _held.lerp(lift, k).lerp(lift.lerp(_windup, k), k)   # quadratic: up first, then back
 	var k := clampf((t - WINDUP_S) / SWING_S, 0.0, 1.0)
-	k *= k
-	var b3 := _held
-	var b2 := b3 - _dir * SWING_LEAD
-	# The swing stays on the holding paw's side of the launch point (it does not come in across the
-	# face) and above the floor.
-	var side := (rig_transform().basis * Vector3.RIGHT).normalized()
-	b2 -= side * minf((b2 - b3).dot(side), 0.0)
-	b2.y = maxf(b2.y, _floor_y + _held_radius + 0.05)
-	var b1 := top.lerp(b2, 0.35) + Vector3.UP * 0.1
-	var q := 1.0 - k
-	return top * (q * q * q) + b1 * (3.0 * q * q * k) + b2 * (3.0 * q * k * k) + b3 * (k * k * k)
+	return _curve_at(_curve_length[-1] * k * k)
+
+
+## The windup point: WINDUP_BACK back against the throw from the launch point, up to WINDUP_UP above
+## that, WINDUP_DEPTH behind and WINDUP_OUT out (back and up beside the head for a level throw, back
+## and down for a steep one; the arm stretches).
+func _windup_point() -> Vector3:
+	var back := (rig_transform().basis * Vector3.BACK).normalized()
+	# Up as much as the throw is level (cos of its elevation): a steep throw winds back under the
+	# release, so its swing comes up along it without a loop.
+	var level := sqrt(maxf(1.0 - _dir.y * _dir.y, 0.0))
+	var out := (rig_transform().basis * Vector3.RIGHT).normalized()
+	return _held - _dir * WINDUP_BACK + Vector3.UP * WINDUP_UP * level - back * WINDUP_DEPTH + out * WINDUP_OUT
+
+
+## The swing path: a cubic from the windup point (bowed out away from the body) that runs into a
+## straight last SWING_STRAIGHT m along the throw direction ending at the launch point, so the paw
+## moves along the throw on the last frames (the last frame's step is shorter than that straight
+## part); sampled by arc length (_curve_points / _curve_length) so the swing can run at a chosen
+## speed. (With the big head, a low throw's straight part passes close beside the cheek.)
+func _build_swing() -> void:
+	var out := (rig_transform().basis * Vector3.RIGHT).normalized()
+	var p := _held
+	var a := p - _dir * SWING_STRAIGHT
+	a.y = maxf(a.y, _floor_y + _held_radius + 0.05)   # a throw from the floor does not swing through it
+	var b2 := a - (p - a).normalized() * SWING_LEAD
+	var b1 := _windup + _dir * SWING_LEAD + out * SWING_BOW   # leaves the windup along the throw: no loop
+	_curve_points.clear()
+	_curve_length.clear()
+	var length := 0.0
+	var prev := _windup
+	for i in CURVE_SAMPLES + 1:
+		var u := float(i) / CURVE_SAMPLES
+		var q := 1.0 - u
+		var c := _windup * (q * q * q) + b1 * (3.0 * q * q * u) + b2 * (3.0 * q * u * u) + a * (u * u * u)
+		length += c.distance_to(prev)
+		prev = c
+		_curve_points.append(c)
+		_curve_length.append(length)
+	for i in range(1, 5):
+		var c := a.lerp(p, i / 4.0)
+		length += c.distance_to(prev)
+		prev = c
+		_curve_points.append(c)
+		_curve_length.append(length)
+
+
+## The swing curve's point `distance` m along it from the windup point.
+func _curve_at(distance: float) -> Vector3:
+	for i in range(1, _curve_points.size()):
+		if _curve_length[i] >= distance:
+			var span := _curve_length[i] - _curve_length[i - 1]
+			return _curve_points[i - 1].lerp(_curve_points[i], (distance - _curve_length[i - 1]) / span if span > 0.0 else 1.0)
+	return _curve_points[-1]
 
 
 ## Throw direction and the follow-through direction across the hold direction.

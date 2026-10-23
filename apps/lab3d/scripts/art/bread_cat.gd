@@ -37,12 +37,11 @@ func _init() -> void:
 	var box := bag.mesh.get_aabb()
 	footprint = Vector2(box.size.x, box.size.z)
 	rim = box.end.y
-	# The ball beside the bag and the head (the head is 0.7 m wide): out to the side, a little up.
-	hold_dir = Vector3(0.85, 0.25, 0.46)
+	# The ball where an overhand throw lets go (2026-10-23 user feedback: not below the arm): out to
+	# the side beside the head (0.7 m wide), above the shoulder and a little forward. The launch point
+	# is this hand: the cat is placed from it.
+	hold_dir = Vector3(0.72, 0.45, 0.52)
 	rest_dir = hand_rest[0].normalized()   # paws on the bag's rim, as modelled
-	# Windup up over the head's side: up, out (clear of the head) and a little back (the arm stretches,
-	# CatActor.WINDUP_STRETCH).
-	windup_dir = Vector3(0.6, 0.85, -0.2)
 	model.free()
 
 

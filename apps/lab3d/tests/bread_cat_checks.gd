@@ -23,8 +23,9 @@ const STEP_HZ := 60
 const CARRY_TOL := 1e-4      # m: carried ball centre vs the paw's held point (frame by frame)
 const RELEASE_TOL := 1e-4    # m: the paw's held point vs the ball (launch point) on the release frame
 const CONTACT_TOL := 1e-4    # m: paw front vs the box face plane
-## Frames (at 60 fps) from "공 놓기" to the release: CatActor.WINDUP_S + SWING_S = 0.4 s.
-const THROW_FRAMES := 24
+const RELEASE_DIR_DEG := 10.0  # deg: paw direction over the last frame vs the launch direction
+## Frames (at 60 fps) from "공 놓기" to the release: CatActor.WINDUP_S + SWING_S = 0.48 s.
+const THROW_FRAMES := 29
 ## The BreadCat look (the user's glb, 2026-10-23): 3,290 model vertices + the shadow.
 const CAT_VERTS_MAX := 3500
 const PHONE := Vector2(1560, 720)
@@ -42,6 +43,7 @@ func _init(scene_tree: SceneTree, expect_fn: Callable) -> void:
 func run() -> void:
 	await check_throw()
 	await check_launch_heights()
+	await check_throw_motion()
 	await check_throw_cancel()
 	await check_push()
 	await check_push_motion_unchanged()
@@ -188,6 +190,55 @@ func check_launch_heights() -> void:
 		"bread cat: the paw is the launch point at launch heights 0-3 m (no launch post / pad), crates under the cat as tall as needed",
 		"max %s m;%s" % [String.num_scientific(worst), detail])
 	await _free(lab)
+
+
+## The throw is overhand and into the throw (2026-10-23 user feedback: the release was below the
+## arm, so a throw down looked like a throw up): at launch heights 0.5-3 m and angles 0-75 deg the
+## paw at the release is above the shoulder; over the swing the paw's speed (sampled every 1/1333 s on
+## the cat's own path) only grows and is the largest just before the release; its direction over the
+## last 1/60 s is within RELEASE_DIR_DEG of the formula launch direction; the windup goes back
+## against the throw (and up over the head for a level throw).
+func check_throw_motion() -> void:
+	var worst_dir := 0.0
+	var rising := true
+	var above := true
+	var windup_ok := true
+	var detail := ""
+	for h in [0.5, 1.0, 2.0, 3.0]:
+		for a in [0.0, 15.0, 45.0, 75.0]:
+			var lab: Experiment = await _lab("projectile")
+			lab.set_control("angle", a)
+			lab.manipulation_placed("ball", Transform3D(Basis(), Vector3(lab.START_X, h + lab.BALL_RADIUS, 0.0)))
+			await tree.process_frame
+			var cat: CatActor = lab.props.cat
+			var launch: Vector3 = lab.ball_center()
+			var d := Vector3(cos(deg_to_rad(a)), sin(deg_to_rad(a)), 0.0)
+			above = above and launch.y >= cat.shoulder(CatActor.ARM_HOLD).y - 1e-4
+			lab.run_action("release")
+			var total := CatActor.WINDUP_S + CatActor.SWING_S
+			var top: Vector3 = cat._throw_point(CatActor.WINDUP_S)
+			if not ((top - launch).dot(d) < -0.15 and (a > 20.0 or top.y > launch.y + 0.3)):
+				windup_ok = false
+				detail += " windup h %.1f %d deg: %s" % [h, a, str((top - launch).snapped(Vector3.ONE * 0.01))]
+			var last := 0.0
+			var steps := 240   # 1/1333 s: the chord is the path length
+			for i in range(1, steps + 1):
+				var t0 := CatActor.WINDUP_S + CatActor.SWING_S * (i - 1) / steps
+				var t1 := CatActor.WINDUP_S + CatActor.SWING_S * i / steps
+				var v: float = cat._throw_point(t1).distance_to(cat._throw_point(t0))
+				if v < last * 0.98 - 1e-6:   # (2 %: the path is sampled as a polyline; a chord across a corner is shorter)
+					rising = false
+					detail += " slower at h %.1f %d deg step %d: %.4f < %.4f" % [h, a, i, v, last]
+				last = v
+			var final_dir: Vector3 = (cat._throw_point(total) - cat._throw_point(total - 1.0 / 60.0)).normalized()
+			var err := rad_to_deg(final_dir.angle_to(d))
+			worst_dir = maxf(worst_dir, err)
+			if err > RELEASE_DIR_DEG:
+				detail += " h %.1f %d deg: %.1f deg" % [h, a, err]
+			await _free(lab)
+	expect.call(worst_dir <= RELEASE_DIR_DEG and rising and above and windup_ok,
+		"bread cat: overhand throw (heights 0.5-3 m, 0-75 deg): paw above the shoulder at the release, speed rising to the release, last 1/60 s along the launch direction (<= %.0f deg), windup back (and up for a level throw)" % RELEASE_DIR_DEG,
+		"max %.2f deg, rising %s, above %s, windup %s%s" % [worst_dir, rising, above, windup_ok, detail])
 
 
 ## "처음으로" and picking up the ball stop a throw: no late release; a second press during the throw

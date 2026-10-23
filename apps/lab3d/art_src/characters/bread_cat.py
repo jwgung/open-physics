@@ -2,7 +2,7 @@
 
 Run (headless):
     blender -b --factory-startup -P apps/lab3d/art_src/characters/bread_cat.py -- \
-        [--out apps/lab3d/assets/characters/bread_cat.glb] [--mouth omega|smile|calm] [--palette cheese|cream] [--eyes sparkle|dot]
+        [--out apps/lab3d/assets/characters/bread_cat.glb] [--mouth omega|smile|calm] [--palette cheese|cream] [--eyes dot|sparkle]
 
 Nothing depends on a hand-made .blend: geometry, UVs and the single texture atlas (face, fur stripes,
 bag print, baguette scoring) are produced by this file. Other scripts may `import` it and call
@@ -192,7 +192,7 @@ def value_noise(u, v, freq, seed):
     return (a * (1 - xf) + b * xf) * (1 - yf) + (c * (1 - xf) + d * xf) * yf
 
 
-def paint_head(P, mouth, eyes="sparkle"):
+def paint_head(P, mouth, eyes="dot"):
     u, v = region_grid(R_HEAD)
     lon = (u - 0.5) * 2 * math.pi
     lat = (v - 0.5) * math.pi
@@ -240,7 +240,7 @@ def paint_head(P, mouth, eyes="sparkle"):
         blend(img, smooth_fill(sdf, 0.02) * front, hexc(P["blush"]), 0.75)
     # eyes: big glossy, a touch taller than wide, warm lower gradient
     for s in (-1, 1):
-        if eyes == "dot":  # variant: small simple storybook eyes, one highlight dot
+        if eyes == "dot":  # default (2026-10-23 user decision): small simple storybook eyes, one dot
             ex, ez = s * 0.092, -0.008
             blend(img, smooth_fill(sd_ellipse(qx, qz, ex, ez, 0.022, 0.026), aa) * front, hexc(P["eye"]))
             blend(img, smooth_fill(sd_ellipse(qx, qz, ex - 0.007, ez + 0.009, 0.0065, 0.007), aa) * front, np.ones(3))
@@ -380,7 +380,7 @@ def paint_bag_front(P):
     return img
 
 
-def build_atlas(P, mouth, eyes="sparkle"):
+def build_atlas(P, mouth, eyes="dot"):
     canvas = np.zeros((TEX, TEX, 3))
     for rect, fn in ((R_HEAD, lambda: paint_head(P, mouth, eyes)), (R_BODY, lambda: paint_body(P)),
                      (R_ARM, lambda: paint_arm(P)), (R_TAIL, lambda: paint_tail(P)),
@@ -788,7 +788,7 @@ def empty(name, loc_world, parent, parent_pivot, size=0.03):
     return ob
 
 
-def build(mouth="omega", palette="cheese", eyes="sparkle"):
+def build(mouth="omega", palette="cheese", eyes="dot"):
     P = PALETTES[palette]
     img = build_atlas(P, mouth, eyes)
     mat = make_material(img)
@@ -857,7 +857,7 @@ def stats():
 
 def parse_args():
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
-    opts = {"out": None, "mouth": "omega", "palette": "cheese", "eyes": "sparkle"}
+    opts = {"out": None, "mouth": "omega", "palette": "cheese", "eyes": "dot"}
     i = 0
     while i < len(argv):
         k = argv[i].lstrip("-")

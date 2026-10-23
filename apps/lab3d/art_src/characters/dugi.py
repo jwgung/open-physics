@@ -2,14 +2,15 @@
 
 Run (headless):
     blender -b --factory-startup -P apps/lab3d/art_src/characters/dugi.py -- \
-        [--out apps/lab3d/assets/characters/dugi.glb] [--glasses on|off] [--mouth open|calm]
+        [--out apps/lab3d/assets/characters/dugi.glb] [--monocle on|off] [--mouth open|calm]
 
 A creamy white chibi rabbit from the same storybook as the bread cat (2026-10-23 user reference
 1792701655210.png): a round head a little wider than the small bean body, long wide ears (pink
 inside, round tips, gently spread), small dark bean eyes with one highlight dot, pink blush and
 nose, a small open smile with a tongue and two front teeth, a red scarf with a knot, arms folded
-across the chest; small round glasses drawn on the face as a line, like the outline, for the know-it-all
-scientist (optional; no extra mesh). Same style and conventions as bread_cat.py,
+across the chest; a monocle on the eye at the viewer's right (2026-10-23 user decision, like the
+reference dog's) for the know-it-all scientist: the rim drawn on the face, a thin gold chain mesh down
+to the scarf (optional). Same style and conventions as bread_cat.py,
 whose generic helpers (painting SDFs, bmesh sphere / tube builders) this file imports; geometry, UVs
 and the single texture atlas are produced here, nothing depends on a hand-made .blend. Other scripts
 may `import` it and call `build()` / `pose_point()` (the preview and duo renders do).
@@ -21,7 +22,7 @@ Conventions:
 - Node tree (no armature; animate by rotating nodes, each origin is its pivot):
     Dugi                    (empty, origin on the ground between the feet)
       Body                  (mesh: body, feet, tail puff, scarf; pivot on the ground -> lean / bob)
-        Head                (mesh, pivot at the neck -> nod / tilt; the glasses are drawn on the face)
+        Head                (mesh incl. the monocle chain, pivot at the neck -> nod / tilt)
           EarL / EarR       (mesh, pivot at the ear root -> perk up / flop / wiggle)
         ArmL / ArmR         (upper arm mesh, pivot at the shoulder; L = Dugi's left = +X)
           ForearmL / R      (mesh incl. the paw, pivot at the elbow)
@@ -54,7 +55,7 @@ P = dict(
     # storybook pastel (2026-10-23 user reference 1792701655210.png): creamy white fur, salmon-pink ears
     fur="#fdf6ee", fur_shade="#efe4d8", white="#fffaf3", cream="#fbe9d3", pink="#f7a9b2", pink_deep="#f08f9c",
     blush="#ff9aa6", eye="#2a1a14", mouth="#6b3424", tongue="#ff7f8c", tooth="#ffffff",
-    scarf="#e2493b", scarf_dark="#b9342c", frame="#7a4a2e",
+    scarf="#e2493b", scarf_dark="#b9342c", frame="#7a4a2e", gold="#e3b04b",
 )
 
 # Atlas layout (pixels, origin bottom-left like Blender UVs)
@@ -63,7 +64,7 @@ R_EAR = (0, 0, 512, 512)
 R_BODY = (512, 256, 768, 512)
 R_ARM = (512, 0, 768, 256)
 SWATCH_ORIGIN = (768, 0)  # 4 x 4 swatches of 64 px
-SWATCHES = ["fur", "white", "pink", "scarf", "scarf_dark", "frame", "fur_shade", "eye"]
+SWATCHES = ["fur", "white", "pink", "scarf", "scarf_dark", "frame", "fur_shade", "eye", "gold"]
 
 
 def region_uv(rect, u, v):
@@ -97,6 +98,7 @@ BODY_C = Vector((0.0, 0.01, 0.305))
 BODY_R = Vector((0.250, 0.220, 0.275))
 # small, simple dot eyes (user: "눈도 너무 초롱초롱해"): a slightly tall bean, one small highlight
 EYE_X, EYE_Z, EYE_RX, EYE_RZ = 0.128, -0.045, 0.027, 0.032
+MONO_X, MONO_R = 0.128, 0.056   # monocle on the +X eye (the viewer's right)
 NOSE_Z = -0.070
 
 
@@ -123,7 +125,7 @@ def body_point(d):
 # Texture painting (numpy, sRGB)
 # --------------------------------------------------------------------------------------------
 
-def paint_head(mouth="open", glasses=True):
+def paint_head(mouth="open", monocle=True):
     u, v = region_grid(R_HEAD)
     lon = (u - 0.5) * 2 * math.pi
     lat = (v - 0.5) * math.pi
@@ -144,19 +146,16 @@ def paint_head(mouth="open", glasses=True):
         ex, ez = s * EYE_X, EYE_Z
         blend(img, smooth_fill(sd_ellipse(qx, qz, ex, ez, EYE_RX, EYE_RZ), aa) * front, hexc(P["eye"]))
         blend(img, smooth_fill(sd_ellipse(qx, qz, ex - 0.009, ez + 0.011, 0.0085, 0.0090), aa) * front, np.ones(3))
-    if glasses:
-        # round glasses drawn as a line on the face like the outline (storybook): two rings round the
-        # eyes, a little arched bridge and short temples toward the ears
-        fcol = hexc(P["frame"]); w = 0.0042; rr = 0.050
-        g = np.full(qx.shape, 1.0)
-        for s in (-1, 1):
-            g = np.minimum(g, np.abs(np.sqrt((qx - s * EYE_X) ** 2 + (qz - EYE_Z) ** 2) - rr) - w)
-            g = np.minimum(g, sd_segment(qx, qz, s * (EYE_X + rr), EYE_Z + 0.004, s * (EYE_X + rr + 0.06), EYE_Z + 0.012) - w * 0.85)
-        hs, h = EYE_X - rr, 0.012   # bridge: a low arch rising h over the half span hs
-        rb = (hs * hs + h * h) / (2 * h)
-        br = np.abs(np.sqrt(qx ** 2 + (qz - (EYE_Z + 0.006 + h - rb)) ** 2) - rb) - w * 0.9
-        g = np.minimum(g, np.where((qz > EYE_Z) & (np.abs(qx) < hs + 0.004), br, 1.0))
-        blend(img, smooth_fill(g, 0.002) * front, fcol)
+    if monocle:
+        # a monocle on the eye at the viewer's right (Dugi's left, +X), like the reference dog's: a
+        # round gold rim edged in the outline brown, a faint glint on the lens
+        mx, mz, rr = MONO_X, EYE_Z, MONO_R
+        d = np.sqrt((qx - mx) ** 2 + (qz - mz) ** 2)
+        blend(img, smooth_fill(d - rr, 0.002) * front, np.ones(3), 0.22)                 # lens tint
+        glint = sd_segment(qx, qz, mx - 0.030, mz + 0.012, mx - 0.012, mz + 0.032) - 0.0035
+        blend(img, smooth_fill(glint, 0.002) * front, np.ones(3), 0.9)
+        blend(img, smooth_fill(np.abs(d - rr) - 0.0085, 0.002) * front, hexc(P["frame"]))  # brown edge
+        blend(img, smooth_fill(np.abs(d - rr) - 0.0050, 0.002) * front, hexc(P["gold"]))   # gold rim
     nz = NOSE_Z  # small pink nose: a soft rounded triangle
     from bread_cat import sd_triangle
     nose = sd_triangle(qx, qz, (-0.015, nz + 0.008), (0.015, nz + 0.008), (0.0, nz - 0.009)) - 0.003
@@ -210,9 +209,9 @@ def paint_arm():
     return img
 
 
-def build_atlas(mouth="open", glasses=True):
+def build_atlas(mouth="open", monocle=True):
     canvas = np.zeros((TEX, TEX, 3)); canvas[...] = hexc(P["fur"])
-    for rect, fn in ((R_HEAD, lambda: paint_head(mouth, glasses)), (R_EAR, paint_ear), (R_BODY, paint_body), (R_ARM, paint_arm)):
+    for rect, fn in ((R_HEAD, lambda: paint_head(mouth, monocle)), (R_EAR, paint_ear), (R_BODY, paint_body), (R_ARM, paint_arm)):
         x0, y0, x1, y1 = rect
         canvas[y0:y1, x0:x1] = fn()
     for i, name in enumerate(SWATCHES):
@@ -240,8 +239,32 @@ def ellipsoid(bm, centre, radii, uv, segs=12, rings=8, rot=None, shape=None):
     build_sphere(bm, pt, lambda u, v: uv, segs=segs, rings=rings)
 
 
-def make_head(bm):
+def make_head(bm, monocle=True):
     build_sphere(bm, head_point, lambda u, v: region_uv(R_HEAD, u, v), segs=36, rings=20)
+    if monocle:
+        make_monocle_chain(bm)
+
+
+def make_monocle_chain(bm):
+    """The monocle's thin gold chain: from the rim's lower outer edge down over the cheek and under
+    the chin to the scarf, lying just off the skin (the outline makes it read as a drawn line)."""
+    gold = swatch_uv("gold")
+    a = 0.75  # rad below the outer side of the rim
+    path = [(MONO_X + MONO_R * math.sin(a + 1.2), EYE_Z - MONO_R * math.cos(a + 1.2) * 0.0 - MONO_R * 0.75),
+            (MONO_X + 0.062, EYE_Z - 0.10), (MONO_X + 0.064, EYE_Z - 0.16), (MONO_X + 0.040, EYE_Z - 0.215),
+            (MONO_X + 0.005, EYE_Z - 0.245)]
+    pts = []
+    for qx, qz in path:
+        q = head_point(face_dir(qx, qz))
+        pts.append(q + (q - HEAD_C).normalized() * 0.006)
+    end = Vector((MONO_X - 0.01, -0.175, SCARF_Z + 0.03))   # tucked into the scarf
+    pts.append(end)
+    smooth = [pts[0]]
+    for i in range(len(pts) - 1):   # a little sag between the anchor points
+        for k in (1, 2):
+            t = k / 2
+            smooth.append(pts[i].lerp(pts[i + 1], t) + Vector((0, -0.004 * math.sin(math.pi * t), 0)) * (k == 1))
+    build_tube(bm, smooth, [0.0026] * len(smooth), 5, lambda u, v: gold, up_hint=Vector((0, -1, 0)))
 
 
 ES = 18  # ear ring segments
@@ -433,14 +456,14 @@ def empty(name, loc_world, parent, parent_pivot, size=0.03):
     return ob
 
 
-def build(glasses=True, mouth="open"):
-    img = build_atlas(mouth, glasses)
+def build(monocle=True, mouth="open"):
+    img = build_atlas(mouth, monocle)
     mat = make_material(img)
     origin = Vector((0, 0, 0))
     root = empty("Dugi", origin, None, origin, 0.2)
     bm = new_bm(); make_body(bm)
     body = mesh_object("Body", bm, origin, root, origin, mat)
-    bm = new_bm(); make_head(bm)
+    bm = new_bm(); make_head(bm, monocle)
     head = mesh_object("Head", bm, NECK, body, origin, mat)
     for side, nm in ((1, "L"), (-1, "R")):
         bm = new_bm(); base = make_ear(bm, side)
@@ -505,7 +528,7 @@ def stats():
 
 def parse_args():
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
-    opts = {"out": None, "glasses": "on", "mouth": "open"}
+    opts = {"out": None, "monocle": "on", "mouth": "open"}
     i = 0
     while i < len(argv):
         k = argv[i].lstrip("-")
@@ -519,7 +542,7 @@ def parse_args():
 if __name__ == "__main__":
     opts = parse_args()
     bc.clear_scene()
-    build(opts["glasses"] != "off", opts["mouth"])
+    build(opts["monocle"] != "off", opts["mouth"])
     print("DUGI_STATS", stats())
     if opts["out"]:
         bc.export_glb(opts["out"])

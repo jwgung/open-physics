@@ -28,7 +28,7 @@
 
 ## 2. 스크린샷
 
-`--experiment=<id>,--quality=low`로 열고 8초 뒤 `adb exec-out screencap`(조작 안내가 보이는 첫 화면). 모두 `screens/`.
+`--experiment=<id>,--quality=low`로 열고 8초 뒤 `adb exec-out screencap`(촬영 당시 조작 안내는 8초짜리 3~5줄 카드였고, 이후 사용자 결정으로 처음에만 4초·한 줄로 줄였다.). 모두 `screens/`.
 
 | 파일 | 내용 |
 |---|---|

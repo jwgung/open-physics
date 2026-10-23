@@ -24,8 +24,9 @@ const CARRY_TOL := 1e-4      # m: carried ball centre vs the paw's held point (f
 const RELEASE_TOL := 1e-4    # m: the paw's held point vs the ball (launch point) on the release frame
 const CONTACT_TOL := 1e-4    # m: paw front vs the box face plane
 const RELEASE_DIR_DEG := 10.0  # deg: paw direction over the last frame vs the launch direction
-## Frames (at 60 fps) from "공 놓기" to the release: CatActor.WINDUP_S + SWING_S = 0.48 s.
-const THROW_FRAMES := 29
+## Frames (at 60 fps) before the release frame after "공 놓기": CatActor.WINDUP_S + SWING_S = 0.48 s
+## (the release is on the 29th frame; exact, so a one-frame-late release fails).
+const THROW_FRAMES := 28
 ## The BreadCat look (the user's glb, 2026-10-23): 3,290 model vertices + the shadow.
 const CAT_VERTS_MAX := 3500
 const PHONE := Vector2(1560, 720)
@@ -128,7 +129,7 @@ func check_throw() -> void:
 			worst_carry = maxf(worst_carry, (lab.ball.global_position + juice.carry()).distance_to(cat.held_point()))
 			moved = maxf(moved, juice.carry().length())
 			body_still = body_still and lab.ball.global_position == launch and lab.ball.freeze
-		frames_ok = frames_ok and absi(frames - THROW_FRAMES) <= 1 and not at_release.is_empty()
+		frames_ok = frames_ok and frames == THROW_FRAMES and not at_release.is_empty()
 		detail_release += " %d frames %s" % [frames, str(at_release.get("steps", "-"))]
 		if not at_release.is_empty():
 			worst_release = maxf(worst_release, maxf(at_release.held.distance_to(at_release.ball), at_release.ball.distance_to(launch)))
@@ -264,10 +265,59 @@ func check_throw_cancel() -> void:
 	var picked: bool = not lab.released and not cat.throwing() and cat.mode == "free"
 	lab.manipulation_placed("ball", Transform3D(Basis(), lab.ball_center()))
 	var regrip: bool = cat.mode == "hold" and cat.held_point().distance_to(lab.ball_center()) <= RELEASE_TOL
-	expect.call(still and no_release and picked and regrip,
+	# A condition change during the throw (angle, speed, gravity) puts the ball back in the paw: no late
+	# release, the cat holds it at the (new) launch point.
+	var changes_ok := true
+	for change in [["angle", 30.0], ["speed", 5.0], ["gravity", "moon"]]:
+		lab.run_action("release")
+		for i in 6:
+			await tree.process_frame
+		lab.set_control(change[0], change[1])
+		for i in THROW_FRAMES + 5:
+			await tree.process_frame
+		changes_ok = changes_ok and not lab.released and cat.mode == "hold" and lab.props.juice.carry() == Vector3.ZERO \
+			and cat.held_point().distance_to(lab.ball_center()) <= RELEASE_TOL
+		expect.call(still and no_release and picked and regrip,
 		"bread cat: 처음으로 / picking up the ball stop the throw (no late release), a press during the throw is ignored, the paw grips the ball again when it is put down",
 		"%s %s %s %s" % [still, no_release, picked, regrip])
+	expect.call(changes_ok, "bread cat: a condition change (angle, speed, gravity) during the throw: no late release, the ball back in the paw at the launch point", str(changes_ok))
 	await _free(lab)
+	await check_rebuild_during_throw()
+
+
+## The screen is rebuilt during a throw (App rebuilds the 3D view with the screen's saved state): the
+## old lab goes with its cat and its pending release (nothing is released later, no error), the new
+## screen's cat holds the ball at the restored launch point and nothing is released.
+func check_rebuild_during_throw() -> void:
+	var host := Control.new()
+	host.theme = load(UI_THEME).build()
+	host.size = PHONE
+	tree.root.add_child(host)
+	var screen: Control = load(EXPERIMENT_SCREEN).new()
+	screen.setup(ExperimentRegistry.find("projectile"))
+	host.add_child(screen)
+	await tree.process_frame
+	screen.experiment.manipulation_placed("ball", Transform3D(Basis(), Vector3(-5.0, 1.25, 0.0)))
+	screen.experiment_action("release")
+	for i in 8:
+		await tree.process_frame
+	var old_lab: Experiment = screen.experiment
+	var state: Dictionary = screen.capture_state()
+	screen.queue_free()
+	await tree.process_frame
+	var again: Control = load(EXPERIMENT_SCREEN).new()
+	again.setup(ExperimentRegistry.find("projectile"), state)
+	host.add_child(again)
+	for i in THROW_FRAMES + 10:
+		await tree.process_frame
+	var lab: Experiment = again.experiment
+	var cat: CatActor = lab.props.cat
+	var ok: bool = not is_instance_valid(old_lab) and not lab.released and cat.mode == "hold" \
+		and cat.held_point().distance_to(lab.ball_center()) <= RELEASE_TOL and lab.ball_center().distance_to(Vector3(-5.0, 1.25, 0.0)) < 1e-3
+	expect.call(ok, "bread cat: the screen rebuilt during a throw: the old lab and its pending release are gone, the new cat holds the ball at the restored launch point",
+		"old valid %s, released %s, mode %s, ball %s" % [is_instance_valid(old_lab), lab.released, cat.mode, lab.ball_center()])
+	host.queue_free()
+	await tree.process_frame
 
 
 # --- 2. push ----------------------------------------------------------------------------------

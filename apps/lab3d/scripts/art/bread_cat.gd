@@ -6,9 +6,10 @@
 ##
 ## glb tree (each node's origin is its pivot; +z is the front, origin = the middle of the bag's
 ## bottom): BreadCat > Bag, Baguette, Body > Head, ArmL > HandL, ArmR > HandR, Tail > Tail2 > TailTip.
-## build() makes 7 draw nodes under the actor's rig: Static (Bag + Baguette + Body merged into one
+## build() makes 6 draw nodes under the actor's rig: Static (Bag + Baguette + Body merged into one
 ## mesh: they never move against each other), Head (nod / tilt at the neck), ArmR / ArmL (turned at
-## the shoulder; HandL / HandR = the paw centre, the grip point), Tail and Tail2 (sway). Their
+## the shoulder; HandL / HandR = the paw centre, the grip point), Tail and Tail2 (sway); with the
+## actor's blob shadow the cat draws 7. Their
 ## material is the island light on the atlas (ArtKit.lit_texture_material), no engine lights.
 class_name BreadCat
 extends CatLook

@@ -55,7 +55,9 @@
 | `screens/push-sliding.png` | 마찰 밀기 53 N으로 미끄러지는 택배 박스를 두 앞발로 미는 고양이 |
 | `screens/parcel-push-front.png`, `parcel-push-close.png` | 마찰 밀기 택배 박스(정면, 근접) |
 | `screens/parcel-incline.png`, `parcel-incline-close.png` | 빗면 마찰 택배 박스(정면, 근접) |
-| `screens/yarn-close.png` | 자유 낙하 털실 공 빨강·노랑·보라 |
+| `screens/yarn-close.png`, `yarn-close-high.png` | 자유 낙하 털실 공 빨강·노랑·보라(선명한 색 수정 뒤, low / high) |
+| `screens/yarn-pendulum.png`, `yarn-pendulum-close.png` | 진자 털실 추(줄 파랑·막대 주황) |
+| `screens/yarn-orbit.png`, `yarn-orbit-close.png` | 궤도 털실 행성(파랑, 우주 무대) |
 | `screens/yarn-collision.png` | 충돌 털실 공 A 파랑·B 주황 |
 | `cat-throw.mp4` | 14초(960×600), 따라가기 시점, 45°·9 m/s를 4초마다 던짐 |
 | `cat-throw-0deg.mp4` | 8초, 0°·6 m/s(수평 던지기: 머리 위로 감았다가 수평으로 놓음) |
@@ -68,6 +70,9 @@
 - 처음 low 빌드에서 아틀라스 색이 하얗게 떴다. Compatibility 렌더러가 `source_color` 텍스처를 sRGB에서 풀지 않았기 때문이다. 지금은 셰이더(`art_lit_tex.gdshader`)가 직접 푼다.
 - 그늘 면은 따뜻한 색이 남도록 그늘 색 비율을 35 %로 낮췄다.
 - 앞서 바래 보인 v3 밀기·감기 사진은 sRGB 수정 전 빌드라 지웠다.
+- 털실 공 색(18:00–18:07 빌드): 렌더 평균 low 노랑 `#f1c016`·빨강 `#f4393a`·보라 `#482799`(팔레트 `#ffc61a`·`#ff3b3b`·`#4b2a9a`와 ΔE 4.6·4.2·1.6)이고, high는 `#e9ba19`·`#f1393a`·`#472797`이다.
+  - 수정 전에는 빨강이 `#e57879`였다. low가 `source_color` tint를 sRGB로 풀지 않았기 때문이다. 지금은 tint를 `Vector4` 선형 값으로 넘기고, 텍스처 평균으로 나눈다.
+  - 이 색 수정은 셰이더 uniform 값만 바꿨고, fps는 다시 재지 않았다.
 
 ## 3. 헤드리스 확인 (요약)
 
@@ -100,5 +105,4 @@
   - 낮은 각도(0–15°) 던지기에서는 휘두르기 끝에 공이 볼 옆을 스친다.
   - 감기는 머리 뒤로 가서 정면에서는 일부 가려진다.
 - 던지기 정점 예산 초과(약 16,100, 3 m에서 약 17,600 / 15,000): 문서 예외로 두었다(fps 충족).
-- 진자 추와 궤도 행성(구)은 털실로 바꾸지 않았다(공이 아니라고 봄). 바꿀지 사용자 판단이 필요하다.
 - 대기 변형(눕힌 봉투)과 다른 실험 확장은 이번 범위 밖이다.

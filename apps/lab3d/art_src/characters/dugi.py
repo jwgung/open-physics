@@ -84,8 +84,8 @@ def region_grid(rect):
 # --------------------------------------------------------------------------------------------
 
 HEAD_R = 0.300
-HEAD_SX, HEAD_SY, HEAD_SZ = 1.12, 0.98, 0.95
-HEAD_C = Vector((0.0, -0.01, 0.835))
+HEAD_SX, HEAD_SY, HEAD_SZ = 1.06, 0.98, 1.06  # SX == SZ: a round face seen from the front
+HEAD_C = Vector((0.0, -0.01, 0.850))
 NECK = Vector((0.0, 0.0, 0.590))
 BODY_C = Vector((0.0, 0.01, 0.325))
 BODY_R = Vector((0.260, 0.230, 0.270))
@@ -95,17 +95,19 @@ NOSE_Z = -0.052
 
 def head_point(d):
     x, y, z = d
-    cheek = 1.0 + 0.16 * max(0.0, -z + 0.15) * (1.0 - 0.6 * abs(y))  # plump lower cheeks
-    sx = HEAD_SX * cheek
-    sy = HEAD_SY * (0.90 if y < 0 else 1.0)
-    sz = HEAD_SZ * (0.90 if z < 0 else 1.0)
+    # 2026-10-23 user feedback: a truly round face. The front silhouette is a circle (no flat top, no
+    # bulging lower cheeks, no narrow chin); the plump cheeks are the painted blush. Only the face
+    # plane is a little flatter front-to-back.
+    sx = HEAD_SX
+    sy = HEAD_SY * (0.92 if y < 0 else 1.0)
+    sz = HEAD_SZ
     return HEAD_C + Vector((x * HEAD_R * sx, y * HEAD_R * sy, z * HEAD_R * sz))
 
 
 def face_dir(qx, qz):
     """Head direction whose painted face coordinate is (qx, qz) metres (inverse of paint_head's map)."""
     dx = qx / (HEAD_R * HEAD_SX)
-    dz = qz / (HEAD_R * HEAD_SZ * (0.90 if qz < 0 else 1.0))
+    dz = qz / (HEAD_R * HEAD_SZ)
     return Vector((dx, -math.sqrt(max(0.0, 1 - dx * dx - dz * dz)), dz))
 
 
@@ -130,7 +132,7 @@ def paint_head():
     blend(img, np.clip(-dz * 1.6 - 0.6, 0, 1), hexc(P["fur_shade"]), 0.5)
     front = dy < 0.0
     qx = dx * HEAD_R * HEAD_SX
-    qz = dz * HEAD_R * HEAD_SZ * np.where(dz < 0, 0.90, 1.0)
+    qz = dz * HEAD_R * HEAD_SZ
     aa = 0.0022
     blend(img, smooth_fill(sd_ellipse(qx, qz, 0.0, -0.075, 0.11, 0.07), 0.03) * front, hexc(P["white"]))
     for s in (-1, 1):  # blush
@@ -344,7 +346,7 @@ def make_body(bm):
     ellipsoid(bm, Vector((0.0, 0.205, 0.20)), (0.080, 0.070, 0.076), white, 14, 10)  # tail puff
     # bow tie under the chin
     bow = swatch_uv("bow"); dark = swatch_uv("bow_dark")
-    knot = Vector((0.0, -0.165, 0.585))
+    knot = Vector((0.0, -0.170, 0.560))
     for s in (-1, 1):
         def lobe(d, q, s=s):
             flare = 0.40 + 0.60 * (0.5 + 0.5 * d.x * s)  # thin at the knot, wide at the outer end
@@ -354,11 +356,14 @@ def make_body(bm):
     ellipsoid(bm, knot + Vector((0, -0.012, 0)), (0.030, 0.026, 0.034), dark, 10, 6)
 
 
-SHOULDER = {1: Vector((0.160, -0.02, 0.490)), -1: Vector((-0.160, -0.02, 0.490))}
-ELBOW = {1: Vector((0.272, -0.190, 0.390)), -1: Vector((-0.266, -0.165, 0.440))}
-HAND = {1: Vector((-0.010, -0.312, 0.415)), -1: Vector((0.025, -0.278, 0.472))}
-ARM_R = 0.064
-PAW_R = 0.074
+# Short stubby chibi arms (2026-10-23 user feedback: arms too long): shoulder -> paw tip, straightened,
+# is <= 0.6 x the head diameter (ARM_REACH below). Shoulders sit on the front of the round body so
+# even these short arms fold: the paws meet in front of the chest.
+SHOULDER = {1: Vector((0.150, -0.110, 0.455)), -1: Vector((-0.150, -0.110, 0.455))}
+ELBOW = {1: Vector((0.195, -0.235, 0.405)), -1: Vector((-0.190, -0.215, 0.452))}
+HAND = {1: Vector((0.050, -0.300, 0.425)), -1: Vector((-0.030, -0.282, 0.478))}
+ARM_R = 0.058
+PAW_R = 0.064
 
 
 def capsule(pts, radii, start=True, end=True):
@@ -374,6 +379,12 @@ def capsule(pts, radii, start=True, end=True):
         else:
             pts = [p for p, _ in reversed(dome)] + pts; radii = [q for _, q in reversed(dome)] + radii
     return pts, radii
+
+
+def arm_reach(side):
+    """Shoulder -> elbow -> paw tip along the arm (its length when straightened)."""
+    tip = HAND[side] + (HAND[side] - ELBOW[side]).normalized() * PAW_R * 1.10
+    return (ELBOW[side] - SHOULDER[side]).length + (tip - ELBOW[side]).length
 
 
 def make_upper_arm(bm, side):
@@ -395,7 +406,7 @@ def make_forearm(bm, side):
     ax = (H - E).normalized()
     rot = Vector((1, 0, 0)).rotation_difference(ax).to_matrix()
     ellipsoid(bm, H, (PAW_R * 1.10, PAW_R, PAW_R * 0.95), swatch_uv("white"), 14, 8, rot)
-    return H + ax * PAW_R * 1.0
+    return H + ax * PAW_R * 1.10  # the paw's front surface
 
 
 # --------------------------------------------------------------------------------------------
@@ -507,7 +518,9 @@ def stats():
     pts = [(ob.matrix_world @ v.co) for ob in bpy.context.scene.objects if ob.type == "MESH" for v in ob.data.vertices]
     bounds = [round(min(p[i] for p in pts), 3) for i in range(3)] + [round(max(p[i] for p in pts), 3) for i in range(3)]
     pivots = {ob.name: tuple(round(c, 3) for c in ob.matrix_world.translation) for ob in bpy.context.scene.objects}
-    return dict(bounds_min_max=bounds, pivots=pivots, per_mesh=per, meshes=meshes, triangles=tris,
+    head_d = 2 * HEAD_R * HEAD_SX
+    return dict(arm_reach_over_head_d=[round(arm_reach(sd) / head_d, 3) for sd in (1, -1)], head_d=round(head_d, 3),
+                bounds_min_max=bounds, pivots=pivots, per_mesh=per, meshes=meshes, triangles=tris,
                 materials=len([m for m in bpy.data.materials if m.users]), nodes=len(bpy.context.scene.objects))
 
 

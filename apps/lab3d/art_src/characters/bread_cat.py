@@ -25,7 +25,7 @@ Conventions (see also the module docstring of the Godot side when it loads this 
           Tail2             (mesh, pivot at the tail joint)
             TailTip         (empty)
 - Bag front: one toast slice (2026-10-23 user decision).
-- Head: nearly round with plump lower cheeks and round-tipped ears (2026-10-23 user feedback: rounder is cuter).
+- Head: round from the front (width:height 1:1) with round-tipped ears (2026-10-23 user feedback: rounder is cuter).
 - Budget (SM-P200 low): 8 meshes, 1 material, 1 texture (1024 px), < 6000 triangles.
 """
 
@@ -100,8 +100,8 @@ def swatch_uv(name):
 
 HEAD_R = 0.275
 FACE_R = 0.235  # face features are authored for this radius and scale with the head
-HEAD_SX, HEAD_SY, HEAD_SZ = 1.09, 0.98, 0.96
-HEAD_C = Vector((0.0, -0.01, 0.980))
+HEAD_SX, HEAD_SY, HEAD_SZ = 1.06, 0.98, 1.06  # SX == SZ: a round face seen from the front
+HEAD_C = Vector((0.0, -0.01, 0.959))  # keeps the total height (ear tips) at 1.398 m
 NECK = Vector((0.0, 0.0, 0.78))
 BODY_C = Vector((0.0, 0.03, 0.62))
 BODY_R = Vector((0.19, 0.15, 0.20))
@@ -119,12 +119,12 @@ def sph_dir(lon, lat):
 def head_point(d):
     x, y, z = d
     r = HEAD_R
-    # chibi: nearly round (2026-10-23 user feedback: a round face is cuter), plump lower cheeks
-    # (widest a little below the eyes, so the face does not narrow toward the chin), softly flat face.
-    cheek = 1.0 + 0.11 * math.exp(-((z + 0.25) / 0.45) ** 2) * (1.0 - 0.5 * abs(y))
-    sx = HEAD_SX * cheek
-    sy = HEAD_SY * (0.93 if y < 0 else 1.0) * (1.0 + 0.04 * math.exp(-((z + 0.25) / 0.45) ** 2))
-    sz = HEAD_SZ * (0.97 if z < 0 else 1.0)
+    # chibi, truly round (2026-10-23 user feedback): the front silhouette is a circle (no flat top,
+    # no bulging lower cheeks, no narrow chin); the plump cheeks are the painted blush. Only the face
+    # plane is a little flatter front-to-back.
+    sx = HEAD_SX
+    sy = HEAD_SY * (0.93 if y < 0 else 1.0)
+    sz = HEAD_SZ
     return HEAD_C + Vector((x * r * sx, y * r * sy, z * r * sz))
 
 
@@ -228,7 +228,7 @@ def paint_head(P, mouth):
     # --- front face, measured in metres on the front view of the deformed head ---
     front = dy < 0.0
     qx = dx * FACE_R * HEAD_SX
-    qz = dz * FACE_R * HEAD_SZ * np.where(dz < 0, 0.92, 1.0)
+    qz = dz * FACE_R * HEAD_SZ
     aa = 0.0022
     cream = hexc(P["cream"])
     # muzzle + chin

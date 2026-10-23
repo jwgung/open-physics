@@ -115,6 +115,9 @@ static func resolve(raw: Dictionary) -> Array:
 	var tip: String = app.get("tip", "")
 	if tip != "":
 		definition["tip"] = tip
+	var tip_short: String = app.get("tip_short", "")
+	if tip_short != "":
+		definition["tip_short"] = tip_short
 	for key in APP_OVERRIDES:
 		if not app.has(key):
 			continue

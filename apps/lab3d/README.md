@@ -119,7 +119,7 @@ apps/lab3d/
 
 | 위치 | 내용 | 읽는 곳 |
 |---|---|---|
-| `content/mechanics-labs.json` `labs` | 웹 2D의 10개 실험(웹 목록 순서): `id`, `title`, `category`, `icon`, `question`, `steps`(3개), `observe`, `terms`, `law`, 플랫폼별 조작 안내 `web`(`controls` = 웹 조건 패널, `tip`)·`app`(`tip`, 3D로 옮긴 실험만. 3D 동작이 웹과 달라 공유 문구가 맞지 않으면 `steps`(3개)·`observe`로 3D 앱 전용 문구를 덮어씀: 도르래, 지렛대. 웹은 `app`을 읽지 않아 웹 문구·SHA 불변) | 웹 `src/app/mechanics-labs.ts`(`import { labs }`, `parseMechanicsLabs`가 id·분류·단계 수·조건을 검사), 앱 `ExperimentRegistry` |
+| `content/mechanics-labs.json` `labs` | 웹 2D의 10개 실험(웹 목록 순서): `id`, `title`, `category`, `icon`, `question`, `steps`(3개), `observe`, `terms`, `law`, 플랫폼별 조작 안내 `web`(`controls` = 웹 조건 패널, `tip`)·`app`(`tip` = 사이드바의 전체 문구, `tip_short` = 처음에만 잠깐 뜨는 한 줄, 3D로 옮긴 실험만. 3D 동작이 웹과 달라 공유 문구가 맞지 않으면 `steps`(3개)·`observe`로 3D 앱 전용 문구를 덮어씀: 도르래, 지렛대. 웹은 `app`을 읽지 않아 웹 문구·SHA 불변) | 웹 `src/app/mechanics-labs.ts`(`import { labs }`, `parseMechanicsLabs`가 id·분류·단계 수·조건을 검사), 앱 `ExperimentRegistry` |
 | 같은 파일 `app_labs` | 3D 앱에만 있는 실험(빗면 마찰) | 앱 |
 | `content/experiments/<id>.json` | 3D 전용 필드: `content`(공유 실험 id), `scene`, `bench_id`, `camera`, `controls`, `actions`, `observations`, `graph`, `manipulation` | 앱 |
 
@@ -201,7 +201,7 @@ apps/lab3d/
 
 - 앱은 가로 전용이다(Task 2d). `display/window/handheld/orientation=4`(sensor landscape: 가로 두 방향만)로 Android export(매니페스트 `screenOrientation`)와 iOS export(`UISupportedInterfaceOrientations`, iOS 프리셋은 아직 없음)가 같은 설정을 쓴다. 목록·설정 화면도 가로다. 세로 레이아웃은 없다.
 - `window/stretch`는 `canvas_items` + `expand`, 기준 크기 720×720이다. 화면의 짧은 변(가로 화면의 높이)이 항상 720 UI 단위다(SM-P200에서 1 단위 = 1.67 px). 폰 2340×1080은 1560×720 단위, 태블릿 1920×1200은 1152×720 단위다.
-- 실험 화면(사이드바 닫힘, 기본): 3D 뷰가 화면 전체다. 그 위에 왼쪽 위 `← 목록`·제목, 오른쪽 위 `설정`·`설명·조건`(사이드바 열기), 제목 아래 핵심 관찰값 카드 2~3개(폭 200, 사이드바 패널과 같은 글자), 오른쪽 아래 실험 액션 버튼(놓기·처음으로 등), 왼쪽 아래 조작 안내(8초 또는 첫 제스처 뒤 사라짐. 액션 버튼 옆 폭이 300 단위보다 좁으면 버튼 위로 올라감). 카드는 터치를 3D로 통과시킨다.
+- 실험 화면(사이드바 닫힘, 기본): 3D 뷰가 화면 전체다. 그 위에 왼쪽 위 `← 목록`·제목, 오른쪽 위 `설정`·`설명·조건`(사이드바 열기), 제목 아래 핵심 관찰값 카드 2~3개(폭 200, 사이드바 패널과 같은 글자), 오른쪽 아래 실험 액션 버튼(놓기·처음으로 등), 왼쪽 아래 조작 안내 한 줄(`app.tip_short`, 앱 실행 중 그 실험을 처음 열 때만 4초 또는 첫 제스처까지 보이고 페이드아웃. 다시 열거나 화면을 다시 만들어도 안 나옴. 전체 문구 `app.tip`은 사이드바 설명의 "조작 방법" 카드. 액션 버튼 옆 폭이 240 단위보다 좁으면 버튼 위로 올라감). 카드는 터치를 3D로 통과시킨다.
 - 사이드바(오른쪽, 470 단위 또는 화면 폭의 42% 중 작은 값): 질문, 시점, 조건 바꾸기, 관찰(전체), 그래프, 설명(단계·관찰 포인트·법칙·용어). `닫기`로 닫는다. 열고 닫을 때 사이드바 노드의 위치만 0.22초 Tween으로 옮긴다(전체 화면 반투명 레이어 없음).
 - 사이드바가 열리면 3D 뷰가 왼쪽 남은 영역으로 줄어든다(사이드바가 3D 위에 겹치지 않음). 근거: 장면의 물체가 사이드바 뒤에 가리지 않고, 사이드바는 바탕을 칠하지 않아(clear color가 비침) 겹쳐 칠하는 면적이 늘지 않으며, 3D SubViewport도 작아진다. 뷰 크기는 열 때 한 번(시작에), 닫을 때 한 번(끝에)만 바꾸고 슬라이드 중에는 바꾸지 않는다(크기를 바꿀 때마다 SubViewport를 다시 할당). 3D 뷰가 16:10보다 좁아지면(태블릿에서 사이드바를 열면 거의 정사각형) 16:10 화면의 가로 시야(73.4°)를 유지해 장치 전체가 화면에 남는다(`CameraRig.fit_aspect`).
 - low에서도 UI는 원본 해상도로 그린다. 3D만 SubViewport에서 화면 픽셀의 45%로 그린 뒤 늘린다. 근거는 [UI 해상도 결정](docs/ui-resolution.md)이다.

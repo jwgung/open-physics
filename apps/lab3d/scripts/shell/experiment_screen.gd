@@ -17,9 +17,10 @@ const SIDEBAR_MAX_FRACTION := 0.42      # of the screen width (tablet 1152 units
 const SIDEBAR_SLIDE_S := 0.22
 const OVERLAY_MARGIN := 12.0
 const KEY_CARD_WIDTH := 200.0
-const TIP_SECONDS := 8.0
-const TIP_MAX_WIDTH := 440.0
-const TIP_MIN_WIDTH := 300.0   # narrower than this beside the actions: the tip goes above them
+const TIP_SECONDS := 4.0       # the short gesture hint stays this long (or until the first gesture), then fades
+const TIP_FADE_S := 0.3
+const TIP_MAX_WIDTH := 340.0
+const TIP_MIN_WIDTH := 240.0   # narrower than this beside the actions: the tip goes above them
 const DEMO_RELEASE_DELAY_S := 0.4   # --auto-drag: the auto-release waits this long after the demo put its object down
 
 ## Set by App for the screen it opens from --experiment: then the launch args (--ctl-*, --camera,
@@ -42,6 +43,11 @@ var _action_row: HBoxContainer
 var _action_buttons: Dictionary = {}    # action id -> Button
 var _tip: Label
 var _tip_left := TIP_SECONDS
+var _tip_tween: Tween
+## Experiments whose short gesture hint was already shown in this app run: it appears the first
+## time an experiment opens only (re-entering, rebuilding the screen or changing a condition never
+## brings it back). The full text stays in the sidebar's explanation.
+static var _tips_shown: Dictionary = {}
 # Sidebar.
 var _sidebar: PanelContainer
 var _sidebar_state := "closed"          # closed, opening, open, closing
@@ -203,7 +209,7 @@ func is_sidebar_open() -> bool:
 ## area left of the sidebar and slides the sidebar into the freed space; closing slides the
 ## sidebar out first and gives the view the full width when it is gone. The view is resized once
 ## per open/close, never during the slide (each resize reallocates its SubViewport).
-func _layout() -> void:
+func _layout(snap_slide := true) -> void:
 	var w := size.x
 	var h := size.y
 	var side := sidebar_width()
@@ -212,7 +218,14 @@ func _layout() -> void:
 	view.size = Vector2(view_width, h)
 	_sidebar.size = Vector2(side, h)
 	_sidebar.position.y = 0.0
-	if _sidebar_tween == null or not _sidebar_tween.is_valid():
+	var sliding := _sidebar_tween != null and _sidebar_tween.is_valid()
+	if sliding and snap_slide:
+		# A resize in the middle of a slide: stop it and snap to where it was heading, so the
+		# sidebar never sits at a target computed for the old window size.
+		_sidebar_tween.kill()
+		_finish_slide("open" if _sidebar_state == "opening" else "closed")
+		return
+	if not sliding:
 		_sidebar.position.x = w - side if _sidebar_state == "open" else w
 	_fit_overlays()
 
@@ -223,7 +236,7 @@ func open_sidebar(animated := true) -> void:
 	_sidebar_state = "opening"
 	_sidebar.visible = true
 	_sidebar_button.visible = false
-	_layout()
+	_layout(false)   # keeps a running slide: _slide_sidebar restarts it from where it is
 	_slide_sidebar(size.x - sidebar_width(), "open", animated)
 
 
@@ -324,10 +337,12 @@ func _build_view_overlays() -> void:
 		_action_row.add_child(button)
 		_action_buttons[action.id] = button
 
-	_tip = Ui.label(definition.get("tip", ""), "HintLabel", true)
+	var short_tip: String = definition.get("tip_short", definition.get("tip", ""))
+	_tip = Ui.label(short_tip, "HintLabel", true)
 	_tip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	view.add_child(_tip)
-	_tip.visible = _tip.text != ""
+	_tip.visible = _tip.text != "" and not _tips_shown.has(definition.id)
+	_tips_shown[definition.id] = true
 	view.resized.connect(_fit_overlays)
 	# Wrapped card texts settle their height after the first layout pass (and change with status texts).
 	_key_row.minimum_size_changed.connect(_fit_overlays)
@@ -601,6 +616,13 @@ func _build_explanation() -> Control:
 	var parts := _section("설명")
 	var body: VBoxContainer = parts[1]
 	body.add_child(Ui.label(definition.title, "HeadingLabel", true))
+	if definition.get("tip", "") != "":
+		var how := Ui.panel("SoftCard")
+		var how_body := Ui.vbox(6)
+		how.add_child(how_body)
+		how_body.add_child(Ui.label("조작 방법", "SectionLabel"))
+		how_body.add_child(Ui.label(definition.tip, "MutedLabel", true))
+		body.add_child(how)
 	var steps := Ui.vbox(10)
 	var number := 1
 	for step in definition.steps:
@@ -689,5 +711,18 @@ func _on_mode_changed(mode: String) -> void:
 		_mode_buttons[id].set_pressed_no_signal(id == mode)
 
 
+## Fades the hint out on its own node (no screen-wide layer), then hides it.
 func _hide_tip() -> void:
-	_tip.visible = false
+	if not _tip.visible or _tip_tween != null:
+		return
+	if not is_inside_tree():
+		_tip.visible = false
+		return
+	_tip_tween = _tip.create_tween()
+	_tip_tween.tween_property(_tip, "modulate:a", 0.0, TIP_FADE_S)
+	_tip_tween.finished.connect(func() -> void: _tip.visible = false)
+
+
+## For tests: forget which hints were shown, as at a fresh app start.
+static func reset_tips_shown() -> void:
+	_tips_shown.clear()

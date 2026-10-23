@@ -154,6 +154,7 @@ func _run() -> void:
 	# ids), which would move the engine-twin noise of the checks above (all within tolerance).
 	print("== key cards and front camera, every experiment (Task 2d) ==")
 	await _check_key_cards()
+	await _check_gesture_tip()
 	print("RESULT: %s (%d failure(s))" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -1058,6 +1059,80 @@ func _check_key_cards() -> void:
 		screen.queue_free()
 		await process_frame
 	host.queue_free()
+
+
+## The gesture hint: short, shown only the first time an experiment opens in an app run, fades on
+## the first gesture or after TIP_SECONDS, never overlaps the cards or buttons; the sidebar keeps the full text.
+func _check_gesture_tip() -> void:
+	var host := Control.new()
+	host.theme = load(UI_THEME).build()
+	host.size = TABLET_LANDSCAPE
+	root.add_child(host)
+	var screen_class: GDScript = load(EXPERIMENT_SCREEN)
+	screen_class.reset_tips_shown()
+	var definitions := ExperimentRegistry.load_all()
+	var incline: Dictionary = {}
+	var other: Dictionary = {}
+	for definition in definitions:
+		if definition.id == "incline-friction":
+			incline = definition
+		elif other.is_empty() and definition.get("tip_short", "") != "":
+			other = definition
+	var first: Control = screen_class.new()
+	first.setup(incline)
+	host.add_child(first)
+	for i in 3:
+		await process_frame
+	var tip: Label = first._tip
+	var short_ok: bool = tip.visible and tip.text == incline.tip_short and tip.text.length() < incline.tip.length() \
+		and tip.get_line_count() <= 2 and tip.size.x <= 340.0
+	var clear: bool = not tip.get_rect().intersects(first._action_row.get_rect()) and not tip.get_rect().intersects(first._key_row.get_rect()) \
+		and not tip.get_rect().intersects(first._title_bar.get_rect()) and Rect2(Vector2.ZERO, first.view.size).encloses(tip.get_rect())
+	var in_sidebar := _has_label_text(first._sidebar, incline.tip)
+	_expect(short_ok and clear and in_sidebar,
+		"gesture hint: first open shows a short (<=2 lines) hint clear of cards and buttons; the sidebar keeps the full text",
+		"'%s' %d lines, width %.0f, clear %s, in sidebar %s" % [tip.text, tip.get_line_count(), tip.size.x, clear, in_sidebar])
+	first.view.gesture_used.emit()
+	for i in 40:
+		await process_frame
+	var faded: bool = not tip.visible
+	first.queue_free()
+	await process_frame
+	var again: Control = screen_class.new()
+	again.setup(incline)
+	host.add_child(again)
+	for i in 3:
+		await process_frame
+	again._set_control(incline.controls[0].id, again.experiment.control_value(incline.controls[0].id))
+	again._fit_overlays()
+	var hidden_again: bool = not again._tip.visible
+	again.queue_free()
+	await process_frame
+	var fresh: Control = screen_class.new()
+	fresh.setup(other)
+	host.add_child(fresh)
+	for i in 3:
+		await process_frame
+	var other_shown: bool = fresh._tip.visible
+	fresh._process(screen_class.TIP_SECONDS + 0.1)
+	for i in 40:
+		await process_frame
+	var timed_out: bool = not fresh._tip.visible
+	_expect(faded and hidden_again and other_shown and timed_out,
+		"gesture hint: fades on the first gesture, is not shown again on re-entry or after a condition change, another experiment still shows its own once, and the timer fades it",
+		"faded %s, again hidden %s, other shown %s, timed out %s" % [faded, hidden_again, other_shown, timed_out])
+	fresh.queue_free()
+	await process_frame
+	host.queue_free()
+
+
+func _has_label_text(node: Node, text: String) -> bool:
+	if node is Label and (node as Label).text == text:
+		return true
+	for child in node.get_children():
+		if _has_label_text(child, text):
+			return true
+	return false
 
 
 ## Horizontal field of view (degrees) of a View3D's camera.

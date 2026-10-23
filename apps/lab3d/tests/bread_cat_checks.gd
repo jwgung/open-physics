@@ -503,9 +503,13 @@ func check_storybook() -> void:
 				continue
 			var m := (node as MeshInstance3D).material_override
 			props_plain = props_plain and (m == null or (m.next_pass == null and not (m is ShaderMaterial and (m as ShaderMaterial).shader == ArtKit.TOON_SHADER)))
-		expect.call(meshes == 6 and wired and hull and cel and worst_split < 0.5 and props_plain,
-			"bread cat (%s): all 6 meshes draw the cel shader with the brown outline pass (cull_front, grown along NORMAL, >= 0.010 m), no split normals at a position, no other mesh of the lab has it" % id,
-			"%d meshes, wired %s%s, hull code %s, cel code %s, worst seam normal split %.3f deg, props plain %s" % [meshes, wired, detail, hull, cel, worst_split, props_plain])
+		expect.call(meshes == 6 and wired and hull and cel,
+			"bread cat (%s): all 6 meshes draw the cel shader with the brown outline pass (cull_front, grown along NORMAL, >= 0.010 m, #6e4630)" % id,
+			"%d meshes, wired %s%s, hull code %s, cel code %s" % [meshes, wired, detail, hull, cel])
+		expect.call(worst_split < 0.5, "bread cat (%s): no split normals at one position (the outline hull stays closed)" % id,
+			"worst seam normal split %.3f deg" % worst_split)
+		expect.call(props_plain, "bread cat (%s): no other mesh of the lab (ball, box, island) has the toon shader or an outline" % id,
+			"props plain %s" % props_plain)
 		await _free(lab)
 
 

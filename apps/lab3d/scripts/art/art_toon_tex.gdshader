@@ -8,9 +8,9 @@ shader_type spatial;
 render_mode unshaded, cull_back, specular_disabled;
 
 // The atlas is decoded from sRGB here and the colours below are LINEAR vectors (no source_color
-// hint), for the same Compatibility reasons as art_lit_tex.gdshader.
+// hint), for the same Compatibility reasons as art_lit_tex.gdshader. The defaults below are only
+// defaults: ArtKit.toon_material sets them (SUN_DIR, TOON_SHADE, TOON_THRESHOLD).
 uniform sampler2D albedo_texture : filter_linear_mipmap, repeat_disable;
-uniform vec4 tint = vec4(1.0);
 uniform vec3 sun_dir = vec3(-0.35, 0.85, 0.45);
 // The shade step's multiplier (linear): Blender ramp colour (0.86 x (0.97, 0.90, 0.93)), warm and
 // slightly pink, so fur and kraft stay warm on the shade side.
@@ -32,7 +32,7 @@ void fragment() {
 	vec3 light = mix(shade.rgb, vec3(1.0), smoothstep(-edge, edge, ndl));
 	vec3 srgb = texture(albedo_texture, UV).rgb;
 	vec3 linear = mix(pow((srgb + 0.055) / 1.055, vec3(2.4)), srgb / 12.92, lessThan(srgb, vec3(0.04045)));
-	vec3 color = linear * tint.rgb * light;
+	vec3 color = linear * light;
 	// Compatibility writes unshaded ALBEDO to its sRGB output unconverted (art_lit.gdshader).
 	if (OUTPUT_IS_SRGB) {
 		color = mix(1.055 * pow(max(color, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, color * 12.92, lessThan(color, vec3(0.0031308)));

@@ -14,7 +14,7 @@ Phase 1 Task 2c에서 정한 3D 앱의 시각 기준이다. 사용자가 시안 
 | `scripts/app/ui_theme.gd`, `island_banner.gd` | 2D 패널 테마, 목록 화면 머리 그림 |
 | `experiments/incline_friction/incline_props.gd` (`InclineProps`) | 빗면 실험의 소품(빗면·받침·상자·출발선·눈금)과 연출 연결 |
 | `scripts/shell/manipulator.gd` (`Manipulator`) | 조작 표시(발밑 표시, 높이 손잡이). 10절 |
-| `scripts/art/cat_actor.gd` (`CatActor`), `cat_look.gd` (`CatLook`), `bread_cat.gd` (`BreadCat`), `art_lit_tex.gdshader` | 빵고양이: 연기·동기화(`CatActor`)와 겉모습(`CatLook`의 하위 클래스 `BreadCat` = `assets/characters/bread_cat.glb`). 11절 |
+| `scripts/art/cat_actor.gd` (`CatActor`), `cat_look.gd` (`CatLook`), `bread_cat.gd` (`BreadCat`), `art_toon_tex.gdshader`·`art_outline.gdshader`(`ArtKit.toon_material`, 동화책 스타일) | 빵고양이: 연기·동기화(`CatActor`)와 겉모습(`CatLook`의 하위 클래스 `BreadCat` = `assets/characters/bread_cat.glb`). 11절 |
 
 ## 1. 원칙
 

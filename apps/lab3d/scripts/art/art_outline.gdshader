@@ -15,7 +15,8 @@
 shader_type spatial;
 render_mode unshaded, cull_front, specular_disabled, skip_vertex_transform;
 
-uniform vec4 color = vec4(0.156, 0.059, 0.030, 1.0);   // LINEAR (#6e4630), a vector: see art_toon_tex
+// Defaults only: ArtKit.outline_material sets all three (ArtPalette.OUTLINE, OUTLINE_WORLD, OUTLINE_SCREEN).
+uniform vec4 color = vec4(0.156, 0.061, 0.030, 1.0);   // LINEAR (#6e4630), a vector: see art_toon_tex
 uniform float world_width = 0.010;                     // m
 uniform float screen_width = 0.0035;                   // of the view height
 

@@ -249,6 +249,8 @@ func _advance(t1: float) -> void:
 					_w = 0.0
 					if stop_time < 0.0:
 						stop_time = _t
+	if _t < t1:
+		push_warning("RollingContact._advance: step guard spent at t = %f of %f" % [_t, t1])
 
 
 ## Time until the ball reaches a fence face (its front at the right face moving +x, or its back at

@@ -459,6 +459,7 @@ func check_fences() -> void:
 		var still: bool = lab.ball.linear_velocity.length() < 1e-4
 		var on: bool = not lab.ball.freeze and x > lab.FENCE_LEFT_X + r - 1e-4 and x < lab.FENCE_X - r + 1e-4 and still and lab.status() == "landed"
 		rest_ok = rest_ok and on
+		rest_ok = rest_ok and cc.rolling._t >= (cc.steps - 1) / float(STEP_HZ) - 1e-9   # the step guard never ran out before the model caught up
 		details.append("%s: %d fence hits, rests at x %.2f m after %.2f s%s" % [run[0], cc.rolling.wall_times.size(), x, cc.rolling.stop_time, "" if on else " (NOT ON THE ISLAND)"])
 	# The fences stand wholly on the island top: every vertex within the inscribed circle of its
 	# 14-sided top (apothem R cos(pi / 14)).

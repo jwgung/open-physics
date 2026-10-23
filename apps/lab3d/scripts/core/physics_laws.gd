@@ -121,6 +121,7 @@ static func tangential_speed(radius: float, angular_velocity: float) -> float:
 	return radius * angular_velocity
 
 ## rotation.ts rollingSpeed: rolling without slipping, v = r omega (Task 4f: the landed ball).
+## Test oracle only (the app implements it in RollingContact).
 static func rolling_speed(radius: float, angular_velocity: float) -> float:
 	return radius * angular_velocity
 
@@ -133,13 +134,13 @@ static func solid_sphere_moment_of_inertia(mass: float, radius: float) -> float:
 ## Ball on a level floor with slip speed `slip` = v + r omega_z (contact point speed, m/s) and
 ## kinetic friction mu: friction mu m g slows v by mu g and turns omega by 5 mu g / (2 r) until the
 ## slip is gone, after t = 2 |slip| / (7 mu g) (solid sphere; the slip falls at 7 mu g / 2). Task 4f,
-## textbook (not in the TS core).
+## textbook (not in the TS core). Test oracle only (the app implements it in RollingContact).
 static func slide_to_roll_time(slip: float, mu: float, g: float) -> float:
 	return 2.0 * absf(slip) / (7.0 * mu * g)
 
 ## Speed of the same ball once it rolls: v - 2/7 slip (any friction impulses conserve
 ## v - 2/7 slip, and the slip ends at 0). A ball that starts sliding without spin rolls at 5/7 v0.
-## Task 4f, textbook (not in the TS core).
+## Task 4f, textbook (not in the TS core). Test oracle only (the app implements it in RollingContact).
 static func rolling_speed_after_slip(v0: float, slip: float) -> float:
 	return v0 - 2.0 / 7.0 * slip
 

@@ -9,10 +9,13 @@ render_mode unshaded, cull_back, specular_disabled;
 // No source_color hint: the Compatibility renderer did not decode the atlas from sRGB with it (on
 // SM-P200 the colours came out encoded twice, too light), so the shader decodes it itself.
 uniform sampler2D albedo_texture : filter_linear_mipmap, repeat_disable;
-uniform vec4 tint : source_color = vec4(1.0);
+// tint / accent are LINEAR colours ArtKit sets as vectors (no source_color hint: the Compatibility
+// renderer did not convert a hinted colour, so a red tint came out pink on SM-P200 low, and Mobile
+// converts a Color value even without the hint; a Vector4 reaches both as it is).
+uniform vec4 tint = vec4(1.0);
 // Where the texture's alpha is 0 the colour is multiplied by `accent` instead of `tint` (the parcel
 // box's tape and label stripe, Task 4g); alpha 1 everywhere else and in the other models.
-uniform vec4 accent : source_color = vec4(1.0);
+uniform vec4 accent = vec4(1.0);
 uniform vec3 sun_dir = vec3(-0.35, 0.85, 0.45);
 uniform vec4 lit_color : source_color = vec4(1.0);
 uniform vec4 shade_color : source_color = vec4(0.49, 0.557, 0.847, 1.0);

@@ -1005,10 +1005,16 @@ static func _has_yellow(mesh: Mesh) -> bool:
 	return false
 
 
-## A ball's colour: the yarn ball's tint (Task 4g; the texture is grey).
+## A ball's colour: the yarn ball's tint times the texture's mean (Task 4g: the texture is grey and
+## the tint is divided by its mean, so this is the ball's average colour).
 static func _ball_colour(visual: MeshInstance3D) -> Color:
 	var m := visual.material_override as ShaderMaterial
-	return m.get_shader_parameter("tint") if m != null else Color.BLACK
+	if m == null:
+		return Color.BLACK
+	var t: Vector4 = m.get_shader_parameter("tint")   # linear
+	var lin := Color(t.x, t.y, t.z)
+	var k := ArtKit._yarn_mean(m.get_shader_parameter("albedo_texture"))
+	return Color(lin.r * k, lin.g * k, lin.b * k).linear_to_srgb()
 
 
 ## "" when `visual` is the yarn ball: the yarn model's mesh (at most 400 triangles) with the textured
@@ -1098,6 +1104,20 @@ func check_ball_colours() -> void:
 	if yarn_s != "" or not _near(_ball_colour(spring_yarn), ArtPalette.ORANGE):
 		problems.append("spring ball: %s" % yarn_s)
 	await _free(spring)
+	# Pendulum bobs and the orbit's planet too (2026-10-23 user decision), in their colours.
+	var pend: Experiment = await _lab("constraints")
+	for i in pend.bobs.size():
+		var bob_yarn: MeshInstance3D = pend.bobs[i].get_node("Visual/Yarn")
+		var yarn_p := _yarn_problem(bob_yarn, pend.BOB_RADIUS)
+		if yarn_p != "" or not _near(_ball_colour(bob_yarn), [ArtPalette.BLUE, ArtPalette.ORANGE][i]):
+			problems.append("pendulum bob %d: %s %s" % [i, yarn_p, _ball_colour(bob_yarn).to_html(false)])
+	await _free(pend)
+	var orbit: Experiment = await _lab("orbit")
+	var planet_yarn: MeshInstance3D = orbit.planet.get_node("Visual/Yarn")
+	var yarn_o := _yarn_problem(planet_yarn, orbit.PLANET_RADIUS)
+	if yarn_o != "" or not _near(_ball_colour(planet_yarn), ArtPalette.BLUE):
+		problems.append("orbit planet: %s %s" % [yarn_o, _ball_colour(planet_yarn).to_html(false)])
+	await _free(orbit)
 	var dev: Experiment = await _lab("manipulation-dev")
 	for entry in dev.definition.observations:
 		var id: String = entry.id
@@ -1105,7 +1125,8 @@ func check_ball_colours() -> void:
 			if not str(entry.label).begins_with("%s 상자" % COLOUR_WORDS[id][1]):
 				problems.append("dev label %s" % entry.label)
 			var box_mat := (dev.bodies[id].get_node("Visual") as MeshInstance3D).material_override as ShaderMaterial
-			var box_colour: Color = box_mat.get_shader_parameter("accent") if box_mat != null else Color.BLACK   # its parcel tape (Task 4g)
+			var accent_v: Vector4 = box_mat.get_shader_parameter("accent") if box_mat != null else Vector4.ZERO
+			var box_colour := Color(accent_v.x, accent_v.y, accent_v.z).linear_to_srgb()   # its parcel tape (Task 4g; linear)
 			if not _near(box_colour, dev.BOXES[id][1]) or dev.BOXES[id][1] != COLOURS[id]:
 				problems.append("dev box %s colour %s" % [id, box_colour.to_html(false)])
 	await _free(dev)

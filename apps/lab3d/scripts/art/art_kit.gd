@@ -32,6 +32,7 @@ static var _lit: ShaderMaterial
 static var _parcel_src: Mesh
 static var _parcel_meshes := {}   # size -> the parcel baked to it
 static var _yarn_mesh: Mesh
+static var _yarn_texture_mean := -1.0
 static var _shadow: StandardMaterial3D
 
 
@@ -73,11 +74,32 @@ static func yarn_ball(radius: float, color: Color) -> MeshInstance3D:
 		var model: Node = YARN_SCENE.instantiate()
 		_yarn_mesh = (model.find_children("*", "MeshInstance3D", true, false)[0] as MeshInstance3D).mesh
 		model.free()
-	var material := lit_texture_material((_yarn_mesh.surface_get_material(0) as BaseMaterial3D).albedo_texture, 0.18, 0.6)
-	material.set_shader_parameter("tint", color)
+	var texture := (_yarn_mesh.surface_get_material(0) as BaseMaterial3D).albedo_texture
+	var material := lit_texture_material(texture, 0.18, 0.6)
+	# Divided by the texture's mean (linear): the ball's average is its colour, the strands lighter
+	# and darker shades of it (2026-10-23 user request: as vivid as the palette colours).
+	var lin := color.srgb_to_linear()
+	var k := 1.0 / _yarn_mean(texture)
+	# A Vector4, not a Color: the renderers convert Color uniforms differently (Compatibility never,
+	# Mobile always), a vector reaches the shader as it is (linear).
+	material.set_shader_parameter("tint", Vector4(lin.r * k, lin.g * k, lin.b * k, 1.0))
 	var ball := instance(_yarn_mesh, material)
 	ball.scale = Vector3.ONE * (radius / YARN_RADIUS)
 	return ball
+
+
+## Mean of the yarn texture in linear light (measured once).
+static func _yarn_mean(texture: Texture2D) -> float:
+	if _yarn_texture_mean < 0.0:
+		var image := texture.get_image()
+		image.decompress()
+		image.resize(64, 32, Image.INTERPOLATE_BILINEAR)
+		var sum := 0.0
+		for y in image.get_height():
+			for x in image.get_width():
+				sum += image.get_pixel(x, y).srgb_to_linear().r
+		_yarn_texture_mean = maxf(sum / (image.get_width() * image.get_height()), 0.05)
+	return _yarn_texture_mean
 
 
 static func yarn_mesh() -> Mesh:
@@ -102,7 +124,8 @@ static func parcel_mesh(size: float) -> Mesh:
 static func parcel_box(size: float, accent := ArtPalette.TAPE) -> MeshInstance3D:
 	var mesh := parcel_mesh(size)
 	var material := lit_texture_material((_parcel_src.surface_get_material(0) as BaseMaterial3D).albedo_texture, LIGHT_SOFTNESS, 1.0)
-	material.set_shader_parameter("accent", accent)
+	var accent_lin := accent.srgb_to_linear()
+	material.set_shader_parameter("accent", Vector4(accent_lin.r, accent_lin.g, accent_lin.b, 1.0))   # linear, as a vector (see yarn_ball)
 	return instance(mesh, material)
 
 

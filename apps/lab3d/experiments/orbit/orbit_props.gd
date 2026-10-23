@@ -3,7 +3,7 @@
 ## knob bodies are built and posed by orbit.gd.
 ## - the stage: a deep blue disk (SPACE) on the grass with white and yellow star dots, and a blue
 ##   pedestal holding the big yellow star at the orbit's height,
-## - the blue planet with a white band, its ArtJuice (shadow on the stage, squash, pop),
+## - the blue planet (a yarn ball, Task 4g; a white band before), its ArtJuice (shadow on the stage, squash, pop),
 ## - a white dashed circle at the start radius in the orbit plane (the circular orbit),
 ## - the predicted path of OrbitChallenge (the web's dashed path) as dots in the outcome's colour:
 ##   green orbit, red crash, purple escape (the web's colours),
@@ -56,15 +56,6 @@ static func stage_mesh(star_y: float, star_radius: float) -> Mesh:
 	return b.commit()
 
 
-static func planet_mesh(radius: float) -> Mesh:
-	var b := ArtKit.builder()
-	b.ao_height = radius * 1.2
-	b.add_sphere(Transform3D.IDENTITY, radius, 4, 7, ArtPalette.BLUE)
-	b.ao_min = 1.0
-	b.add_cylinder(Transform3D(Basis(), Vector3(0.0, -radius * 0.1, 0.0)), radius * 1.03, radius * 1.03, radius * 0.2, 7, ArtPalette.WHITE, false)
-	return b.commit()
-
-
 ## A dashed circle of `radius` around the origin (level).
 static func guide_mesh(radius: float) -> Mesh:
 	var b := ArtKit.builder()
@@ -89,9 +80,12 @@ func dress(experiment: Node3D, planet: RigidBody3D, planet_radius: float, knob: 
 	var stage := ArtKit.instance(stage_mesh(star_y, star_radius))
 	stage.name = "Stage"
 	experiment.add_child(stage)
-	var visual := ArtKit.instance(planet_mesh(planet_radius))
+	var visual := Node3D.new()   # the juice squashes this node; the planet is a yarn ball (Task 4g)
 	visual.name = "Visual"
 	planet.add_child(visual)
+	var yarn := ArtKit.yarn_ball(planet_radius, ArtPalette.BLUE)
+	yarn.name = "Yarn"
+	visual.add_child(yarn)
 	juice = ArtJuice.new()
 	juice.name = "PlanetJuice"
 	juice.round_body = true

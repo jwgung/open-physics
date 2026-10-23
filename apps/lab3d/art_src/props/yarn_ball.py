@@ -5,7 +5,8 @@ Run (headless):
         [--out apps/lab3d/assets/props/yarn_ball.glb] [--preview DIR]
 
 A sphere of exactly the balls' radius (0.25 m, so what is seen is the physics size) with smooth
-normals and its own latitude-longitude UVs, and one grey texture of wound yarn: a base winding and
+normals and its own latitude-longitude UVs, and one grey texture of wound yarn (light: ridges 1.0, grooves 0.8, so the ball keeps its colour; the app
+also divides by the texture's mean so the average is the ball's colour): a base winding and
 several wraps on great circles in different directions, each a band of parallel strands with dark
 grooves, the upper wraps casting a little shade on the ones below. The colour is not baked: the app
 multiplies the texture by each ball's colour (ArtKit.lit_texture_material tint), so one asset makes
@@ -29,8 +30,8 @@ SEGMENTS = 20
 RINGS = 11
 TEX_W, TEX_H = 512, 256
 RIDGE = 1.0          # strand top (sRGB grey, times the ball colour)
-GROOVE = 0.62        # between strands
-EDGE_SHADE = 0.72    # a wrap's edge darkens the winding under it
+GROOVE = 0.8         # between strands (light enough that the ball keeps its colour: the mean is near 1)
+EDGE_SHADE = 0.84    # a wrap's edge darkens the winding under it
 # Wraps: (normal of the great circle, half width of the band as sin of the angle, strand spacing rad).
 # The first is the base winding over the whole ball.
 WRAPS = [
@@ -76,14 +77,16 @@ def build_texture():
         strand = GROOVE + (RIDGE - GROOVE) * (0.5 + 0.5 * phase) ** 0.6
         # A soft twist along each strand (the plies), so a strand is not a flat line.
         lon_k = np.arctan2(d @ unit(np.cross(n, [0.3, 0.5, 0.8])), d @ unit(np.cross(n, np.cross(n, [0.3, 0.5, 0.8]))))
-        strand *= 0.94 + 0.06 * np.cos(lon_k * 40.0 + a * 25.0)
+        strand *= 0.97 + 0.03 * np.cos(lon_k * 40.0 + a * 25.0)
         if k == 0:
             grey = strand
         else:
             edge = np.clip((half - np.abs(s)) / 0.05, 0.0, 1.0)
             shade = np.where((np.abs(s) >= half) & (np.abs(s) < half + 0.06), EDGE_SHADE + (1 - EDGE_SHADE) * (np.abs(s) - half) / 0.06, 1.0)
             grey = np.where(inside, strand * (0.88 + 0.12 * edge), grey * shade)
-    grey *= 0.95 + 0.05 * value_noise(d, 9.0, 3)
+    grey *= 0.97 + 0.03 * value_noise(d, 9.0, 3)
+    lin = np.where(grey <= 0.04045, grey / 12.92, ((grey + 0.055) / 1.055) ** 2.4)
+    print("YARN_TEXTURE mean sRGB %.3f, mean linear %.3f" % (grey.mean(), lin.mean()))
     grey = np.clip(grey, 0.0, 1.0)
     rgba = np.stack([grey, grey, grey, np.ones_like(grey)], axis=-1)
     img = bpy.data.images.new("yarn_ball_atlas", TEX_W, TEX_H, alpha=False)

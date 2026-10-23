@@ -1,4 +1,4 @@
-## Shared base of the props of the uniform-field labs (free fall, projectile): the yellow pad that
+## Shared base of the props of the uniform-field labs (free fall, projectile): the white pad that
 ## holds a waiting ball and flips down around its hinge edge on release, and the reactions the
 ## lab triggers (released / reset). The labs' own props add their ruler, stand, arrow, ... on top.
 class_name PadProps
@@ -11,9 +11,10 @@ const DUST_PER_BALL := 10      # dust grains per ball: three landings at once st
 var _tweens: Dictionary = {}   # key -> the flip Tween of that pad
 
 
-## A yellow pad slab centred at `at` (mesh space; the node origin is the hinge).
+## A pad slab centred at `at` (mesh space; the node origin is the hinge): white top, grey sides, so
+## it stands apart from every ball colour (the yellow ball sat on a yellow pad before, 2026-10-23).
 static func add_pad_slab(b: ArtMeshBuilder, at: Vector3, size: Vector3) -> void:
-	b.add_rounded_box(Transform3D(Basis(), at), size, 0.02, 1, ArtPalette.YELLOW, ArtPalette.YELLOW_TOP)
+	b.add_rounded_box(Transform3D(Basis(), at), size, 0.02, 1, ArtPalette.ROCK, ArtPalette.WHITE)
 
 
 ## Flips `pad` down around its hinge (`property` of the node, to `angle` rad) and hides it.

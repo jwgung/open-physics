@@ -239,18 +239,12 @@ func observations() -> Dictionary:
 	}
 
 
-## Engine landing distance from the launch point (the "시뮬레이션" readout): the engine x where the
-## engine ball reached the floor, or "—" before it. With an engine report (landed_step) that is the
-## sample before the report's: the report is the step in which the floor pushed the ball back, which
-## started where the ball had reached the floor level (measured: 8 cm into it for the default
-## throw). Since Task 4f the ball rolls on through that step (before it stopped dead in the bounce,
-## so the report's own sample had about the same x). Without a report: the recorded step nearest
-## the formula landing (measured_landing_step).
+## Engine landing distance from the launch point (the "시뮬레이션" readout): the engine x at the
+## measured landing step (measured_landing_step: since Task 4f the first sample at or after the
+## formula touch), or "—" before it.
 func measured_range() -> Variant:
 	var c := corrector()
 	var step := measured_landing_step(c, flight_time(), clock()) if released else -1
-	if step > 0 and step == c.landed_step:
-		step -= 1
 	if step < 0 or step >= c.offsets.size():
 		return "—"
 	return c.offsets[step].x

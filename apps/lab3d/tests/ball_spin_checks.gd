@@ -1,26 +1,27 @@
-## Headless checks of the balls' spin and rolling (Phase 1 Task 4f), run by run_tests.gd. The ball
-## is a solid sphere (I = 2/5 m r^2) and every expected value is a textbook formula (PhysicsLaws):
+## Headless checks of the balls' spin, bounces and rolling (Phase 1 Task 4f), run by run_tests.gd.
+## The ball is a solid sphere (I = 2/5 m r^2) and every expected value comes from textbook closed
+## forms written out here (_Oracle), independently of the lab's RollingContact model:
 ## 1. flight: no torque, so omega stays what it was (0 when thrown without spin; a given spin turns
 ##    the body by omega dt every step), the flight positions are unchanged.
-## 2. a ball thrown level along the floor without spin slides with v = v0 - mu g t, omega =
-##    5 mu g t / (2 r), and rolls after t* = 2 v0 / (7 mu g) at 5/7 v0 = omega r, then keeps that
-##    speed (no rolling resistance); engine positions and turn angles against the closed forms, for
-##    three fields and two speeds.
-## 3. a bounce: the friction impulse is the Coulomb one for the engine's normal impulse j (stick:
-##    5/7 vx and rolling; small mu: dv = -mu j, domega = 5 mu j / (2 r)); a rolling ball bounces on
-##    without friction. The engine's vertical bounce against the restitution law is measured.
-## 4. what is seen turning is the body: the mesh is its child with no turn of its own.
+## 2. after the landing, the engine ball against the oracle step by step: bounces at the formula
+##    times with e v (apex (e v)^2 / 2g, never into the floor), stop bouncing below 1 m/s, the
+##    Coulomb friction impulse of each impact, slide -> roll at t* = 2 |u| / (7 mu g), rolling
+##    resistance a = mu_roll g with v = omega r until the stop v^2 / (2 mu_roll g); throws, a level
+##    roll along the floor, a slipping bounce (small mu), free fall drops; landing reactions and the
+##    landing step still come.
+## 3. where the thrown ball stops: the default and the farthest throw (reported).
+## 4. what is seen turning is the body: the mesh (white band) is its child with no turn of its own.
 ## 5. free fall: the three balls never turn and do not drift sideways through their bounces.
 ## 6. collision lab (model driven): each ball's mesh turns by its travel over its radius (v = omega r).
 ## 7. colours (2026-10-23 user request): the free-fall balls and the development scene's boxes are
 ##    red / yellow / violet, and every label (ball names, observations, graph series and colours,
-##    option notes) names the colour the mesh has.
+##    option notes) names the colour the mesh has; the balls have a white band, the drop pads are
+##    white / grey.
 extends RefCounted
 
 const STEP_HZ := 60
 
-## Records a ball's state after its corrector ran (after the friction of the last step was put back
-## into that step), once per physics frame.
+## Records a ball's state after its corrector ran, once per physics frame.
 class Recorder:
 	extends Node
 	var body: RigidBody3D
@@ -50,6 +51,109 @@ class Recorder:
 		velocities.clear()
 		spins.clear()
 
+
+## Textbook closed forms of a ball thrown in the x-y plane over a level floor (time from the
+## release): segment list built once, evaluated at any t. x from the release, y = bottom height,
+## turn about z.
+class _Oracle:
+	var g := 9.81
+	var e := 0.6
+	var mu := 0.6
+	var mu_roll := 0.05
+	var r := 0.25
+	var landing := INF
+	var impacts := PackedFloat64Array()   # impact times
+	var speeds := PackedFloat64Array()    # approach speeds
+	var roll_at := -1.0
+	var stop_at := -1.0
+	# segments: [t0, x0, y0, vx0, vy0, w0, th0, kind] kind 0 air, 1 slide, 2 roll, 3 rest
+	var segments: Array = []
+
+	func _init(h0: float, vx0: float, vy0: float, field: float, restitution: float, friction: float, resistance: float, radius: float, spin := 0.0) -> void:
+		g = field
+		e = restitution
+		mu = friction
+		mu_roll = resistance
+		r = radius
+		landing = PhysicsLaws.landing_time(vy0, -g, h0)
+		segments.append([0.0, 0.0, h0, vx0, vy0, spin, 0.0, 0])
+		if not is_finite(landing):
+			return
+		var t := landing
+		var vx := vx0
+		var w := spin
+		var x := vx0 * t
+		var th := spin * t
+		var v := -(vy0 - g * t)
+		if landing == 0.0 and v <= 0.0:
+			v = 0.0
+		# Bounces: each impact turns by the Coulomb impulse (per mass), then flies up at e v.
+		while true:
+			if v > 0.0:
+				impacts.append(t)
+				speeds.append(v)
+			var ei := e if v >= 1.0 else 0.0
+			var u := vx + r * w
+			var stick := absf(u) * 2.0 / 7.0                 # 1 / (1 + m r^2 / I) = 2/7
+			var p := minf(mu * (1.0 + ei) * v, stick)
+			vx -= signf(u) * p
+			w -= signf(u) * p * 5.0 / (2.0 * r)               # r P / I = 5 P / (2 r m)
+			if stick <= mu * (1.0 + ei) * v and u != 0.0:
+				w = -vx / r
+				if roll_at < 0.0:
+					roll_at = t
+			if ei == 0.0:
+				break
+			var up := ei * v
+			segments.append([t, x, 0.0, vx, up, w, th, 0])
+			var flight := 2.0 * up / g
+			x += vx * flight
+			th += w * flight
+			t += flight
+			v = up
+		# On the floor: slide while u != 0, then roll with resistance, then rest.
+		var u := vx + r * w
+		if absf(u) > 1e-12:
+			segments.append([t, x, 0.0, vx, 0.0, w, th, 1])
+			var a := -mu * g * signf(u)
+			var ts := absf(u) / (3.5 * mu * g)
+			x += vx * ts + 0.5 * a * ts * ts
+			th += w * ts + 0.5 * (a * 5.0 / (2.0 * r)) * ts * ts
+			vx += a * ts
+			w = -vx / r
+			t += ts
+			if roll_at < 0.0:
+				roll_at = t
+		if vx != 0.0:
+			segments.append([t, x, 0.0, vx, 0.0, w, th, 2])
+			var tr := absf(vx) / (mu_roll * g)
+			x += vx * tr - 0.5 * signf(vx) * mu_roll * g * tr * tr
+			th -= (x - segments[-1][1]) / r
+			t += tr
+			stop_at = t
+		segments.append([t, x, 0.0, 0.0, 0.0, 0.0, th, 3])
+
+	## [x, y, vx, turn] at t.
+	func at(t: float) -> PackedFloat64Array:
+		var s: Array = segments[0]
+		for seg in segments:
+			if seg[0] <= t:
+				s = seg
+		var d: float = t - s[0]
+		match int(s[7]):
+			0:
+				return PackedFloat64Array([s[1] + s[3] * d, s[2] + s[4] * d - 0.5 * g * d * d, s[3], s[6] + s[5] * d])
+			1:
+				var u: float = s[3] + r * s[5]
+				var a := -mu * g * signf(u)
+				return PackedFloat64Array([s[1] + s[3] * d + 0.5 * a * d * d, 0.0, s[3] + a * d, s[6] + s[5] * d + 0.25 * a * 5.0 / r * d * d])
+			2:
+				var a2 := -mu_roll * g * signf(s[3])
+				var dx: float = s[3] * d + 0.5 * a2 * d * d
+				return PackedFloat64Array([s[1] + dx, 0.0, s[3] + a2 * d, s[6] - dx / r])
+		return PackedFloat64Array([s[1], 0.0, 0.0, s[6]])
+
+
 var tree: SceneTree
 var expect: Callable   # (ok: bool, label: String, detail: String)
 
@@ -61,8 +165,8 @@ func _init(scene_tree: SceneTree, expect_fn: Callable) -> void:
 
 func run() -> void:
 	await check_flight_spin()
-	await check_slide_to_roll()
-	await check_bounce_friction()
+	await check_contact_against_oracle()
+	await check_where_throws_stop()
 	await check_mesh_is_body()
 	await check_free_fall_no_spin()
 	await check_collision_mesh_rolls()
@@ -127,13 +231,13 @@ func check_flight_spin() -> void:
 	for i in rec.steps.size():
 		worst = maxf(worst, rec.spins[i].length())
 		worst = maxf(worst, (rec.bases[i] * Basis().inverse()).get_rotation_quaternion().get_angle())
-	expect.call(worst == 0.0 and c.rolling.contact_steps == 0,
+	expect.call(worst == 0.0 and not c.rolling.active,
 		"ball spin: a ball thrown without spin does not turn in the air (omega 0, body unturned up to the landing)", "max %s over %d steps" % [str(worst), rec.steps.size()])
 	# With a spin: the same flight, the body turns by omega dt every step, omega constant.
 	rec.clear()
 	lab.release()
 	var spin := Vector3(0.0, 0.0, 7.5)
-	c.rolling.release(lab.ball, lab.launch_velocity(), spin)
+	c.rolling.release(lab.ball, lab.launch_velocity(), c.g, spin.z)
 	while c.steps - 1 < landing - 2:
 		await tree.physics_frame
 	var worst_w := 0.0
@@ -152,122 +256,131 @@ func check_flight_spin() -> void:
 	await _free(lab)
 
 
-# --- 2. slide to roll --------------------------------------------------------------------------
+# --- 2. after the landing ---------------------------------------------------------------------
 
-## Level throw along the floor (angle 0, height 0): the textbook slide -> roll.
-func check_slide_to_roll() -> void:
-	var lab: Experiment = await _lab("projectile")
-	var rec := _recorder(lab, lab.ball)
-	var r: float = lab.BALL_RADIUS
-	var mu: float = lab.BALL_FRICTION
-	var worst_x := 0.0          # sliding steps before t*
+## Runs one release of `ball` (corrector c) until `seconds` or the island stops it, and compares every
+## recorded step with the oracle: [worst position, worst turn, worst below the floor, steps].
+func _against(lab: Experiment, ball: RigidBody3D, oracle: _Oracle, seconds: float, start_x: float) -> PackedFloat64Array:
+	var rec := _recorder(lab, ball)
+	var c: UniformFieldCorrector = ball.corrector
+	while c.steps - 1 < roundi(seconds * STEP_HZ) and not ball.freeze:
+		await tree.physics_frame
+	var worst_p := 0.0
 	var worst_turn := 0.0
-	var beyond_x := 0.0         # every step, beyond the kink step's bound
-	var beyond_turn := 0.0
-	var worst_roll := 0.0
-	var worst_time := 0
-	var worst_after := 0.0
+	var below := 0.0
+	var turn := 0.0
+	var floor_center: float = lab.BALL_RADIUS
+	for i in rec.steps.size():
+		var t := rec.steps[i] / float(STEP_HZ)
+		var want := oracle.at(t)
+		if i > 0:
+			turn += _turn_z(rec.bases[i - 1], rec.bases[i])
+		var p := rec.positions[i]
+		worst_p = maxf(worst_p, maxf(absf(p.x - start_x - want[0]), absf(p.y - floor_center - want[1])))
+		worst_turn = maxf(worst_turn, absf(wrapf(turn - want[3], -PI, PI)))
+		below = maxf(below, floor_center - p.y)
+	var n := rec.steps.size()
+	rec.queue_free()
+	return PackedFloat64Array([worst_p, worst_turn, below, n])
+
+
+func check_contact_against_oracle() -> void:
+	var lab: Experiment = await _lab("projectile")
+	var r: float = lab.BALL_RADIUS
 	var details := []
-	# Speeds that roll before the island's edge (the moon's slide is long: t* = 2 v0 / (7 mu g)).
-	for run in [["moon", 3.0], ["moon", 1.5], ["earth", 9.0], ["earth", 4.0], ["jupiter", 9.0], ["jupiter", 4.0]]:
-		var gravity: String = run[0]
-		var v0: float = run[1]
-		_throw(lab, 0.0, v0, 0.0, gravity)
-		rec.clear()
+	var worst := PackedFloat64Array([0.0, 0.0, 0.0])
+	var events_ok := true
+	var landed_ok := true
+	var juice_landings := [0]
+	lab.props.juice.landed.connect(func(_s: float) -> void: juice_landings[0] += 1)
+	# [gravity, angle, speed, height, mu (null = the lab's), seconds]
+	for run in [["earth", 45.0, 9.0, 0.5, null, 4.0], ["jupiter", 15.0, 5.0, 3.0, null, 4.0], ["moon", 60.0, 4.0, 1.5, null, 8.0],
+			["earth", 0.0, 4.0, 0.0, null, 6.0], ["earth", 0.0, 9.0, 0.0, null, 4.0], ["moon", 0.0, 1.5, 0.0, null, 5.0],
+			["earth", 45.0, 9.0, 0.5, 0.02, 4.0], ["earth", 45.0, 5.0, 0.5, null, 7.0]]:
+		_throw(lab, run[1], run[2], run[3], run[0])
 		lab.release()
 		var c: UniformFieldCorrector = lab.corrector()
-		var g: float = lab.g
-		var t_roll := PhysicsLaws.slide_to_roll_time(v0, mu, g)
-		var v_roll := PhysicsLaws.rolling_speed_after_slip(v0, v0)
-		var a := mu * g
-		var alpha := 5.0 * mu * g / (2.0 * r)   # = r F / I with I = 2/5 m r^2
-		var end_step := mini(ceili((t_roll + 1.0) * STEP_HZ), ceili((lab.BOUNDS_X.y - lab.ball_center().x) / v0 * STEP_HZ) - 2)
-		while c.steps - 1 < end_step and not lab.ball.freeze:
-			await tree.physics_frame
-		var x0: float = lab.ball_center().x
-		var turn := 0.0
-		var first_roll := -1
-		# Bounds of the one step with the kink at t* (the engine step velocity is constant in a step).
-		var kink_x := a / (2.0 * STEP_HZ * STEP_HZ)
-		var kink_turn := alpha / (2.0 * STEP_HZ * STEP_HZ)
-		for i in rec.steps.size():
-			var k := rec.steps[i]
-			var t := k / float(STEP_HZ)
-			var x_formula := v0 * t - 0.5 * a * t * t if t <= t_roll else v0 * t_roll - 0.5 * a * t_roll * t_roll + v_roll * (t - t_roll)
-			var turn_formula := -(0.5 * alpha * t * t if t <= t_roll else 0.5 * alpha * t_roll * t_roll + v_roll / r * (t - t_roll))
-			if i > 0:
-				turn += _turn_z(rec.bases[i - 1], rec.bases[i])
-			var err_x := absf(rec.positions[i].x - x0 - x_formula)
-			var err_turn := absf(turn - turn_formula)
-			if t < t_roll - 1.0 / STEP_HZ:
-				worst_x = maxf(worst_x, err_x)
-				worst_turn = maxf(worst_turn, err_turn)
-			beyond_x = maxf(beyond_x, err_x - kink_x)
-			beyond_turn = maxf(beyond_turn, err_turn - kink_turn)
-			if first_roll < 0 and absf(rec.velocities[i].x + rec.spins[i].z * r) < 1e-5:
-				first_roll = k
-			if first_roll >= 0:
-				worst_roll = maxf(worst_roll, absf(rec.velocities[i].x - v_roll))
-				worst_roll = maxf(worst_roll, absf(PhysicsLaws.rolling_speed(r, -rec.spins[i].z) - rec.velocities[i].x))
-				if t > t_roll + 0.5:
-					worst_after = maxf(worst_after, absf((rec.positions[i].x - rec.positions[i - 1].x) * STEP_HZ - v_roll))
-		# The velocity recorded at step k is that of the k-th step, v((k - 1/2) dt) (leapfrog: half
-		# the friction in the first step): it is the rolling speed from the step whose midpoint
-		# passes t*.
-		worst_time = maxi(worst_time, absi(first_roll - ceili(t_roll * STEP_HZ + 0.5)) if first_roll >= 0 else 999)
-		details.append("%s %.1f m/s: t* %.4f s (rolls from step %d), 5/7 v0 %.4f" % [gravity, v0, t_roll, first_roll, v_roll])
-	expect.call(worst_x <= 1e-4 and worst_turn <= 1e-4 and beyond_x <= 1e-4 and beyond_turn <= 1e-4,
-		"ball rolling: sliding without spin, engine x = v0 t - mu g t^2 / 2 and turn = 5 mu g t^2 / (4 r) up to t* = 2 v0 / (7 mu g), then 5/7 v0 t (3 fields, 6 throws)",
-		"sliding: x %s m, turn %s rad; after t*, beyond the kink step's bound (mu g dt^2 / 2, 5 mu g dt^2 / (4 r)): x %s m, turn %s rad; %s" % [
-			String.num_scientific(worst_x), String.num_scientific(worst_turn), String.num_scientific(beyond_x), String.num_scientific(beyond_turn), "; ".join(details)])
-	expect.call(worst_time <= 1 and worst_roll <= 1e-5 and worst_after <= 1e-4,
-		"ball rolling: rolls (v = omega r) from t* on at 5/7 v0 and keeps that speed (no rolling resistance)",
-		"time %d steps, |v - 5/7 v0|, |omega r - v| %s m/s, step speed after t* + 0.5 s %s m/s" % [worst_time, String.num_scientific(worst_roll), String.num_scientific(worst_after)])
+		if run[4] != null:
+			c.rolling.mu = run[4]
+		var o := _Oracle.new(lab.launch_height(), lab.launch_velocity().x, lab.launch_velocity().y, lab.g, lab.BOUNCE,
+			c.rolling.mu, lab.ROLLING_RESISTANCE, r)
+		juice_landings[0] = 0
+		var got := await _against(lab, lab.ball, o, run[5], lab.ball_center().x)
+		for i in 3:
+			worst[i] = maxf(worst[i], got[i])
+		var model: RollingContact = c.rolling
+		var elapsed := (c.steps - 1) / float(STEP_HZ)
+		var due := 0   # oracle impacts the run has reached
+		for t in o.impacts:
+			if t <= elapsed:
+				due += 1
+		var same_events := model.impact_times.size() >= due
+		for i in mini(model.impact_times.size(), due):
+			same_events = same_events and absf(model.impact_times[i] - o.impacts[i]) <= 1e-9 and absf(model.impact_speeds[i] - o.speeds[i]) <= 1e-9
+		var stop_ok := absf(model.stop_time - o.stop_at) <= 1e-9 if o.stop_at <= elapsed else model.stop_time < 0.0
+		events_ok = events_ok and same_events and (stop_ok or lab.ball.freeze)
+		if not (same_events and (stop_ok or lab.ball.freeze)):
+			details.append("EVENTS DIFFER: model %s / %s, stop %.4f vs %.4f" % [str(model.impact_times), str(o.impacts), model.stop_time, o.stop_at])
+		if o.landing > 0.0:
+			var this_ok: bool = c.landed_step == ceili(o.landing * STEP_HZ - 1e-9) and juice_landings[0] == 1
+			landed_ok = landed_ok and this_ok
+			if not this_ok:
+				details.append("LANDING: step %d (want %d), reactions %d" % [c.landed_step, ceili(o.landing * STEP_HZ - 1e-9), juice_landings[0]])
+		details.append("%s %d° %.1f m/s h %.1f%s: %d bounces %s, roll %.3f s, stop %s, %d steps%s" % [run[0], run[1], run[2], run[3],
+			"" if run[4] == null else " mu %.2f" % run[4], o.impacts.size(), str(Array(o.impacts).map(func(t: float) -> String: return "%.3f" % t)),
+			o.roll_at, "%.3f s" % o.stop_at if o.stop_at >= 0.0 else "—", got[3], " (left the island)" if lab.ball.freeze else ""])
+		lab.run_action("reset")
+		c.rolling.mu = lab.BALL_FRICTION
+	expect.call(worst[0] <= 1e-4 and worst[1] <= 1e-4 and worst[2] <= 1e-5 and events_ok and landed_ok,
+		"ball contact: after the landing the engine ball follows the textbook bounces (e v at the formula times, stop below 1 m/s), Coulomb impulses, slide -> roll and rolling resistance step by step, never into the floor; landing step and reaction still come",
+		"position %s m, turn %s rad, below the floor %s m; %s" % [String.num_scientific(worst[0]), String.num_scientific(worst[1]), String.num_scientific(worst[2]), "; ".join(details)])
+	# Free fall: three drops with the free-fall restitution.
+	var ff: Experiment = await _lab("free-fall")
+	var worst_ff := 0.0
+	var below_ff := 0.0
+	var ff_details := []
+	for run in [["earth", 5.0], ["moon", 8.0], ["jupiter", 2.0]]:
+		ff.set_control("gravity", run[0])
+		ff.set_control("height", run[1])
+		ff.release()
+		var o := _Oracle.new(run[1], 0.0, 0.0, ff.g, ff.BOUNCE, ff.BALL_FRICTION, ff.ROLLING_RESISTANCE, r)
+		var got := await _against(ff, ff.balls.red, o, o.impacts[-1] + 0.5 if o.impacts.size() > 0 else 3.0, ff.starts.red.x)
+		worst_ff = maxf(worst_ff, got[0])
+		below_ff = maxf(below_ff, got[2])
+		var apexes := []
+		for i in range(1, o.impacts.size()):
+			apexes.append("%.3f" % (pow(ff.BOUNCE * o.speeds[i - 1], 2) / (2.0 * ff.g)))
+		ff_details.append("%s %.0f m: impacts %s s, apexes (e v)^2 / 2g %s m" % [run[0], run[1], str(Array(o.impacts).map(func(t: float) -> String: return "%.3f" % t)), str(apexes)])
+		ff.run_action("reset")
+	expect.call(worst_ff <= 1e-4 and below_ff <= 1e-5,
+		"ball contact: free-fall drops bounce at the formula times to e^2 times the height before (e 0.5), never into the floor",
+		"position %s m, below %s m; %s" % [String.num_scientific(worst_ff), String.num_scientific(below_ff), "; ".join(ff_details)])
+	await _free(ff)
 	await _free(lab)
 
 
-# --- 3. bounce -----------------------------------------------------------------------------------
+# --- 3. where the throws stop ------------------------------------------------------------------
 
-func check_bounce_friction() -> void:
+## The default throw and the farthest (9 m/s, 0°, from 3 m) against the island's edge (x 12.5 m):
+## the oracle's stop point, and whether the ball stays on the island (reported, not required).
+func check_where_throws_stop() -> void:
 	var lab: Experiment = await _lab("projectile")
-	var r: float = lab.BALL_RADIUS
-	var details := []
+	var lines := []
 	var ok := true
-	for mu in [lab.BALL_FRICTION, 0.02]:
-		lab.run_action("reset")
-		lab.release()
-		var c: UniformFieldCorrector = lab.corrector()
-		var rolling: RollingContact = c.rolling
-		rolling.mu = mu
-		var vx: float = lab.launch_vx()
-		# Resumes before the frame's _physics_process: the step that found the bounce has run once
-		# the count moved (its friction is in, and one engine step after it).
-		while rolling.contact_steps == 0 and c.steps < 400:
-			await tree.physics_frame
-		var j := rolling.last_normal
-		var stick: float = 2.0 / 7.0 * vx   # impulse per mass that ends the slip (no spin before)
-		var dv: float = minf(stick, mu * j)
-		var want_v: float = vx - dv
-		var want_w: float = -5.0 * dv / (2.0 * r)
-		var got_v: float = lab.ball.linear_velocity.x
-		var got_w: float = lab.ball.angular_velocity.z
-		ok = ok and absf(got_v - want_v) <= 1e-5 and absf(got_w - want_w) <= 1e-4 and absf(rolling.last_friction - dv) <= 1e-6   # (the release velocity is a 32-bit Vector3)
-		if mu == lab.BALL_FRICTION:
-			ok = ok and rolling.slip() == 0.0 and absf(got_v - PhysicsLaws.rolling_speed_after_slip(vx, vx)) <= 1e-5
-			# The engine's vertical bounce against the restitution law at the formula landing.
-			var v_land := absf(PhysicsLaws.constant_acceleration_velocity(lab.launch_vy(), -lab.g, lab.flight_time()))
-			var want_up: float = lab.BOUNCE * v_land
-			var got_up: float = lab.ball.linear_velocity.y + lab.g / STEP_HZ   # back to the step's start
-			details.append("bounce: j %.4f m/s (formula (1+e)|v| + g dt = %.4f), rebound %.4f m/s (e |v| = %.4f, %+.2f %%)" % [j,
-				(1.0 + lab.BOUNCE) * v_land + lab.g / STEP_HZ, got_up, want_up, (got_up / want_up - 1.0) * 100.0])
-			# A rolling ball bounces on without friction: later bounces leave v and omega alone.
-			var before := rolling.contact_steps
-			for i in 2 * STEP_HZ:
-				await tree.physics_frame
-			ok = ok and rolling.contact_steps > before and absf(lab.ball.linear_velocity.x - want_v) <= 1e-5 and absf(lab.ball.angular_velocity.z - want_w) <= 1e-4
-		details.append("mu %.2f: j %.4f m/s, v %.5f (want %.5f), omega %.4f (want %.4f)" % [mu, j, got_v, want_v, got_w, want_w])
-	expect.call(ok, "ball bounce: the friction impulse is Coulomb's for the engine's normal impulse (mu 0.6: rolls at 5/7 vx after the first bounce, later bounces keep it; mu 0.02: dv = mu j, domega = 5 mu j / (2 r))",
-		"; ".join(details))
+	for run in [["default 45° 9 m/s 0.5 m", 45.0, 9.0, 0.5, -6.0], ["farthest 0° 9 m/s 3 m", 0.0, 9.0, 3.0, -3.0],
+			["45° 5 m/s 0.5 m", 45.0, 5.0, 0.5, -6.0]]:
+		lab.set_control("angle", run[1])
+		lab.set_control("speed", run[2])
+		lab.manipulation_placed("ball", Transform3D(Basis(), Vector3(run[4], run[3] + lab.BALL_RADIUS, 0.0)))
+		var o := _Oracle.new(lab.launch_height(), lab.launch_vx(), lab.launch_vy(), lab.g, lab.BOUNCE, lab.BALL_FRICTION, lab.ROLLING_RESISTANCE, lab.BALL_RADIUS)
+		var rest: PackedFloat64Array = o.at(o.stop_at + 1.0)
+		var stop_x: float = run[4] + rest[0]
+		var roll_v: float = o.segments[-2][3]
+		var stop_dist: float = roll_v * roll_v / (2.0 * lab.ROLLING_RESISTANCE * lab.g)
+		ok = ok and absf(rest[0] - o.segments[-2][1] - stop_dist) <= 1e-9
+		lines.append("%s: rolls from x %.2f m at %.3f m/s, stops after %.2f m (v^2 / 2 mu_r g) at x %.2f m, %.2f s -> %s" % [run[0],
+			run[4] + o.segments[-2][1], roll_v, stop_dist, stop_x, o.stop_at, "on the island" if stop_x <= lab.BOUNDS_X.y else "leaves the island (edge 12.5 m)"])
+	expect.call(ok, "ball rolling: where thrown balls stop (stop distance v^2 / (2 mu_r g) after the last bounce)", "; ".join(lines))
 	await _free(lab)
 
 
@@ -313,9 +426,9 @@ func check_free_fall_no_spin() -> void:
 			worst = maxf(worst, rec.spins[i].length())
 			worst = maxf(worst, rec.bases[i].get_rotation_quaternion().get_angle())
 			drift = maxf(drift, Vector2(rec.positions[i].x - lab.starts[id].x, rec.positions[i].z - lab.starts[id].z).length())
-		contacts += lab.corrector_of(id).rolling.contact_steps
+		contacts += lab.corrector_of(id).rolling.impact_times.size()
 	expect.call(worst <= 1e-6 and drift <= 1e-6 and contacts > 0,
-		"ball spin: free-fall balls never turn and do not drift sideways through their bounces (4 s)", "omega/turn %s, drift %s m, contact steps %d" % [str(worst), str(drift), contacts])
+		"ball spin: free-fall balls never turn and do not drift sideways through their bounces (4 s)", "omega/turn %s, drift %s m, impacts %d" % [str(worst), str(drift), contacts])
 	await _free(lab)
 
 
@@ -345,15 +458,46 @@ const COLOUR_WORDS := {"red": ["빨강", "빨간"], "yellow": ["노랑", "노란
 const COLOURS := {"red": ArtPalette.RED, "yellow": ArtPalette.YELLOW, "purple": ArtPalette.VIOLET}
 
 
-## Brightest vertex colour of a mesh in sRGB (the builder stores linear colours; the baked shading only
+## Brightest coloured (not white) vertex colour of a mesh in sRGB (the builder stores linear colours; the baked shading only
 ## darkens the palette colour).
 static func _mesh_colour(mesh: Mesh) -> Color:
 	var best := Color.BLACK
 	for surface in mesh.get_surface_count():
 		for c: Color in mesh.surface_get_arrays(surface)[Mesh.ARRAY_COLOR]:
+			if c.s < 0.2:
+				continue   # the white band / white top
 			if c.get_luminance() > best.get_luminance():
 				best = c
 	return best.linear_to_srgb()
+
+
+## Highest sRGB saturation of the mesh's vertex colours (white / grey stay under 0.3, the ball and
+## pad yellow is 0.9).
+static func _max_saturation(mesh: Mesh) -> float:
+	var top := 0.0
+	for surface in mesh.get_surface_count():
+		for c: Color in mesh.surface_get_arrays(surface)[Mesh.ARRAY_COLOR]:
+			top = maxf(top, c.linear_to_srgb().s)
+	return top
+
+
+## The mesh has a yellow vertex (the yellow ball's colour).
+static func _has_yellow(mesh: Mesh) -> bool:
+	for surface in mesh.get_surface_count():
+		for c: Color in mesh.surface_get_arrays(surface)[Mesh.ARRAY_COLOR]:
+			var v := c.linear_to_srgb()
+			if v.s > 0.5 and v.h > 0.08 and v.h < 0.2:
+				return true
+	return false
+
+
+## The mesh has white vertices (a white band).
+static func _has_white(mesh: Mesh) -> bool:
+	for surface in mesh.get_surface_count():
+		for c: Color in mesh.surface_get_arrays(surface)[Mesh.ARRAY_COLOR]:
+			if c.s < 0.05 and c.linear_to_srgb().v > 0.9:
+				return true
+	return false
 
 
 ## Same colour to the 8-bit linear vertex colours (dark channels lose up to ~5/255 in sRGB).
@@ -398,7 +542,17 @@ func check_ball_colours() -> void:
 	for old in ["분홍", "주황", "ff4fa3", "ff7a1a"]:
 		if JSON.stringify(definition).contains(old):
 			problems.append("free-fall definition still has %s" % old)
+	# Every ball has its white band (the turn is seen); the drop pads are white / grey, no ball colour.
+	for id in lab.ORDER:
+		if not _has_white((lab.balls[id].get_node("Visual") as MeshInstance3D).mesh):
+			problems.append("%s: no white band" % id)
+		if _max_saturation((lab.props.pads[id] as MeshInstance3D).mesh) > 0.3 or _has_yellow((lab.props.pads[id] as MeshInstance3D).mesh):
+			problems.append("%s: the pad is coloured" % id)
 	await _free(lab)
+	var pj: Experiment = await _lab("projectile")
+	if not _has_white(pj._ball_visual.mesh) or _has_yellow(pj.props.pad.mesh):   # (its arm is blue)
+		problems.append("projectile ball band / pad colour")
+	await _free(pj)
 	var dev: Experiment = await _lab("manipulation-dev")
 	for entry in dev.definition.observations:
 		var id: String = entry.id

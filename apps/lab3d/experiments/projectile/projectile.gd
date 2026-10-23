@@ -22,12 +22,16 @@ const KNOB_LAYER := 2               # the knob is pickable but never hit by the 
 ## friction along the face) and stops on the island by rolling resistance. Flights are not touched
 ## (no engine body): on earth and jupiter no throw reaches the fence line in flight; on the moon long
 ## throws fly over it or, low ones, through it (docs/formula-correction.md "Task 4f").
-## 1.5 m: of the heights scanned (0.75, 1.0, 1.1, 1.2, 1.25, 1.5 m) the lowest at which no earth /
-## jupiter ball bounces over it after landing (1.2 m: 2 of 4641 earth throws do, 0.75 m: 6).
-const FENCE_X := 12.0
-const FENCE_LEFT_X := -12.5
-const FENCE_HEIGHT := 1.5
+## Both stand wholly on the island top (inside its 14-sided top, ArtKit.ISLAND_RADIUS around
+## ProjectileProps.ISLAND_CENTER; tests/ball_spin_checks.gd checks every fence vertex), so the right
+## one is at 9.5 m and narrower on the left. 1.8 m: at these faces the lowest of the heights scanned
+## (1.2-2.0 m, 0.1 m steps) at which no earth / jupiter ball bounces over after landing (1.5 m: 6 of
+## 4641 earth throws do, 1.7 m: 1).
+const FENCE_X := 9.5
+const FENCE_LEFT_X := -9.3
+const FENCE_HEIGHT := 1.8
 const FENCE_WIDTH := 6.0
+const FENCE_LEFT_WIDTH := 4.4
 const FENCE_THICKNESS := 0.15
 ## A ball leaving this box (beyond the island) is stopped and hidden: "섬 밖으로 날아감".
 const BOUNDS_X := Vector2(-14.0, 12.5)

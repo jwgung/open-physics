@@ -21,6 +21,8 @@ const DOT_RADIUS := 0.05
 const TICKS_FROM := -8
 const TICKS_TO := 12
 const TICKS_Z := 0.9
+## Centre of the island (its top is ArtKit.ISLAND_RADIUS around it): the fences stand inside.
+const ISLAND_CENTER := Vector3(0.5, 0.0, -0.8)
 
 var juice: ArtJuice
 var post: MeshInstance3D
@@ -42,22 +44,24 @@ func ticks_mesh() -> Mesh:
 	return b.commit()
 
 
-## Both fences in the lab's space: a wall of three white boards (`thickness` along x, `width` along z,
-## `height` tall) between blue posts every metre, its face towards the throw at x = `right_face` (it
-## stands at x >= right_face) and x = `left_face` (it stands at x <= left_face).
-static func fence_mesh(right_face: float, left_face: float, height: float, width: float, thickness: float) -> Mesh:
+## Both fences in the lab's space, centred on z = 0 (the throw line): a wall of three white boards
+## (`thickness` along x, `height` tall) between blue posts about every metre, its face towards the
+## throw at x = `right_face` (it stands at x >= right_face, `right_width` along z) and x = `left_face`
+## (x <= left_face, `left_width`).
+static func fence_mesh(right_face: float, left_face: float, height: float, right_width: float, left_width: float, thickness: float) -> Mesh:
 	var b := ArtKit.builder()
 	b.ao_height = 0.3
-	for face_side in [[right_face, 1.0], [left_face, -1.0]]:
+	for face_side in [[right_face, 1.0, right_width], [left_face, -1.0, left_width]]:
 		var face: float = face_side[0]
 		var side: float = face_side[1]
+		var width: float = face_side[2]
 		var x := face + side * thickness * 0.5
 		var boards := 3
 		var board_h := (height - 0.04) / boards
 		for i in boards:
 			b.add_rounded_box(Transform3D(Basis(), Vector3(x, 0.02 + board_h * (i + 0.5), 0.0)),
 				Vector3(thickness, board_h - 0.03, width), 0.0, 1, ArtPalette.WHITE)
-		var posts := int(width) + 1
+		var posts := maxi(2, ceili(width) + 1)
 		for i in posts:
 			var z := -width * 0.5 + width * i / float(posts - 1)
 			b.add_rounded_box(Transform3D(Basis(), Vector3(x + side * thickness * 0.5, (height + 0.1) * 0.5, z)),
@@ -93,7 +97,7 @@ func ring_mesh() -> Mesh:
 
 
 func dress(experiment: Node3D, ball: RigidBody3D, ball_visual: MeshInstance3D, ball_size: float) -> void:
-	ArtKit.add_world(experiment, Vector3(0.5, 0.0, -0.8))
+	ArtKit.add_world(experiment, ISLAND_CENTER)
 	var ticks := ArtKit.instance(ticks_mesh())
 	ticks.name = "DistanceTicks"
 	experiment.add_child(ticks)
@@ -120,7 +124,7 @@ func dress(experiment: Node3D, ball: RigidBody3D, ball_visual: MeshInstance3D, b
 	path.material_override = ArtKit.lit_material()
 	path.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	experiment.add_child(path)
-	fence = ArtKit.instance(fence_mesh(experiment.FENCE_X, experiment.FENCE_LEFT_X, experiment.FENCE_HEIGHT, experiment.FENCE_WIDTH, experiment.FENCE_THICKNESS))
+	fence = ArtKit.instance(fence_mesh(experiment.FENCE_X, experiment.FENCE_LEFT_X, experiment.FENCE_HEIGHT, experiment.FENCE_WIDTH, experiment.FENCE_LEFT_WIDTH, experiment.FENCE_THICKNESS))
 	fence.name = "Fences"
 	experiment.add_child(fence)
 	ring = ArtKit.instance(ring_mesh())

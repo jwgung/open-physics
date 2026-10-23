@@ -460,13 +460,26 @@ func check_fences() -> void:
 		var on: bool = not lab.ball.freeze and x > lab.FENCE_LEFT_X + r - 1e-4 and x < lab.FENCE_X - r + 1e-4 and still and lab.status() == "landed"
 		rest_ok = rest_ok and on
 		details.append("%s: %d fence hits, rests at x %.2f m after %.2f s%s" % [run[0], cc.rolling.wall_times.size(), x, cc.rolling.stop_time, "" if on else " (NOT ON THE ISLAND)"])
-	expect.call(wall_ok and worst_hop <= 1e-4 and rest_ok,
-		"ball fences: a roll meets the fence at the closed-form time and speed, bounces back at e v and hops by the Coulomb impulse; the default and farthest throws rest on the island",
+	# The fences stand wholly on the island top: every vertex within the inscribed circle of its
+	# 14-sided top (apothem R cos(pi / 14)).
+	var apothem := ArtKit.ISLAND_RADIUS * cos(PI / ArtKit.ISLAND_SIDES)
+	var centre := ProjectileProps.ISLAND_CENTER
+	var farthest := 0.0
+	var fence_mesh: Mesh = lab.props.fence.mesh
+	for surface in fence_mesh.get_surface_count():
+		for v: Vector3 in fence_mesh.surface_get_arrays(surface)[Mesh.ARRAY_VERTEX]:
+			var w: Vector3 = lab.props.fence.global_transform * v
+			farthest = maxf(farthest, Vector2(w.x - centre.x, w.z - centre.z).length())
+	var on_island := farthest <= apothem
+	details.append("fence vertices up to %.2f m from the island centre (top inscribed radius %.2f m)" % [farthest, apothem])
+	expect.call(wall_ok and worst_hop <= 1e-4 and rest_ok and on_island,
+		"ball fences: on the island top; a roll meets the fence at the closed-form time and speed, bounces back at e v and hops by the Coulomb impulse; the default and farthest throws rest on the island",
 		"hop vs closed form %s m; %s" % [String.num_scientific(worst_hop), "; ".join(details)])
 	await _free(lab)
 
 
-## A flight that meets the fence below its top (2026-10-23 user decision; the moon's long low throws)
+## A flight that meets the fence below its top (2026-10-23 user decision; the moon's long low throws,
+## here 75 deg, 7.5 m/s from 1 m at x -8 m)
 ## hits it: the flight is the formula's up to the closed-form time (x reaches the face), there it
 ## bounces back at e v, the state reads "울타리에 맞음", the panel keeps the formula range and flight
 ## time and shows the flight at the fence time, no measured landing, and the ball stays on the
@@ -476,8 +489,8 @@ func check_fence_in_flight() -> void:
 	var r: float = lab.BALL_RADIUS
 	lab.set_control("gravity", "moon")
 	lab.set_control("angle", 75.0)
-	lab.set_control("speed", 8.0)
-	lab.manipulation_placed("ball", Transform3D(Basis(), Vector3(-8.0, 0.25 + r, 0.0)))
+	lab.set_control("speed", 7.5)
+	lab.manipulation_placed("ball", Transform3D(Basis(), Vector3(-8.0, 1.0 + r, 0.0)))
 	var rec := _recorder(lab, lab.ball)
 	# The release velocity the corrector gets is the 32-bit launch_velocity().
 	var vx: float = lab.launch_velocity().x
@@ -509,6 +522,9 @@ func check_fence_in_flight() -> void:
 		await tree.physics_frame
 	var x: float = lab.ball.global_position.x
 	var stays: bool = not lab.ball.freeze and x < lab.FENCE_X - r + 1e-4 and x > lab.FENCE_LEFT_X + r - 1e-4
+	var face_r: float = lab.FENCE_X
+	var face_l: float = lab.FENCE_LEFT_X
+	var top: float = lab.FENCE_HEIGHT
 	await _free(lab)
 	# Moon scan (pure model, the lab's fences): every flight crossing the fence line below its top
 	# hits it and ends on the island side.
@@ -526,18 +542,18 @@ func check_fence_in_flight() -> void:
 					var cvx := speed * cos(deg_to_rad(angle))
 					var cvy := speed * sin(deg_to_rad(angle))
 					var land := PhysicsLaws.landing_time(cvy, -1.62, h)
-					var xc: float = 12.0 - r
+					var xc: float = face_r - r
 					if cvx <= 0.0 or x0 + cvx * land <= xc:
 						continue
 					var tc: float = (xc - x0) / cvx
-					if h + cvy * tc - 0.81 * tc * tc >= 1.5:
+					if h + cvy * tc - 0.81 * tc * tc >= top:
 						continue   # over the top: "섬 밖으로 날아감" as before
 					crossing += 1
 					body.global_position = Vector3(x0, h + r, 0.0)
 					var m := RollingContact.new()
-					m.wall_x = 12.0
-					m.wall_left_x = -12.5
-					m.wall_top = 1.5
+					m.wall_x = face_r
+					m.wall_left_x = face_l
+					m.wall_top = top
 					m.release(body, Vector3(cvx, cvy, 0.0), 1.62)
 					m._start()   # take over at once (at the fence or the landing), then run 400 s
 					var end: PackedFloat64Array = m.state_at(400.0)

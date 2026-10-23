@@ -8,6 +8,9 @@ class_name ArtKit
 extends RefCounted
 
 const SHADER := preload("res://scripts/art/art_lit.gdshader")
+## The island top (build_island): a 14-sided prism of circumradius ISLAND_RADIUS around its centre.
+const ISLAND_RADIUS := 11.0
+const ISLAND_SIDES := 14
 const SUN_DIR := Vector3(-0.35, 0.85, 0.45)   # world direction towards the (baked) light
 const LIGHT_THRESHOLD := 0.55
 const LIGHT_SOFTNESS := 0.03
@@ -132,7 +135,7 @@ static func build_island(parent: Node3D, center := Vector3(-1.5, 0.0, -0.8), ext
 	var cz := center.z
 	b.ao_min = 0.95
 	b.ao_height = 0.3
-	b.add_cylinder(_at(cx, -0.5, cz), 11.0, 11.0, 0.5, 14, ArtPalette.GRASS, true, ArtPalette.GRASS_TOP)
+	b.add_cylinder(_at(cx, -0.5, cz), ISLAND_RADIUS, ISLAND_RADIUS, 0.5, ISLAND_SIDES, ArtPalette.GRASS, true, ArtPalette.GRASS_TOP)
 	b.ao_min = 0.7
 	b.ao_height = 4.0
 	b.add_cylinder(_at(cx, -4.2, cz), 4.0, 11.0, 3.7, 14, ArtPalette.SOIL, false)

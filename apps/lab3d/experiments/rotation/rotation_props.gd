@@ -79,11 +79,6 @@ static func stand_mesh(height: float, depth: float) -> Mesh:
 	return b.commit()
 
 
-## The load: a parcel box (Task 4g, 2026-10-23 user decision), the cube baked to `size`.
-static func load_mesh(size: float) -> Mesh:
-	return ArtKit.parcel_mesh(size)
-
-
 static func grip_mesh(size: Vector3) -> Mesh:
 	var b := ArtKit.builder()
 	b.ao_min = 0.9

@@ -227,7 +227,9 @@ func let_go(dir: Vector3) -> void:
 
 ## Both paws on the plane x = `face_x` at height `hand_y` (the face of the box being pushed, box to
 ## the actor's +x), `effort` -1 (pulling hard) .. 1 (pushing hard) leans it, `travel` (m) and `speed`
-## (m/s) of the box shuffle it along. The root follows so the paws stay on the face.
+## (m/s) of the box shuffle it along. The root follows so the paws stay on the face. Only stores the
+## input: the actor poses once a frame in its own _process (a child of the experiment, so after the
+## lab's _process that calls this; tests call advance()).
 func push(face_x: float, hand_y: float, effort: float, travel: float, speed: float, z := 0.0, floor_y := 0.0) -> void:
 	_face_x = face_x
 	_hand_y = hand_y
@@ -236,7 +238,6 @@ func push(face_x: float, hand_y: float, effort: float, travel: float, speed: flo
 	_speed = speed
 	mode = "push"
 	position = Vector3(position.x, floor_y, z)
-	_pose()
 
 
 ## A small happy hop (and both paws up, `arms_up`, unless the paws are busy).

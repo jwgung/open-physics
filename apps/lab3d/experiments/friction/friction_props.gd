@@ -56,11 +56,6 @@ func track_mesh(length: float, start_x: float) -> Mesh:
 	return b.commit()
 
 
-## The box: a parcel box (Task 4g, 2026-10-23 user decision), the cube baked to `size`.
-func box_mesh(size: float) -> Mesh:
-	return ArtKit.parcel_mesh(size)
-
-
 ## The handle (mesh origin = the pick box centre, `height` tall): blue foot on the floor, white post,
 ## red grip across the track at the centre (rod height).
 func handle_mesh(height: float) -> Mesh:

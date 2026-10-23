@@ -33,6 +33,8 @@ static var _parcel_src: Mesh
 static var _parcel_meshes := {}   # size -> the parcel baked to it
 static var _yarn_mesh: Mesh
 static var _yarn_texture_mean := -1.0
+static var _yarn_materials := {}   # Color -> ShaderMaterial (one per colour, shared by its balls)
+static var _parcel_materials := {} # accent Color -> ShaderMaterial
 static var _shadow: StandardMaterial3D
 
 
@@ -67,23 +69,26 @@ static func lit_texture_material(texture: Texture2D, softness := 0.18, shade_mix
 
 
 ## A yarn ball of `radius` in `color` (the grey texture times the colour, the island light; the
-## strands in many directions show it turning). The node is scaled to the radius: a parent that
+## strands in many directions show it turning; one cached material per colour, shared: never change
+## it on an instance). The node is scaled to the radius: a parent that
 ## animates it (ArtJuice) must be another node.
 static func yarn_ball(radius: float, color: Color) -> MeshInstance3D:
 	if _yarn_mesh == null:
 		var model: Node = YARN_SCENE.instantiate()
 		_yarn_mesh = (model.find_children("*", "MeshInstance3D", true, false)[0] as MeshInstance3D).mesh
 		model.free()
-	var texture := (_yarn_mesh.surface_get_material(0) as BaseMaterial3D).albedo_texture
-	var material := lit_texture_material(texture, 0.18, 0.6)
-	# Divided by the texture's mean (linear): the ball's average is its colour, the strands lighter
-	# and darker shades of it (2026-10-23 user request: as vivid as the palette colours).
-	var lin := color.srgb_to_linear()
-	var k := 1.0 / _yarn_mean(texture)
-	# A Vector4, not a Color: the renderers convert Color uniforms differently (Compatibility never,
-	# Mobile always), a vector reaches the shader as it is (linear).
-	material.set_shader_parameter("tint", Vector4(lin.r * k, lin.g * k, lin.b * k, 1.0))
-	var ball := instance(_yarn_mesh, material)
+	if not _yarn_materials.has(color):
+		var texture := (_yarn_mesh.surface_get_material(0) as BaseMaterial3D).albedo_texture
+		var material := lit_texture_material(texture, 0.18, 0.6)
+		# Divided by the texture's mean (linear): the ball's average is its colour, the strands lighter
+		# and darker shades of it (2026-10-23 user request: as vivid as the palette colours).
+		var lin := color.srgb_to_linear()
+		var k := 1.0 / _yarn_mean(texture)
+		# A Vector4, not a Color: the renderers convert Color uniforms differently (Compatibility never,
+		# Mobile always), a vector reaches the shader as it is (linear).
+		material.set_shader_parameter("tint", Vector4(lin.r * k, lin.g * k, lin.b * k, 1.0))
+		_yarn_materials[color] = material
+	var ball := instance(_yarn_mesh, _yarn_materials[color])
 	ball.scale = Vector3.ONE * (radius / YARN_RADIUS)
 	return ball
 
@@ -121,12 +126,15 @@ static func parcel_mesh(size: float) -> Mesh:
 
 ## A parcel box of `size` with its tape and label stripe in `accent` (brown packing tape by default;
 ## the development scene's boxes are told apart by it). The island light like the faceted props.
+## One material per accent (cached, shared: never change it on an instance), like yarn_ball's per colour.
 static func parcel_box(size: float, accent := ArtPalette.TAPE) -> MeshInstance3D:
 	var mesh := parcel_mesh(size)
-	var material := lit_texture_material((_parcel_src.surface_get_material(0) as BaseMaterial3D).albedo_texture, LIGHT_SOFTNESS, 1.0)
-	var accent_lin := accent.srgb_to_linear()
-	material.set_shader_parameter("accent", Vector4(accent_lin.r, accent_lin.g, accent_lin.b, 1.0))   # linear, as a vector (see yarn_ball)
-	return instance(mesh, material)
+	if not _parcel_materials.has(accent):
+		var material := lit_texture_material((_parcel_src.surface_get_material(0) as BaseMaterial3D).albedo_texture, LIGHT_SOFTNESS, 1.0)
+		var accent_lin := accent.srgb_to_linear()
+		material.set_shader_parameter("accent", Vector4(accent_lin.r, accent_lin.g, accent_lin.b, 1.0))   # linear, as a vector (see yarn_ball)
+		_parcel_materials[accent] = material
+	return instance(mesh, _parcel_materials[accent])
 
 
 ## Unshaded alpha-blended vertex colour (blob shadows on the ground). It is in the transparent

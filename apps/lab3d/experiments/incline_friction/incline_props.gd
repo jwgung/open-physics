@@ -101,11 +101,6 @@ static func post_pose(pivot_height: float, angle_deg: float) -> Vector2:
 	return Vector2(-atan2(to_axle.x, to_axle.y), to_axle.length() - POST_INSET)
 
 
-## The box: a parcel box (Task 4g, 2026-10-23 user decision), the cube baked to `size`.
-func box_mesh(size: float) -> Mesh:
-	return ArtKit.parcel_mesh(size)
-
-
 ## Island, static shadows, the incline's moving shadow and the box reactions.
 func dress(experiment: Node3D, stand_position: Vector3, box_body: RigidBody3D, box_visual: MeshInstance3D, box_size: float) -> void:
 	ArtKit.add_world(experiment, Vector3(-1.5, 0.0, -0.8), stand_position, 0.9)

@@ -205,7 +205,7 @@ func throwing() -> bool:
 func set_cat_grip(on: bool) -> void:
 	cat_grip = on
 	if cat != null and not cat.throwing():
-		_hold_cat(cat.held_point() if on else _ball.global_position)
+		_hold_cat(_ball.global_position)   # the waiting ball's centre either way (its body is where it waits)
 
 
 ## The velocity arrow from the ball centre along (angle, speed), ending at the knob's near face.

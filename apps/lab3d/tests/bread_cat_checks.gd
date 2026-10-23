@@ -265,6 +265,10 @@ func check_throw_cancel() -> void:
 	var picked: bool = not lab.released and not cat.throwing() and cat.mode == "free"
 	lab.manipulation_placed("ball", Transform3D(Basis(), lab.ball_center()))
 	var regrip: bool = cat.mode == "hold" and cat.held_point().distance_to(lab.ball_center()) <= RELEASE_TOL
+	# set_cat_grip both ways: the paw stays on the waiting ball's centre (PR #16 review).
+	lab.props.set_cat_grip(false)
+	lab.props.set_cat_grip(true)
+	regrip = regrip and cat.mode == "hold" and cat.held_point().distance_to(lab.ball_center()) <= RELEASE_TOL
 	# A condition change during the throw (angle, speed, gravity) puts the ball back in the paw: no late
 	# release, the cat holds it at the (new) launch point.
 	var changes_ok := true

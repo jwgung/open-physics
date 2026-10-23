@@ -70,7 +70,7 @@
       { "id": "yellow", "label": "노란 공", "color": "#ffc61a", "style": "line" },
       { "id": "purple", "label": "보라 공", "color": "#4b2a9a", "style": "line" },
       { "id": "red", "label": "빨간 공", "color": "#ff3b3b", "style": "line" },
-      { "id": "measured", "label": "시뮬레이션", "color": "#1b2a4a", "style": "points" }
+      { "id": "measured", "label": "시뮬레이션", "color": "#0f8b8d", "style": "points" }
     ]
   },
   "manipulation": {

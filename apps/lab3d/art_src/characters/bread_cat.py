@@ -24,6 +24,7 @@ Conventions (see also the module docstring of the Godot side when it loads this 
         Tail                (mesh, pivot at the tail root)
           Tail2             (mesh, pivot at the tail joint)
             TailTip         (empty)
+- Bag front: one toast slice (2026-10-23 user decision).
 - Budget (SM-P200 low): 8 meshes, 1 material, 1 texture (1024 px), < 6000 triangles.
 """
 
@@ -355,32 +356,16 @@ def paint_bag_front(P):
     ink = hexc(P["ink"])
     aa = 0.0025
     cy = 0.36
-    # toast slice: rounded top loaf
-    tx = -0.055
-    body = sd_ellipse(x, y, tx, cy + 0.035, 0.068, 0.045)
-    box = np.maximum(np.abs(x - tx) - 0.055, np.abs(y - (cy - 0.005)) - 0.045)
+    # The logo is one toast slice (2026-10-23 user decision: no croissant, no label lines), centred
+    # and a little larger: a rounded-top loaf outline with its crumb.
+    tx, k = 0.0, 1.35
+    body = sd_ellipse(x, y, tx, cy + 0.035 * k, 0.068 * k, 0.045 * k)
+    box = np.maximum(np.abs(x - tx) - 0.055 * k, np.abs(y - (cy - 0.005 * k)) - 0.045 * k)
     toast = np.minimum(body, box)
     blend(img, smooth_fill(toast, aa), ink)
-    crumb = np.minimum(sd_ellipse(x, y, tx, cy + 0.033, 0.054, 0.033),
-                       np.maximum(np.abs(x - tx) - 0.042, np.abs(y - (cy - 0.006)) - 0.034))
+    crumb = np.minimum(sd_ellipse(x, y, tx, cy + 0.033 * k, 0.054 * k, 0.033 * k),
+                       np.maximum(np.abs(x - tx) - 0.042 * k, np.abs(y - (cy - 0.006 * k)) - 0.034 * k))
     blend(img, smooth_fill(crumb, aa), hexc(P["kraft"]) * 1.06)
-    # croissant: crescent of lobes
-    cx0 = 0.075
-    cro = np.full(x.shape, 1.0)
-    for i, (ox, oy, r) in enumerate(((-0.040, -0.012, 0.022), (-0.022, 0.006, 0.027), (0.0, 0.014, 0.031),
-                                     (0.022, 0.006, 0.027), (0.040, -0.012, 0.022))):
-        cro = np.minimum(cro, sd_ellipse(x, y, cx0 + ox, cy - 0.01 + oy, r, r * 0.9))
-    blend(img, smooth_fill(cro, aa), ink)
-    for ox in (-0.031, -0.011, 0.011, 0.031):
-        sdf = sd_segment(x, y, cx0 + ox, cy - 0.025, cx0 + ox * 1.15, cy + 0.02) - 0.0018
-        blend(img, smooth_fill(sdf, aa) * smooth_fill(cro, aa), hexc(P["kraft"]))
-    # label lines and dots like a stamped logo
-    for ly in (cy + 0.115, cy - 0.095):
-        sdf = np.maximum(np.abs(y - ly) - 0.006, np.abs(x) - 0.13)
-        blend(img, smooth_fill(sdf, aa), ink)
-    for ox in (-0.16, 0.16):
-        blend(img, smooth_fill(sd_ellipse(x, y, ox, cy + 0.115, 0.010, 0.010), aa), ink)
-        blend(img, smooth_fill(sd_ellipse(x, y, ox, cy - 0.095, 0.010, 0.010), aa), ink)
     # folded bottom band and vertical crease shading
     blend(img, np.clip((0.06 - y) / 0.01, 0, 1), hexc(P["kraft_dark"]), 0.5)
     crease = value_noise(u * 0.999, v * 0.1, 9, 5)

@@ -50,3 +50,7 @@
 
 - 원본: `contact-model/lab3d-low-{FF,PJ}-1.{jsonl,device.jsonl,perf.jsonl}`, `contact-model/gpu-clock-low.log`(PJ는 중단된 부분 기록).
 - 스크린샷(흰 띠, 멈춘 공 — 예: 45°·5 m/s는 x 6.65 m에서 7.25 s에 멈춤): **미측정**. 2절 스크린샷은 흰 띠·흰 받침판 이전 빌드다.
+
+## 5. 울타리 반영 뒤 (커밋 `21cd4f9`)
+
+기기 사용 금지(사용자 요청) 상태라 fps·스크린샷(울타리, 되튄 뒤 멈춘 공) 모두 **미측정**. 헤드리스 시험만 했다(공식 보정 4절 Task 4f "울타리").

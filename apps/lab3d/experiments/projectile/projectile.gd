@@ -157,10 +157,12 @@ func clock() -> float:
 
 
 ## The formula time shown: the clock, never past the formula landing (and the landing once the
-## engine reports it).
+## engine reports it); a flight that met the fence stops at the fence time (its x, y there).
 func shown_time() -> float:
 	if not released:
 		return 0.0
+	if hit_fence():
+		return corrector().rolling.fence_time   # the formula flight ends at the fence
 	var landing := flight_time()
 	return landing if has_landed() else minf(clock(), landing)
 
@@ -196,9 +198,18 @@ func status() -> String:
 		return "ready"
 	if out_of_bounds:
 		return "out"
+	if hit_fence():
+		return "fence"
 	if has_landed():
 		return "landed"
 	return "floating" if g <= 0.0 else "flying"
+
+
+## The flight met the fence below its top (2026-10-23 user decision) and the clock has reached that
+## formula time: the ball bounced back from it (RollingContact) and stays on the island.
+func hit_fence() -> bool:
+	var contact := corrector().rolling
+	return released and contact.hit_fence_in_flight() and clock() >= contact.fence_time - LANDING_SLACK
 
 
 func _released_step() -> void:
@@ -207,7 +218,8 @@ func _released_step() -> void:
 		return
 	var steps := corrector().steps - 1
 	if _graph_sample_time(steps) >= 0.0:
-		_append_sample(corrector(), steps, launch_height(), flight_time())
+		# Engine heights of the free flight only: to the floor landing, or to the fence.
+		_append_sample(corrector(), steps, launch_height(), minf(flight_time(), corrector().rolling.fence_time))
 	_check_bounds()
 
 
@@ -234,6 +246,7 @@ func observations() -> Dictionary:
 		"flying": "날아가는 중",
 		"landed": "바닥에 닿음",
 		"out": "섬 밖으로 날아감",
+		"fence": "울타리에 맞음",
 		"floating": "무중력: 곧게 날아가요",
 	}.get(status(), "")
 	return {
@@ -257,6 +270,8 @@ func observations() -> Dictionary:
 ## formula touch), or "—" before it.
 func measured_range() -> Variant:
 	var c := corrector()
+	if c.rolling.hit_fence_in_flight():
+		return "—"   # it never landed where the formula lands
 	var step := measured_landing_step(c, flight_time(), clock()) if released else -1
 	if step < 0 or step >= c.offsets.size():
 		return "—"

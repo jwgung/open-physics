@@ -52,6 +52,8 @@ var floor_y := 0.0
 var g := 9.81
 ## Formula time (s from the release) of the first floor contact (INF: none).
 var landing := INF
+## Formula time of the flight meeting the fence (INF: it does not; see _flight_fence_time).
+var fence_time := INF
 ## True once the model owns the motion (from the step whose interval holds `landing`).
 var active := false
 ## Events (tests): impact times and approach speeds, the first time the slip ended (rolling) and the
@@ -91,6 +93,7 @@ func release(body: RigidBody3D, velocity: Vector3, field: float, spin := 0.0) ->
 	_vy0 = velocity.y
 	_w0 = spin
 	landing = PhysicsLaws.landing_time(_vy0, -g, _h0) if g > 0.0 else INF
+	fence_time = _flight_fence_time()
 	active = false
 	impact_times.clear()
 	impact_speeds.clear()
@@ -99,6 +102,18 @@ func release(body: RigidBody3D, velocity: Vector3, field: float, spin := 0.0) ->
 	roll_time = -1.0
 	stop_time = -1.0
 	body.angular_velocity = Vector3(0.0, 0.0, spin)
+
+
+## Formula time (s from the release) at which the free flight's front reaches the right fence face
+## below its top, before the floor landing (INF: it lands first or passes over the top). The flight
+## is the formula's up to there (2026-10-23 user decision: such a ball hits the fence).
+func _flight_fence_time() -> float:
+	if not is_finite(wall_x) or _vx0 <= 0.0:
+		return INF
+	var t := (wall_x - radius - _origin.x) / _vx0
+	if t < 0.0 or t >= landing:
+		return INF
+	return t if _h0 + _vy0 * t - 0.5 * g * t * t < wall_top else INF
 
 
 ## The model's state at time `t` (s from the release; not before the model's own time):
@@ -116,7 +131,7 @@ func slip() -> float:
 ## Index of the first recorded sample at or after the landing (the measured landing step): -1 while
 ## not active, or when the ball starts on the floor (landing 0: the formula owns it).
 func landing_step(dt: float) -> int:
-	if not active or landing <= 0.0:
+	if not active or landing <= 0.0 or hit_fence_in_flight():
 		return -1
 	return ceili(landing / dt - 1e-9)
 
@@ -126,7 +141,7 @@ func landing_step(dt: float) -> int:
 func apply(body: RigidBody3D, k: int, dt: float, field_dv: Vector3) -> void:
 	var t_next := (k + 1) * dt
 	if not active:
-		if not (landing < t_next - 1e-12):
+		if not (minf(landing, fence_time) < t_next - 1e-12):
 			return
 		_start()
 	_advance(t_next)
@@ -139,9 +154,27 @@ func apply(body: RigidBody3D, k: int, dt: float, field_dv: Vector3) -> void:
 	body.angular_velocity = Vector3(0.0, 0.0, wrapf(_th - turned, -PI, PI) / dt)
 
 
-## The model takes over at the landing time with the flight's state there.
+## True when the free flight ends on the fence, not on the floor.
+func hit_fence_in_flight() -> bool:
+	return fence_time < landing
+
+
+## The model takes over at the landing time (or the fence time, when the flight meets the fence
+## first) with the flight's state there.
 func _start() -> void:
 	active = true
+	if hit_fence_in_flight():
+		_t = fence_time
+		_x = _vx0 * _t
+		_y = _h0 + _vy0 * _t - 0.5 * g * _t * _t
+		_vx = _vx0
+		_vy = _vy0 - g * _t
+		_w = _w0
+		_th = _w0 * _t
+		_ground = false
+		_wall_side = 1.0
+		_wall_impact()
+		return
 	_t = maxf(0.0, landing)
 	_x = _vx0 * _t
 	_y = 0.0

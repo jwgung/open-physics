@@ -168,6 +168,7 @@ func run() -> void:
 	await check_contact_against_oracle()
 	await check_where_throws_stop()
 	await check_fences()
+	await check_fence_in_flight()
 	await check_mesh_is_body()
 	await check_free_fall_no_spin()
 	await check_collision_mesh_rolls()
@@ -423,7 +424,7 @@ func check_fences() -> void:
 	var v_wall := vr - a * tr
 	var vy_up := minf(mu * (1.0 + e) * v_wall, 2.0 / 7.0 * v_wall)
 	var hop := 2.0 * vy_up / g
-	while c.steps - 1 < ceili((t_wall + hop) * STEP_HZ) + 2:
+	while c.steps - 1 < ceili((t_wall + hop) * STEP_HZ) + 2 and not lab.ball.freeze:
 		await tree.physics_frame
 	var model: RollingContact = c.rolling
 	var wall_ok := model.wall_times.size() >= 1 and absf(model.wall_times[0] - t_wall) <= 1e-9 and absf(model.wall_speeds[0] - v_wall) <= 1e-9
@@ -463,6 +464,91 @@ func check_fences() -> void:
 		"ball fences: a roll meets the fence at the closed-form time and speed, bounces back at e v and hops by the Coulomb impulse; the default and farthest throws rest on the island",
 		"hop vs closed form %s m; %s" % [String.num_scientific(worst_hop), "; ".join(details)])
 	await _free(lab)
+
+
+## A flight that meets the fence below its top (2026-10-23 user decision; the moon's long low throws)
+## hits it: the flight is the formula's up to the closed-form time (x reaches the face), there it
+## bounces back at e v, the state reads "울타리에 맞음", the panel keeps the formula range and flight
+## time and shows the flight at the fence time, no measured landing, and the ball stays on the
+## island. A scan of moon throws (pure model) finds none passing through the fence.
+func check_fence_in_flight() -> void:
+	var lab: Experiment = await _lab("projectile")
+	var r: float = lab.BALL_RADIUS
+	lab.set_control("gravity", "moon")
+	lab.set_control("angle", 75.0)
+	lab.set_control("speed", 8.0)
+	lab.manipulation_placed("ball", Transform3D(Basis(), Vector3(-8.0, 0.25 + r, 0.0)))
+	var rec := _recorder(lab, lab.ball)
+	# The release velocity the corrector gets is the 32-bit launch_velocity().
+	var vx: float = lab.launch_velocity().x
+	var vy: float = lab.launch_velocity().y
+	var g: float = lab.g
+	var t_hit: float = (lab.FENCE_X - r - lab.ball_center().x) / vx
+	var y_hit: float = lab.launch_height() + vy * t_hit - 0.5 * g * t_hit * t_hit
+	lab.release()
+	var c: UniformFieldCorrector = lab.corrector()
+	var guard := 0
+	while c.steps - 1 < ceili(t_hit * STEP_HZ) + 30 and guard < 2000:   # (a frozen ball stops the steps)
+		await tree.physics_frame
+		guard += 1
+	var shown: Dictionary = lab.observations()
+	var model: RollingContact = c.rolling
+	var worst_flight := 0.0
+	for i in rec.steps.size():
+		var t := rec.steps[i] / float(STEP_HZ)
+		if t >= t_hit:
+			continue
+		worst_flight = maxf(worst_flight, maxf(absf(rec.positions[i].x - lab.ball_center().x - lab.formula_x(t)), absf(rec.positions[i].y - r - lab.formula_y(t))))
+	rec.queue_free()
+	var hit_ok: bool = model.fence_time < lab.flight_time() and absf(model.fence_time - t_hit) <= 1e-9 and model.wall_speeds.size() >= 1 and absf(model.wall_speeds[0] - vx) <= 1e-9 and y_hit < lab.FENCE_HEIGHT
+	var panel_ok: bool = shown.state == "울타리에 맞음" and lab.status() == "fence" and absf(float(shown.time) - t_hit) <= 1e-9 and float(shown.range) == lab.flight_range() \
+		and float(shown.flight_time) == lab.flight_time() and str(shown.landing) == "—" and c.landed_step < 0
+	for i in 20 * STEP_HZ:
+		if model.stop_time >= 0.0 or lab.ball.freeze:
+			break
+		await tree.physics_frame
+	var x: float = lab.ball.global_position.x
+	var stays: bool = not lab.ball.freeze and x < lab.FENCE_X - r + 1e-4 and x > lab.FENCE_LEFT_X + r - 1e-4
+	await _free(lab)
+	# Moon scan (pure model, the lab's fences): every flight crossing the fence line below its top
+	# hits it and ends on the island side.
+	var body := RigidBody3D.new()
+	body.mass = 1.0
+	tree.root.add_child(body)
+	var crossing := 0
+	var through := 0
+	for angle in range(0, 91, 15):
+		for k in range(2, 19):
+			for hh in range(0, 13):
+				for x0: float in [-8.0, -5.5, -3.0]:
+					var speed := k * 0.5
+					var h := hh * 0.25
+					var cvx := speed * cos(deg_to_rad(angle))
+					var cvy := speed * sin(deg_to_rad(angle))
+					var land := PhysicsLaws.landing_time(cvy, -1.62, h)
+					var xc: float = 12.0 - r
+					if cvx <= 0.0 or x0 + cvx * land <= xc:
+						continue
+					var tc: float = (xc - x0) / cvx
+					if h + cvy * tc - 0.81 * tc * tc >= 1.5:
+						continue   # over the top: "섬 밖으로 날아감" as before
+					crossing += 1
+					body.global_position = Vector3(x0, h + r, 0.0)
+					var m := RollingContact.new()
+					m.wall_x = 12.0
+					m.wall_left_x = -12.5
+					m.wall_top = 1.5
+					m.release(body, Vector3(cvx, cvy, 0.0), 1.62)
+					m._start()   # take over at once (at the fence or the landing), then run 400 s
+					var end: PackedFloat64Array = m.state_at(400.0)
+					if not is_finite(m.fence_time) or x0 + end[0] > xc + 1e-6:
+						through += 1
+	body.queue_free()
+	# (A 9.5 s moon flight: the engine's float32 position steps add up to ~1.1e-4 m by the fence.)
+	expect.call(hit_ok and worst_flight <= 2e-4 and panel_ok and stays and crossing > 0 and through == 0,
+		"ball fences: a flight meeting the fence below its top hits it at the closed-form time with its flight speed (flight = formula until then), reads '울타리에 맞음' with the formula range / time kept, and stays on the island; moon scan: none pass through",
+		"hit %.4f s (closed form %.4f s, y %.2f m), vx %.4f m/s, flight vs formula %s m, state '%s', time %s, landing %s, rests at x %.2f m; moon scan: %d crossings below the top, %d through" % [
+			model.fence_time, t_hit, y_hit, vx, String.num_scientific(worst_flight), shown.state, str(shown.time), str(shown.landing), x, crossing, through])
 
 
 # --- 4. the mesh is the body ------------------------------------------------------------------

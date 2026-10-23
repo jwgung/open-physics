@@ -36,6 +36,7 @@ func run(definition: Dictionary) -> void:
 	await check_dev_scene()
 	await check_dev_review()
 	await check_follow_camera()
+	await check_default_view_drag()
 	await check_review2()
 	await check_incline_snap_rule(definition)
 	await check_review3(definition)
@@ -376,11 +377,16 @@ func check_incline_drag(definition: Dictionary) -> void:
 	expect.call(is_equal_approx(lab.run_length(), held_run), "the mouse release after that does not place the box", "run %.2f" % lab.run_length())
 	# A camera mode button pressed while holding: the new mode wins over the assist's old view.
 	var rig: CameraRig = screen.view.rig
+	# A view looking nearly along the incline's line is the one a line drag has to turn;
+	# the flat front view is fine for a line (check_default_view_drag).
 	rig.set_mode("front", true)
-	rig.orbit(Vector2(0.0, -40000.0))   # as flat as the limits allow
+	rig.goal_yaw = deg_to_rad(-70.0)   # nearly along the incline (its line within 35 deg of the view)
+	rig.snap()
+	await tree.process_frame
 	var flat_pitch := rig.goal_pitch
+	var flat_yaw := rig.goal_yaw
 	_swipe(screen, _at(screen, box.global_position), _run_point(screen, 2.0), 4)
-	var turned: bool = rig.is_assisting() and not is_equal_approx(rig.goal_pitch, flat_pitch)
+	var turned: bool = rig.is_assisting() and not (is_equal_approx(rig.goal_pitch, flat_pitch) and is_equal_approx(rig.goal_yaw, flat_yaw))
 	rig.set_mode("top")
 	var top_pitch := rig.goal_pitch
 	_touch(screen, 0, _run_point(screen, 2.0), false)
@@ -608,6 +614,44 @@ func _settle(screen: Control, limit := 240) -> int:
 		await tree.process_frame
 		frames += 1
 	return frames
+
+
+## Task 2d review: in each experiment's default front view (pitch -4 to -8 deg) an ordinary drag
+## must not turn the camera. A line (floor lane, incline slope, rod, handle stroke) needs only that
+## it does not run along the view; the planes (arrows, pendulum arcs, the orbit's level arrow) already
+## face the camera enough there. Every object of every listed experiment, grabbed and its height
+## handle (the objects with one) too; and a line that runs along the view still turns it.
+func check_default_view_drag() -> void:
+	var turned := PackedStringArray()
+	var count := 0
+	for definition in ExperimentRegistry.load_all():
+		var screen: Control = await _open(definition)
+		var m: Manipulator = screen.manipulator
+		var rig: CameraRig = screen.view.rig
+		if m == null:
+			turned.append("%s: no manipulator" % definition.id)
+		else:
+			for id in m.rules:
+				for kind in ["drag", "height"] if m.rules[id].height_max > 0.0 else ["drag"]:
+					var yaw := rig.goal_yaw
+					var pitch := rig.goal_pitch
+					m._begin(id, kind, Vector2(300.0, 300.0))
+					count += 1
+					if m.mode == "" or not is_equal_approx(rig.goal_yaw, yaw) or not is_equal_approx(rig.goal_pitch, pitch):
+						turned.append("%s/%s/%s" % [definition.id, id, kind])
+					m.cancel()
+		await _close(screen)
+	expect.call(turned.is_empty() and count >= 21, "default front view: grabbing any object (%d grabs in 11 experiments) leaves the camera where it is" % count, ", ".join(turned))
+	# A line along the view (the incline seen from its lower end) still turns the camera.
+	var rig_only := CameraRig.new()
+	rig_only.configure(ExperimentRegistry.find("incline-friction").camera)
+	var axis := Vector3.RIGHT
+	var along := rig_only.begin_assist(Vector3.ZERO, axis)
+	expect.call(not along, "a line across the front view needs no turn", "")
+	rig_only.set_mode("side", true)
+	along = rig_only.begin_assist(Vector3.ZERO, axis)
+	rig_only.free()
+	expect.call(along, "a line running along the view still makes the assist turn the camera", "")
 
 
 func check_follow_camera() -> void:

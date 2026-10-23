@@ -120,10 +120,11 @@ static func kinetic_energy(mass: float, speed: float) -> float:
 static func tangential_speed(radius: float, angular_velocity: float) -> float:
 	return radius * angular_velocity
 
-## rotation.ts rollingSpeed: rolling without slipping, v = r omega (Task 4f: the landed ball).
-## Test oracle only (the app implements it in RollingContact).
+## rotation.ts rollingSpeed: rolling without slipping, v = r omega (Task 4f: the landed ball). The
+## same law as tangential_speed (the TS core has both names; formula_vectors.json checks this one
+## against rollingSpeed). Test oracle only (the app implements it in RollingContact).
 static func rolling_speed(radius: float, angular_velocity: float) -> float:
-	return radius * angular_velocity
+	return tangential_speed(radius, angular_velocity)
 
 ## Solid sphere about its centre: I = 2/5 m r^2 (Task 4f: the free-fall and projectile balls).
 ## Not in the TS core (rotation.ts has point mass, disk, hoop and rod): textbook value, checked by

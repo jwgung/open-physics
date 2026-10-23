@@ -29,6 +29,7 @@ Notion Story·Task와 GitHub Issue는 발행하지 않는다. 이 문서가 Phas
 | 4 | 역학 안내형 10개 3D 이식 | 실험별로 나눠 진행한다. 실험 콘텐츠는 JSON으로 빼서 웹 2D와 공유한다. 빗면 마찰은 2a에서 먼저 옮긴다 | 2a, 2b, 2c, 3 | 완료 | 4a [#9](https://github.com/jwgung/open-physics/pull/9), 4b [#10](https://github.com/jwgung/open-physics/pull/10), 4c [#11](https://github.com/jwgung/open-physics/pull/11), 4d [#12](https://github.com/jwgung/open-physics/pull/12), 4e [#13](https://github.com/jwgung/open-physics/pull/13) |
 | 4f | 공 회전·구름 | 자유 낙하·던지기 공이 비행 중 각속도 일정, 착지 뒤 튕김(e v, 공식 시각·최고점), 쿨롱 마찰 충격, 미끄러짐 → 구름(v = ωr), 구름 저항(μ_r 0.05) → 정지, 던지기 섬 양끝 울타리 되튐을 교과서 공식대로(엔진 바디 궤적·각속도 헤드리스 대조). 보이는 회전 = 바디 회전(흰 띠). 여러 공 색 구분(빨강·노랑·보라), 받침판 흰색 | 4 | 완료(검토 대기) — [공식 보정 Task 4f](../../apps/lab3d/docs/formula-correction.md#실험-구현-task-4f-공-회전구름), [결과](../../spikes/bench/results/phase1-ball-spin/README.md) | `feat/ball-spin-rolling` |
 | 4g | 빵고양이 캐릭터 | 빵봉투에 들어간 고양이 '빵고양이'가 학생 조작을 대신 연기한다. 던지기(공을 공식 발사점·시각에 손에서 놓음)와 마찰 밀기(손이 상자 면에 붙어 함께 이동)부터. 물리는 공식 모델이 맡고 고양이는 동기화된 연기만(운동 불변을 테스트로 확인). 로우폴리 섬 스타일, low 60 fps | 4f | 완료(검토 대기) — [아트 디렉션 11절](../../apps/lab3d/docs/art-direction.md#11-빵고양이-task-4g), [결과](../../spikes/bench/results/phase1-task4g/README.md) | `feat/bread-cat` |
+| 4g2 | 캐릭터 동화책 스타일 | 4g 후속. Blender 참고 그림의 동화책 모양(갈색 뒤집힌 껍질 외곽선 + 두 단계 셀 셰이딩)을 앱 캐릭터에 적용(빵고양이, 두기두기용 재질 재사용). 렌더링만 바꾸고 물리·패널 불변, low 60 fps | 4g | 완료(검토 대기) — [아트 디렉션 11절](../../apps/lab3d/docs/art-direction.md#11-빵고양이-task-4g), [결과](../../spikes/bench/results/phase1-task4g2/README.md) | `feat/dugi-rabbit` |
 | 5 | 역학 빈 실험실 3D | 고정 블록·줄·용수철·지렛대·도르래·힘·중력원·물 | 2a, 2b, 2c, 3 | 대기 | |
 | 6 | 출시 준비 | 서명, 스토어 자료, 개인정보처리방침(수집 없음), Kids/Families 정책, 모바일 CI, iOS 실기기 확인 | 4, 5 | 대기 | |
 
@@ -305,3 +306,8 @@ Notion Story·Task와 GitHub Issue는 발행하지 않는다. 이 문서가 Phas
   - 착지 뒤 다시 던지기는 헤드리스·SM-P200 모두 원래도 정상이었다(던지기 공은 `FREEZE_MODE_STATIC`이라 옛 보고가 되돌리지 않음). 시험은 회귀 방지로 남겼다.
   - [결과 5절](../../spikes/bench/results/phase1-task4g/README.md#5-pr-16-코드-리뷰-반영)
 - 2026-10-23: 사용자 결정 — 앱 이름 "빵냥 과학섬"(open-physics 대신), 앱 아이콘은 빵고양이와 두기두기 얼굴. 두기두기(과학토끼, 귀가 아주 긺, 과학 척척박사, 3D로 섬에 함께 등장해 설명)는 4g 머지 뒤 Task 4h, 앱 이름·아이콘 적용은 4h 이후.
+- 2026-10-24: Task 4g2 캐릭터 동화책 스타일(4g 후속, `feat/dugi-rabbit`). 두기두기 모델·빵고양이 점 눈·메시 수정(귀 면 방향, 봉투 톱니, 실루엣 분할)과 같은 PR.
+  - 재질: `ArtKit.toon_material(아틀라스)` = 셀 셰이더 `art_toon_tex`(섬 해 방향 N·L을 픽셀마다 두 단계, 그늘 배수 0.86 × (0.97, 0.90, 0.93), 경계 N·L −0.03) + 다음 패스 외곽선 `art_outline`(법선 방향으로 키운 뒤집힌 껍질, `cull_front`, 언셰이드 `#6e4630`). 두기두기(4h)도 같은 함수를 쓴다.
+  - 외곽선 두께 = max(0.010 m, 화면 높이의 0.35 %). 결정 근거: 기본 정면 시점에서 고양이가 화면 높이의 약 11 %라 참고 그림의 세계 두께 0.010 m는 1 px이 안 돼 끊긴다. 0.35 %는 low(540 px 3D 버퍼, MSAA 없음)에서 끊기지 않는 가장 얇은 값이고, 가까이 보면 0.010 m가 된다.
+  - 범위: 캐릭터만. 털실 공·택배 박스·장치·섬은 섬 조명 그대로(공·상자에만 외곽선을 넣으면 외곽선 없는 다른 소품과 어긋남).
+  - 검증: 전체 헤드리스 시험 통과, 새 확인(고양이 메시 6개 재질·외곽선 연결, 같은 위치 법선 차이 0.016°, 다른 메시엔 없음). SM-P200 low 던지기 90초 × 1회 59.74 → 59.77 fps. [결과](../../spikes/bench/results/phase1-task4g2/README.md)

@@ -10,7 +10,8 @@
 ## mesh: they never move against each other), Head (nod / tilt at the neck), ArmR / ArmL (turned at
 ## the shoulder; HandL / HandR = the paw centre, the grip point), Tail and Tail2 (sway); with the
 ## actor's blob shadow the cat draws 7. Their
-## material is the island light on the atlas (ArtKit.lit_texture_material), no engine lights.
+## material is the storybook look on the atlas (ArtKit.toon_material: two-step cel shading under the
+## island sun and a brown outline pass, Task 4g2), no engine lights.
 class_name BreadCat
 extends CatLook
 
@@ -50,7 +51,7 @@ func build(rig: Node3D) -> Dictionary:
 	var model: Node3D = SCENE.instantiate()
 	var cat := model.get_node("BreadCat") as Node3D
 	var body := cat.get_node("Body") as MeshInstance3D
-	var material := ArtKit.lit_texture_material((body.mesh.surface_get_material(0) as BaseMaterial3D).albedo_texture)
+	var material := ArtKit.toon_material((body.mesh.surface_get_material(0) as BaseMaterial3D).albedo_texture)
 	# Bag, baguette and body: one mesh (one draw call).
 	var st := SurfaceTool.new()
 	for part: MeshInstance3D in [cat.get_node("Bag"), cat.get_node("Baguette"), body]:

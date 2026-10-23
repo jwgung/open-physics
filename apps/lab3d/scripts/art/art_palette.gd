@@ -45,6 +45,7 @@ const CRATE_TOP := Color("e3a35e")    # their top edges
 # Lighting (art_lit.gdshader) and contact
 const LIGHT := Color("ffffff")        # lit side multiplier
 const SHADE := Color("7d8ed8")        # shaded side multiplier (cool blue, never grey)
+const OUTLINE := Color("6e4630")      # characters' storybook outline (Task 4g2, ArtKit.outline_material)
 const SHADOW := Color("14234d")       # blob shadow colour
 const SHADOW_ALPHA := 0.32
 const DUST := Color("e9f5d8")

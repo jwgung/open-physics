@@ -9,6 +9,19 @@ extends RefCounted
 
 const SHADER := preload("res://scripts/art/art_lit.gdshader")
 const TEXTURE_SHADER := preload("res://scripts/art/art_lit_tex.gdshader")
+## The characters' storybook look (Task 4g2, art-direction.md section 11): two-step cel shading and
+## a brown inverted-hull outline as its next pass (toon_material). Characters only: the apparatus,
+## props and island keep the island light.
+const TOON_SHADER := preload("res://scripts/art/art_toon_tex.gdshader")
+const OUTLINE_SHADER := preload("res://scripts/art/art_outline.gdshader")
+## Outline width: the Blender reference renders' 0.010 m, at least OUTLINE_SCREEN of the view
+## height (art_outline.gdshader).
+const OUTLINE_WORLD := 0.010
+const OUTLINE_SCREEN := 0.0035
+## The cel step's shade multiplier (linear; Blender ramp 0.86 x (0.97, 0.90, 0.93)) and where it
+## sits in N.L (art_toon_tex.gdshader).
+const TOON_SHADE := Vector4(0.834, 0.774, 0.8, 1.0)
+const TOON_THRESHOLD := -0.03
 ## The island top (build_island): a 14-sided prism of circumradius ISLAND_RADIUS around its centre.
 const ISLAND_RADIUS := 11.0
 const ISLAND_SIDES := 14
@@ -36,6 +49,7 @@ static var _yarn_texture_mean := -1.0
 static var _yarn_materials := {}   # Color -> ShaderMaterial (one per colour, shared by its balls)
 static var _parcel_materials := {} # accent Color -> ShaderMaterial
 static var _shadow: StandardMaterial3D
+static var _outline: ShaderMaterial
 
 
 ## The one material of every solid prop (vertex colours + baked light ramp).
@@ -53,7 +67,8 @@ static func lit_material() -> ShaderMaterial:
 
 
 ## The same light on a textured model (art_lit_tex.gdshader: a model with one texture atlas and
-## smooth normals, the bread cat): a softer ramp and a lighter shade side than the faceted props.
+## smooth normals, the yarn ball and parcel box; the characters use toon_material since Task 4g2):
+## a softer ramp and a lighter shade side than the faceted props.
 static func lit_texture_material(texture: Texture2D, softness := 0.18, shade_mix := 0.35) -> ShaderMaterial:
 	var m := ShaderMaterial.new()
 	m.shader = TEXTURE_SHADER
@@ -66,6 +81,32 @@ static func lit_texture_material(texture: Texture2D, softness := 0.18, shade_mix
 	m.set_shader_parameter("sky_fill", SKY_FILL)
 	m.set_shader_parameter("shade_mix", shade_mix)
 	return m
+
+
+## A character's storybook material (Task 4g2): its texture atlas in two flat cel steps under the
+## island sun, with the shared brown outline (outline_material) as the next pass. One per atlas;
+## every mesh of the character shares it. The bread cat now, Dugi (dugi.glb, one atlas too) later.
+static func toon_material(texture: Texture2D) -> ShaderMaterial:
+	var m := ShaderMaterial.new()
+	m.shader = TOON_SHADER
+	m.set_shader_parameter("albedo_texture", texture)
+	m.set_shader_parameter("sun_dir", SUN_DIR)
+	m.set_shader_parameter("shade", TOON_SHADE)
+	m.set_shader_parameter("threshold", TOON_THRESHOLD)
+	m.next_pass = outline_material()
+	return m
+
+
+## The brown inverted-hull outline pass (art_outline.gdshader), shared by every character.
+static func outline_material() -> ShaderMaterial:
+	if _outline == null:
+		_outline = ShaderMaterial.new()
+		_outline.shader = OUTLINE_SHADER
+		var c := ArtPalette.OUTLINE.srgb_to_linear()
+		_outline.set_shader_parameter("color", Vector4(c.r, c.g, c.b, 1.0))   # linear, as a vector (see yarn_ball)
+		_outline.set_shader_parameter("world_width", OUTLINE_WORLD)
+		_outline.set_shader_parameter("screen_width", OUTLINE_SCREEN)
+	return _outline
 
 
 ## A yarn ball of `radius` in `color` (the grey texture times the colour, the island light; the

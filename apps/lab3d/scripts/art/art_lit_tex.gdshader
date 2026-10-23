@@ -1,7 +1,8 @@
-// The grass island light (art_lit.gdshader) on a textured model (Task 4g: the bread cat glb, one
-// texture atlas): the same "baked" two-colour ramp from the same sun, no engine lights or realtime
-// shadows, so low (Compatibility) and high (Mobile) look the same. Colour = texture x tint x light.
-// The model's normals are smooth (a rounded character, not the faceted props), so the light is
+// The grass island light (art_lit.gdshader) on a textured model (Task 4g: the yarn ball and the
+// parcel box glbs, one texture atlas each; the characters use art_toon_tex.gdshader since Task 4g2):
+// the same "baked" two-colour ramp from the same sun, no engine lights or realtime shadows,
+// so low (Compatibility) and high (Mobile) look the same. Colour = texture x tint x light.
+// The model's normals are smooth (rounded models, not the faceted props), so the light is
 // per vertex and the ramp is softer (ArtKit.lit_texture_material sets `softness`).
 shader_type spatial;
 render_mode unshaded, cull_back, specular_disabled;

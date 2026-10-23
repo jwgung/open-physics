@@ -10,13 +10,13 @@
 ##    roll along the floor, a slipping bounce (small mu), free fall drops; landing reactions and the
 ##    landing step still come.
 ## 3. where the thrown ball stops: the default and the farthest throw (reported).
-## 4. what is seen turning is the body: the mesh (white band) is its child with no turn of its own.
+## 4. what is seen turning is the body: the mesh (the yarn ball) is its child with no turn of its own.
 ## 5. free fall: the three balls never turn and do not drift sideways through their bounces.
 ## 6. collision lab (model driven): each ball's mesh turns by its travel over its radius (v = omega r).
 ## 7. colours (2026-10-23 user request): the free-fall balls and the development scene's boxes are
 ##    red / yellow / violet, and every label (ball names, observations, graph series and colours,
-##    option notes) names the colour the mesh has; the balls have a white band, the drop pads are
-##    white / grey.
+##    option notes) names the colour the mesh has; the balls are yarn balls (Task 4g: the yarn model,
+##    textured, as big as the ball), the drop pads are white / grey.
 extends RefCounted
 
 const STEP_HZ := 60
@@ -1005,13 +1005,35 @@ static func _has_yellow(mesh: Mesh) -> bool:
 	return false
 
 
-## The mesh has white vertices (a white band).
-static func _has_white(mesh: Mesh) -> bool:
-	for surface in mesh.get_surface_count():
-		for c: Color in mesh.surface_get_arrays(surface)[Mesh.ARRAY_COLOR]:
-			if c.s < 0.05 and c.linear_to_srgb().v > 0.9:
-				return true
-	return false
+## A ball's colour: the yarn ball's tint times the texture's mean (Task 4g: the texture is grey and
+## the tint is divided by its mean, so this is the ball's average colour).
+static func _ball_colour(visual: MeshInstance3D) -> Color:
+	var m := visual.material_override as ShaderMaterial
+	if m == null:
+		return Color.BLACK
+	var t: Vector4 = m.get_shader_parameter("tint")   # linear
+	var lin := Color(t.x, t.y, t.z)
+	var k := ArtKit._yarn_mean(m.get_shader_parameter("albedo_texture"))
+	return Color(lin.r * k, lin.g * k, lin.b * k).linear_to_srgb()
+
+
+## "" when `visual` is the yarn ball: the yarn model's mesh (at most 400 triangles) with the textured
+## island light, its extent the ball's diameter (what is seen is the physics size: within 2 %, no
+## thread sticking out).
+static func _yarn_problem(visual: MeshInstance3D, radius: float) -> String:
+	var mesh := visual.mesh
+	if mesh != ArtKit.yarn_mesh() or mesh.surface_get_array_index_len(0) / 3 > 400:
+		return "not the yarn mesh"
+	var m := visual.material_override as ShaderMaterial
+	if m == null or m.shader != ArtKit.TEXTURE_SHADER or m.get_shader_parameter("albedo_texture") == null:
+		return "not the yarn material"
+	# A yarn ball that is a body's mesh (free fall, projectile: radius 0.25) carries the juice's
+	# squash in its scale; a scaled one (collision, spring) sits under the juice's node.
+	var size := mesh.get_aabb().size * (Vector3.ONE if visual.get_parent() is RigidBody3D else visual.scale)
+	for a in 3:
+		if absf(size[a] - 2.0 * radius) > 0.04 * radius:
+			return "size %s" % size
+	return ""
 
 
 ## Same colour to the 8-bit linear vertex colours (dark channels lose up to ~5/255 in sRGB).
@@ -1034,7 +1056,7 @@ func check_ball_colours() -> void:
 		var colour: Color = COLOURS[id]
 		if lab.BALLS[id].color != colour or lab.BALLS[id].name != words[0]:
 			problems.append("%s: BALLS %s %s" % [id, lab.BALLS[id].name, lab.BALLS[id].color.to_html(false)])
-		var mesh_colour := _mesh_colour((lab.balls[id].get_node("Visual") as MeshInstance3D).mesh)
+		var mesh_colour := _ball_colour(lab.balls[id].get_node("Visual") as MeshInstance3D)
 		if not _near(mesh_colour, colour):
 			problems.append("%s: mesh %s" % [id, mesh_colour.to_html(false)])
 		if Color(series[id].color) != Color(colour.to_html(false)) or series[id].label != "%s 공" % words[1]:
@@ -1056,25 +1078,56 @@ func check_ball_colours() -> void:
 	for old in ["분홍", "주황", "ff4fa3", "ff7a1a"]:
 		if JSON.stringify(definition).contains(old):
 			problems.append("free-fall definition still has %s" % old)
-	# Every ball has its white band (the turn is seen); the drop pads are white / grey, no ball colour.
+	# Every ball is a yarn ball (the strands show the turn); the drop pads are white / grey, no ball colour.
 	for id in lab.ORDER:
-		if not _has_white((lab.balls[id].get_node("Visual") as MeshInstance3D).mesh):
-			problems.append("%s: no white band" % id)
+		var yarn := _yarn_problem(lab.balls[id].get_node("Visual") as MeshInstance3D, lab.BALL_RADIUS)
+		if yarn != "":
+			problems.append("%s: %s" % [id, yarn])
 		if _max_saturation((lab.props.pads[id] as MeshInstance3D).mesh) > 0.3 or _has_yellow((lab.props.pads[id] as MeshInstance3D).mesh):
 			problems.append("%s: the pad is coloured" % id)
 	await _free(lab)
 	var pj: Experiment = await _lab("projectile")
-	if not _has_white(pj._ball_visual.mesh) or _has_yellow(pj.props.pad.mesh):   # (its arm is blue)
-		problems.append("projectile ball band / pad colour")
+	var pj_yarn := _yarn_problem(pj._ball_visual, pj.BALL_RADIUS)   # (no launch pad since Task 4g)
+	if pj_yarn != "" or not _near(_ball_colour(pj._ball_visual), ArtPalette.RED):
+		problems.append("projectile ball: %s %s" % [pj_yarn, _ball_colour(pj._ball_visual).to_html(false)])
 	await _free(pj)
+	# The other balls are yarn balls too (2026-10-23 user decision "공은 다 털실로"), in their colours.
+	var col: Experiment = await _lab("collision")
+	for pair in [[col.props.spin_a, col.RADIUS_A, ArtPalette.BLUE], [col.props.spin_b, col.RADIUS_B, ArtPalette.ORANGE]]:
+		var yarn_c := _yarn_problem(pair[0], pair[1])
+		if yarn_c != "" or not _near(_ball_colour(pair[0]), pair[2]):
+			problems.append("collision ball: %s %s" % [yarn_c, _ball_colour(pair[0]).to_html(false)])
+	await _free(col)
+	var spring: Experiment = await _lab("spring")
+	var spring_yarn: MeshInstance3D = spring.ball.get_node("Visual/Yarn")
+	var yarn_s := _yarn_problem(spring_yarn, spring.BALL_RADIUS)
+	if yarn_s != "" or not _near(_ball_colour(spring_yarn), ArtPalette.ORANGE):
+		problems.append("spring ball: %s" % yarn_s)
+	await _free(spring)
+	# Pendulum bobs and the orbit's planet too (2026-10-23 user decision), in their colours.
+	var pend: Experiment = await _lab("constraints")
+	for i in pend.bobs.size():
+		var bob_yarn: MeshInstance3D = pend.bobs[i].get_node("Visual/Yarn")
+		var yarn_p := _yarn_problem(bob_yarn, pend.BOB_RADIUS)
+		if yarn_p != "" or not _near(_ball_colour(bob_yarn), [ArtPalette.BLUE, ArtPalette.ORANGE][i]):
+			problems.append("pendulum bob %d: %s %s" % [i, yarn_p, _ball_colour(bob_yarn).to_html(false)])
+	await _free(pend)
+	var orbit: Experiment = await _lab("orbit")
+	var planet_yarn: MeshInstance3D = orbit.planet.get_node("Visual/Yarn")
+	var yarn_o := _yarn_problem(planet_yarn, orbit.PLANET_RADIUS)
+	if yarn_o != "" or not _near(_ball_colour(planet_yarn), ArtPalette.BLUE):
+		problems.append("orbit planet: %s %s" % [yarn_o, _ball_colour(planet_yarn).to_html(false)])
+	await _free(orbit)
 	var dev: Experiment = await _lab("manipulation-dev")
 	for entry in dev.definition.observations:
 		var id: String = entry.id
 		if COLOURS.has(id):
 			if not str(entry.label).begins_with("%s 상자" % COLOUR_WORDS[id][1]):
 				problems.append("dev label %s" % entry.label)
-			var box_colour := _mesh_colour((dev.bodies[id].get_node("Visual") as MeshInstance3D).mesh)   # the lighter top face
-			if not (_near(box_colour, dev.BOXES[id][1]) or _near(box_colour, dev.BOXES[id][2])) or dev.BOXES[id][1] != COLOURS[id]:
+			var box_mat := (dev.bodies[id].get_node("Visual") as MeshInstance3D).material_override as ShaderMaterial
+			var accent_v: Vector4 = box_mat.get_shader_parameter("accent") if box_mat != null else Vector4.ZERO
+			var box_colour := Color(accent_v.x, accent_v.y, accent_v.z).linear_to_srgb()   # its parcel tape (Task 4g; linear)
+			if not _near(box_colour, dev.BOXES[id][1]) or dev.BOXES[id][1] != COLOURS[id]:
 				problems.append("dev box %s colour %s" % [id, box_colour.to_html(false)])
 	await _free(dev)
 	expect.call(problems.is_empty(),

@@ -79,13 +79,6 @@ static func stand_mesh(height: float, depth: float) -> Mesh:
 	return b.commit()
 
 
-static func load_mesh(size: float) -> Mesh:
-	var b := ArtKit.builder()
-	b.ao_height = size
-	b.add_rounded_box(Transform3D.IDENTITY, Vector3.ONE * size, 0.07, 1, ArtPalette.ORANGE, ArtPalette.ORANGE_TOP)
-	return b.commit()
-
-
 static func grip_mesh(size: Vector3) -> Mesh:
 	var b := ArtKit.builder()
 	b.ao_min = 0.9
@@ -116,7 +109,7 @@ func dress(experiment: Node3D, parts: Dictionary, sizes: Dictionary) -> void:
 	var stand_shadow := ArtKit.instance(shadow.commit(), ArtKit.shadow_material())
 	stand_shadow.name = "Shadow"
 	parts.stand.add_child(stand_shadow)
-	var load_visual := ArtKit.instance(load_mesh(sizes.load_size))
+	var load_visual := ArtKit.parcel_box(sizes.load_size)   # a parcel box (Task 4g)
 	load_visual.name = "Visual"
 	parts.load.add_child(load_visual)
 	juice = ArtJuice.new()

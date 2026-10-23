@@ -6,7 +6,7 @@
 ##   turned and scaled from the anchor to the bob centre every frame (the formula's position),
 ## - the path of each bob: white dots on its circle of radius L every 5 deg within +-75 deg (built
 ##   again only when the length changes),
-## - the bobs: string bob blue (the web's), rod bob orange (the web's is green, a background colour
+## - the bobs (yarn balls, Task 4g): string bob blue (the web's), rod bob orange (the web's is green, a background colour
 ##   here: art-direction.md section 2), with an ArtJuice each (shadow, pop, stretch; no landing),
 ## - reactions: release = stretch; reset = pop.
 class_name ConstraintsProps
@@ -57,11 +57,9 @@ static func stand_mesh(anchors: Array[Vector3]) -> Mesh:
 	return b.commit()
 
 
-static func bob_mesh(radius: float, color: Color) -> Mesh:
+## The hook on top of a bob (the bob itself is a yarn ball, Task 4g), where the link meets it.
+static func hook_mesh(radius: float) -> Mesh:
 	var b := ArtKit.builder()
-	b.ao_height = radius * 1.2
-	b.add_sphere(Transform3D.IDENTITY, radius, 4, BOB_SIDES, color)
-	# The hook on top, where the link meets the bob.
 	b.ao_min = 1.0
 	b.add_cylinder(Transform3D(Basis(), Vector3(0.0, radius * 0.85, 0.0)), 0.06, 0.06, 0.12, 6, ArtPalette.INK)
 	return b.commit()
@@ -100,9 +98,15 @@ func dress(experiment: Node3D, bobs: Array[RigidBody3D], anchors: Array[Vector3]
 		path.material_override = ArtKit.lit_material()
 		experiment.add_child(path)
 		paths.append(path)
-		var visual := ArtKit.instance(bob_mesh(radius, colors[i]))
+		var visual := Node3D.new()   # the juice squashes this node: a yarn ball (Task 4g) and its hook
 		visual.name = "Visual"
 		bobs[i].add_child(visual)
+		var yarn := ArtKit.yarn_ball(radius, colors[i])
+		yarn.name = "Yarn"
+		visual.add_child(yarn)
+		var hook := ArtKit.instance(hook_mesh(radius))
+		hook.name = "Hook"
+		visual.add_child(hook)
 		var juice := ArtJuice.new()
 		juice.name = "BobJuice%d" % i
 		juice.round_body = true

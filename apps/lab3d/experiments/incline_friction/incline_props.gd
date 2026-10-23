@@ -101,13 +101,6 @@ static func post_pose(pivot_height: float, angle_deg: float) -> Vector2:
 	return Vector2(-atan2(to_axle.x, to_axle.y), to_axle.length() - POST_INSET)
 
 
-func box_mesh(size: float) -> Mesh:
-	var b := ArtKit.builder()
-	b.ao_height = size * 0.6
-	b.add_rounded_box(Transform3D.IDENTITY, Vector3.ONE * size, 0.05, 1, ArtPalette.RED, ArtPalette.RED_TOP)
-	return b.commit()
-
-
 ## Island, static shadows, the incline's moving shadow and the box reactions.
 func dress(experiment: Node3D, stand_position: Vector3, box_body: RigidBody3D, box_visual: MeshInstance3D, box_size: float) -> void:
 	ArtKit.add_world(experiment, Vector3(-1.5, 0.0, -0.8), stand_position, 0.9)

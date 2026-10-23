@@ -66,6 +66,7 @@ var _auto_release_every := 0.0
 var _auto_release_left := 0.0
 var _demo_release_left := -1.0          # --auto-drag: seconds until the placed object is released
 var _state: Dictionary = {}             # capture_state() of a screen being rebuilt
+var _camera_home: Dictionary = {}       # the experiment's opening view (kept across a rebuild): 처음으로 snaps back to it
 var _updating := false                  # a control/action is running: refresh once afterwards
 var _graph_revision := -2               # Experiment.graph_revision() of the series on the graph
 
@@ -83,8 +84,8 @@ func capture_state() -> Dictionary:
 	var controls := {}
 	for control in definition.controls:
 		controls[control.id] = experiment.control_value(control.id)
-	return {"controls": controls, "camera": view.rig.get_state(), "placements": experiment.placements(),
-		"sidebar": is_sidebar_open()}
+	return {"controls": controls, "camera": view.rig.get_state(), "camera_home": _camera_home,
+		"placements": experiment.placements(), "sidebar": is_sidebar_open()}
 
 
 func _ready() -> void:
@@ -114,10 +115,13 @@ func _ready() -> void:
 	_on_mode_changed(view.rig.mode)
 	resized.connect(_layout)
 	_layout()
+	_camera_home = view.rig.get_state()   # the definition's view (before a restored, user-turned one)
 	if not _state.is_empty():
+		_camera_home = _state.get("camera_home", _camera_home)
 		_restore_state()
 	elif apply_launch_args:
 		_apply_launch_args()
+		_camera_home = view.rig.get_state()   # a measurement's --camera is the view it opens with
 	_refresh()
 	Bench.reset(definition.get("bench_id", definition.id))
 
@@ -125,13 +129,14 @@ func _ready() -> void:
 func _restore_state() -> void:
 	var controls: Dictionary = _state.get("controls", {})
 	_updating = true
-	experiment.begin_batch()
-	for id in controls:
-		experiment.set_control(id, controls[id])
 	var placements: Dictionary = _state.get("placements", {})
-	for id in placements:
-		experiment.manipulation_placed(id, placements[id])
-	experiment.end_batch()
+	experiment.change_from_input(func() -> void:
+		experiment.begin_batch()
+		for id in controls:
+			experiment.set_control(id, controls[id])
+		for id in placements:
+			experiment.manipulation_placed(id, placements[id])
+		experiment.end_batch())
 	_updating = false
 	view.rig.set_state(_state.get("camera", {}))   # emits mode_changed; setup() refreshes once
 	if _state.get("sidebar", false):
@@ -525,21 +530,29 @@ func _run_measured_action(id: String) -> void:
 		return
 	if manipulator != null and manipulator.selected_id != "":
 		manipulator.select("")
-	experiment.run_action(id)
+	experiment.change_from_input(experiment.run_action.bind(id))
 
 
 func experiment_action(id: String) -> void:
 	_drop_held_object()
 	_updating = true
-	experiment.run_action(id)
+	experiment.change_from_input(experiment.run_action.bind(id))
 	_updating = false
+	if id == "reset":
+		_snap_camera_home()
 	_refresh()
+
+
+## 처음으로: the camera back to the view the screen opened with, at once (no easing).
+func _snap_camera_home() -> void:
+	if not _camera_home.is_empty():
+		view.rig.set_state(_camera_home)
 
 
 func _set_control(id: String, value: Variant) -> void:
 	_drop_held_object()
 	_updating = true
-	experiment.set_control(id, value)
+	experiment.change_from_input(experiment.set_control.bind(id, value))
 	_updating = false
 	# Only this control's conditions changed: sync it, then redraw the readouts and the series.
 	_sync_control(id)

@@ -8,6 +8,7 @@ class_name ArtKit
 extends RefCounted
 
 const SHADER := preload("res://scripts/art/art_lit.gdshader")
+const TEXTURE_SHADER := preload("res://scripts/art/art_lit_tex.gdshader")
 ## The island top (build_island): a 14-sided prism of circumradius ISLAND_RADIUS around its centre.
 const ISLAND_RADIUS := 11.0
 const ISLAND_SIDES := 14
@@ -16,7 +17,24 @@ const LIGHT_THRESHOLD := 0.55
 const LIGHT_SOFTNESS := 0.03
 const SKY_FILL := 0.1
 
+## The yarn ball (Task 4g, 2026-10-23 user request: every ball is a yarn ball, which cats like):
+## art_src/props/yarn_ball.py -> assets/props/yarn_ball.glb, a sphere of radius YARN_RADIUS with a
+## grey wound-yarn texture. Loaded once.
+const YARN_SCENE := preload("res://assets/props/yarn_ball.glb")
+const YARN_RADIUS := 0.25
+
+## The parcel box (Task 4g, 2026-10-23 user decision: the boxes look like parcels):
+## art_src/props/parcel_box.py -> assets/props/parcel_box.glb, a 1 m cube with a cardboard texture
+## whose tape and label stripe (alpha 0) take an accent colour.
+const PARCEL_SCENE := preload("res://assets/props/parcel_box.glb")
+
 static var _lit: ShaderMaterial
+static var _parcel_src: Mesh
+static var _parcel_meshes := {}   # size -> the parcel baked to it
+static var _yarn_mesh: Mesh
+static var _yarn_texture_mean := -1.0
+static var _yarn_materials := {}   # Color -> ShaderMaterial (one per colour, shared by its balls)
+static var _parcel_materials := {} # accent Color -> ShaderMaterial
 static var _shadow: StandardMaterial3D
 
 
@@ -32,6 +50,91 @@ static func lit_material() -> ShaderMaterial:
 		_lit.set_shader_parameter("softness", LIGHT_SOFTNESS)
 		_lit.set_shader_parameter("sky_fill", SKY_FILL)
 	return _lit
+
+
+## The same light on a textured model (art_lit_tex.gdshader: a model with one texture atlas and
+## smooth normals, the bread cat): a softer ramp and a lighter shade side than the faceted props.
+static func lit_texture_material(texture: Texture2D, softness := 0.18, shade_mix := 0.35) -> ShaderMaterial:
+	var m := ShaderMaterial.new()
+	m.shader = TEXTURE_SHADER
+	m.set_shader_parameter("albedo_texture", texture)
+	m.set_shader_parameter("sun_dir", SUN_DIR)
+	m.set_shader_parameter("lit_color", ArtPalette.LIGHT)
+	m.set_shader_parameter("shade_color", ArtPalette.SHADE)
+	m.set_shader_parameter("threshold", LIGHT_THRESHOLD)
+	m.set_shader_parameter("softness", softness)
+	m.set_shader_parameter("sky_fill", SKY_FILL)
+	m.set_shader_parameter("shade_mix", shade_mix)
+	return m
+
+
+## A yarn ball of `radius` in `color` (the grey texture times the colour, the island light; the
+## strands in many directions show it turning; one cached material per colour, shared: never change
+## it on an instance). The node is scaled to the radius: a parent that
+## animates it (ArtJuice) must be another node.
+static func yarn_ball(radius: float, color: Color) -> MeshInstance3D:
+	if _yarn_mesh == null:
+		var model: Node = YARN_SCENE.instantiate()
+		_yarn_mesh = (model.find_children("*", "MeshInstance3D", true, false)[0] as MeshInstance3D).mesh
+		model.free()
+	if not _yarn_materials.has(color):
+		var texture := (_yarn_mesh.surface_get_material(0) as BaseMaterial3D).albedo_texture
+		var material := lit_texture_material(texture, 0.18, 0.6)
+		# Divided by the texture's mean (linear): the ball's average is its colour, the strands lighter
+		# and darker shades of it (2026-10-23 user request: as vivid as the palette colours).
+		var lin := color.srgb_to_linear()
+		var k := 1.0 / _yarn_mean(texture)
+		# A Vector4, not a Color: the renderers convert Color uniforms differently (Compatibility never,
+		# Mobile always), a vector reaches the shader as it is (linear).
+		material.set_shader_parameter("tint", Vector4(lin.r * k, lin.g * k, lin.b * k, 1.0))
+		_yarn_materials[color] = material
+	var ball := instance(_yarn_mesh, _yarn_materials[color])
+	ball.scale = Vector3.ONE * (radius / YARN_RADIUS)
+	return ball
+
+
+## Mean of the yarn texture in linear light (measured once).
+static func _yarn_mean(texture: Texture2D) -> float:
+	if _yarn_texture_mean < 0.0:
+		var image := texture.get_image()
+		image.decompress()
+		image.resize(64, 32, Image.INTERPOLATE_BILINEAR)
+		var sum := 0.0
+		for y in image.get_height():
+			for x in image.get_width():
+				sum += image.get_pixel(x, y).srgb_to_linear().r
+		_yarn_texture_mean = maxf(sum / (image.get_width() * image.get_height()), 0.05)
+	return _yarn_texture_mean
+
+
+static func yarn_mesh() -> Mesh:
+	return _yarn_mesh
+
+
+## The parcel box mesh baked to a cube of `size` (uniform: the texture is not stretched; cached).
+static func parcel_mesh(size: float) -> Mesh:
+	if _parcel_src == null:
+		var model: Node = PARCEL_SCENE.instantiate()
+		_parcel_src = (model.find_children("*", "MeshInstance3D", true, false)[0] as MeshInstance3D).mesh
+		model.free()
+	if not _parcel_meshes.has(size):
+		var st := SurfaceTool.new()
+		st.append_from(_parcel_src, 0, Transform3D(Basis.from_scale(Vector3.ONE * size), Vector3.ZERO))
+		_parcel_meshes[size] = st.commit()
+	return _parcel_meshes[size]
+
+
+## A parcel box of `size` with its tape and label stripe in `accent` (brown packing tape by default;
+## the development scene's boxes are told apart by it). The island light like the faceted props.
+## One material per accent (cached, shared: never change it on an instance), like yarn_ball's per colour.
+static func parcel_box(size: float, accent := ArtPalette.TAPE) -> MeshInstance3D:
+	var mesh := parcel_mesh(size)
+	if not _parcel_materials.has(accent):
+		var material := lit_texture_material((_parcel_src.surface_get_material(0) as BaseMaterial3D).albedo_texture, LIGHT_SOFTNESS, 1.0)
+		var accent_lin := accent.srgb_to_linear()
+		material.set_shader_parameter("accent", Vector4(accent_lin.r, accent_lin.g, accent_lin.b, 1.0))   # linear, as a vector (see yarn_ball)
+		_parcel_materials[accent] = material
+	return instance(mesh, _parcel_materials[accent])
 
 
 ## Unshaded alpha-blended vertex colour (blob shadows on the ground). It is in the transparent

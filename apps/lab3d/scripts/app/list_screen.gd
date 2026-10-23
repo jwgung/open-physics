@@ -7,6 +7,7 @@ signal experiment_chosen(definition: Dictionary)
 signal settings_requested
 
 var definitions: Array[Dictionary] = []
+var _scroll: ScrollContainer
 
 
 func _ready() -> void:
@@ -29,6 +30,7 @@ func _ready() -> void:
 	row.add_child(settings)
 
 	var scroll := Ui.scroller()
+	_scroll = scroll
 	layout.add_child(scroll)
 	var pad := Ui.margin(24)
 	pad.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -47,13 +49,19 @@ func _ready() -> void:
 		column.add_child(_card(definition))
 
 
+## One card in one line (2026-10-23 user request): [icon] [title / question] ...... [실험 시작], the icon and
+## the button centred on the text block's height, the text taking the width left (a long question
+## wraps; the button stays at the right). A tap anywhere on the card starts the experiment too (a
+## drag to scroll does not).
 func _card(definition: Dictionary) -> Control:
 	var card := Ui.panel()
+	card.name = "Card_%s" % definition.id
 	var row := Ui.hbox(16)
 	card.add_child(row)
 	var badge := Ui.panel("IconBadge")
+	badge.name = "Badge"
 	badge.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	badge.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	badge.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	var icon := Ui.label(definition.get("icon", "•"), "BadgeLabel")
 	icon.custom_minimum_size = Vector2(40, 40)
 	icon.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -61,11 +69,44 @@ func _card(definition: Dictionary) -> Control:
 	badge.add_child(icon)
 	row.add_child(badge)
 	var text := Ui.vbox(8)
+	text.name = "Text"
+	text.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	text.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	text.add_child(Ui.label(definition.title, "HeadingLabel", true))
 	text.add_child(Ui.label(definition.question, "MutedLabel", true))
-	var start := Ui.button("실험 시작", "PrimaryButton", 60)
-	start.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	start.pressed.connect(experiment_chosen.emit.bind(definition))
-	text.add_child(start)
 	row.add_child(text)
+	var start := Ui.button("실험 시작", "PrimaryButton", 60)
+	start.name = "Start"
+	start.size_flags_horizontal = Control.SIZE_SHRINK_END
+	start.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	start.pressed.connect(experiment_chosen.emit.bind(definition))
+	row.add_child(start)
+	_tap_to_start(card, definition)
 	return card
+
+
+const TAP_SLOP := 12.0   # UI units a press may move on screen and still count as a tap on the card
+
+
+## A press and release on the card within TAP_SLOP on screen, with the list not scrolled meanwhile,
+## starts the experiment. Screen points (global_position), not the card's: a scroll drag moves the
+## card with the finger, so its local press and release points stay the same (PR #16 review). A move
+## beyond TAP_SLOP while pressed, or the list scrolling (the ScrollContainer's drag), cancels the tap.
+func _tap_to_start(card: Control, definition: Dictionary) -> void:
+	var down := [Vector2.INF, 0]   # screen point of the press, the list's scroll then
+	card.mouse_filter = Control.MOUSE_FILTER_PASS   # the scroller still gets the drag
+	card.gui_input.connect(func(event: InputEvent) -> void:
+		if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+			if event.pressed:
+				down[0] = event.global_position
+				down[1] = _scroll.scroll_vertical
+			elif down[0] != Vector2.INF and event.global_position.distance_to(down[0]) <= TAP_SLOP \
+					and _scroll.scroll_vertical == down[1]:
+				down[0] = Vector2.INF
+				experiment_chosen.emit(definition)
+			else:
+				down[0] = Vector2.INF
+		elif event is InputEventMouseMotion and down[0] != Vector2.INF \
+				and event.global_position.distance_to(down[0]) > TAP_SLOP:
+			down[0] = Vector2.INF)
+	_scroll.scroll_started.connect(func() -> void: down[0] = Vector2.INF)

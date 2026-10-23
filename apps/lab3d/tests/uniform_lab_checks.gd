@@ -730,7 +730,7 @@ func check_projectile_art() -> void:
 		and points[0].distance_to(Vector3(center.x + want.x, want.y + lab.BALL_RADIUS, center.z)) < 1e-4,
 		"projectile: the formula path is at most %d dots on x(t), y(t) (one MultiMesh)" % ProjectileProps.PATH_DOTS, "%d dots" % path.visible_instance_count)
 	var draw_nodes := lab.find_children("*", "GeometryInstance3D", true, false).size()
-	expect.call(draw_nodes <= 16, "projectile: at most 16 drawn 3D nodes (art budget)", "%d" % draw_nodes)
+	expect.call(draw_nodes <= 21, "projectile: at most 21 drawn 3D nodes (art budget: 13 + the bread cat's 7 + its stand, Task 4g)", "%d" % draw_nodes)
 	await _free(lab)
 
 

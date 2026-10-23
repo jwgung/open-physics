@@ -4,7 +4,8 @@
 ## - the rail: a yellow lane (14 x 1.4 m) between two white guide rails, white metre ticks, a white
 ##   middle mark between the two start halves and blue bumpers at both walls (visual: the walls are
 ##   the formula's),
-## - ball A blue, ball B orange (the web's object colours, from the palette), each with a white band
+## - ball A blue, ball B orange (the web's object colours, from the palette), yarn balls (Task 4g;
+##   until then each with a white band)
 ##   that shows it rolling, its ArtJuice (shadow, dust, squash) and a yellow knob above it,
 ## - one arrow per ball above it: the purple velocity arrow to the knob while waiting (the web's
 ##   purple arrow), the momentum arrow p = mv in the ball's colour while it moves (the web's
@@ -57,17 +58,6 @@ func track_mesh(wall: float) -> Mesh:
 	return b.commit()
 
 
-## A low-poly ball with a white band around its x axis (turns with the rolling).
-static func ball_mesh(radius: float, color: Color) -> Mesh:
-	var b := ArtKit.builder()
-	b.ao_height = radius * 1.2
-	b.add_sphere(Transform3D.IDENTITY, radius, 4, 7, color)
-	b.ao_min = 1.0
-	var along_x := Basis(Vector3.BACK, -PI * 0.5)
-	b.add_cylinder(Transform3D(along_x, Vector3(-radius * 0.1, 0.0, 0.0)), radius * 1.02, radius * 1.02, radius * 0.2, 7, ArtPalette.WHITE, false)
-	return b.commit()
-
-
 ## The force pair: two arrows from the contact (the origin) pointing apart along x.
 static func force_pair_mesh() -> Mesh:
 	var b := ArtKit.builder()
@@ -111,7 +101,7 @@ func _dress_ball(experiment: Node3D, ball: RigidBody3D, radius: float, color: Co
 	var visual := Node3D.new()
 	visual.name = "Visual"
 	ball.add_child(visual)
-	var spin := ArtKit.instance(ball_mesh(radius, color))
+	var spin := ArtKit.yarn_ball(radius, color)   # a yarn ball (Task 4g); it turns with the rolling
 	spin.name = "Spin"
 	visual.add_child(spin)
 	var juice := ArtJuice.new()

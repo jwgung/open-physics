@@ -19,8 +19,10 @@
 ##   one, a second finger, or a system cancel puts it back where it was picked up.
 ## - The camera turns to show the surface while dragging if the view is too flat (CameraRig.begin_assist).
 ## Work per input event: at most one ray (pick) and one shape query (only when the grid target or
-## the height changes). _process allocates nothing; a pointer event makes a few small values (the
-## finger ray, one projected point).
+## the height changes). A pointer event makes a few small values (the finger ray, one projected
+## point); every move of the held body goes through Experiment.change_from_input (BodyResync, one
+## scan of the experiment's rigid bodies). _process allocates nothing unless the camera turned under
+## a held object (then it moves the body like a pointer event).
 class_name Manipulator
 extends Node3D
 
@@ -150,13 +152,15 @@ func cancel(shake := false) -> void:
 	if mode == "":
 		return
 	var id := active_id
-	_body.global_transform = _start_xf
-	if _body is RigidBody3D:
-		(_body as RigidBody3D).freeze = _start_freeze
+	var body := _body
 	var juice := experiment.manipulation_juice(id)
 	_finish()
 	notifying = true
-	experiment.manipulation_cancelled(id)
+	experiment.change_from_input(func() -> void:   # the body stays put back (BodyResync)
+		body.global_transform = _start_xf
+		if body is RigidBody3D:
+			(body as RigidBody3D).freeze = _start_freeze
+		experiment.manipulation_cancelled(id))
 	notifying = false
 	if juice:
 		juice.hold(false)
@@ -201,7 +205,7 @@ func _move(position: Vector2) -> void:
 		var h := _snap_height(rule, s - _grab_height - _lift)
 		if not is_equal_approx(h, height):
 			height = h
-			_body.global_transform = _surface.pose(_held, _lift + height)
+			_move_body(_surface.pose(_held, _lift + height))
 			_target_set = false
 			_update_target()
 			_update_handle()
@@ -215,8 +219,13 @@ func _drag_to(position: Vector2) -> void:
 	if finger == null:
 		return   # grazing ray: keep the object where it is
 	_held = _surface.clamp_soft(finger + _grab, SOFT_MARGIN)
-	_body.global_transform = _surface.pose(_held, _lift + height)
+	_move_body(_surface.pose(_held, _lift + height))
 	_update_target()
+
+
+## The held object to `xf` from input: it stays there through the next fixed step (BodyResync).
+func _move_body(xf: Transform3D) -> void:
+	experiment.change_from_input(func() -> void: _body.global_transform = xf)
 
 
 ## The camera turned while an object is held (the assist, or a mode button): a drag puts the object
@@ -242,11 +251,13 @@ func _release() -> void:
 	var id := active_id
 	var was_drag := mode == "drag"
 	var xf := _surface.pose(target, _lift + height)
-	_body.global_transform = xf
+	var body := _body
 	var juice := experiment.manipulation_juice(id)
 	_finish()
 	notifying = true
-	experiment.manipulation_placed(id, xf)
+	experiment.change_from_input(func() -> void:   # the body stays where it was put (BodyResync)
+		body.global_transform = xf
+		experiment.manipulation_placed(id, xf))
 	notifying = false
 	_placed_last = true
 	if juice:
@@ -270,12 +281,13 @@ func _begin(id: String, kind: String, position: Vector2) -> void:
 	mode = kind
 	_start_xf = body.global_transform
 	_start_freeze = (body as RigidBody3D).freeze if body is RigidBody3D else false
-	experiment.manipulation_started(id)
-	if body is RigidBody3D:
-		var rigid := body as RigidBody3D
-		rigid.freeze = true
-		rigid.linear_velocity = Vector3.ZERO
-		rigid.angular_velocity = Vector3.ZERO
+	experiment.change_from_input(func() -> void:   # what the lab changes on pick-up stays (BodyResync)
+		experiment.manipulation_started(id)
+		if body is RigidBody3D:
+			var rigid := body as RigidBody3D
+			rigid.freeze = true
+			rigid.linear_velocity = Vector3.ZERO
+			rigid.angular_velocity = Vector3.ZERO)
 	_lift = _half_extents(id).y
 	var p := surface.to_plane(body.global_position)
 	var above := surface.height_of(body.global_position) - _lift
@@ -299,7 +311,7 @@ func _begin(id: String, kind: String, position: Vector2) -> void:
 			# Picked up off its surface (e.g. the box lying on the floor): it jumps under the finger.
 			_held = surface.clamp_soft(finger if finger != null else surface.nearest_inside(p), SOFT_MARGIN)
 			_grab = Vector2.ZERO
-		_body.global_transform = surface.pose(_held, _lift + height)
+		_move_body(surface.pose(_held, _lift + height))
 		select("")   # the handle (of this or another object) hides while dragging
 		var juice := experiment.manipulation_juice(id)
 		if juice:

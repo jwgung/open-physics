@@ -41,6 +41,8 @@ var _floor: StaticBody3D
 var _preview := PackedFloat64Array()   # (direction, speed, radius) the held preview shows
 var _chosen := PackedFloat64Array([0.0, 0.0])   # (direction, speed) the waiting arrow shows (reused every frame)
 var _surface: OrbitArrowSurface
+var _analyzed_key := PackedFloat64Array()   # (radius, vx, vz) of _analyzed
+var _analyzed: Dictionary = {}
 var _surface_at := Vector3.INF         # planet position the cached surface was built for
 
 
@@ -107,7 +109,7 @@ func _load_model() -> void:
 	model.cz = 0.0
 	var v := launch_velocity(direction, speed)
 	model.reset(start_radius, v[0], v[1])
-	prediction = PhysicsLaws.orbit_analyze(start_radius, 0.0, v[0], v[1], 0.0, 0.0, MU, CRASH_RADIUS)
+	prediction = analyze(start_radius, v[0], v[1])
 
 
 ## The planet waits at its start with the launch arrow; the prediction is shown.
@@ -185,9 +187,20 @@ func _show_waiting() -> void:
 	_preview[0] = chosen[0]
 	_preview[1] = chosen[1]
 	_preview[2] = radius
-	var preview := PhysicsLaws.orbit_analyze(radius, 0.0, v[0], v[1], 0.0, 0.0, MU, CRASH_RADIUS)
+	var preview := analyze(radius, v[0], v[1])
 	props.set_guide(radius)
 	props.set_path(preview.path, preview.outcome)
+
+
+## PhysicsLaws.orbit_analyze of a launch from (radius, 0) with (vx, vz), the last one remembered: the
+## held preview, the put-down and the launch ask for the same launch one after another (SM-P200: up
+## to 5 ms each).
+func analyze(radius: float, vx: float, vz: float) -> Dictionary:
+	if _analyzed_key.size() == 3 and _analyzed_key[0] == radius and _analyzed_key[1] == vx and _analyzed_key[2] == vz:
+		return _analyzed
+	_analyzed_key = PackedFloat64Array([radius, vx, vz])
+	_analyzed = PhysicsLaws.orbit_analyze(radius, 0.0, vx, vz, 0.0, 0.0, MU, CRASH_RADIUS)
+	return _analyzed
 
 
 ## ready (waiting), held, orbiting (bound, flying), leaving (unbound, flying), crash, far.

@@ -1,10 +1,10 @@
 ## Dugi's dialogue (Phase 1 Task 4h, art-direction.md section 12): an old-school game dialogue box in
 ## the app's storybook look. A cream, slightly see-through rounded box with the characters' brown
 ## outline runs along the bottom of the 3D view from the left margin up to the action buttons (or to
-## Dugi on the view, whichever is nearer); a name tag "두기두기" sits on its top edge, a bust portrait
-## of Dugi (assets/characters/portraits, rendered from the model by art_src/characters/
-## dugi_portrait.py) stands on its right end and overlaps the top edge, and a blinking ▼ shows when
-## the page is fully shown.
+## Dugi on the view, whichever is nearer); a bust portrait of Dugi always stands on its left end and
+## overlaps the top edge (a hand-drawn 2D storybook illustration, assets/characters/portraits, drawn
+## by art_src/characters/dugi_portrait_2d.py), the name tag "두기두기" sits on the top edge beside it,
+## and a blinking ▼ shows when the page is fully shown.
 ##
 ## The words are the lab's observe text exactly, only split into pages of at most LINES lines at
 ## the spaces (joined() is the text again). Each page types out at
@@ -26,7 +26,8 @@ const BLINK_HZ := 2.0
 const BOX_PAD := Vector2(22.0, 14.0)        # inner padding (x, y)
 const NAME_LIFT := 18.0                     # the name tag rises this far above the box
 const PORTRAIT_SIZE := 236.0
-const PORTRAIT_INSET := 6.0                 # from the box's right end
+const PORTRAIT_INSET := 6.0                 # from the box's left end
+const PORTRAIT_SHARE := 0.94                # of the portrait's width the words keep clear of (the stick)
 const MIN_TEXT_WIDTH := 300.0
 const MORE_ROOM := 30.0                     # right of the text: the ▼
 const PORTRAITS := {
@@ -43,9 +44,9 @@ var label: Label
 var more: Label
 var portrait: TextureRect
 var active := false
-## Where the portrait stands: "right" (the box's right end) or "left" (it would cover what Dugi
-## points at); "" until the dialogue lays out to open.
-var side := ""
+## The last layout would cover a `keep` point (what Dugi points at). The portrait always stands on
+## the left; the experiments' placements keep the target above the box (tests check every one).
+var covers_keep := false
 var page := 0
 ## [page text, separator before the next page] for the current width.
 var _pages: Array = []
@@ -144,10 +145,10 @@ func joined() -> String:
 # --- layout -----------------------------------------------------------------------------------
 
 ## Lays the box out inside `view` (local units): from the left margin to `right` (the action buttons'
-## or Dugi's left edge), bottom-aligned. The portrait stands on the box's right end, or on its left
-## end when it would cover a `keep` point (what Dugi points at); the side is chosen when the dialogue
-## opens and kept while it is open. Returns false when the room is too narrow, or when the box itself
-## would cover a keep point (then it hides).
+## or Dugi's left edge), bottom-aligned, the portrait on its left end. `keep` points (what Dugi
+## points at) are not moved around: covers_keep tells whether the layout covers one (the
+## experiments' placements keep the target above the box; tests check it). Returns false when the
+## room is too narrow (then it hides).
 func layout(view: Rect2, right: float, margin: float, keep: Array[Vector2] = []) -> bool:
 	var font := label.get_theme_font("font")
 	var size_px := label.get_theme_font_size("font_size")
@@ -156,34 +157,25 @@ func layout(view: Rect2, right: float, margin: float, keep: Array[Vector2] = [])
 	var height := BOX_PAD.y * 2.0 + line_h * LINES + box_style.get_minimum_size().y
 	var left := view.position.x + margin
 	var width := right - margin - left
-	var text_width := width - BOX_PAD.x * 2.0 - PORTRAIT_SIZE * 0.82 - box_style.get_minimum_size().x - MORE_ROOM
+	var text_width := width - BOX_PAD.x * 2.0 - PORTRAIT_SIZE * PORTRAIT_SHARE - box_style.get_minimum_size().x - MORE_ROOM
 	if text_width < MIN_TEXT_WIDTH:
 		return false
 	var top := view.end.y - margin - height
 	var origin := Vector2(left, top - (PORTRAIT_SIZE - height))
 	var box_rect := Rect2(origin + Vector2(0.0, PORTRAIT_SIZE - height), Vector2(width, height))
-	if keep.any(func(k: Vector2) -> bool: return box_rect.grow(6.0).has_point(k)):
-		return false
-	if not active or side == "":
-		var right_rect := Rect2(origin + Vector2(width - PORTRAIT_SIZE - PORTRAIT_INSET, 0.0), Vector2(PORTRAIT_SIZE, PORTRAIT_SIZE))
-		side = "left" if keep.any(func(k: Vector2) -> bool: return right_rect.grow(6.0).has_point(k)) else "right"
+	var portrait_rect := Rect2(origin + Vector2(PORTRAIT_INSET, 0.0), Vector2(PORTRAIT_SIZE, PORTRAIT_SIZE)).grow(6.0)
+	covers_keep = keep.any(func(k: Vector2) -> bool: return box_rect.grow(6.0).has_point(k) or portrait_rect.has_point(k))
 	box.position = Vector2(0.0, PORTRAIT_SIZE - height)
 	box.size = Vector2(width, height)
 	position = origin
 	size = Vector2(width, PORTRAIT_SIZE)
 	portrait.size = Vector2(PORTRAIT_SIZE, PORTRAIT_SIZE)
 	var inset := BOX_PAD.x + box_style.get_margin(SIDE_LEFT)
-	if side == "right":
-		portrait.position = Vector2(width - PORTRAIT_SIZE - PORTRAIT_INSET, 0.0)
-		label.position = box.position + Vector2(inset, BOX_PAD.y + box_style.get_margin(SIDE_TOP))
-		more.position = Vector2(label.position.x + text_width + 6.0, box.position.y + height - BOX_PAD.y - more.get_minimum_size().y)
-		name_tag.position = Vector2(BOX_PAD.x, box.position.y - NAME_LIFT)
-	else:
-		portrait.position = Vector2(PORTRAIT_INSET, 0.0)
-		var text_left := PORTRAIT_INSET + PORTRAIT_SIZE * 0.82 + BOX_PAD.x
-		label.position = box.position + Vector2(text_left, BOX_PAD.y + box_style.get_margin(SIDE_TOP))
-		more.position = Vector2(label.position.x + text_width + 6.0, box.position.y + height - BOX_PAD.y - more.get_minimum_size().y)
-		name_tag.position = Vector2(text_left - 4.0, box.position.y - NAME_LIFT)
+	portrait.position = Vector2(PORTRAIT_INSET, 0.0)
+	var text_left := PORTRAIT_INSET + PORTRAIT_SIZE * PORTRAIT_SHARE + BOX_PAD.x
+	label.position = box.position + Vector2(text_left, BOX_PAD.y + box_style.get_margin(SIDE_TOP))
+	more.position = Vector2(label.position.x + text_width + 6.0, box.position.y + height - BOX_PAD.y - more.get_minimum_size().y)
+	name_tag.position = Vector2(text_left - 4.0, box.position.y - NAME_LIFT)
 	label.size = Vector2(text_width, line_h * LINES)
 	name_tag.size = name_tag.get_combined_minimum_size()
 	if not is_equal_approx(text_width, _text_width):
@@ -214,7 +206,6 @@ func close(quiet := false) -> void:
 		return
 	active = false
 	visible = false
-	side = ""
 	if not quiet:
 		closed.emit()
 
@@ -244,8 +235,8 @@ func _show_page(restart: bool) -> void:
 		_shown = 0.0
 	_read_left = _read_time()
 	if not _pages.is_empty():
-		# The pointing bust points left: only when it stands on the right end, towards the words.
-		portrait.texture = PORTRAITS.point if page == 0 and side != "left" else PORTRAITS.talk
+		# The pointing bust holds the stick out to the right: towards the words and the scene.
+		portrait.texture = PORTRAITS.point if page == 0 else PORTRAITS.talk
 	_refresh()
 
 

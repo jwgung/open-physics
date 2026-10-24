@@ -566,6 +566,8 @@ func check_layout(id: String) -> void:
 					problems.append("dialogue covers Dugi")
 				if r.grow(4.0).has_point(screen.view_point(lab.explain_point())):
 					problems.append("dialogue covers what Dugi points at")
+			if box.portrait.position.x > box.size.x * 0.5:
+				problems.append("portrait not on the left")
 		expect.call(problems.is_empty(), "cast (%s, %s): Dugi and Puppy in the front view clear of the overlays; Dugi hides no apparatus, motion or cat; Puppy over none of them nor Dugi; the dialogue clear of the controls, cards, Dugi and what he points at (none beside the open sidebar)" % [id, setup[2]],
 			"; ".join(problems))
 		await _close(screen)

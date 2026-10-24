@@ -21,7 +21,7 @@ const GRAVITY_MAX := 2.5
 const DASHES := 48
 
 var juice: ArtJuice
-var guide: MeshInstance3D
+var guide: MultiMeshInstance3D
 var path: MultiMeshInstance3D
 var velocity_arrow: VelocityArrow
 var gravity_arrow: VelocityArrow
@@ -56,15 +56,23 @@ static func stage_mesh(star_y: float, star_radius: float) -> Mesh:
 	return b.commit()
 
 
-## A dashed circle of `radius` around the origin (level).
-static func guide_mesh(radius: float) -> Mesh:
+## One dash of the guide circle: 1 m long (x), 0.03 m tall, 0.05 m wide; each instance stretches
+## it along x to its length (guide_dash).
+static func dash_mesh() -> Mesh:
 	var b := ArtKit.builder()
 	b.ao_min = 1.0
-	var dash := TAU * radius / DASHES * 0.55
-	for i in DASHES:
-		var a := TAU * i / DASHES
-		b.add_rounded_box(Transform3D(Basis(Vector3.UP, -a + PI * 0.5), Vector3(cos(a) * radius, 0.0, sin(a) * radius)), Vector3(dash, 0.03, 0.05), 0.0, 1, ArtPalette.WHITE)
+	b.add_rounded_box(Transform3D.IDENTITY, Vector3(1.0, 0.03, 0.05), 0.0, 1, ArtPalette.WHITE)
 	return b.commit()
+
+
+## Dash `i` of the dashed circle of `radius` around the origin (level): DASHES dashes, each 55 % of
+## its arc, along the circle. A transform of the one dash mesh (moving the circle to another radius
+## sets DASHES transforms instead of building a mesh: SM-P200 spent 18-39 ms per guide mesh while the
+## planet was dragged, 2026-10-24).
+static func guide_dash(i: int, radius: float) -> Transform3D:
+	var a := TAU * i / DASHES
+	var dash := TAU * radius / DASHES * 0.55
+	return Transform3D(Basis(Vector3.UP, -a + PI * 0.5).scaled_local(Vector3(dash, 1.0, 1.0)), Vector3(cos(a) * radius, 0.0, sin(a) * radius))
 
 
 static func dot_mesh(color: Color) -> Mesh:
@@ -92,8 +100,14 @@ func dress(experiment: Node3D, planet: RigidBody3D, planet_radius: float, knob: 
 	juice.dust_amount = 10
 	experiment.add_child(juice)
 	juice.setup(planet, visual, planet_radius * 2.0)
-	guide = MeshInstance3D.new()
+	var guide_multimesh := MultiMesh.new()
+	guide_multimesh.transform_format = MultiMesh.TRANSFORM_3D
+	guide_multimesh.mesh = dash_mesh()
+	guide_multimesh.instance_count = DASHES
+	guide_multimesh.visible_instance_count = 0
+	guide = MultiMeshInstance3D.new()
 	guide.name = "Guide"
+	guide.multimesh = guide_multimesh
 	guide.material_override = ArtKit.lit_material()
 	guide.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	experiment.add_child(guide)
@@ -120,12 +134,14 @@ func dress(experiment: Node3D, planet: RigidBody3D, planet_radius: float, knob: 
 	knob_visual = knob.get_node("Visual")
 
 
-## The dashed circular-orbit guide at `radius` (rebuilt only when the radius changes).
+## The dashed circular-orbit guide at `radius` (moved only when the radius changes).
 func set_guide(radius: float) -> void:
 	if guide == null or radius == _guide_radius:
 		return
 	_guide_radius = radius
-	guide.mesh = guide_mesh(radius)
+	for i in DASHES:
+		guide.multimesh.set_instance_transform(i, guide_dash(i, radius))
+	guide.multimesh.visible_instance_count = DASHES
 	guide.position = Vector3(0.0, _plane_y, 0.0)
 
 

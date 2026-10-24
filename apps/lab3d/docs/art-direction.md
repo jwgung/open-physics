@@ -14,7 +14,7 @@ Phase 1 Task 2c에서 정한 3D 앱의 시각 기준이다. 사용자가 시안 
 | `scripts/app/ui_theme.gd`, `island_banner.gd` | 2D 패널 테마, 목록 화면 머리 그림 |
 | `experiments/incline_friction/incline_props.gd` (`InclineProps`) | 빗면 실험의 소품(빗면·받침·상자·출발선·눈금)과 연출 연결 |
 | `scripts/shell/manipulator.gd` (`Manipulator`) | 조작 표시(발밑 표시, 높이 손잡이). 10절 |
-| `scripts/art/cat_actor.gd` (`CatActor`), `cat_look.gd` (`CatLook`), `bread_cat.gd` (`BreadCat`), `art_lit_tex.gdshader` | 빵고양이: 연기·동기화(`CatActor`)와 겉모습(`CatLook`의 하위 클래스 `BreadCat` = `assets/characters/bread_cat.glb`). 11절 |
+| `scripts/art/cat_actor.gd` (`CatActor`), `cat_look.gd` (`CatLook`), `bread_cat.gd` (`BreadCat`), `art_toon_tex.gdshader`·`art_outline.gdshader`(`ArtKit.toon_material`, 동화책 스타일) | 빵고양이: 연기·동기화(`CatActor`)와 겉모습(`CatLook`의 하위 클래스 `BreadCat` = `assets/characters/bread_cat.glb`). 11절 |
 
 ## 1. 원칙
 
@@ -208,7 +208,7 @@ Phase 1 Task 2c에서 정한 3D 앱의 시각 기준이다. 사용자가 시안 
 
 ## 8. 성능 예산
 
-SM-P200 low(Compatibility, 3D 0.45배)에서 60 fps를 지킨다. 측정은 [Task 2c 결과](../../../spikes/bench/results/phase1-task2c/README.md).
+SM-P200 low(Compatibility, 3D 0.75배 + MSAA 2x, 2026-10-24부터. 그 전 0.45배 MSAA 없음)에서 60 fps를 지킨다. 측정은 [Task 2c 결과](../../../spikes/bench/results/phase1-task2c/README.md), 해상도 변경은 [low 선명도 결과](../../../spikes/bench/results/phase1-low-sharp/README.md).
 
 | 항목 | 빗면 실험(현재) | 실험 하나의 예산 |
 |---|---|---|
@@ -293,6 +293,7 @@ Task 4b 마찰 밀기(`tests/friction_lab_checks.gd`가 3D 노드 상한을 확�
 - 크래프트지 빵봉투: 위가 조금 넓고, 윗단이 톱니로 잘렸으며, 앞면에 식빵 그림 하나가 있다(2026-10-23 사용자 결정: 크루아상·라벨 선 없음). 봉투 안에 바게트가 비스듬히 꽂혀 있다.
 - 치즈태비 고양이: 큰 둥근 머리, 이마·볼 줄무늬, 큰 눈과 흰 반짝임, ω 입, 분홍 볼·코·속귀. 크림색 앞발 둘이 봉투 윗단에 걸쳐 있고, 줄무늬 꼬리가 봉투 뒤로 나온다.
 - 키 1.398 m(봉투 0.76 m), 원점은 봉투 바닥 중앙, +z가 정면이다. glb는 뼈대 없이 노드 원점이 피벗이다: `BreadCat > Bag, Baguette, Body > Head, ArmL > HandL, ArmR > HandR, Tail > Tail2 > TailTip`. `HandL`·`HandR`이 앞발 중심(잡는 점)이다.
+- 외곽선 준비(2026-10-24): 모든 부품이 닫힌 껍질·바깥 향한 면·부드러운 법선뿐이고 날카로운 모서리가 없다(봉투 모서리는 갈라진 법선 대신 모서리 옆 1 cm 베벨 열). 그래서 같은 위치의 glTF 정점(UV 이음매 사본)은 법선이 같고, 법선 방향으로 키운 뒤집힌 껍질 외곽선(`VERTEX += NORMAL * 두께`, `cull_front`)이 이음매에서 갈라지지 않는다. 봉투 윗단 톱니는 실제 형상(앞 7개·옆 5개, 모서리가 꼭짓점)이다.
 
 색(sRGB, 모델 스크립트 `PALETTES["cheese"]`, 아틀라스에 구워짐. 코드에서 쓰지 않아 `ArtPalette`에는 없다):
 
@@ -309,18 +310,25 @@ Task 4b 마찰 밀기(`tests/friction_lab_checks.gd`가 3D 노드 상한을 확�
 
 갈색·초록은 배경 전용이라 장치에 쓰지 않는다(2절). 고양이는 장치가 아닌 캐릭터라 이 규칙을 따르지 않는다. 봉투 크래프트가 섬의 흙 `SOIL`보다 밝고 노랗다.
 
-### 재질과 빛
+### 재질과 빛 — 동화책 스타일 (Task 4g2, 2026-10-24)
 
-`ArtKit.lit_texture_material(아틀라스)`(`art_lit_tex.gdshader`)를 쓴다. 섬과 같은 해 방향·두 색 램프(언셰이드, 엔진 조명·실시간 그림자 없음)를 아틀라스에 곱한다. 모델 법선이 부드러워서 램프를 부드럽게 했고(softness 0.18), 그늘 쪽은 소품보다 밝고 덜 차갑게 했다(그늘 색 35 %: 어느 각도에서도 털·봉투가 따뜻한 색을 유지한다. 앞서 바래 보인 사진은 sRGB 수정 전 빌드였다). 아틀라스는 셰이더가 직접 sRGB → 선형으로 푼다. `source_color` 힌트를 쓰면 Compatibility(low)가 풀지 않아 SM-P200에서 색이 두 번 인코딩돼 하얗게 떴다. 지금은 low·high 모두 Blender 미리보기와 같은 색이다([결과](../../../spikes/bench/results/phase1-task4g/README.md)). 접촉은 봉투 바닥의 블롭 그림자(4절)로 낸다.
+Blender 참고 그림(갈색 외곽선 + 한 단계 셀 셰이딩)과 같은 동화책 모양이다. `ArtKit.toon_material(아틀라스)` 하나를 캐릭터의 모든 메시가 함께 쓴다. 두기두기(`dugi.glb`, 아틀라스 하나)도 Task 4h에서 같은 함수를 쓴다.
+
+- 셀 셰이딩(`art_toon_tex.gdshader`): 섬과 같은 해 방향(`ArtKit.SUN_DIR`)으로 N·L을 픽셀마다 계산해 두 단계로 나눈다. 밝은 쪽은 아틀라스 색 그대로, 그늘 쪽은 따뜻하고 살짝 분홍인 배수(선형 `TOON_SHADE` = 0.86 × (0.97, 0.90, 0.93))다. 경계는 N·L = −0.03(Blender: 해 3 W/m² + 하늘 0.35, 램프 경계 0.32)이고, `fwidth`로 1픽셀만 부드럽게 해 계단이 생기지 않는다. 언셰이드라 엔진 조명·실시간 그림자가 없고 low·high가 같다. 참고 그림의 그림자(머리가 몸에 드리운 그늘)는 없다.
+- 외곽선(`art_outline.gdshader`, 다음 패스): 뒤집힌 껍질이다. 메시를 법선 방향으로 키우고 `cull_front`로 뒷면만 그려, 실루엣 둘레와 뒤쪽 부품 앞(팔이 봉투 앞에 올 때 등)에 갈색 `ArtPalette.OUTLINE` `#6e4630` 선이 언셰이드로 보인다. 위의 메시 계약(같은 위치 = 같은 법선) 덕분에 이음매에서 갈라지지 않는다(`tests/bread_cat_checks.gd`가 계약도 확인).
+- 외곽선 두께 = max(`OUTLINE_WORLD` 0.010 m, `OUTLINE_PIXELS` 1.5 × 그 깊이에서 3D 렌더 버퍼 1픽셀의 크기). 세계 두께만 쓰면 참고 그림(카메라 4.6 m, 고양이가 화면 높이의 약 65 %)과 비례가 같지만, 앱 기본 정면 카메라에서는 고양이가 화면 높이의 약 11 %(1200 px 중 약 130 px)라 0.010 m가 1픽셀이 안 돼 선이 끊긴다. 그래서 작게 보일 때는 렌더 버퍼 1.5 px을 지키고, 가까이(따라가기·확대) 크게 보일 때는 참고 그림의 0.010 m가 된다. 최소 두께를 픽셀 수로 둔 이유: 선이 끊기는지는 렌더 픽셀 수(와 MSAA)로 정해지므로, 해상도가 오른 단계에서 선이 필요 이상으로 두꺼워지지 않는다. 처음(4g2)에는 화면 높이의 0.35 %였다(low 540 px 버퍼·MSAA 없음에서 약 1.9 px, 0.28 %는 군데군데 끊김). 2026-10-24 low를 900 px + MSAA 2x로 올리면서 이 규칙이면 3.2 px이 돼, SM-P200 low에서 1.0 px(귀·봉투 윗단에서 흐려지고 끊김)과 1.5 px(끊김 없음)을 비교해 1.5 px로 정했다([low 선명도 결과 3절](../../../spikes/bench/results/phase1-low-sharp/README.md)). medium(720 px)·high(1200 px)도 같은 1.5 px이다. Compatibility는 3D SubViewport에서 y를 뒤집어 투영 행렬 `[1][1]`이 음수라 셰이더가 절댓값을 쓴다.
+- 범위는 캐릭터뿐이다. 털실 공·택배 박스·장치·섬은 섬 조명(`art_lit` / `art_lit_tex`) 그대로다. 공·상자는 모든 실험에 나오는 장치이고, 섬과 다른 소품에 외곽선이 없어 공·상자만 외곽선을 넣으면 어긋난다.
+- 그리는 노드 수는 그대로이고, 외곽선 패스만큼 고양이 그리기 호출이 6번 늘어난다(fps는 [결과](../../../spikes/bench/results/phase1-task4g2/README.md)).
+- 아틀라스와 색 벡터는 셰이더가 직접 sRGB ↔ 선형을 처리한다(`source_color` 힌트를 쓰면 Compatibility가 풀지 않는다, 4g). 접촉은 봉투 바닥의 블롭 그림자(4절)로 낸다.
 
 ### 노드와 예산
 
-`BreadCat.build()`가 액터의 `Rig` 아래에 그리는 노드 6개를 만든다. `Static`(봉투·바게트·몸을 메시 하나로 합침), `Head`, `ArmR`, `ArmL`, `Tail`, `Tail2`이고, 여기에 액터의 블롭 그림자 1개가 더해진다. 모두 아틀라스 재질 하나를 공유한다.
+`BreadCat.build()`가 액터의 `Rig` 아래에 그리는 노드 6개를 만든다. `Static`(봉투·바게트·몸을 메시 하나로 합침), `Head`, `ArmR`, `ArmL`, `Tail`, `Tail2`이고, 여기에 액터의 블롭 그림자 1개가 더해진다. 모두 아틀라스 재질 하나(외곽선 다음 패스 포함)를 공유한다.
 
 | 항목 | 빵고양이 | 던지기(전체) | 마찰 밀기(전체) |
 |---|---|---|---|
 | 그리는 3D 노드 | 7 | 19 (발사 기둥·받침판을 빼고 11 + 고양이 7 + 빵 상자 1) | 17 (10 + 7) |
-| 정점 | 3,362 (모델 3,290 + 그림자 72) | 약 16,100(빵 상자 없을 때), 3 m 발사에서 상자 6개로 약 17,600 — 15,000 예산 초과(문서 예외: 사용자 결정 모델, SM-P200 low 59.8 fps, [결과](../../../spikes/bench/results/phase1-task4g/README.md)) | 약 10,200 |
+| 정점 | 3,256 (모델 3,184 + 그림자 72) | 약 16,100(빵 상자 없을 때), 3 m 발사에서 상자 6개로 약 17,600 — 15,000 예산 초과(문서 예외: 사용자 결정 모델, SM-P200 low 59.8 fps, [결과](../../../spikes/bench/results/phase1-task4g/README.md)) | 약 10,200 |
 
 ### 털실 공 (모든 공)
 

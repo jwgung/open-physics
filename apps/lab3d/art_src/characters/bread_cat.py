@@ -2,7 +2,7 @@
 
 Run (headless):
     blender -b --factory-startup -P apps/lab3d/art_src/characters/bread_cat.py -- \
-        [--out apps/lab3d/assets/characters/bread_cat.glb] [--mouth omega|smile|calm] [--palette cheese|cream]
+        [--out apps/lab3d/assets/characters/bread_cat.glb] [--mouth omega|smile|calm] [--palette cheese|cream] [--eyes dot|sparkle]
 
 Nothing depends on a hand-made .blend: geometry, UVs and the single texture atlas (face, fur stripes,
 bag print, baguette scoring) are produced by this file. Other scripts may `import` it and call
@@ -25,7 +25,18 @@ Conventions (see also the module docstring of the Godot side when it loads this 
           Tail2             (mesh, pivot at the tail joint)
             TailTip         (empty)
 - Bag front: one toast slice (2026-10-23 user decision).
-- Budget (SM-P200 low): 8 meshes, 1 material, 1 texture (1024 px), < 6000 triangles.
+- Head: round from the front (width:height 1:1) with round-tipped ears (2026-10-23 user feedback: rounder is cuter).
+- Budget (SM-P200 low): 8 meshes, 1 material, 1 texture (1024 px), < 6000 triangles (5,840), and the
+  app draws <= 3,500 vertices (3,184 glTF vertices + the actor's shadow). Segments go where the
+  silhouette shows (head ring, ears, paws, tail); hidden parts (chin under -60 deg, body in the bag,
+  the inside wall below the rim) stay coarse.
+- Outline mesh contract (storybook inverted-hull outline, Blender preview and the app's future
+  next_pass: VERTEX += NORMAL * width, cull_front): the exported mesh itself carries the averaged
+  normals. Every part is a closed shell with outward faces and smooth shading only, no sharp edges
+  (the bag's crisp corners are a bevel column BAG_BEVEL from each corner, not split normals), so
+  all glTF vertices at one position (UV-seam copies) have the same NORMAL and the grown hull is
+  watertight (no cracks or doubled lines). No extra vertex attribute is needed. Concave creases
+  are kept soft (rounded gusset fold, wrinkles fading out) so the hull does not show through them.
 """
 
 import math
@@ -99,8 +110,8 @@ def swatch_uv(name):
 
 HEAD_R = 0.275
 FACE_R = 0.235  # face features are authored for this radius and scale with the head
-HEAD_SX, HEAD_SY, HEAD_SZ = 1.16, 0.98, 0.90
-HEAD_C = Vector((0.0, -0.01, 0.995))
+HEAD_SX, HEAD_SY, HEAD_SZ = 1.06, 0.98, 1.06  # SX == SZ: a round face seen from the front
+HEAD_C = Vector((0.0, -0.01, 0.959))  # keeps the total height (ear tips) at 1.398 m
 NECK = Vector((0.0, 0.0, 0.78))
 BODY_C = Vector((0.0, 0.03, 0.62))
 BODY_R = Vector((0.19, 0.15, 0.20))
@@ -118,11 +129,12 @@ def sph_dir(lon, lat):
 def head_point(d):
     x, y, z = d
     r = HEAD_R
-    # chibi: wide, a bit squat, slightly fuller lower cheeks, flatter face plane.
-    cheek = 1.0 + 0.07 * max(0.0, -z + 0.15) * (1.0 - abs(y))
-    sx = HEAD_SX * cheek
-    sy = HEAD_SY * (0.90 if y < 0 else 1.0)
-    sz = HEAD_SZ * (0.92 if z < 0 else 1.0)
+    # chibi, truly round (2026-10-23 user feedback): the front silhouette is a circle (no flat top,
+    # no bulging lower cheeks, no narrow chin); the plump cheeks are the painted blush. Only the face
+    # plane is a little flatter front-to-back.
+    sx = HEAD_SX
+    sy = HEAD_SY * (0.93 if y < 0 else 1.0)
+    sz = HEAD_SZ
     return HEAD_C + Vector((x * r * sx, y * r * sy, z * r * sz))
 
 
@@ -190,7 +202,7 @@ def value_noise(u, v, freq, seed):
     return (a * (1 - xf) + b * xf) * (1 - yf) + (c * (1 - xf) + d * xf) * yf
 
 
-def paint_head(P, mouth):
+def paint_head(P, mouth, eyes="dot"):
     u, v = region_grid(R_HEAD)
     lon = (u - 0.5) * 2 * math.pi
     lat = (v - 0.5) * math.pi
@@ -226,7 +238,7 @@ def paint_head(P, mouth):
     # --- front face, measured in metres on the front view of the deformed head ---
     front = dy < 0.0
     qx = dx * FACE_R * HEAD_SX
-    qz = dz * FACE_R * HEAD_SZ * np.where(dz < 0, 0.92, 1.0)
+    qz = dz * FACE_R * HEAD_SZ
     aa = 0.0022
     cream = hexc(P["cream"])
     # muzzle + chin
@@ -238,6 +250,11 @@ def paint_head(P, mouth):
         blend(img, smooth_fill(sdf, 0.02) * front, hexc(P["blush"]), 0.75)
     # eyes: big glossy, a touch taller than wide, warm lower gradient
     for s in (-1, 1):
+        if eyes == "dot":  # default (2026-10-23 user decision): small simple storybook eyes, one dot
+            ex, ez = s * 0.092, -0.008
+            blend(img, smooth_fill(sd_ellipse(qx, qz, ex, ez, 0.022, 0.026), aa) * front, hexc(P["eye"]))
+            blend(img, smooth_fill(sd_ellipse(qx, qz, ex - 0.007, ez + 0.009, 0.0065, 0.007), aa) * front, np.ones(3))
+            continue
         ex, ez, rx, rz = s * 0.098, 0.0, 0.046, 0.053
         sdf = sd_ellipse(qx, qz, ex, ez, rx, rz)
         m = smooth_fill(sdf, aa) * front
@@ -373,9 +390,9 @@ def paint_bag_front(P):
     return img
 
 
-def build_atlas(P, mouth):
+def build_atlas(P, mouth, eyes="dot"):
     canvas = np.zeros((TEX, TEX, 3))
-    for rect, fn in ((R_HEAD, lambda: paint_head(P, mouth)), (R_BODY, lambda: paint_body(P)),
+    for rect, fn in ((R_HEAD, lambda: paint_head(P, mouth, eyes)), (R_BODY, lambda: paint_body(P)),
                      (R_ARM, lambda: paint_arm(P)), (R_TAIL, lambda: paint_tail(P)),
                      (R_BAGU, lambda: paint_baguette(P)), (R_BAGF, lambda: paint_bag_front(P))):
         x0, y0, x1, y1 = rect
@@ -436,12 +453,11 @@ def build_sphere(bm, point_fn, uv_fn, segs, rings, lat_min=-math.pi / 2):
                 add_face(bm, [a, b, c], [uv_fn(u0, va), uv_fn(u1, va), uv_fn((u0 + u1) / 2, vb)])
             else:
                 add_face(bm, [a, b, c, d], [uv_fn(u0, va), uv_fn(u1, va), uv_fn(u1, vb), uv_fn(u0, vb)])
-    if lat_min > -math.pi / 2 + 1e-6:  # cap the open bottom
-        row = rows[0][0][:-1]
-        center = bm.verts.new(sum((v.co for v in row), Vector()) / len(row))
-        for j in range(segs):
-            uv = uv_fn((j + 0.5) / segs, 0.0)
-            add_face(bm, [row[(j + 1) % segs], row[j], center], [uv, uv, uv])
+    if lat_min > -math.pi / 2 + 1e-6:  # cap the open bottom (hidden inside the body)
+        row, v0 = rows[0][0], rows[0][1]
+        center = bm.verts.new(sum((v.co for v in row[:-1]), Vector()) / segs)
+        for j in range(segs):  # the ring's own UVs (no extra seam vertices), the centre one UV
+            add_face(bm, [row[j + 1], row[j], center], [uv_fn((j + 1) / segs, v0), uv_fn(j / segs, v0), uv_fn(0.5, v0)])
 
 
 def frames_along(points, up_hint):
@@ -486,12 +502,12 @@ def build_tube(bm, points, radii, segs, uv_fn, up_hint=Vector((0, 0, 1)), squash
         t = frames[idx][0]
         tip = bm.verts.new(points[idx] + t * sign * radii[idx] * 0.35)
         row = rings[idx]
-        for j in range(segs):
-            uv = uv_fn((j + 0.5) / segs, vs[idx])
+        for j in range(segs):  # the ring's own UVs and one for the tip: no extra seam vertices
+            uv0, uv1, uvt = uv_fn(j / segs, vs[idx]), uv_fn((j + 1) / segs, vs[idx]), uv_fn(0.5, vs[idx])
             if sign > 0:
-                add_face(bm, [row[j], row[j + 1], tip], [uv, uv, uv])
+                add_face(bm, [row[j], row[j + 1], tip], [uv0, uv1, uvt])
             else:
-                add_face(bm, [row[j + 1], row[j], tip], [uv, uv, uv])
+                add_face(bm, [row[j + 1], row[j], tip], [uv1, uv0, uvt])
     return frames
 
 
@@ -511,7 +527,10 @@ ES = 14  # ear ring segments
 
 
 def make_head(bm):
-    build_sphere(bm, head_point, lambda u, v: region_uv(R_HEAD, u, v), segs=32, rings=18)
+    # The silhouette needs the segments (36 x 22 rings, 6.8 deg apart); the chin below -60 deg sits
+    # inside the body, so the sphere stops there with a hidden cap (vertex budget: the app's cat
+    # draws <= 3500 vertices).
+    build_sphere(bm, head_point, lambda u, v: region_uv(R_HEAD, u, v), segs=36, rings=22, lat_min=math.radians(-60))
     pink = swatch_uv("pink"); fur = swatch_uv("fur")
     for side in (-1, 1):
         base_d = sph_dir(side * 0.60, 0.88)
@@ -519,8 +538,10 @@ def make_head(bm):
         up = Vector((side * 0.42, 0.10, 1.0)).normalized()
         fwd = Vector((0, -1, 0)); fwd = (fwd - up * fwd.dot(up)).normalized()
         side_ax = up.cross(fwd)
-        prof = [(0.0, 1.0), (0.2, 0.97), (0.40, 0.90), (0.55, 0.80), (0.70, 0.66), (0.80, 0.53),
-                (0.88, 0.40), (0.94, 0.27), (0.98, 0.14)]
+        # rounded tip: the last rings close in like a quarter circle instead of a cone point
+        # (the first ring is sunk in the head)
+        prof = [(-0.30, 1.0), (0.0, 1.0), (0.2, 0.97), (0.40, 0.90), (0.55, 0.80), (0.68, 0.68), (0.78, 0.56),
+                (0.86, 0.45), (0.92, 0.35), (0.96, 0.25), (0.985, 0.15)]
 
         def ear(scale_w, scale_d, height, push, uv):
             rings = []
@@ -530,9 +551,14 @@ def make_head(bm):
                     a = 2 * math.pi * j / ES
                     p = base + up * (t * height) + side_ax * (math.cos(a) * 0.105 * s * scale_w) \
                         + fwd * (math.sin(a) * 0.050 * s * scale_d + push)
+                    if t < 0:  # keep the sunk root ring inside the head (no ledge pokes out)
+                        q = p - HEAD_C
+                        k = Vector((q.x / (HEAD_R * HEAD_SX), q.y / (HEAD_R * HEAD_SY * (0.93 if q.y < 0 else 1.0)),
+                                    q.z / (HEAD_R * HEAD_SZ))).length
+                        p = HEAD_C + q * min(1.0, 0.94 / k)
                     row.append(bm.verts.new(p))
                 rings.append(row)
-            tip = bm.verts.new(base + up * height * 1.02 + fwd * push)
+            tip = bm.verts.new(base + up * height * 0.995 + fwd * push)
             for i in range(len(rings) - 1):
                 for j in range(ES):
                     k = (j + 1) % ES
@@ -540,18 +566,20 @@ def make_head(bm):
             for j in range(ES):
                 add_face(bm, [rings[-1][j], rings[-1][(j + 1) % ES], tip], [uv] * 3)
             # bottom cap (hidden inside head, keeps the mesh closed)
-            c = bm.verts.new(base + fwd * push)
+            c = bm.verts.new(sum((v.co for v in rings[0]), Vector()) / ES)
             for j in range(ES):
                 add_face(bm, [rings[0][(j + 1) % ES], rings[0][j], c], [uv] * 3)
 
         ear(1.0, 1.0, 0.130, 0.0, fur)
-        ear(0.62, 0.45, 0.100, 0.034, pink)
+        # the pink inner ear only just shows through the front of the ear and its middle stays inside
+        # it, so the outline hull of the pink shell stays hidden (no line round the pink)
+        ear(0.70, 0.65, 0.092, 0.024, pink)
 
 
 def make_body(bm):
     def pt(d):
         return BODY_C + Vector((d.x * BODY_R.x, d.y * BODY_R.y, d.z * BODY_R.z))
-    build_sphere(bm, pt, lambda u, v: region_uv(R_BODY, u, v), segs=16, rings=10)
+    build_sphere(bm, pt, lambda u, v: region_uv(R_BODY, u, v), segs=12, rings=8)  # mostly inside the bag
 
 
 ARM_UP = Vector((0, 0, 1))
@@ -576,22 +604,22 @@ def make_arm(bm, side):
         if t > 0.95:
             r *= 0.85
         radii.append(r)
-    build_tube(bm, pts, radii, 12, lambda u, v: region_uv(R_ARM, u, v), up_hint=ARM_UP, squash=1.12)
+    build_tube(bm, pts, radii, 16, lambda u, v: region_uv(R_ARM, u, v), up_hint=ARM_UP, squash=1.12)  # round paws
     return pts
 
 
 def tail_points():
     p0 = Vector((-0.08, 0.12, 0.55))
-    a = bezier(p0, Vector((-0.14, 0.20, 0.80)), Vector((-0.24, 0.30, 0.78)), Vector((-0.30, 0.34, 0.80)), 7)
-    b = bezier(a[-1], Vector((-0.36, 0.38, 0.84)), Vector((-0.38, 0.38, 0.98)), Vector((-0.31, 0.34, 1.06)), 7)
+    a = bezier(p0, Vector((-0.14, 0.20, 0.80)), Vector((-0.24, 0.30, 0.78)), Vector((-0.30, 0.34, 0.80)), 9)
+    b = bezier(a[-1], Vector((-0.36, 0.38, 0.84)), Vector((-0.38, 0.38, 0.98)), Vector((-0.31, 0.34, 1.06)), 9)
     return a, b
 
 
 def make_tail(bm1, bm2):
     a, b = tail_points()
     uv = lambda u, v: region_uv(R_TAIL, u, v)
-    ra = [0.050 - 0.004 * i / 6 for i in range(7)]
-    rb = [0.046 - 0.008 * (i / 6) ** 2 for i in range(7)]
+    ra = [0.050 - 0.004 * i / (len(a) - 1) for i in range(len(a))]
+    rb = [0.046 - 0.008 * (i / (len(b) - 1)) ** 2 for i in range(len(b))]
     build_tube(bm1, a, ra, 10, uv, cap_start=True, cap_end=True, v_range=(0.0, 0.5),
                up_hint=Vector((0, -1, 0)))
     build_tube(bm2, b, rb, 10, uv, cap_start=True, cap_end=True, v_range=(0.5, 1.0),
@@ -616,32 +644,49 @@ def make_baguette(bm):
     return base
 
 
-def bag_ring(t, n_front=14, n_side=10):
+# The zigzag top is real geometry: every column of the rim is a tooth peak or valley (7 teeth across
+# the front, 5 on each side, a peak on each corner), so the cut edge is a clean line at any
+# resolution. The corners are crisp with smooth normals (no hard edges, see mesh_object) because a
+# bevel column sits BAG_BEVEL from each corner; it lies on a tooth's straight flank.
+BAG_TEETH = {"front": 7, "side": 5}
+BAG_TOOTH_H = 0.024
+BAG_BEVEL = 0.010   # m
+
+
+def bag_panel_us(panel):
+    n = 2 * BAG_TEETH["front" if panel in ("front", "back") else "side"]
+    w = BAG_W1 if panel in ("front", "back") else BAG_D1
+    b = BAG_BEVEL / w
+    return [0.0, b] + [i / n for i in range(1, n)] + [1.0 - b], n
+
+
+def bag_ring(t):
     """Perimeter points of the bag cross-section at height fraction t (0 bottom, 1 top).
-    Returns list of (x, y, panel, panel_u) going around: front(-Y) left->right, right side, back, left side."""
+    Returns list of (x, y, panel, panel_u, columns) going around: front(-Y) left->right, right side,
+    back, left side."""
     w = BAG_W0 + (BAG_W1 - BAG_W0) * t
     d = BAG_D0 + (BAG_D1 - BAG_D0) * t
     pts = []
-    for i in range(n_front):
-        u = i / n_front
-        pts.append((-w / 2 + w * u, -d / 2, "front", u))
-    for i in range(n_side):
-        u = i / n_side
-        pts.append((w / 2, -d / 2 + d * u, "right", u))
-    for i in range(n_front):
-        u = i / n_front
-        pts.append((w / 2 - w * u, d / 2, "back", u))
-    for i in range(n_side):
-        u = i / n_side
-        pts.append((-w / 2, d / 2 - d * u, "left", u))
+    for panel, at in (("front", lambda u: (-w / 2 + w * u, -d / 2)), ("right", lambda u: (w / 2, -d / 2 + d * u)),
+                      ("back", lambda u: (w / 2 - w * u, d / 2)), ("left", lambda u: (-w / 2, d / 2 - d * u))):
+        us, n = bag_panel_us(panel)
+        for u in us:
+            pts.append(at(u) + (panel, u, n))
     return pts
 
 
+def bag_top_z(u, n):
+    """Tooth profile along a panel: peaks at even columns (and the corners), valleys at odd ones."""
+    ph = (u * n) % 2.0
+    return BAG_H - BAG_TOOTH_H * (1.0 - abs(ph - 1.0))
+
+
 def make_bag(bm):
-    rows_t = [0.0, 0.07, 0.25, 0.45, 0.65, 0.82, 0.93, 1.0]
-    n_front, n_side = 14, 10
+    rows_t = [0.0, 0.02, 0.07, 0.25, 0.45, 0.65, 0.82, 0.93, 0.975, 1.0]
+    inner_ri = [0, 5, 6, 7, 9]   # the inside wall only needs rows where it shows (near the top)
     rng = np.random.default_rng(11)
-    per = len(bag_ring(0.0, n_front, n_side))
+    ring0 = bag_ring(0.0)
+    per = len(ring0)
     cols = rng.normal(0, 1, per)
     rows = rng.normal(0, 1, len(rows_t))
 
@@ -650,16 +695,17 @@ def make_bag(bm):
     kraft = swatch_uv("kraft"); inner = swatch_uv("kraft_in")
 
     def displaced(t, ri, k, item, inward):
-        x, y, panel, pu = item
+        x, y, panel, pu, n = item
         z = BAG_H * t
-        # gusset: side panels fold inward along their middle, more at the top
+        # gusset: side panels fold inward along their middle, more at the top (a rounded fold: a
+        # sharp inward V would show the outline hull through the crease)
         if panel in ("left", "right"):
-            fold = (1 - abs(2 * pu - 1)) * 0.05 * (0.3 + 0.7 * t)
+            fold = math.sin(math.pi * pu) * 0.05 * (0.3 + 0.7 * t)
             x -= math.copysign(fold, x)
-        # soft wrinkles (no wrinkles at the corners)
-        corner = min(pu, 1 - pu) * (n_side if panel in ("left", "right") else n_front)
-        if corner > 0.5 and 0.02 < t < 0.98:
-            amp = 0.007
+        # soft wrinkles, fading out towards the corners, the bottom and the rim (no sharp dents)
+        corner = min(pu, 1 - pu) * n
+        if corner > 0.5:
+            amp = 0.007 * min(1.0, t / 0.25) * min(1.0, max(0.0, 1.0 - t) / 0.12)
             nx = 0 if panel in ("front", "back") else math.copysign(1, x)
             ny = math.copysign(1, y) if panel in ("front", "back") else 0
             x += nx * amp * crease(ri, k); y += ny * amp * crease(ri, k)
@@ -670,31 +716,28 @@ def make_bag(bm):
                 x *= (abs(x) - 0.010) / max(abs(x), 1e-6) if abs(x) > 0.02 else 1
             else:
                 y *= (abs(y) - 0.010) / max(abs(y), 1e-6) if abs(y) > 0.02 else 1
+        if t >= 1.0:
+            z = bag_top_z(pu, n)
         return Vector((x, y, z))
 
-    def top_z(idx):
-        return BAG_H - (0.022 if idx % 2 else 0.0)
-
     def uv_for(item, t):
-        x, y, panel, pu = item
+        x, y, panel, pu, n = item
         if panel == "front":
             return region_uv(R_BAGF, pu, t)
         return kraft
 
     outer, inner_rows = [], []
     for ri, t in enumerate(rows_t):
-        ring = bag_ring(t, n_front, n_side)
-        orow, irow = [], []
-        for k, item in enumerate(ring):
-            po = displaced(t, ri, k, item, False)
-            pi = displaced(t, ri, k, item, True)
-            if ri == len(rows_t) - 1:
-                po.z = top_z(k); pi.z = top_z(k)
-            if ri == 0:
-                pi.z = 0.012
-            orow.append((bm.verts.new(po), item))
-            irow.append((bm.verts.new(pi), item))
-        outer.append(orow); inner_rows.append(irow)
+        ring = bag_ring(t)
+        outer.append([(bm.verts.new(displaced(t, ri, k, item, False)), item) for k, item in enumerate(ring)])
+        if ri in inner_ri:
+            irow = []
+            for k, item in enumerate(ring):
+                pi = displaced(t, ri, k, item, True)
+                if ri == 0:
+                    pi.z = 0.012
+                irow.append(bm.verts.new(pi))
+            inner_rows.append(irow)
 
     for ri in range(len(rows_t) - 1):
         ta, tb = rows_t[ri], rows_t[ri + 1]
@@ -710,19 +753,18 @@ def make_bag(bm):
             else:
                 uvs = [kraft] * 4
             add_face(bm, [a, b, c, d], uvs)
-            # inner wall, reversed winding
-            a2 = inner_rows[ri][k][0]; b2 = inner_rows[ri][k2][0]
-            c2 = inner_rows[ri + 1][k2][0]; d2 = inner_rows[ri + 1][k][0]
-            add_face(bm, [d2, c2, b2, a2], [inner] * 4)
+    for i in range(len(inner_rows) - 1):  # inner wall, reversed winding
+        ra, rb = inner_rows[i], inner_rows[i + 1]
+        for k in range(per):
+            k2 = (k + 1) % per
+            add_face(bm, [rb[k], rb[k2], ra[k2], ra[k]], [inner] * 4)
     # zigzag rim
-    top = len(rows_t) - 1
+    top = outer[-1]
     for k in range(per):
         k2 = (k + 1) % per
-        add_face(bm, [outer[top][k][0], outer[top][k2][0], inner_rows[top][k2][0], inner_rows[top][k][0]],
-                 [kraft] * 4)
+        add_face(bm, [top[k][0], top[k2][0], inner_rows[-1][k2], inner_rows[-1][k]], [kraft] * 4)
     # bottoms
-    for rows, flip, uv in ((outer, True, kraft), (inner_rows, False, inner)):
-        ring = [v for v, _ in rows[0]]
+    for ring, flip, uv in (([v for v, _ in outer[0]], True, kraft), (inner_rows[0], False, inner)):
         c = bm.verts.new(sum((v.co for v in ring), Vector()) / len(ring))
         for k in range(per):
             vs = [ring[(k + 1) % per], ring[k], c] if flip else [ring[k], ring[(k + 1) % per], c]
@@ -752,18 +794,19 @@ def make_material(img):
 SCALE = 1.085  # parts are authored ~1.29 m tall; scaled so the whole character is ~1.4 m
 
 
-def mesh_object(name, bm, pivot_world, parent, parent_pivot, mat, smooth=True, sharp_angle=None):
+def mesh_object(name, bm, pivot_world, parent, parent_pivot, mat):
+    """Mesh contract (outline): every part is a closed shell with outward faces and smooth shading
+    only (no sharp edges), so all glTF vertices at one position (UV-seam copies) carry the same
+    normal. An inverted-hull outline that grows the mesh along NORMAL then stays watertight."""
     bmesh.ops.translate(bm, verts=bm.verts, vec=-pivot_world)
     bmesh.ops.scale(bm, verts=bm.verts, vec=(SCALE, SCALE, SCALE))
     bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-6)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
     me = bpy.data.meshes.new(name)
     bm.to_mesh(me)
     bm.free()
     me.materials.append(mat)
-    if smooth:
-        me.shade_smooth()
-        if sharp_angle is not None:
-            me.set_sharp_from_angle(angle=sharp_angle)
+    me.shade_smooth()
     ob = bpy.data.objects.new(name, me)
     bpy.context.scene.collection.objects.link(ob)
     ob.parent = parent
@@ -780,15 +823,15 @@ def empty(name, loc_world, parent, parent_pivot, size=0.03):
     return ob
 
 
-def build(mouth="omega", palette="cheese"):
+def build(mouth="omega", palette="cheese", eyes="dot"):
     P = PALETTES[palette]
-    img = build_atlas(P, mouth)
+    img = build_atlas(P, mouth, eyes)
     mat = make_material(img)
     origin = Vector((0, 0, 0))
     root = empty("BreadCat", origin, None, origin, 0.2)
 
     bm = new_bm(); make_bag(bm)
-    mesh_object("Bag", bm, origin, root, origin, mat, sharp_angle=math.radians(50))
+    mesh_object("Bag", bm, origin, root, origin, mat)
 
     bm = new_bm(); bag_base = make_baguette(bm)
     mesh_object("Baguette", bm, bag_base, root, origin, mat)
@@ -849,7 +892,7 @@ def stats():
 
 def parse_args():
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
-    opts = {"out": None, "mouth": "omega", "palette": "cheese"}
+    opts = {"out": None, "mouth": "omega", "palette": "cheese", "eyes": "dot"}
     i = 0
     while i < len(argv):
         k = argv[i].lstrip("-")
@@ -863,7 +906,7 @@ def parse_args():
 if __name__ == "__main__":
     opts = parse_args()
     clear_scene()
-    build(opts["mouth"], opts["palette"])
+    build(opts["mouth"], opts["palette"], opts["eyes"])
     print("BREADCAT_STATS", stats())
     if opts["out"]:
         export_glb(opts["out"])

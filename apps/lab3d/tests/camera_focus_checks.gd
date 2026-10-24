@@ -1,0 +1,367 @@
+## Headless checks of the close-up (CameraRig.focus; apps/lab3d/README.md, close-up), run by
+## run_tests.gd. A character that acts is framed closer for a moment, then the view eases back to the
+## whole lab; it is the camera only.
+## 1. state machine (the rig alone): a close-up keeps the mode and the user's view (get_state), eases
+##    in, ends now or after a delay and eases back to exactly the user's view; a two-finger gesture
+##    ends it, a mode change or set_state (처음으로) drops it at once (snap), only the front view
+##    takes one, focus_enabled false takes none.
+## 2. throw (projectile screen): "공 놓기" eases the view in (the cat at least CAT_GROWTH times as
+##    tall on screen as in the front view) and back to the front view before the ball leaves the paw
+##    (2026-10-24 user decision): from the release frame (THROW_FRAMES, as before) until the landing
+##    the camera transform does not change, the ball leaves the paw inside the view and clear of the
+##    2D overlays, the whole formula path is on screen; the engine ball every step and the panel are
+##    the same as with close-ups off; 처음으로 during the close-up is the front view on the same frame.
+## 3. push (friction screen): picking up the handle of a box at rest frames the cat, box and handle
+##    closer; while the camera moves a still finger changes neither the handle nor the force; the
+##    first force starts the return; from the first step the box slides (a hard pull: cut) or from a
+##    gentle push's slide, the camera transform does not change while the handle is held.
+extends RefCounted
+
+const EXPERIMENT_SCREEN := "res://scripts/shell/experiment_screen.gd"
+const UI_THEME := "res://scripts/app/ui_theme.gd"
+const TABLET := Vector2(1152, 720)
+const PHONE := Vector2(1560, 720)
+## Same as bread_cat_checks.gd: frames before the release frame after "공 놓기" (0.48 s).
+const THROW_FRAMES := 28
+## The cat on screen in the close-up vs the front view (the front view shows it ~11 % of the height).
+const CAT_GROWTH := 2.0
+
+var tree: SceneTree
+var expect: Callable   # (ok: bool, label: String, detail: String)
+
+
+func _init(scene_tree: SceneTree, expect_fn: Callable) -> void:
+	tree = scene_tree
+	expect = expect_fn
+
+
+func run() -> void:
+	await check_state_machine()
+	for size in [[TABLET, "tablet"], [PHONE, "phone"]]:
+		await check_throw(size[0], size[1])
+	await check_throw_timeline()
+	await check_throw_reset()
+	await check_push()
+
+
+# --- helpers ----------------------------------------------------------------------------------
+
+func _open(id: String, size: Vector2) -> Control:
+	var host := Control.new()
+	host.theme = load(UI_THEME).build()
+	host.size = size
+	tree.root.add_child(host)
+	var screen: Control = load(EXPERIMENT_SCREEN).new()
+	screen.setup(ExperimentRegistry.find(id))
+	host.add_child(screen)
+	await tree.process_frame
+	await tree.physics_frame
+	for i in 3:
+		await tree.process_frame
+	return screen
+
+
+func _close(screen: Control) -> void:
+	screen.get_parent().queue_free()
+	await tree.process_frame
+
+
+func _at(screen: Control, world: Vector3) -> Vector2:
+	var view: View3D = screen.view
+	return view.rig.unproject_position(world) / (Vector2(view.viewport.size) / view.size)
+
+
+func _screen_rect(screen: Control, box: AABB) -> Rect2:
+	var r := Rect2(_at(screen, box.position), Vector2.ZERO)
+	for i in 8:
+		r = r.expand(_at(screen, box.get_endpoint(i)))
+	return r
+
+
+## Share of the view height the cat takes on screen.
+func _cat_fill(screen: Control) -> float:
+	return _screen_rect(screen, screen.experiment.props.cat.bounds()).size.y / screen.view.size.y
+
+
+func _same_view(a: Dictionary, b: Dictionary) -> bool:
+	return a.mode == b.mode and is_equal_approx(a.yaw, b.yaw) and is_equal_approx(a.pitch, b.pitch) \
+		and is_equal_approx(a.distance, b.distance) and a.pan.is_equal_approx(b.pan) and a.target.is_equal_approx(b.target)
+
+
+## The drawn view is the user's view `home` (settled there).
+func _at_home(rig: CameraRig, home: Dictionary) -> bool:
+	return _same_view(rig.get_state(), home) and not rig.is_framing() and rig.is_settled() \
+		and is_equal_approx(rig.cur_distance, home.distance) and rig.cur_target.is_equal_approx(home.target + home.pan)
+
+
+func _clear_of_overlays(screen: Control, point: Vector2) -> bool:
+	var spot := Rect2(point - Vector2.ONE * 10.0, Vector2.ONE * 20.0)
+	if not Rect2(Vector2.ZERO, screen.view.size).encloses(spot):
+		return false
+	for c: Control in [screen._title_bar, screen._top_buttons, screen._key_row, screen._action_row]:
+		if c.visible and c.get_rect().intersects(spot):
+			return false
+	return true
+
+
+func _step(rig: CameraRig, seconds: float) -> void:
+	for i in roundi(seconds * 60.0):
+		rig._process(1.0 / 60.0)
+
+
+# --- 1. state machine -------------------------------------------------------------------------
+
+func check_state_machine() -> void:
+	var definition := ExperimentRegistry.find("projectile")
+	var rig := CameraRig.new()
+	tree.root.add_child(rig)
+	rig.configure(definition.camera)
+	var home := rig.get_state()
+	var box := AABB(Vector3(-7.0, 0.0, -0.4), Vector3(1.0, 1.4, 0.8))
+	var on := rig.focus({"box": box, "fill": 0.3, "anchor": Vector2(0.36, 0.58)})
+	var kept := _same_view(rig.get_state(), home) and rig.mode == "front"
+	var goal := rig.focus_goal()
+	_step(rig, 1.0)
+	var arrived: bool = absf(rig.cur_distance - goal.distance) < 0.01 and rig.cur_target.distance_to(goal.target) < 0.01
+	# The box's height takes `fill` of the view height at the close-up's distance.
+	var tan_v := tan(deg_to_rad(rig.fov) * 0.5)
+	var fill: float = box.size.y / (2.0 * goal.distance * tan_v)
+	rig.end_focus(0.25)
+	_step(rig, 0.2)
+	var waits := rig.is_focused()
+	_step(rig, 0.1)
+	var ended := not rig.is_focused() and rig.is_framing()
+	_step(rig, 1.5)
+	var back := _at_home(rig, home)
+	expect.call(on and kept and goal.distance < home.distance * 0.6 and arrived and absf(fill - 0.3) < 0.02 and waits and ended and back,
+		"close-up: keeps the mode and the user's view, eases in (box height = fill of the view), ends after its delay and eases back to exactly the user's view",
+		"on %s kept %s distance %.2f -> %.2f arrived %s fill %.3f waits %s ended %s back %s" % [on, kept, home.distance, goal.distance, arrived, fill, waits, ended, back])
+	# A two-finger gesture ends it (the user's view comes back under the gesture).
+	var gestures_ok := true
+	for g in ["orbit", "zoom", "pan"]:
+		rig.set_state(home)
+		rig.focus({"box": box})
+		_step(rig, 0.3)
+		match g:
+			"orbit":
+				rig.orbit(Vector2(10.0, 0.0))
+			"zoom":
+				rig.zoom(0.95)
+			"pan":
+				rig.pan_by(Vector2(5.0, 0.0))
+		gestures_ok = gestures_ok and not rig.is_focused()
+		_step(rig, 1.5)
+		gestures_ok = gestures_ok and not rig.is_framing()
+	# 처음으로 (set_state): the user's view on the same call, no close-up, nothing easing.
+	rig.set_state(home)
+	rig.focus({"box": box})
+	_step(rig, 0.3)
+	rig.set_state(home)
+	var snapped := _at_home(rig, home)
+	# A mode change drops it (the mode's own transition, no return of the close-up).
+	rig.focus({"box": box})
+	rig.set_mode("side")
+	var dropped := not rig.is_focused() and not rig.is_framing()
+	var other := not rig.focus({"box": box})   # side view: no close-up
+	rig.set_mode("front", true)
+	rig.focus_enabled = false
+	var off := not rig.focus({"box": box}) and not rig.is_framing()
+	expect.call(gestures_ok and snapped and dropped and other and off,
+		"close-up: a two-finger gesture (turn, pinch, pan) ends it, set_state (처음으로) is the user's view at once, a mode change drops it, only the front view takes one, focus_enabled false takes none",
+		"gestures %s snapped %s dropped %s other modes %s off %s" % [gestures_ok, snapped, dropped, other, off])
+	# Timed (in / hold / out): exactly the user's view, nothing framing, after in + hold + out.
+	rig.focus_enabled = true
+	rig.set_state(home)
+	rig.focus({"box": box, "in_s": 0.15, "hold_s": 0.12, "out_s": 0.17})
+	_step(rig, 0.2)
+	var mid: bool = rig.is_focused() and rig.cur_distance < home.distance * 0.6
+	_step(rig, 0.25)
+	var timed_back: bool = _at_home(rig, home) and not rig.is_focused()
+	var held := rig.global_transform
+	_step(rig, 0.5)
+	timed_back = timed_back and rig.global_transform == held
+	# cut_focus: the user's view on the same call, also during a return.
+	rig.focus({"box": box})
+	_step(rig, 0.3)
+	rig.end_focus()
+	_step(rig, 0.05)
+	var returning := rig.is_framing()
+	rig.cut_focus()
+	var cut: bool = _at_home(rig, home) and rig.consume_cut() and not rig.consume_cut()
+	expect.call(mid and timed_back and returning and cut,
+		"close-up: a timed one (0.15 + 0.12 + 0.17 s) is in at 0.2 s and exactly the user's view, still, after 0.44 s; cut_focus is the user's view at once (also during a return) and is reported once",
+		"mid %s, timed back %s, returning %s, cut %s" % [mid, timed_back, returning, cut])
+	rig.queue_free()
+	await tree.process_frame
+
+
+# --- 2. throw ---------------------------------------------------------------------------------
+
+func check_throw(size: Vector2, label: String) -> void:
+	var screen: Control = await _open("projectile", size)
+	var rig: CameraRig = screen.view.rig
+	var lab: Experiment = screen.experiment
+	var home := rig.get_state()
+	var front_fill := _cat_fill(screen)
+	var release_frame := {}
+	lab.props.cat.threw.connect(func() -> void:
+		release_frame.merge({"ball": _at(screen, lab.ball.global_position), "framing": rig.is_framing()}), CONNECT_ONE_SHOT)
+	screen.experiment_action("release")
+	var frames := 0
+	var peak := 0.0
+	while not lab.released and frames < 120:
+		await tree.process_frame
+		if lab.released:
+			break
+		frames += 1
+		peak = maxf(peak, _cat_fill(screen))
+	var ball_ok: bool = not release_frame.is_empty() and _clear_of_overlays(screen, release_frame.ball)
+	# From the release on (the frame after it is drawn) to the landing: one camera transform.
+	var still := rig.global_transform
+	var moved := 0
+	var flight := 0
+	while lab.status() == "flying" and flight < 240:
+		await tree.process_frame
+		if lab.status() != "flying":
+			break   # the landing frame: the landing dip (CameraRig.nudge) is the landing's
+		flight += 1
+		if rig.global_transform != still:
+			moved += 1
+	var back := _at_home(rig, home)
+	var path_ok := true
+	for p in lab.formula_path():
+		path_ok = path_ok and Rect2(Vector2.ZERO, screen.view.size).has_point(_at(screen, p))
+	var growth := peak / front_fill
+	expect.call(frames == THROW_FRAMES and growth >= CAT_GROWTH and not release_frame.get("framing", true) and ball_ok,
+		"close-up (throw, %s): 공 놓기 pulls in (cat >= %.0fx as tall as in the front view) and is back on the front view before the ball leaves the paw %d frames after the press, inside the view, clear of the overlays" % [label, CAT_GROWTH, THROW_FRAMES],
+		"frames %d, cat %.1f %% -> peak %.1f %% (x%.2f), framing at the release %s, ball %s" % [frames, front_fill * 100.0, peak * 100.0, growth, str(release_frame.get("framing")), str(release_frame.get("ball"))])
+	expect.call(moved == 0 and flight > 30 and back and path_ok,
+		"close-up (throw, %s): from the release to the landing the camera does not move (the flight is seen from a still front view, the whole formula path in it)" % label,
+		"%d of %d flight frames moved, home %s, path on screen %s" % [moved, flight, back, path_ok])
+	await _close(screen)
+
+
+## The physics timeline does not depend on the close-up: the same throw with close-ups off releases
+## on the same frame and the engine ball (every fixed step for 2 s) and the panel are the same.
+func check_throw_timeline() -> void:
+	var runs := []
+	for enabled in [true, false]:
+		var screen: Control = await _open("projectile", TABLET)
+		screen.view.rig.focus_enabled = enabled
+		var lab: Experiment = screen.experiment
+		screen.experiment_action("release")
+		var frames := 0
+		while not lab.released and frames < 120:
+			await tree.process_frame
+			frames += 1
+		var rec := {}
+		var guard := 0
+		while lab.clock() < 2.0 and guard < 200:
+			guard += 1
+			await tree.physics_frame
+			rec["%d/%.6f" % [lab.corrector().steps, lab.clock()]] = [lab.ball.global_position, str(lab.observations())]
+		runs.append({"frames": frames, "rec": rec, "focused": screen.view.rig.is_framing() or enabled == false})
+		await _close(screen)
+	var common := 0
+	var same: bool = runs[0].frames == runs[1].frames
+	var detail := ""
+	for key in runs[0].rec:
+		if runs[1].rec.has(key):
+			common += 1
+			if runs[1].rec[key] != runs[0].rec[key]:
+				same = false
+				detail = "differs at %s" % key
+				break
+	expect.call(same and common >= 110,
+		"close-up (throw): the release frame, the engine ball every step and the panel (2 s) are the same as with close-ups off",
+		"release after %d / %d frames, %d common steps %s" % [runs[0].frames, runs[1].frames, common, detail])
+
+
+## 처음으로 during the close-up: the front view on the same frame (no easing), the throw stopped.
+func check_throw_reset() -> void:
+	var screen: Control = await _open("projectile", TABLET)
+	var rig: CameraRig = screen.view.rig
+	var home := rig.get_state()
+	screen.experiment_action("release")
+	for i in 12:
+		await tree.process_frame
+	var was: bool = rig.is_focused() and rig.cur_distance < home.distance - 1.0
+	screen.experiment_action("reset")
+	var now := _at_home(rig, home)
+	for i in THROW_FRAMES + 5:
+		await tree.process_frame
+	expect.call(was and now and not screen.experiment.released and _at_home(rig, home),
+		"close-up (throw): 처음으로 during the close-up is the front view on the same frame, no late release or close-up",
+		"focused %s, home at once %s, released %s" % [was, now, screen.experiment.released])
+	# A rebuild during the close-up (App keeps the camera state): the user's view, not the close-up.
+	screen.experiment_action("release")
+	for i in 12:
+		await tree.process_frame
+	var state: Dictionary = screen.capture_state()
+	expect.call(_same_view(state.camera, home), "close-up (throw): the saved camera state during a close-up is the user's view", str(state.camera))
+	await _close(screen)
+
+
+# --- 3. push ----------------------------------------------------------------------------------
+
+func check_push() -> void:
+	for pull in [["hard", 320.0], ["gentle", 0.0]]:
+		await _push_case(pull[0], pull[1])
+
+
+## Picks up the handle of the box at rest, waits with a still finger, then pulls: `far` UI units in
+## one move (hard: the box breaks loose at once, the return is cut), or (gentle) 1 N steps until the
+## box slides, slowly enough that the return has ended before it does.
+func _push_case(kind: String, far: float) -> void:
+	var screen: Control = await _open("friction", TABLET)
+	var rig: CameraRig = screen.view.rig
+	var lab: Experiment = screen.experiment
+	var manipulator: Manipulator = screen.manipulator
+	var home := rig.get_state()
+	var front_fill := _cat_fill(screen)
+	var finger := _at(screen, lab.handle.global_position)
+	manipulator.handle_pointer("press", finger)
+	var picked: bool = manipulator.mode == "drag" and rig.is_focused()
+	var handle_at: Vector3 = lab.handle.global_position
+	var still := true
+	var forces := {}
+	for i in 30:
+		await tree.process_frame
+		await tree.physics_frame
+		still = still and lab.handle.global_position.is_equal_approx(handle_at)
+		forces[lab.applied_force()] = true
+	var close_fill := _cat_fill(screen)
+	var slid := false
+	var moved_sliding := 0
+	var sliding_frames := 0
+	var at := rig.global_transform
+	var guard := 0
+	var pulled := finger
+	while sliding_frames < 30 and guard < 600:
+		guard += 1
+		if not slid:
+			if kind == "hard":
+				pulled = finger + Vector2(far, 0.0)
+			elif guard % 12 == 0:
+				pulled += Vector2(4.0, 0.0)   # about a grid step (1 N) every 0.2 s
+			manipulator.handle_pointer("move", pulled)
+		await tree.physics_frame
+		await tree.process_frame
+		if lab.status() == "sliding" and not slid:
+			slid = true
+			at = rig.global_transform
+		elif slid:
+			sliding_frames += 1
+			if rig.global_transform != at:
+				moved_sliding += 1
+	var back := _at_home(rig, home) and manipulator.mode == "drag"
+	manipulator.handle_pointer("release", pulled)
+	await tree.process_frame
+	if kind == "hard":
+		expect.call(picked and still and forces.size() == 1 and forces.has(0.0) and close_fill >= front_fill * CAT_GROWTH * 0.9,
+			"close-up (push): picking up the handle of a box at rest frames the cat, box and handle closer; a still finger moves neither the handle nor the force while the camera moves",
+			"picked %s, handle still %s, forces %s, cat %.1f %% -> %.1f %%" % [picked, still, str(forces.keys()), front_fill * 100.0, close_fill * 100.0])
+	expect.call(slid and moved_sliding == 0 and back,
+		"close-up (push, %s pull): the force starts the return; from the step the box slides the camera does not move (the user's view, handle still held)" % kind,
+		"slid %s, moved %d of %d sliding frames, home %s" % [slid, moved_sliding, sliding_frames, back])
+	await _close(screen)

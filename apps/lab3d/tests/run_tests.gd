@@ -41,6 +41,8 @@
 ## 14. pulley lab (Task 4e, tests/pulley_lab_checks.gd): the pulley model and the engine load step by
 ##    step against the TS-core vectors (tests/pulley_lab_vectors.json), lift = rope / n, the rope
 ##    length and F d = m g h from the engine bodies, panel, art, hand-over-hand input, the demo.
+## 7c. camera close-up (tests/camera_focus_checks.gd): the rig's close-up state machine, the throw and
+##    the push framed closer and back, 처음으로 at once, the physics timeline unchanged.
 ## 15. key cards (Task 2d): every listed experiment opens in the front view with 2-3 key cards that
 ##    show the panel's text.
 ## Times are engine fixed steps (60 Hz), independent of rendering FPS.
@@ -131,6 +133,11 @@ func _run() -> void:
 	_expect(cat != null and cat.can_instantiate(), "bread cat checks compile", "")
 	if cat != null and cat.can_instantiate():
 		await cat.new(self, _expect).run()
+	print("== camera close-up: the bread cat framed closer while it acts, then the whole lab ==")
+	var close_up: GDScript = load("res://tests/camera_focus_checks.gd")
+	_expect(close_up != null and close_up.can_instantiate(), "camera close-up checks compile", "")
+	if close_up != null and close_up.can_instantiate():
+		await close_up.new(self, _expect).run()
 	print("== collision lab (Task 4c) ==")
 	var collision: GDScript = load("res://tests/collision_lab_checks.gd")
 	_expect(collision != null and collision.can_instantiate(), "collision lab checks compile", "")

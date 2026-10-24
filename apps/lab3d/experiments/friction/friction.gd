@@ -23,6 +23,15 @@ const HANDLE_SIZE := Vector3(0.4, BOX, 0.4)   # the handle's pick box, standing 
 const HANDLE_LAYER := 2       # pickable, never touched by the box (mask 0)
 const GRAPH_EVERY_STEPS := 6  # 10 Hz graph samples
 const END_PADDING := 0.02     # m between a stopped box and the track end
+## Close-up of the push (CameraRig.focus, apps/lab3d/README.md, close-up): picking up the handle
+## of a box at rest eases the view in on the cat, the box and the handle (CLOSE_UP_FILL of the view
+## height, centred at CLOSE_UP_ANCHOR) while no force is given yet; the first force (the handle moved
+## a grid step) starts the return to the whole track, as does letting go. The box sliding cuts what is
+## left of it (CameraRig.cut_focus): the slide is always seen from a still camera (2026-10-24 user
+## decision; when the box breaks loose under 0.4 s after the first force that is a jump). While the
+## camera moves the held handle stays where it is (the force does not change: Manipulator._keep_held).
+const CLOSE_UP_FILL := 0.3
+const CLOSE_UP_ANCHOR := Vector2(0.45, 0.6)
 
 var mass_id := "start"
 var material_id := "wood"
@@ -49,6 +58,7 @@ var frames := 0
 var _clock_steps := 0           # steps with a force or a moving box since the reset (the graph's time)
 var _graph: Array[Vector4] = []  # (t, |F|, max static, |friction|) samples, the last graph window
 var _graph_revision := 0
+var _close_up_on := false        # the grab's close-up is on, no force given yet
 
 
 func _ready() -> void:
@@ -195,6 +205,9 @@ func _physics_process(_delta: float) -> void:
 		model.friction = 0.0
 		return
 	var force := applied_force()
+	if _close_up_on and force != 0.0:
+		_close_up_on = false
+		close_up_ended.emit(0.0)   # the push begins: back to the whole track before the box can move
 	corrector.applied_force = force
 	if force == 0.0 and model.holding:
 		model.applied = 0.0
@@ -254,6 +267,9 @@ func graph_x_max() -> float:
 
 func _status_changed(previous: String, current: String) -> void:
 	props.status_changed(previous, current)
+	if previous == "holding" and current != "holding":
+		_close_up_on = false
+		close_up_cut.emit()   # the box moves: the whole track, from a still camera
 
 
 func observations() -> Dictionary:
@@ -382,6 +398,16 @@ func manipulation_started(_id: String) -> void:
 		corrector.status = "holding"
 		_update_status(true)
 	props.grab(true)
+	if status() == "holding":
+		_close_up_on = true
+		close_up.emit(close_up_spec())
+
+
+## What the push's close-up frames: the cat, the box and the handle.
+func close_up_spec() -> Dictionary:
+	var frame := props.cat.bounds().merge(AABB(box.global_position - Vector3.ONE * BOX * 0.5, Vector3.ONE * BOX))
+	frame = frame.merge(AABB(handle.global_position - HANDLE_SIZE * 0.5, HANDLE_SIZE))
+	return {"box": frame, "fill": CLOSE_UP_FILL, "anchor": CLOSE_UP_ANCHOR}
 
 
 ## Let go (also when the shell puts it back): the force is 0 again, the handle returns to the box.
@@ -394,6 +420,8 @@ func manipulation_cancelled(_id: String) -> void:
 
 
 func _let_go() -> void:
+	_close_up_on = false
+	close_up_ended.emit(0.0)
 	holding_handle = false
 	_pull = null
 	_place_handle()

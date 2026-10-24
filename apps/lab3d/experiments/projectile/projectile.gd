@@ -39,6 +39,18 @@ const FENCE_THICKNESS := 0.15
 const BOUNDS_X := Vector2(-14.0, 12.5)
 const BOUNDS_Y := Vector2(-3.0, 30.0)
 const PATH_MAX_S := 12.0            # the formula path is drawn up to the landing, at most this long
+## Close-up of the throw (CameraRig.focus, apps/lab3d/README.md, close-up): "공 놓기" eases the view
+## in on the cat and the ball (CLOSE_UP_FILL of the view height, their centre at CLOSE_UP_ANCHOR:
+## left of the middle) over CLOSE_UP_IN_S, holds CLOSE_UP_HOLD_S and eases back over CLOSE_UP_OUT_S,
+## so the camera is at rest on the whole lab before the ball leaves the paw (CatActor.WINDUP_S +
+## SWING_S = 0.48 s; 2026-10-24 user decision: the flight is seen from a still camera). The release
+## cuts whatever is left (a slow frame), so the flight never sees a moving camera. The release frame
+## and the run are the same as without it.
+const CLOSE_UP_FILL := 0.3
+const CLOSE_UP_ANCHOR := Vector2(0.36, 0.58)
+const CLOSE_UP_IN_S := 0.15
+const CLOSE_UP_HOLD_S := 0.12
+const CLOSE_UP_OUT_S := 0.17
 
 var ball: FormulaBody
 var knob: StaticBody3D
@@ -107,6 +119,7 @@ func ball_center() -> Vector3:
 
 
 func reset_run() -> void:
+	close_up_ended.emit(0.0)   # a throw in progress stops: no close-up either
 	hold_ball(ball, ball_center())
 	apply_field(ball)
 	_ball_visual.visible = true
@@ -128,6 +141,15 @@ func run_action(id: String) -> void:
 		reset_run()
 	if not projectile_props().throwing():
 		projectile_props().throw(release)
+		if projectile_props().throwing():
+			close_up.emit(close_up_spec())
+
+
+## What the throw's close-up frames: the cat and the ball in its paw.
+func close_up_spec() -> Dictionary:
+	var box := projectile_props().cat.bounds().merge(AABB(ball_center() - Vector3.ONE * BALL_RADIUS, Vector3.ONE * BALL_RADIUS * 2.0))
+	return {"box": box, "fill": CLOSE_UP_FILL, "anchor": CLOSE_UP_ANCHOR,
+		"in_s": CLOSE_UP_IN_S, "hold_s": CLOSE_UP_HOLD_S, "out_s": CLOSE_UP_OUT_S}
 
 
 func release() -> void:
@@ -137,6 +159,7 @@ func release() -> void:
 	(ball.corrector as UniformFieldCorrector).release(ball, launch_velocity())
 	_knob_visual.visible = false
 	_mark_released(PackedVector2Array([Vector2(0.0, launch_height())]))
+	close_up_cut.emit()   # normally already over: the camera is still from the release on
 
 
 func projectile_props() -> ProjectileProps:

@@ -388,6 +388,29 @@ func check_art() -> void:
 		and props._guide_radius == 3.0,
 		"orbit: the predicted path dots take the prediction's colour (crash red, orbit green, escape purple) in the orbit plane; the guide circle is at the start radius",
 		"%s, %s, last dot y %.3f, guide %.2f" % [str(colours), lab.prediction.outcome, last_dot.y, props._guide_radius])
+	# The guide circle (one dash mesh, DASHES instances): every dash centred on the circle of the start
+	# radius in the orbit plane, along it, 55 % of its arc long, 0.05 m wide.
+	var guide_ok := true
+	var worst := 0.0
+	for r in [2.0, 3.5, 5.0]:
+		lab.set_control("radius", r)
+		var mm := props.guide.multimesh
+		guide_ok = guide_ok and mm.visible_instance_count == OrbitProps.DASHES and props._guide_radius == r
+		for i in OrbitProps.DASHES:
+			# (headless rendering keeps no instance transforms: the ones set_guide uploads)
+			var xf := props.guide.global_transform * OrbitProps.guide_dash(i, props._guide_radius)
+			var a := TAU * i / OrbitProps.DASHES
+			var want := Vector3(cos(a) * r, lab.ORBIT_Y, sin(a) * r)
+			var along := xf.basis.x
+			worst = maxf(worst, xf.origin.distance_to(want))
+			worst = maxf(worst, absf(along.length() - TAU * r / OrbitProps.DASHES * 0.55))
+			worst = maxf(worst, absf(along.normalized().dot(Vector3(cos(a), 0.0, sin(a)))))
+			worst = maxf(worst, absf(xf.basis.z.length() - 1.0))
+	expect.call(guide_ok and worst < 1e-5, "orbit: the guide circle's dashes lie on the start radius in the orbit plane, along it, 55 % of their arc (radius 2, 3.5, 5 m)", "max err %s" % String.num_scientific(worst))
+	# The remembered prediction is the formula's: the same as PhysicsLaws.orbit_analyze for the launch.
+	var fresh := PhysicsLaws.orbit_analyze(lab.start_radius, 0.0, lab.launch_velocity(lab.direction, lab.speed)[0], lab.launch_velocity(lab.direction, lab.speed)[1], 0.0, 0.0, lab.MU, lab.CRASH_RADIUS)
+	lab.reset_run()
+	expect.call(lab.prediction.path == fresh.path and lab.prediction.outcome == fresh.outcome, "orbit: the remembered prediction = PhysicsLaws.orbit_analyze of the launch (path, outcome)", "%d points" % fresh.path.size())
 	await _free(lab)
 
 

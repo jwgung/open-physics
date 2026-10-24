@@ -15,6 +15,10 @@
 ## 4. layout: in the front camera (phone, tablet, tablet with the sidebar open) the cat is in the
 ##    view, clear of the title, key cards, buttons and actions, and in front of nothing it should not
 ##    hide (the line of sight to the ball, its formula path and the box misses the cat).
+## 5. storybook look (Task 4g2): every cat mesh draws the toon (cel) shader with the brown outline
+##    pass (art_outline.gdshader: front faces culled, grown along NORMAL, at least the reference's
+##    0.010 m), and the meshes keep the outline's contract (vertices at one position share one normal,
+##    so the grown hull does not tear at seams); no other mesh of the lab (ball, box, island) has it.
 extends RefCounted
 
 const EXPERIMENT_SCREEN := "res://scripts/shell/experiment_screen.gd"
@@ -27,7 +31,7 @@ const RELEASE_DIR_DEG := 10.0  # deg: paw direction over the last frame vs the l
 ## Frames (at 60 fps) before the release frame after "공 놓기": CatActor.WINDUP_S + SWING_S = 0.48 s
 ## (the release is on the 29th frame; exact, so a one-frame-late release fails).
 const THROW_FRAMES := 28
-## The BreadCat look (the user's glb, 2026-10-23): 3,290 model vertices + the shadow.
+## The BreadCat look (the user's glb, 2026-10-23; outline-ready rebuild 2026-10-24): 3,184 model vertices + the shadow.
 const CAT_VERTS_MAX := 3500
 const PHONE := Vector2(1560, 720)
 const TABLET := Vector2(1152, 720)
@@ -49,6 +53,7 @@ func run() -> void:
 	await check_push()
 	await check_push_motion_unchanged()
 	await check_no_physics()
+	await check_storybook()
 	await check_layout("projectile")
 	await check_layout("friction")
 
@@ -437,6 +442,74 @@ func check_no_physics() -> void:
 		expect.call(physics == 0 and not ((cat as Node) is CollisionObject3D) and draws <= 7 and verts <= CAT_VERTS_MAX and hands_ok,
 			"bread cat (%s): no collision object, shape or area (no layer), at most 7 drawn nodes and %d vertices, hand nodes on the arm line" % [id, CAT_VERTS_MAX],
 			"%d physics nodes, %d drawn, %d vertices" % [physics, draws, verts])
+		await _free(lab)
+
+
+# --- 5. storybook look --------------------------------------------------------------------------
+
+## Worst normal angle (deg) between vertices of one surface at the same position (UV seam copies).
+func _seam_split_deg(mesh: Mesh) -> float:
+	var worst := 0.0
+	for si in mesh.get_surface_count():
+		var arrays := mesh.surface_get_arrays(si)
+		var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+		var normals: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+		var seen := {}
+		for i in verts.size():
+			var key := Vector3i((verts[i] * 1e5).round())
+			if seen.has(key):
+				worst = maxf(worst, rad_to_deg(normals[seen[key]].angle_to(normals[i])))
+			else:
+				seen[key] = i
+	return worst
+
+
+func check_storybook() -> void:
+	var outline_lin := ArtPalette.OUTLINE.srgb_to_linear()
+	for id in ["projectile", "friction"]:
+		var lab: Experiment = await _lab(id)
+		var cat: CatActor = lab.props.cat
+		var meshes := 0
+		var wired := true
+		var worst_split := 0.0
+		var detail := ""
+		for node in cat.find_children("*", "MeshInstance3D", true, false):
+			var mi := node as MeshInstance3D
+			if mi == cat.shadow:
+				continue
+			meshes += 1
+			var toon := mi.material_override as ShaderMaterial
+			var outline := toon.next_pass as ShaderMaterial if toon != null else null
+			var ok := toon != null and toon.shader == ArtKit.TOON_SHADER and outline != null and outline.shader == ArtKit.OUTLINE_SHADER \
+				and toon.get_shader_parameter("albedo_texture") != null
+			if ok:
+				var c: Vector4 = outline.get_shader_parameter("color")
+				ok = is_equal_approx(outline.get_shader_parameter("world_width"), ArtKit.OUTLINE_WORLD) and ArtKit.OUTLINE_WORLD >= 0.010 \
+					and is_equal_approx(outline.get_shader_parameter("screen_pixels"), ArtKit.OUTLINE_PIXELS) and ArtKit.OUTLINE_PIXELS >= 1.0 \
+					and Vector3(c.x, c.y, c.z).distance_to(Vector3(outline_lin.r, outline_lin.g, outline_lin.b)) < 1e-4
+			if not ok:
+				wired = false
+				detail += " %s not wired;" % mi.name
+			worst_split = maxf(worst_split, _seam_split_deg(mi.mesh))
+		var code := ArtKit.OUTLINE_SHADER.code
+		var hull := code.contains("cull_front") and code.contains("unshaded") and code.contains("VERTEX = view_pos + n * max(world_width")
+		var toon_code := ArtKit.TOON_SHADER.code
+		var cel := toon_code.contains("unshaded") and toon_code.contains("smoothstep(-edge, edge, ndl)")
+		# Characters only: every other mesh of the lab (ball, box, island, props) keeps its material
+		# (no outline pass, not the toon shader).
+		var props_plain := true
+		for node in lab.find_children("*", "MeshInstance3D", true, false):
+			if cat.is_ancestor_of(node):
+				continue
+			var m := (node as MeshInstance3D).material_override
+			props_plain = props_plain and (m == null or (m.next_pass == null and not (m is ShaderMaterial and (m as ShaderMaterial).shader == ArtKit.TOON_SHADER)))
+		expect.call(meshes == 6 and wired and hull and cel,
+			"bread cat (%s): all 6 meshes draw the cel shader with the brown outline pass (cull_front, grown along NORMAL, >= 0.010 m, #6e4630)" % id,
+			"%d meshes, wired %s%s, hull code %s, cel code %s" % [meshes, wired, detail, hull, cel])
+		expect.call(worst_split < 0.5, "bread cat (%s): no split normals at one position (the outline hull stays closed)" % id,
+			"worst seam normal split %.3f deg" % worst_split)
+		expect.call(props_plain, "bread cat (%s): no other mesh of the lab (ball, box, island) has the toon shader or an outline" % id,
+			"props plain %s" % props_plain)
 		await _free(lab)
 
 

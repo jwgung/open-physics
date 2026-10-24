@@ -48,12 +48,73 @@ func run() -> void:
 			var moving := await _moved_after_reset_case(definition)
 			expect.call(moving.is_empty(), "friction: a box set moving by other code after 처음으로, before the next step, keeps that motion (BodyResync leaves it alone)", "; ".join(moving))
 		if definition.id == "projectile":
-			for flies_off in [false, true]:
-				var again := await _rerelease_case(definition, flies_off)
-				expect.call(again.is_empty(), "공 놓기 again after the ball %s (touch, frames without a step): the ball body and its shadow at the launch point through the wind-up, the release from there" % ("flew off the island (stopped there, frozen)" if flies_off else "landed"), "; ".join(again))
+			for ending in ["landed", "rolling", "out"]:
+				var again := await _rerelease_case(definition, ending)
+				var what: String = {"landed": "landed", "rolling": "landed and still rolls fast (SM-P200 2026-10-24: the cat went to the rolling ball)", "out": "flew off the island (stopped there, frozen)"}[ending]
+				expect.call(again.is_empty(), "공 놓기 again after the ball %s (touch, frames without a step): the ball body and its shadow at the launch point through the wind-up, the release from there" % what, "; ".join(again))
+			var report := await _stale_report_case()
+			expect.call(report.is_empty(), "BodyResync: the stale report of a body moving at the change (one step of its motion on, as on SM-P200) is put back; a body other code moved, or set moving slowly from rest, is left alone", "; ".join(report))
 			for cancel in [false, true]:
 				var moved := await _manipulation_case(definition, cancel)
 				expect.call(moved.is_empty(), "the landed ball %s (touch, frames without a step): from that frame on it stays there" % ("picked up, dragged and put back (cancelled touch)" if cancel else "picked up and put down on the launch line"), "; ".join(moved))
+
+
+## BodyResync with the report a device gives (SM-P200, 2026-10-24): the input change runs before the
+## frame's engine steps, so the stale report carries the moving body's pose one step on (here a ball
+## rolling at 1 m/s and turning, then frozen at the launch point by 공 놓기). It is still the stale
+## report: the body goes back to the launch point. A move by other code (1 m away) is left alone.
+func _stale_report_case() -> Array:
+	var problems := []
+	var dt := 1.0 / float(Engine.physics_ticks_per_second)
+	for other in [false, true]:
+		var root := Node3D.new()
+		tree.root.add_child(root)
+		var body := RigidBody3D.new()
+		body.gravity_scale = 0.0
+		root.add_child(body)
+		var rolling := Transform3D(Basis(Vector3.BACK, 0.3), Vector3(6.52, 0.25, 0.0))
+		body.global_transform = rolling
+		body.linear_velocity = Vector3(-0.98, 0.16, 0.0)
+		body.angular_velocity = Vector3(0.0, 0.0, 3.9)
+		var resync := BodyResync.new()
+		root.add_child(resync)
+		resync.mark(root)
+		var launch := Transform3D(Basis(), Vector3(-6.0, 0.75, 0.0))
+		body.freeze = true
+		body.linear_velocity = Vector3.ZERO
+		body.angular_velocity = Vector3.ZERO
+		body.global_transform = launch
+		resync.hold(root)
+		# The engine's report of the step under way: one step of the old motion on.
+		var report := Transform3D(Basis(Vector3.BACK, 0.3 + 3.9 * dt), rolling.origin + Vector3(-0.98, 0.16, 0.0) * dt)
+		if other:
+			report.origin += Vector3(1.0, 0.0, 0.0)
+		body.global_transform = report
+		resync._physics_process(dt)
+		var want := report if other else launch
+		if body.global_transform.origin.distance_to(want.origin) > POSE_TOL:
+			problems.append("%s: ball at %s, want %s" % ["moved by other code" if other else "stale report", body.global_transform.origin, want.origin])
+		root.queue_free()
+	# A free body at rest put back by the change, then set moving slowly (0.3 m/s) by other code
+	# before the step: it keeps that motion.
+	var root2 := Node3D.new()
+	tree.root.add_child(root2)
+	var box := RigidBody3D.new()
+	box.gravity_scale = 0.0
+	root2.add_child(box)
+	box.global_transform = Transform3D(Basis(), Vector3(2.0, 0.35, 0.0))
+	var resync2 := BodyResync.new()
+	root2.add_child(resync2)
+	resync2.mark(root2)
+	box.global_transform = Transform3D(Basis(), Vector3(-3.0, 0.35, 0.0))
+	resync2.hold(root2)
+	box.linear_velocity = Vector3(0.3, 0.0, 0.0)
+	resync2._physics_process(dt)
+	if box.linear_velocity != Vector3(0.3, 0.0, 0.0):
+		problems.append("box set moving at 0.3 m/s by other code: velocity %s" % box.linear_velocity)
+	root2.queue_free()
+	await tree.process_frame
+	return problems
 
 
 func _tap(screen_pos: Vector2, index := 0, press := true, release := true) -> void:
@@ -116,7 +177,8 @@ func _close(screen: Control, root_size: Vector2i) -> void:
 ## 공 놓기, the ball lands (or, without gravity, flies off the island and is stopped there, frozen),
 ## 공 놓기 again: from the press until the ball leaves the paw the ball body and its shadow are at the
 ## launch point (the stale report put the frozen one back where it stopped), and the release starts there.
-func _rerelease_case(definition: Dictionary, flies_off: bool) -> Array:
+func _rerelease_case(definition: Dictionary, ending: String) -> Array:
+	var flies_off := ending == "out"
 	var problems := []
 	var root_size := tree.root.size
 	var screen := await _open(definition)
@@ -127,10 +189,12 @@ func _rerelease_case(definition: Dictionary, flies_off: bool) -> Array:
 		screen._set_control("angle", 80.0)   # up through the top of the box (the fence stops a level throw)
 	var button: Control = screen._action_buttons["release"]
 	await _tap(button.get_global_rect().get_center())
-	for i in 260:
+	for i in (150 if ending == "rolling" else 260):
 		await tree.physics_frame
 	if lab.status() != ("out" if flies_off else "landed") or lab.ball.freeze != flies_off:
 		problems.append("first run ended %s (frozen %s)" % [lab.status(), lab.ball.freeze])
+	if ending == "rolling" and lab.ball.linear_velocity.length() < 2.0:
+		problems.append("not rolling fast: %.2f m/s" % lab.ball.linear_velocity.length())
 	var landed: Vector3 = lab.ball.global_position
 	Engine.physics_ticks_per_second = SLOW_TICKS
 	await _tap(button.get_global_rect().get_center())

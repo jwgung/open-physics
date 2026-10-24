@@ -112,6 +112,7 @@ func _ready() -> void:
 		cast = IslandCast.create(definition, experiment)
 	if cast != null:
 		view.viewport.add_child(cast)
+	if cast != null and cast.dugi != null:
 		dialogue = DialogueBox.new(cast.text)
 		view.add_child(dialogue)
 		dialogue.closed.connect(func() -> void: cast.dugi.stop())
@@ -220,9 +221,7 @@ func _run_dialogue() -> void:
 	var dugi := cast.dugi
 	if dialogue.active:
 		if not dugi.speaking() or is_sidebar_open():
-			dialogue.close(true)
-			if dugi.speaking():
-				dugi.stop()
+			_close_dialogue()
 			return
 		dugi.hold_on()
 		dialogue.visible = _layout_dialogue()

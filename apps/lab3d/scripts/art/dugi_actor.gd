@@ -126,15 +126,6 @@ func tip_point() -> Vector3:
 	return rig_transform() * (arm.transform * (pointer.transform * pointer_tip.position))
 
 
-## The world point he points at (valid while has_point()).
-func pointed() -> Vector3:
-	return _point
-
-
-func has_point() -> bool:
-	return _has_point
-
-
 ## Explaining: raising the arm or pointing.
 func speaking() -> bool:
 	return state == "raise" or state == "point"
@@ -152,10 +143,6 @@ func bounds() -> AABB:
 func explain(point: Callable) -> void:
 	target = point
 	_left = POINT_S
-	var p: Variant = point.call() if point.is_valid() else null
-	if p is Vector3 and (p as Vector3).is_finite():
-		_point = p   # known at once (the dialogue keeps it uncovered from its first frame)
-		_has_point = true
 	if state == "rest" or state == "lower":
 		state = "raise"
 

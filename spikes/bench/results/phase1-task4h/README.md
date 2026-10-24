@@ -48,6 +48,7 @@
 | `screens/dialog_collision.png` | 충돌: 대화창 첫 쪽을 다 보인 때(3D 렌더 초상화, 오른쪽 끝), 섬 뒤 가장자리 퍼피 |
 | `screens/dialog2_projectile.png` | 던지기: 2D 손그림 초상화(늘 왼쪽 끝, 막대 든 표정, 타자 중), 착지점을 가리키는 두기두기 |
 | `screens/dialog2_collision.png` | 충돌: 2D 손그림 초상화(막대 든 표정), 대화창 첫 쪽을 다 보인 때(▼) |
+| `screens/dialog3_collision.png` | 충돌: 깔끔한 선으로 다시 그린 2D 초상화(막대 든 표정), 대화창 첫 쪽을 다 보인 때(▼) |
 
 ## 3. 헤드리스
 

@@ -519,7 +519,7 @@ def empty(name, loc_world, parent, parent_pivot, size=0.03):
     return ob
 
 
-def build(monocle=True, mouth="open", pointer=True):
+def build(monocle=True, mouth="open", pointer=True, pointer_side=-1):
     img = build_atlas(mouth, monocle)
     mat = make_material(img)
     origin = Vector((0, 0, 0))
@@ -535,7 +535,7 @@ def build(monocle=True, mouth="open", pointer=True):
         bm = new_bm(); tip = make_arm(bm, side)
         arm = mesh_object("Arm" + nm, bm, SHOULDER[side], body, origin, mat)
         empty("Hand" + nm, tip, arm, SHOULDER[side])
-        if side == -1 and pointer:
+        if side == pointer_side and pointer:   # the app model: right paw; the portrait: either
             bm = new_bm(); ptip = make_pointer(bm, side)
             stick = mesh_object("Pointer", bm, HAND[side], arm, SHOULDER[side], mat)
             empty("PointerTip", ptip, stick, HAND[side])

@@ -2,8 +2,8 @@
 ## the app's storybook look. A cream, slightly see-through rounded box with the characters' brown
 ## outline runs along the bottom of the 3D view from the left margin up to the action buttons (or to
 ## Dugi on the view, whichever is nearer); a bust portrait of Dugi always stands on its left end and
-## overlaps the top edge (a hand-drawn 2D storybook illustration, assets/characters/portraits, drawn
-## by art_src/characters/dugi_portrait_2d.py), the name tag "두기두기" sits on the top edge beside it,
+## overlaps the top edge (assets/characters/portraits, rendered from the model by
+## art_src/characters/dugi_portrait.py), the name tag "두기두기" sits on the top edge beside it,
 ## and a blinking ▼ shows when the page is fully shown.
 ##
 ## The words are the lab's observe text exactly, only split into pages of at most LINES lines at

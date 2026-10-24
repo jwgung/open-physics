@@ -39,7 +39,7 @@ apps/lab3d/
   experiments/manipulation_dev/       조작 확인용 개발 장면(목록에 없음, --experiment=manipulation-dev)
   content/mechanics-labs.json         역학 실험 문구(웹 2D와 공유, "콘텐츠 공유")
   content/experiments/                실험 정의 JSON(index.json + 실험별 파일: 3D 전용 필드)
-  assets/characters/                  빵고양이·두기두기·퍼피 glb + 텍스처 아틀라스(소스: art_src/characters/bread_cat.py, dugi.py, puppy.py, Blender 스크립트), 두기두기 대화창 초상화 portraits/(2D 손그림, dugi_portrait_2d.py)
+  assets/characters/                  빵고양이·두기두기·퍼피 glb + 텍스처 아틀라스(소스: art_src/characters/bread_cat.py, dugi.py, puppy.py, Blender 스크립트), 두기두기 대화창 초상화 portraits/(모델 렌더, dugi_portrait.py)
   assets/props/                       털실 공·택배 박스 glb + 텍스처(소스: art_src/props/yarn_ball.py, parcel_box.py)
   art_src/                            캐릭터·소품 생성 Blender 스크립트(외부 .blend 없음)
   assets/fonts/                       Noto Sans CJK KR 서브셋(Regular·Bold, SIL OFL 1.1), 기호 대체 글꼴

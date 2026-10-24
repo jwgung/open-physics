@@ -17,6 +17,9 @@ signal impact(strength: float)
 signal close_up(spec: Dictionary)
 ## The act is over: the view eases back to the user's `after` seconds from now (CameraRig.end_focus).
 signal close_up_ended(after: float)
+## Something must be seen from a still camera from now on: a close-up or its return ends on this
+## frame (CameraRig.cut_focus; a jump only when it had not ended yet).
+signal close_up_cut
 
 ## Parsed content JSON (see ExperimentRegistry). Read-only for the experiment.
 var definition: Dictionary = {}

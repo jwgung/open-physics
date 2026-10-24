@@ -65,6 +65,12 @@ var focus_enabled := true          # tests: false runs the same screen without c
 var _focus: Dictionary = {}
 var _focus_end_left := -1.0        # s until a scheduled end_focus(after), < 0: none
 var _focus_returning := false      # ended, still easing back to the user's view
+## A timed close-up (spec in_s / hold_s / out_s): in, hold and back out over fixed times, ending
+## exactly on the user's view; {} = an open one (ends with end_focus).
+var _profile: Dictionary = {}
+var _profile_t := 0.0
+## cut_focus() jumped the camera (the manipulator reads it once: consume_cut).
+var _cut := false
 var _view_aspect := REFERENCE_ASPECT
 
 
@@ -392,6 +398,10 @@ const FOCUS_ANCHOR := Vector2(0.5, 0.55)    # default place of the subject's cen
 ## nothing of the experiment changes. A two-finger gesture ends it (orbit / zoom / pan_by), a mode
 ## change or set_state() (처음으로) drops it at once. Returns false (and does nothing) when close-ups
 ## are off (focus_enabled) or the camera is not in a FOCUS_MODES view.
+## Timed (`spec.in_s` given): it eases in over in_s, holds hold_s, eases back over out_s
+## (smoothstep blends between the user's view and the close-up) and is exactly the user's view,
+## still, after in_s + hold_s + out_s: a lab can have the camera at rest before something it must
+## show from a still view (the throw's release, 2026-10-24 user decision).
 func focus(spec: Dictionary) -> bool:
 	if not focus_enabled or mode not in FOCUS_MODES:
 		return false
@@ -413,7 +423,34 @@ func focus(spec: Dictionary) -> bool:
 	_focus = {"target": target, "distance": distance}
 	_focus_end_left = -1.0
 	_focus_returning = false
+	_profile = {}
+	if spec.has("in_s"):
+		_profile = {"in": float(spec.in_s), "hold": float(spec.get("hold_s", 0.0)), "out": float(spec.get("out_s", spec.in_s))}
+		_profile_t = 0.0
 	return true
+
+
+## The timed close-up's total time (0 for an open one).
+func focus_duration() -> float:
+	return 0.0 if _profile.is_empty() else _profile.in + _profile.hold + _profile.out
+
+
+## Ends a close-up or its return at once: the user's view on this frame (a jump), the camera still
+## from here (the box starts to slide, the ball leaves the paw before a timed one ended).
+func cut_focus() -> void:
+	if _focus.is_empty() and not _focus_returning:
+		return
+	_clear_focus()
+	snap()
+	_cut = true
+
+
+## Whether cut_focus() jumped the camera since the last call (the manipulator keeps a held object
+## where it is across that jump, as across the easing).
+func consume_cut() -> bool:
+	var was := _cut
+	_cut = false
+	return was
 
 
 ## Ends a close-up: the view eases back to the user's (now, or `after` seconds from now).
@@ -424,10 +461,11 @@ func end_focus(after := 0.0) -> void:
 		_focus_end_left = after
 		return
 	_clear_focus()
-	_focus_returning = true
+	_focus_returning = true   # (a timed one ended early eases back like an open one)
 
 
 func _clear_focus() -> void:
+	_profile = {}
 	_focus = {}
 	_focus_end_left = -1.0
 	_focus_returning = false
@@ -443,12 +481,37 @@ func is_framing() -> bool:
 	return not _focus.is_empty() or _focus_returning
 
 
+## Blend of the timed close-up at `t` s: 0 = the user's view, 1 = the close-up (smoothstep in and out).
+func _profile_weight(t: float) -> float:
+	var k := 1.0
+	if t < _profile.in:
+		k = t / _profile.in
+	elif t > _profile.in + _profile.hold:
+		k = 1.0 - (t - _profile.in - _profile.hold) / _profile.out
+	k = clampf(k, 0.0, 1.0)
+	return k * k * (3.0 - 2.0 * k)
+
+
 ## The close-up's look-at point and distance ({} when none; tests).
 func focus_goal() -> Dictionary:
 	return _focus.duplicate()
 
 
 func _process(delta: float) -> void:
+	if not _profile.is_empty():
+		_profile_t += delta
+		if _profile_t >= focus_duration():
+			_clear_focus()
+			snap()   # exactly the user's view, still from now on
+			return
+		var w := _profile_weight(_profile_t)
+		var t := 1.0 - exp(-EASE_RATE * delta)
+		cur_yaw = lerp_angle(cur_yaw, goal_yaw, t)
+		cur_pitch = lerpf(cur_pitch, goal_pitch, t)
+		cur_distance = lerpf(goal_distance, _focus.distance, w)
+		cur_target = _view_goal_target().lerp(_focus.target, w)
+		_apply()
+		return
 	if _focus_end_left >= 0.0:
 		_focus_end_left -= delta
 		if _focus_end_left < 0.0:

@@ -18,7 +18,7 @@
 ## - Put down: a valid target places the object there (Experiment.manipulation_placed); an invalid
 ##   one, a second finger, or a system cancel puts it back where it was picked up.
 ## - The camera turns to show the surface while dragging if the view is too flat (CameraRig.begin_assist).
-##   A close-up's camera move (CameraRig.is_framing) leaves a held object where it is (_keep_held).
+##   A close-up's camera move (CameraRig.is_framing, or its cut) leaves a held object where it is (_keep_held).
 ## Work per input event: at most one ray (pick) and one shape query (only when the grid target or
 ## the height changes). A pointer event makes a few small values (the finger ray, one projected
 ## point); every move of the held body goes through Experiment.change_from_input (BodyResync, one
@@ -231,10 +231,10 @@ func _move_body(xf: Transform3D) -> void:
 ## The camera turned while an object is held (the assist, or a mode button): a drag puts the object
 ## under the unmoved finger again; a height drag measures the finger from the new view, so the
 ## height stays the same until the finger moves.
-func _follow_camera() -> void:
+func _follow_camera(cut := false) -> void:
 	_finger_camera = view.rig.global_transform
 	if mode == "drag":
-		if view.rig.is_framing():
+		if cut or view.rig.is_framing():
 			_keep_held()
 		else:
 			_drag_to(_finger)
@@ -609,8 +609,9 @@ func _forget_handle_surface() -> void:
 
 
 func _process(delta: float) -> void:
+	var cut := view.rig.consume_cut()
 	if mode != "" and view.rig.global_transform != _finger_camera:
-		_follow_camera()
+		_follow_camera(cut)
 	if selected_id != "" and mode != "drag":
 		var body := experiment.manipulation_body(selected_id)
 		if body != null and (body.global_transform != _handle_body or view.rig.global_transform != _handle_camera):

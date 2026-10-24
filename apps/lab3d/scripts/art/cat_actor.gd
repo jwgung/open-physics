@@ -165,6 +165,19 @@ func throwing() -> bool:
 	return mode == "throw"
 
 
+## World AABB of the actor's drawn meshes (not its shadow; the actor is in the tree): what a
+## close-up frames (CameraRig.focus).
+func bounds() -> AABB:
+	var box := AABB()
+	var first := true
+	for m in rig.find_children("*", "MeshInstance3D", true, false):
+		var mi := m as MeshInstance3D
+		var b := mi.global_transform * mi.get_aabb()
+		box = b if first else box.merge(b)
+		first = false
+	return box
+
+
 # --- modes ----------------------------------------------------------------------------------------
 
 ## Holds a ball of radius `radius` centred at `center` in the left paw (gripping) or only stands

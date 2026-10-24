@@ -97,6 +97,8 @@ func _ready() -> void:
 	experiment = ExperimentRegistry.instantiate(definition)
 	experiment.state_changed.connect(_on_state_changed)
 	experiment.impact.connect(view.rig.nudge)
+	experiment.close_up.connect(func(spec: Dictionary) -> void: view.rig.focus(spec))
+	experiment.close_up_ended.connect(view.rig.end_focus)
 	view.set_world(experiment)
 	if definition.has("manipulation"):
 		manipulator = Manipulator.new()

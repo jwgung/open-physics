@@ -5,6 +5,9 @@
 ## definition.camera; a view may look at its own `target` (default: camera.target), e.g. the
 ## front view a little higher so the top of the apparatus clears the key cards (Task 2d).
 ## Gestures change the view directly (no lag); mode switches ease over ~0.4 s. Angles: yaw 0 looks along -z (camera on +z), pitch < 0 is above the target.
+## Close-up (focus / end_focus): a lab frames a character that acts (the bread cat throwing or
+## pushing; Dugi explaining in Task 4h) closer for a moment, then the view eases back to the one the
+## user had. Visual only, see focus().
 class_name CameraRig
 extends Camera3D
 
@@ -56,6 +59,13 @@ var _shake_v := 0.0
 var _assist_saved: Dictionary = {}
 var _assist_active := false
 var _held_target := Vector3.ZERO
+## Close-up (focus): the look-at point and distance it draws instead of the view's; empty = none.
+## The user's view (mode, goal_*, pan) is not touched, so ending it eases back to that view.
+var focus_enabled := true          # tests: false runs the same screen without close-ups
+var _focus: Dictionary = {}
+var _focus_end_left := -1.0        # s until a scheduled end_focus(after), < 0: none
+var _focus_returning := false      # ended, still easing back to the user's view
+var _view_aspect := REFERENCE_ASPECT
 
 
 ## Reads definition.camera (see content/experiments/*.json) and jumps to the default mode.
@@ -89,6 +99,8 @@ func _ready() -> void:
 ## tablet's 3D view beside the open sidebar is about square) keeps the horizontal field of a
 ## REFERENCE_ASPECT view, so the whole apparatus stays in frame when the sidebar opens.
 func fit_aspect(view_size: Vector2) -> void:
+	if view_size.y > 0.0:
+		_view_aspect = view_size.x / view_size.y
 	if view_size.x >= view_size.y * REFERENCE_ASPECT:
 		keep_aspect = Camera3D.KEEP_HEIGHT
 		fov = FOV_DEG
@@ -111,6 +123,7 @@ func set_mode(new_mode: String, instant := false) -> void:
 		goal_distance = clampf(view.get("distance", default_distance), distance_range.x, distance_range.y)
 		pan = Vector3.ZERO
 	_assist_saved = {}   # the new mode wins: end_assist() must not turn the view back to the old one
+	_clear_focus()       # and the close-up ends without a return of its own (the mode change eases)
 	var changed := new_mode != mode
 	mode = new_mode   # before snap(): follow targets depend on the mode
 	if instant:
@@ -122,6 +135,7 @@ func set_mode(new_mode: String, instant := false) -> void:
 ## Two-finger drag / right-mouse drag (UI units). Turning leaves a preset view for "orbit"
 ## (follow keeps following).
 func orbit(relative: Vector2) -> void:
+	end_focus()   # a gesture is the user's: a close-up gives the view back first
 	# The drawn view moves by the same delta as the goal, so a gesture during a mode transition
 	# neither jumps to the goal nor drops the rest of the transition.
 	var yaw := clampf(goal_yaw - relative.x * ORBIT_RAD_PER_UNIT, yaw_range.x, yaw_range.y)
@@ -143,6 +157,7 @@ func twist(radians: float) -> void:
 
 ## factor < 1 zooms in.
 func zoom(factor: float) -> void:
+	end_focus()
 	var distance := clampf(goal_distance * factor, distance_range.x, distance_range.y)
 	cur_distance += distance - goal_distance
 	goal_distance = distance
@@ -150,6 +165,7 @@ func zoom(factor: float) -> void:
 
 ## Moves the look-at point in the screen plane (UI units), keeping it within pan_radius.
 func pan_by(relative: Vector2) -> void:
+	end_focus()
 	var basis_now := global_transform.basis
 	var right := basis_now.x
 	var up := basis_now.y
@@ -181,7 +197,7 @@ const ASSIST_REFINE_STEPS := 5   # bisection steps pulling the found view back t
 
 
 func begin_assist(plane_normal: Vector3, line_axis: Vector3, stats := {}) -> bool:
-	_held_target = _goal_target()
+	_held_target = _view_goal_target()   # the user's view, not a close-up (it may end during the drag)
 	_assist_active = true
 	_assist_saved = {}
 	stats["checks"] = 1
@@ -311,6 +327,7 @@ func set_state(state: Dictionary) -> void:
 	var saved: String = state.get("mode", mode)
 	if saved not in MODES:
 		return
+	_clear_focus()   # 처음으로 / a rebuild: the saved view at once, no close-up
 	goal_yaw = state.get("yaw", goal_yaw)
 	goal_pitch = state.get("pitch", goal_pitch)
 	goal_distance = state.get("distance", goal_distance)
@@ -326,30 +343,124 @@ func set_state(state: Dictionary) -> void:
 func snap() -> void:
 	cur_yaw = goal_yaw
 	cur_pitch = goal_pitch
-	cur_distance = goal_distance
+	cur_distance = _goal_distance()
 	cur_target = _goal_target()
+	_focus_returning = false
 	_apply()
 
 
 func is_settled(epsilon := 0.001) -> bool:
 	return absf(angle_difference(cur_yaw, goal_yaw)) < epsilon and absf(cur_pitch - goal_pitch) < epsilon \
-		and absf(cur_distance - goal_distance) < epsilon * 10.0 and cur_target.distance_to(_goal_target()) < epsilon * 10.0
+		and absf(cur_distance - _goal_distance()) < epsilon * 10.0 and cur_target.distance_to(_goal_target()) < epsilon * 10.0
 
 
+## Where the drawn view is heading: a close-up's look-at point, else the held assist target, else the view's.
 func _goal_target() -> Vector3:
+	if not _focus.is_empty():
+		return _focus.target
 	if _assist_active:
 		return _held_target
+	return _view_goal_target()
+
+
+## The look-at point of the user's view (follow target or preset target, plus pan).
+func _view_goal_target() -> Vector3:
 	if mode == "follow" and follow_source != null and is_instance_valid(follow_source):
 		return follow_source.follow_point() + pan
 	return view_target + pan
 
 
+func _goal_distance() -> float:
+	return _focus.distance if not _focus.is_empty() else goal_distance
+
+
+# --- close-up ---------------------------------------------------------------------------------
+
+## Close-ups only in these modes: the default front view the labs' framing is made for. A view the
+## user chose (3/4, top, side, follow, turned) stays as it is.
+const FOCUS_MODES := ["front"]
+const FOCUS_FILL := 0.3                     # default share of the view height the subject takes
+const FOCUS_ANCHOR := Vector2(0.5, 0.55)    # default place of the subject's centre (view fractions, from the top left)
+
+
+## Frames `spec.box` (a world AABB: the acting character, and what it acts on) closer, keeping the
+## view's yaw and pitch: the distance at which the box's height on screen is `spec.fill` (share of
+## the view height, FOCUS_FILL) of the view, the look-at point so the box's centre sits at
+## `spec.anchor` (fractions of the view from its top left, FOCUS_ANCHOR: e.g. left of the middle
+## so a throw to +x has room ahead). Eases in like a mode change (EASE_RATE, ~0.37 s) and stays
+## until end_focus(). Visual only: the mode, the view the user had (goal_*, pan, get_state()) and
+## nothing of the experiment changes. A two-finger gesture ends it (orbit / zoom / pan_by), a mode
+## change or set_state() (처음으로) drops it at once. Returns false (and does nothing) when close-ups
+## are off (focus_enabled) or the camera is not in a FOCUS_MODES view.
+func focus(spec: Dictionary) -> bool:
+	if not focus_enabled or mode not in FOCUS_MODES:
+		return false
+	var box: AABB = spec.get("box", AABB())
+	var fill: float = clampf(float(spec.get("fill", FOCUS_FILL)), 0.05, 1.0)
+	var anchor: Vector2 = spec.get("anchor", FOCUS_ANCHOR)
+	var tan_v := tan(deg_to_rad(fov) * 0.5)
+	if keep_aspect == Camera3D.KEEP_WIDTH:
+		tan_v /= _view_aspect
+	var tan_h := tan_v * _view_aspect
+	var basis := Basis.looking_at(view_direction(goal_yaw, goal_pitch), Vector3.UP)
+	var right := basis.x
+	var up := basis.y
+	var e := box.size * 0.5
+	var half_height := absf(up.x) * e.x + absf(up.y) * e.y + absf(up.z) * e.z
+	var distance := clampf(half_height / (fill * tan_v), distance_range.x, distance_range.y)
+	var center := box.get_center()
+	var target := center + right * (0.5 - anchor.x) * 2.0 * distance * tan_h + up * (anchor.y - 0.5) * 2.0 * distance * tan_v
+	_focus = {"target": target, "distance": distance}
+	_focus_end_left = -1.0
+	_focus_returning = false
+	return true
+
+
+## Ends a close-up: the view eases back to the user's (now, or `after` seconds from now).
+func end_focus(after := 0.0) -> void:
+	if _focus.is_empty():
+		return
+	if after > 0.0:
+		_focus_end_left = after
+		return
+	_clear_focus()
+	_focus_returning = true
+
+
+func _clear_focus() -> void:
+	_focus = {}
+	_focus_end_left = -1.0
+	_focus_returning = false
+
+
+func is_focused() -> bool:
+	return not _focus.is_empty()
+
+
+## A close-up is on or its return is still easing: the camera moves without the user (the
+## manipulator keeps a held object where it is in the world then, instead of under the finger).
+func is_framing() -> bool:
+	return not _focus.is_empty() or _focus_returning
+
+
+## The close-up's look-at point and distance ({} when none; tests).
+func focus_goal() -> Dictionary:
+	return _focus.duplicate()
+
+
 func _process(delta: float) -> void:
+	if _focus_end_left >= 0.0:
+		_focus_end_left -= delta
+		if _focus_end_left < 0.0:
+			end_focus()
 	var t := 1.0 - exp(-EASE_RATE * delta)
 	cur_yaw = lerp_angle(cur_yaw, goal_yaw, t)
 	cur_pitch = lerpf(cur_pitch, goal_pitch, t)
-	cur_distance = lerpf(cur_distance, goal_distance, t)
+	cur_distance = lerpf(cur_distance, _goal_distance(), t)
 	cur_target = cur_target.lerp(_goal_target(), t)
+	if _focus_returning and is_settled():
+		snap()   # the last few mm: exactly the user's view again (ends the return)
+		return
 	if shake != 0.0 or _shake_v != 0.0:
 		var dt := minf(delta, 1.0 / 30.0)
 		_shake_v += (-NUDGE_K * shake - NUDGE_DAMP * _shake_v) * dt

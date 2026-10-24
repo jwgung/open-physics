@@ -23,6 +23,13 @@ const HANDLE_SIZE := Vector3(0.4, BOX, 0.4)   # the handle's pick box, standing 
 const HANDLE_LAYER := 2       # pickable, never touched by the box (mask 0)
 const GRAPH_EVERY_STEPS := 6  # 10 Hz graph samples
 const END_PADDING := 0.02     # m between a stopped box and the track end
+## Close-up of the push (CameraRig.focus, apps/lab3d/README.md, close-up): picking up the handle
+## of a box at rest eases the view in on the cat, the box and the handle (CLOSE_UP_FILL of the view
+## height, centred at CLOSE_UP_ANCHOR); it eases back to the whole track as soon as the box starts to
+## slide or the handle is let go. While the camera moves the held handle stays where it is (the
+## force does not change: Manipulator._keep_held).
+const CLOSE_UP_FILL := 0.3
+const CLOSE_UP_ANCHOR := Vector2(0.45, 0.6)
 
 var mass_id := "start"
 var material_id := "wood"
@@ -254,6 +261,8 @@ func graph_x_max() -> float:
 
 func _status_changed(previous: String, current: String) -> void:
 	props.status_changed(previous, current)
+	if current != "holding":
+		close_up_ended.emit(0.0)   # the box moves: the whole track again
 
 
 func observations() -> Dictionary:
@@ -382,6 +391,15 @@ func manipulation_started(_id: String) -> void:
 		corrector.status = "holding"
 		_update_status(true)
 	props.grab(true)
+	if status() == "holding":
+		close_up.emit(close_up_spec())
+
+
+## What the push's close-up frames: the cat, the box and the handle.
+func close_up_spec() -> Dictionary:
+	var frame := props.cat.bounds().merge(AABB(box.global_position - Vector3.ONE * BOX * 0.5, Vector3.ONE * BOX))
+	frame = frame.merge(AABB(handle.global_position - HANDLE_SIZE * 0.5, HANDLE_SIZE))
+	return {"box": frame, "fill": CLOSE_UP_FILL, "anchor": CLOSE_UP_ANCHOR}
 
 
 ## Let go (also when the shell puts it back): the force is 0 again, the handle returns to the box.
@@ -394,6 +412,7 @@ func manipulation_cancelled(_id: String) -> void:
 
 
 func _let_go() -> void:
+	close_up_ended.emit(0.0)
 	holding_handle = false
 	_pull = null
 	_place_handle()

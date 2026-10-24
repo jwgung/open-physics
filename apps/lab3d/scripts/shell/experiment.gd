@@ -12,6 +12,11 @@ signal state_changed
 ## Something visibly hit the ground (strength 0..1). Visual only: the screen gives the camera a
 ## small dip (CameraRig.nudge). Experiments emit it from their ArtJuice.landed.
 signal impact(strength: float)
+## A character acts: the lab asks the shell to frame `spec` closer for a moment (CameraRig.focus:
+## "box" = world AABB of what to frame, optional "fill", "anchor"). Visual only.
+signal close_up(spec: Dictionary)
+## The act is over: the view eases back to the user's `after` seconds from now (CameraRig.end_focus).
+signal close_up_ended(after: float)
 
 ## Parsed content JSON (see ExperimentRegistry). Read-only for the experiment.
 var definition: Dictionary = {}

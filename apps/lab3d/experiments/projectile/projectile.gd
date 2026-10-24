@@ -39,6 +39,13 @@ const FENCE_THICKNESS := 0.15
 const BOUNDS_X := Vector2(-14.0, 12.5)
 const BOUNDS_Y := Vector2(-3.0, 30.0)
 const PATH_MAX_S := 12.0            # the formula path is drawn up to the landing, at most this long
+## Close-up of the throw (CameraRig.focus, apps/lab3d/README.md, close-up): from "공 놓기" the
+## view eases in on the cat and the ball (CLOSE_UP_FILL of the view height, their centre at
+## CLOSE_UP_ANCHOR: left of the middle so the throw has room ahead), and CLOSE_UP_HOLD_S after the
+## release it eases back to the whole lab. The release frame and the run are the same as without it.
+const CLOSE_UP_FILL := 0.3
+const CLOSE_UP_ANCHOR := Vector2(0.36, 0.58)
+const CLOSE_UP_HOLD_S := 0.25
 
 var ball: FormulaBody
 var knob: StaticBody3D
@@ -107,6 +114,7 @@ func ball_center() -> Vector3:
 
 
 func reset_run() -> void:
+	close_up_ended.emit(0.0)   # a throw in progress stops: no close-up either
 	hold_ball(ball, ball_center())
 	apply_field(ball)
 	_ball_visual.visible = true
@@ -128,6 +136,14 @@ func run_action(id: String) -> void:
 		reset_run()
 	if not projectile_props().throwing():
 		projectile_props().throw(release)
+		if projectile_props().throwing():
+			close_up.emit(close_up_spec())
+
+
+## What the throw's close-up frames: the cat and the ball in its paw.
+func close_up_spec() -> Dictionary:
+	var box := projectile_props().cat.bounds().merge(AABB(ball_center() - Vector3.ONE * BALL_RADIUS, Vector3.ONE * BALL_RADIUS * 2.0))
+	return {"box": box, "fill": CLOSE_UP_FILL, "anchor": CLOSE_UP_ANCHOR}
 
 
 func release() -> void:
@@ -137,6 +153,7 @@ func release() -> void:
 	(ball.corrector as UniformFieldCorrector).release(ball, launch_velocity())
 	_knob_visual.visible = false
 	_mark_released(PackedVector2Array([Vector2(0.0, launch_height())]))
+	close_up_ended.emit(CLOSE_UP_HOLD_S)
 
 
 func projectile_props() -> ProjectileProps:

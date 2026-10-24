@@ -18,6 +18,7 @@
 ## - Put down: a valid target places the object there (Experiment.manipulation_placed); an invalid
 ##   one, a second finger, or a system cancel puts it back where it was picked up.
 ## - The camera turns to show the surface while dragging if the view is too flat (CameraRig.begin_assist).
+##   A close-up's camera move (CameraRig.is_framing) leaves a held object where it is (_keep_held).
 ## Work per input event: at most one ray (pick) and one shape query (only when the grid target or
 ## the height changes). A pointer event makes a few small values (the finger ray, one projected
 ## point); every move of the held body goes through Experiment.change_from_input (BodyResync, one
@@ -91,8 +92,7 @@ var _handle_surface: ManipSurface    # surface of the selected object, built onc
 var _demo_every := 0.0
 var _demo_left := 0.0
 var _demo_flip := false
-var _demo_from := Vector2.ZERO
-var _demo_to := Vector2.ZERO
+var _demo_start := Vector2.ZERO  # plane point the demo picked its object up at
 var _demo_goal := Vector2.ZERO   # plane point the demo drags to (on the grid)
 var _demo_t := -1.0
 
@@ -234,11 +234,24 @@ func _move_body(xf: Transform3D) -> void:
 func _follow_camera() -> void:
 	_finger_camera = view.rig.global_transform
 	if mode == "drag":
-		_drag_to(_finger)
+		if view.rig.is_framing():
+			_keep_held()
+		else:
+			_drag_to(_finger)
 	elif mode == "height":
 		var s: Variant = _knob_line_point(_finger)
 		if s != null:
 			_grab_height = s - (_lift + height)
+
+
+## A close-up moves the camera without the user (CameraRig.is_framing): the held object stays where
+## it is in the world and the finger's offset is measured again from the new view, so a still finger
+## changes nothing (the friction handle's force is its position). The next move goes on from there.
+func _keep_held() -> void:
+	var ray := _finger_ray(_finger)
+	var finger: Variant = _surface.project_ray(ray[0], ray[1], _lift + height)
+	if finger != null:
+		_grab = _held - finger
 
 
 func _release() -> void:
@@ -619,10 +632,11 @@ func start_demo(every: float) -> void:
 func _demo_tick(delta: float) -> void:
 	if _demo_t >= 0.0:
 		_demo_t = minf(_demo_t + delta / DEMO_DRAG_S, 1.0)
-		handle_pointer("move", _demo_from.lerp(_demo_to, _demo_t))
+		var finger := _demo_finger(_demo_start.lerp(_demo_goal, _demo_t))
+		handle_pointer("move", finger)
 		if _demo_t >= 1.0:
 			_demo_t = -1.0
-			handle_pointer("release", _demo_to)
+			handle_pointer("release", finger)
 			if _placed_last:
 				demo_placed.emit()
 		return
@@ -638,8 +652,12 @@ func _demo_tick(delta: float) -> void:
 	_demo_flip = not _demo_flip
 	var goal := surface.nearest_inside(surface.region_min.lerp(surface.region_max, 1.0 if _demo_flip else DEMO_NEAR_FRACTION))
 	_demo_goal = goal
-	var lift := _half_extents(id).y
-	_demo_from = view.rig.unproject_position(body.global_position) / _pixels_per_unit()
-	_demo_to = view.rig.unproject_position(surface.pose(goal, lift).origin) / _pixels_per_unit()
-	handle_pointer("press", _demo_from)
+	handle_pointer("press", view.rig.unproject_position(body.global_position) / _pixels_per_unit())
+	_demo_start = _held
 	_demo_t = 0.0 if mode == "drag" else -1.0
+
+
+## Where the demo's finger goes for the held object to be at plane point `p` (the pick-up offset
+## taken off, so the path is the same in the world when a close-up moves the camera meanwhile).
+func _demo_finger(p: Vector2) -> Vector2:
+	return view.rig.unproject_position(_surface.pose(p - _grab, _lift + height).origin) / _pixels_per_unit()

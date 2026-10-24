@@ -30,6 +30,12 @@ class_name BodyResync
 extends Node
 
 const POSE_TOL := 1e-4      # m: "the same pose" for the step's check
+## The stale report of a body that was moving at mark() carries its pose one engine step on (a rolling
+## ball reset by 공 놓기: 1.6 cm on SM-P200, 2026-10-24) and that step's velocity change: it still
+## counts as the report within this many steps of its velocity, plus REPORT_SLACK (m, rad, m/s).
+const REPORT_STEPS := 1.5
+const REPORT_SLACK := 0.005
+const REPORT_ACCEL := 40.0  # m/s^2: the most a step changes a lab body's velocity (gravity, contact)
 
 var _before := {}           # RigidBody3D -> Transform3D before the change (mark)
 var _targets := {}          # RigidBody3D -> [Transform3D, freeze, linear_velocity, angular_velocity] at hold()
@@ -124,13 +130,30 @@ func _moved_since(body: RigidBody3D) -> bool:
 	var record: Array = _targets[body]
 	var stale: Array = _stale.get(body, record.slice(0, 1) + record.slice(2))
 	var now := body.global_transform
-	if not (_near(now, record[0]) or _near(now, stale[0])):
+	if not (_near(now, record[0]) or _near_report(now, stale)):
 		return true
 	if not _free.has(body):
 		return false   # frozen: only its pose counts (a kinematic move's report carries a velocity)
+	var dt := 1.0 / float(Engine.physics_ticks_per_second)
 	var still := (body.linear_velocity.is_equal_approx(record[2]) and body.angular_velocity.is_equal_approx(record[3])) \
-		or (body.linear_velocity.is_equal_approx(stale[1]) and body.angular_velocity.is_equal_approx(stale[2]))
+		or (body.linear_velocity.distance_to(stale[1]) <= REPORT_ACCEL * dt * REPORT_STEPS + REPORT_SLACK)
 	return not still
+
+
+## `now` is what the stale report carries: the pose at mark() moved on by up to REPORT_STEPS engine
+## steps of the velocity it had then (exactly that pose for a body at rest).
+static func _near_report(now: Transform3D, stale: Array) -> bool:
+	var dt := 1.0 / float(Engine.physics_ticks_per_second)
+	var from: Transform3D = stale[0]
+	var linear: Vector3 = stale[1]
+	var angular: Vector3 = stale[2]
+	if linear == Vector3.ZERO and angular == Vector3.ZERO:
+		return _near(now, from)
+	var reach := linear.length() * dt * REPORT_STEPS + REPORT_SLACK + POSE_TOL
+	var turn := angular.length() * dt * REPORT_STEPS + REPORT_SLACK
+	var q := now.basis.orthonormalized().get_rotation_quaternion() * from.basis.orthonormalized().get_rotation_quaternion().inverse()
+	var angle := q.get_angle()
+	return now.origin.distance_to(from.origin) <= reach and minf(angle, TAU - angle) <= turn
 
 
 static func _near(a: Transform3D, b: Transform3D) -> bool:

@@ -155,44 +155,41 @@ def draw(expr, size):
     surf = cairo.ImageSurface(cairo.FORMAT_ARGB32, S, S)
     ctx = cairo.Context(surf)
     ctx.scale(S / BASE, S / BASE)
-    ctx.translate(256, 512)   # bust framing: a little closer than the page layout
-    ctx.scale(1.08, 1.08)
-    ctx.translate(-256, -512)
     ctx.set_line_join(cairo.LINE_JOIN_ROUND)
     ctx.set_line_cap(cairo.LINE_CAP_ROUND)
     ctx.set_antialias(cairo.ANTIALIAS_BEST)
 
-    hx, hy, hrx, hry = 256.0, 330.0, 130.0, 113.0   # head 1.15 : 1
+    hx, hy, hrx, hry = 256.0, 352.0, 132.0, 114.0   # head 1.15 : 1
 
     # Shoulders (cut by the frame).
-    body = [(150, 560), (156, 486), (196, 446), (256, 436), (316, 446), (356, 486), (362, 560)]
+    body = [(130, 580), (140, 500), (190, 462), (256, 452), (322, 462), (372, 500), (382, 580)]
     shape(ctx, body, FUR, OUTER_W)
 
     # The pointing arm (behind the scarf), paw and stick.
     if expr == "point":
-        arm = [(318, 470), (346, 440), (376, 404), (398, 384), (418, 394), (410, 418), (384, 452), (360, 488), (330, 494)]
+        arm = [(322, 486), (350, 456), (380, 420), (402, 400), (422, 410), (414, 434), (388, 468), (366, 504), (334, 510)]
         shape(ctx, arm, FUR, OUTER_W, light=(-0.9, -0.3))
-        stick = [(394, 386), (418, 328), (440, 272)]
+        stick = [(398, 402), (422, 344), (444, 288)]
         stroke_line(ctx, stick, 9.5, LINE)
         stroke_line(ctx, stick, 5.5, STICK)
-        shape(ctx, ellipse_pts(441, 268, 12, 12), TIP, INNER_W, edge=(0.6, 0.12, 0.1), edge_w=6, edge_a=0.6)
-        soft_dot(ctx, 437, 264, 3.5, 3.0, (1, 1, 1), 0.85)
-        shape(ctx, ellipse_pts(402, 386, 21, 19, rot=-0.5), FUR, INNER_W, light=(-0.6, -0.8))
+        shape(ctx, ellipse_pts(445, 284, 12, 12), TIP, INNER_W, edge=(0.6, 0.12, 0.1), edge_w=6, edge_a=0.6)
+        soft_dot(ctx, 441, 280, 3.5, 3.0, (1, 1, 1), 0.85)
+        shape(ctx, ellipse_pts(406, 402, 21, 19, rot=-0.5), FUR, INNER_W, light=(-0.6, -0.8))
 
     # Scarf: a band around the neck, a knot at the viewer's left, two short tails.
-    scarf = [(160, 436), (206, 452), (256, 458), (306, 452), (352, 436), (356, 458), (308, 476), (256, 482), (204, 476), (156, 458)]
+    scarf = [(166, 456), (210, 468), (256, 472), (302, 468), (346, 456), (348, 472), (304, 486), (256, 490), (208, 486), (164, 472)]
     shape(ctx, scarf, SCARF, INNER_W, edge=SCARF_EDGE, edge_w=10, edge_a=0.5)
-    for x in (226, 286, 330):   # simple folds
-        stroke_line(ctx, [(x, 458), (x + 4, 470)], 2.2, SCARF_EDGE)
-    for tail in ([(184, 470), (172, 498), (166, 520), (188, 518), (198, 486)], [(200, 472), (214, 498), (222, 520), (242, 512), (220, 474)]):
+    for x in (232, 288, 326):   # simple folds
+        stroke_line(ctx, [(x, 472), (x + 3, 482)], 2.0, SCARF_EDGE)
+    for tail in ([(190, 484), (180, 504), (176, 520), (194, 518), (202, 492)], [(204, 486), (214, 504), (220, 520), (236, 514), (220, 488)]):
         shape(ctx, tail, SCARF, INNER_W, edge=SCARF_EDGE, edge_w=8, edge_a=0.5)
-    shape(ctx, ellipse_pts(198, 462, 19, 15, rot=0.3), SCARF, INNER_W, edge=SCARF_EDGE, edge_w=8, edge_a=0.6)
+    shape(ctx, ellipse_pts(202, 478, 15, 12, rot=0.3), SCARF, INNER_W, edge=SCARF_EDGE, edge_w=6, edge_a=0.6)
 
     # Ears: long and splayed, the viewer's left one nearly upright, the right one leaning and bowing out.
     splay = 1.25 if expr == "smile" else 1.0
-    for root, length, half_w, tilt, bend in (((214, 238), 190, 43, -0.18 * splay, -16), ((296, 234), 184, 43, 0.34 * splay, 26)):
+    for root, length, half_w, tilt, bend in (((224, 258), 240, 40, -0.20 * splay, -20), ((290, 256), 232, 40, 0.36 * splay, 30)):
         outer = ear_pts(root, length, half_w, tilt, bend)
-        inner = ear_pts((root[0], root[1] - 14), length * 0.80, half_w * 0.56, tilt, bend * 0.85)
+        inner = ear_pts((root[0], root[1] - 16), length * 0.82, half_w * 0.56, tilt, bend * 0.95)
         shape(ctx, outer, FUR, OUTER_W, light=(-0.8, -0.4), edge_w=14)
         smooth(ctx, inner)
         g = cairo.LinearGradient(root[0], root[1] - 12, root[0] + math.sin(tilt) * length, root[1] - math.cos(tilt) * length)
@@ -212,10 +209,10 @@ def draw(expr, size):
         c, s = math.cos(a), math.sin(a)
         rx = hrx * (1.0 + 0.04 * max(0.0, s))
         head.append((hx + rx * c, hy + hry * s * (0.96 if s < 0 else 1.0)))
-    shape(ctx, head, FUR, OUTER_W, edge_w=26, edge_a=0.6)
+    shape(ctx, head, FUR, OUTER_W, edge_w=30, edge_a=0.95)
 
     # Face.
-    ex_l, ex_r, ey = hx - 58, hx + 58, hy + 18
+    ex_l, ex_r, ey = hx - 64, hx + 64, hy + 26
     soft_dot(ctx, ex_l - 14, ey + 32, 27, 17, BLUSH, 0.85)
     soft_dot(ctx, ex_r + 14, ey + 32, 27, 17, BLUSH, 0.85)
     if expr == "smile":

@@ -2,7 +2,7 @@
 
 - 기기: SM-P200 (Galaxy Tab A 8.0 2019, Exynos 7904 / Mali-G71 MP2, Android 11, 1200×1920, 60 Hz) — 하한 기기
 - 일시: 2026-10-24 10:00–11:06
-- 빌드: `feat/dugi-rabbit` release APK. 궤도 수정 전 측정은 [low 선명도 결과](../phase1-low-sharp/README.md)의 최종 빌드(c1bcec8), 이 폴더는 7de2492(카메라 당기기, BodyResync 수정) + ab652f8(궤도 수정)과 같은 코드.
+- 빌드: `feat/dugi-rabbit` release APK. 궤도 수정 전 측정은 [low 선명도 결과](../phase1-low-sharp/README.md)의 최종 빌드(c1bcec8), 이 폴더는 7de2492(카메라 당기기, BodyResync 수정) + ab652f8(궤도 수정)과 같은 코드. 던지기 최종 행은 8f46254(발사 전 복귀)와 같은 코드.
 - 조건: [low 선명도 결과](../phase1-low-sharp/README.md)와 같다. USB 연결(SM-P200만), 충전 중, 기기 설정(밝기·`stay_on`·화면 꺼짐·`wm size` 1200x1920) 그대로. fps 측정 중 호스트 Godot 작업 없음. 끝난 뒤 품질 단계 low(앱 재실행으로 `quality":"low"` 확인).
 - 명령: `OPBENCH_EXPERIMENT=<id> OPBENCH_SUSTAINED=0 OPBENCH_OVERWRITE=1 OPBENCH_RESULTS_DIR=<dir> apps/lab3d/tools/bench_device.sh <tier> 1 90 5`. 가로, 사이드바 닫힘, 정면 시점, 기본 조건, `--auto-drag=4`(4초마다 끌어 놓고 0.4초 뒤 `demo_action`). 셰이더 캐시 1회 → 30초 예열 → 90초 × 1회.
 - 판정: 90초 평균 ≥ 59.5 fps(Task 4 이후와 같다). 평균 = 프레임 수 / 시간, 1% low = 초당 p99 평균의 역수, 33 ms 넘는 프레임 = OPBENCH `long` 합, p95 = 초당 p95 평균, GPU = `gpu-clock-<tier>.log` Mali 클럭 평균(Compatibility는 GPU 시간이 없다). [low 선명도 결과](../phase1-low-sharp/README.md) 2절과 같은 계산(`t` 30초 이후 행). `node spikes/bench/summarize.mjs <폴더>`도 평균·1% low를 같은 방식으로 낸다.
@@ -54,7 +54,8 @@ SM-P200에서 공이 착지 뒤 아직 구를 때 `공 놓기`를 다시 누르�
 
 | 실험 | 장면 | 평균 FPS | 최저 초당 | 1% low | 33 ms 넘는 프레임 | p95 ms | GPU MHz | 판정 | 폴더 |
 |---|---|---|---|---|---|---|---|---|---|
-| 던지기(당기기 포함) | PJ | 59.65 | 54.4 | 36.3 | 11 | 19.2 | 582 | 통과 | `final-low/projectile` |
+| 던지기(첫 당기기, 7de2492) | PJ | 59.65 | 54.4 | 36.3 | 11 | 19.2 | 582 | 통과 | `final-low/projectile` |
+| 던지기(최종: 발사 전 복귀) | PJ | 59.73 | 55.9 | 38.4 | 9 | 19.3 | 568 | 통과 | `still-camera/projectile` |
 | 자유 낙하 | FF | 59.73 | 55.0 | 35.7 | 9 | 19.1 | 545 | 통과 | `final-low/free-fall` |
 | 궤도 | OR | 59.66 | 54.7 | 34.5 | 16 | 20.2 | 622 | 통과 | `final-low/orbit` |
 | 충돌 | CO | 59.67 | 54.4 | 34.6 | 14 | 20.3 | 617 | 통과 | `low/collision` |
@@ -68,7 +69,7 @@ SM-P200에서 공이 착지 뒤 아직 구를 때 `공 놓기`를 다시 누르�
 
 - 11개 실험 모두 기준을 넘는다. 해상도를 실험별로 낮춘 곳은 없다.
 - 충돌·용수철·진자·지렛대·도르래·부력·빗면·마찰 밀기는 궤도 수정·당기기가 들어간 빌드로 쟀다(궤도 수정은 궤도 실험에만 영향).
-- 던지기는 당기기가 들어간 뒤 59.65로, 당기기 전 최종(59.74)과 잡음 범위다(33 ms 넘는 프레임 13 → 11).
+- 던지기는 첫 당기기(비행 중 카메라 이동) 빌드 59.65, 최종(발사 전 복귀) 59.73으로, 당기기 전 최종(59.74)과 잡음 범위다.
 
 ## 4. medium·high 빠른 확인 (던지기, SM-P200)
 

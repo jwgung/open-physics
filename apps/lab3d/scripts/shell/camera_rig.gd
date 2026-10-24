@@ -425,14 +425,14 @@ func focus(spec: Dictionary) -> bool:
 	_focus_returning = false
 	_profile = {}
 	if spec.has("in_s"):
-		_profile = {"in": float(spec.in_s), "hold": float(spec.get("hold_s", 0.0)), "out": float(spec.get("out_s", spec.in_s))}
+		_profile = {"in_s": float(spec.in_s), "hold_s": float(spec.get("hold_s", 0.0)), "out_s": float(spec.get("out_s", spec.in_s))}
 		_profile_t = 0.0
 	return true
 
 
 ## The timed close-up's total time (0 for an open one).
 func focus_duration() -> float:
-	return 0.0 if _profile.is_empty() else _profile.in + _profile.hold + _profile.out
+	return 0.0 if _profile.is_empty() else _profile.in_s + _profile.hold_s + _profile.out_s
 
 
 ## Ends a close-up or its return at once: the user's view on this frame (a jump), the camera still
@@ -484,10 +484,10 @@ func is_framing() -> bool:
 ## Blend of the timed close-up at `t` s: 0 = the user's view, 1 = the close-up (smoothstep in and out).
 func _profile_weight(t: float) -> float:
 	var k := 1.0
-	if t < _profile.in:
-		k = t / _profile.in
-	elif t > _profile.in + _profile.hold:
-		k = 1.0 - (t - _profile.in - _profile.hold) / _profile.out
+	if t < _profile.in_s:
+		k = t / _profile.in_s
+	elif t > _profile.in_s + _profile.hold_s:
+		k = 1.0 - (t - _profile.in_s - _profile.hold_s) / _profile.out_s
 	k = clampf(k, 0.0, 1.0)
 	return k * k * (3.0 - 2.0 * k)
 

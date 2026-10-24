@@ -10,7 +10,8 @@
 ## the spaces (joined() is the text again). Each page types out at
 ## CHARS_PER_S; a tap shows the whole page, the next tap turns the page, and after the last page
 ## it closes. Untouched, a full page turns after READ_S + READ_PER_CHAR_S per character. UI only:
-## no full-screen layer; it takes taps on its own rect only.
+## no full-screen layer; it takes taps only on the box and the bust (_has_point), the rest of its
+## rect passes them to the 3D view.
 class_name DialogueBox
 extends Control
 
@@ -280,6 +281,17 @@ func step(delta: float) -> void:
 			advance()
 			return
 	_refresh()
+
+
+## Takes input only where it is drawn: the box and the portrait's lower two thirds (the bust; the
+## ears and the empty corners above the box let taps and gestures through to the 3D view).
+func _has_point(point: Vector2) -> bool:
+	if not active:
+		return false
+	if Rect2(box.position, box.size).has_point(point):
+		return true
+	var bust := Rect2(portrait.position + Vector2(PORTRAIT_SIZE * 0.2, PORTRAIT_SIZE * 0.35), Vector2(PORTRAIT_SIZE * 0.6, PORTRAIT_SIZE * 0.65))
+	return bust.has_point(point)
 
 
 func _gui_input(event: InputEvent) -> void:

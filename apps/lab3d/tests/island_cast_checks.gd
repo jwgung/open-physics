@@ -609,6 +609,15 @@ func check_dialogue() -> void:
 	for k in 3:
 		await tree.process_frame
 	var opened := box.active and box.visible and box.page == 0
+	# Taps only where it is drawn: the box and the bust take them, the empty band above the box
+	# (inside the control's rect) passes them to the 3D view.
+	var r := box.rects()
+	var corner := Vector2(20.0, 20.0)                                  # above the box, left end
+	var on_box := r[0].get_center() - box.position
+	var on_bust := r[1].position + r[1].size * Vector2(0.5, 0.8) - box.position
+	var on_ears := r[1].position + r[1].size * Vector2(0.5, 0.1) - box.position
+	expect.call(not box._has_point(corner) and not box._has_point(on_ears) and box._has_point(on_box) and box._has_point(on_bust),
+		"dialogue: takes taps only on the box and the bust; the band above the box passes them to the 3D view", "")
 	box.step(0.1)
 	var partial := box.label.visible_characters > 0 and not box.typed()
 	box.advance()   # tap: the whole page

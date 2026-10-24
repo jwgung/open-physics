@@ -41,7 +41,7 @@
   "key_observations": ["strands", "required", "lift"],
   "cast": {
     "dugi": { "at": [3.5, 4.0], "explain_on": ["held", "top"], "delay_s": 0.6 },
-    "puppy": { "at": [0.75, -10.25] }
+    "puppy": { "at": [6.5, -7.5] }
   },
   "observations": [
     { "id": "state", "label": "상태" },

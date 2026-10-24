@@ -46,7 +46,7 @@
   "key_observations": ["range", "flight_time", "landing"],
   "cast": {
     "dugi": { "at": [7.25, -1.0], "explain_on": ["landed", "fence"], "delay_s": 0.6 },
-    "puppy": { "at": [-1.75, -6.5] }
+    "puppy": { "at": [-2.0, -6.25] }
   },
   "observations": [
     { "id": "g", "label": "중력 가속도 g", "unit": "m/s²", "digits": 2 },

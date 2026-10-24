@@ -261,7 +261,7 @@ func graph_x_max() -> float:
 
 func _status_changed(previous: String, current: String) -> void:
 	props.status_changed(previous, current)
-	if current != "holding":
+	if previous == "holding" and current != "holding":
 		close_up_ended.emit(0.0)   # the box moves: the whole track again
 
 

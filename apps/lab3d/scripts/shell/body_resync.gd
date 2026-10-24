@@ -134,16 +134,31 @@ func _moved_since(body: RigidBody3D) -> bool:
 		return true
 	if not _free.has(body):
 		return false   # frozen: only its pose counts (a kinematic move's report carries a velocity)
-	var dt := 1.0 / float(Engine.physics_ticks_per_second)
 	var still := (body.linear_velocity.is_equal_approx(record[2]) and body.angular_velocity.is_equal_approx(record[3])) \
-		or (body.linear_velocity.distance_to(stale[1]) <= REPORT_ACCEL * dt * REPORT_STEPS + REPORT_SLACK)
+		or _report_velocity(body, stale)
 	return not still
+
+
+## The body's velocities are the stale report's: exactly them for a body at rest at mark() (so a
+## body other code sets moving, however slowly, is left alone), within one report's change
+## (REPORT_ACCEL over REPORT_STEPS steps, both linear and angular) for one that was moving.
+static func _report_velocity(body: RigidBody3D, stale: Array) -> bool:
+	var linear: Vector3 = stale[1]
+	var angular: Vector3 = stale[2]
+	if linear == Vector3.ZERO and angular == Vector3.ZERO:
+		return body.linear_velocity.is_equal_approx(linear) and body.angular_velocity.is_equal_approx(angular)
+	var change := REPORT_ACCEL * _step() * REPORT_STEPS + REPORT_SLACK
+	return body.linear_velocity.distance_to(linear) <= change and body.angular_velocity.distance_to(angular) <= change / 0.1   # rad/s: a lab body is at least 0.1 m across
+
+
+static func _step() -> float:
+	return 1.0 / float(Engine.physics_ticks_per_second)
 
 
 ## `now` is what the stale report carries: the pose at mark() moved on by up to REPORT_STEPS engine
 ## steps of the velocity it had then (exactly that pose for a body at rest).
 static func _near_report(now: Transform3D, stale: Array) -> bool:
-	var dt := 1.0 / float(Engine.physics_ticks_per_second)
+	var dt := _step()
 	var from: Transform3D = stale[0]
 	var linear: Vector3 = stale[1]
 	var angular: Vector3 = stale[2]

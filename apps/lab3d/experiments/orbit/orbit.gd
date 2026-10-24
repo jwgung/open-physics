@@ -194,7 +194,7 @@ func _show_waiting() -> void:
 
 ## PhysicsLaws.orbit_analyze of a launch from (radius, 0) with (vx, vz), the last one remembered: the
 ## held preview, the put-down and the launch ask for the same launch one after another (SM-P200: up
-## to 5 ms each).
+## to 5 ms each). The result is shared (read it, never change it).
 func analyze(radius: float, vx: float, vz: float) -> Dictionary:
 	if _analyzed_key.size() == 3 and _analyzed_key[0] == radius and _analyzed_key[1] == vx and _analyzed_key[2] == vz:
 		return _analyzed

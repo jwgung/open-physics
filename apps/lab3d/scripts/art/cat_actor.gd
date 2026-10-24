@@ -172,6 +172,8 @@ func bounds() -> AABB:
 	var first := true
 	for m in rig.find_children("*", "MeshInstance3D", true, false):
 		var mi := m as MeshInstance3D
+		if not mi.is_visible_in_tree():
+			continue
 		var b := mi.global_transform * mi.get_aabb()
 		box = b if first else box.merge(b)
 		first = false

@@ -53,7 +53,7 @@ func run() -> void:
 				var what: String = {"landed": "landed", "rolling": "landed and still rolls fast (SM-P200 2026-10-24: the cat went to the rolling ball)", "out": "flew off the island (stopped there, frozen)"}[ending]
 				expect.call(again.is_empty(), "공 놓기 again after the ball %s (touch, frames without a step): the ball body and its shadow at the launch point through the wind-up, the release from there" % what, "; ".join(again))
 			var report := await _stale_report_case()
-			expect.call(report.is_empty(), "BodyResync: the stale report of a body moving at the change (one step of its motion on, as on SM-P200) is put back; a body other code moved is left alone", "; ".join(report))
+			expect.call(report.is_empty(), "BodyResync: the stale report of a body moving at the change (one step of its motion on, as on SM-P200) is put back; a body other code moved, or set moving slowly from rest, is left alone", "; ".join(report))
 			for cancel in [false, true]:
 				var moved := await _manipulation_case(definition, cancel)
 				expect.call(moved.is_empty(), "the landed ball %s (touch, frames without a step): from that frame on it stays there" % ("picked up, dragged and put back (cancelled touch)" if cancel else "picked up and put down on the launch line"), "; ".join(moved))
@@ -95,6 +95,24 @@ func _stale_report_case() -> Array:
 		if body.global_transform.origin.distance_to(want.origin) > POSE_TOL:
 			problems.append("%s: ball at %s, want %s" % ["moved by other code" if other else "stale report", body.global_transform.origin, want.origin])
 		root.queue_free()
+	# A free body at rest put back by the change, then set moving slowly (0.3 m/s) by other code
+	# before the step: it keeps that motion.
+	var root2 := Node3D.new()
+	tree.root.add_child(root2)
+	var box := RigidBody3D.new()
+	box.gravity_scale = 0.0
+	root2.add_child(box)
+	box.global_transform = Transform3D(Basis(), Vector3(2.0, 0.35, 0.0))
+	var resync2 := BodyResync.new()
+	root2.add_child(resync2)
+	resync2.mark(root2)
+	box.global_transform = Transform3D(Basis(), Vector3(-3.0, 0.35, 0.0))
+	resync2.hold(root2)
+	box.linear_velocity = Vector3(0.3, 0.0, 0.0)
+	resync2._physics_process(dt)
+	if box.linear_velocity != Vector3(0.3, 0.0, 0.0):
+		problems.append("box set moving at 0.3 m/s by other code: velocity %s" % box.linear_velocity)
+	root2.queue_free()
 	await tree.process_frame
 	return problems
 

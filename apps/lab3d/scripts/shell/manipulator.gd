@@ -653,8 +653,10 @@ func _demo_tick(delta: float) -> void:
 	var goal := surface.nearest_inside(surface.region_min.lerp(surface.region_max, 1.0 if _demo_flip else DEMO_NEAR_FRACTION))
 	_demo_goal = goal
 	handle_pointer("press", view.rig.unproject_position(body.global_position) / _pixels_per_unit())
-	_demo_start = _held
-	_demo_t = 0.0 if mode == "drag" else -1.0
+	_demo_t = -1.0
+	if mode == "drag":
+		_demo_start = _held
+		_demo_t = 0.0
 
 
 ## Where the demo's finger goes for the held object to be at plane point `p` (the pick-up offset

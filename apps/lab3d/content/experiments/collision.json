@@ -63,8 +63,8 @@
   ],
   "key_observations": ["after_a", "after_b", "p_after"],
   "cast": {
-    "dugi": { "at": [8.25, 0.75], "explain_on": ["collided", "rest"], "delay_s": 0.6 },
-    "puppy": { "at": [-5.5, -3.0] }
+    "dugi": { "at": [8.5, 0.5], "explain_on": ["collided", "rest"], "delay_s": 0.6 },
+    "puppy": { "at": [-1.0, -10.25] }
   },
   "observations": [
     { "id": "state", "label": "상태" },

@@ -10,7 +10,7 @@
 ##
 ## When the lab's status has been one of `explain_on` for `delay_s`, Dugi explains once: he points at
 ## Experiment.explain_point() and the screen shows the lab's `observe` text (관찰 포인트, the same
-## words as the sidebar) in his speech bubble. He explains again only after the status was outside
+## words as the sidebar) in his dialogue box. He explains again only after the status was outside
 ## `explain_on` for REARM_S (a status that flickers, the buoyancy drum bobbing about its floating
 ## depth, does not repeat it) or the user changed the run (rearm()).
 class_name IslandCast
@@ -24,7 +24,7 @@ var dugi: DugiActor
 var puppy: PuppyActor
 var explain_on: Array = []
 var delay_s := DEFAULT_DELAY_S
-## The words of the bubble: the lab's observe text, exactly.
+## The words of the dialogue: the lab's observe text, exactly.
 var text := ""
 ## Times Dugi started an explanation (tests).
 var explain_count := 0

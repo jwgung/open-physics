@@ -40,8 +40,8 @@
   ],
   "key_observations": ["depth", "floating_depth", "buoyant"],
   "cast": {
-    "dugi": { "at": [3.0, 1.75], "explain_on": ["floating", "sunk", "staying"], "delay_s": 0.6 },
-    "puppy": { "at": [-4.0, -3.0] }
+    "dugi": { "at": [2.5, 3.0], "explain_on": ["floating", "sunk", "staying"], "delay_s": 0.6 },
+    "puppy": { "at": [-5.25, -9.25] }
   },
   "observations": [
     { "id": "state", "label": "상태" },

@@ -33,11 +33,12 @@ var view: View3D
 ## One-finger object manipulation (null when the experiment declares no `manipulation`).
 var manipulator: Manipulator
 ## Dugi and Puppy on the island (Task 4h, null when the definition has no `cast`), next to the lab
-## under the 3D view; Dugi's speech bubble over the view.
+## under the 3D view; Dugi's dialogue box over the view.
 var cast: IslandCast
-var bubble: SpeechBubble
+var dialogue: DialogueBox
 ## Tests: false opens the same screen without the cast (the lab must run the same).
 var show_cast := true
+var _dialogue_started := false          # the dialogue of the current explanation was opened
 
 # 3D overlays (children of the view, placed by _fit_overlays).
 var _title_bar: PanelContainer
@@ -111,8 +112,9 @@ func _ready() -> void:
 		cast = IslandCast.create(definition, experiment)
 	if cast != null:
 		view.viewport.add_child(cast)
-		bubble = SpeechBubble.new(cast.text)
-		view.add_child(bubble)
+		dialogue = DialogueBox.new(cast.text)
+		view.add_child(dialogue)
+		dialogue.closed.connect(func() -> void: cast.dugi.stop())
 	if definition.has("manipulation"):
 		manipulator = Manipulator.new()
 		manipulator.name = "Manipulator"
@@ -204,30 +206,60 @@ func _process(delta: float) -> void:
 		_demo_release_left -= delta
 		if _demo_release_left < 0.0:
 			_run_measured_action(manipulator.demo_action)
-	_place_bubble()
+	_run_dialogue()
 
 
-## Dugi's bubble shows while he explains, beside him on the view, clear of the overlays and of what
-## he points at; hidden while the sidebar is open (its 관찰 포인트 card has the same words, and the
-## narrowed view has no clear spot), when he is off the view (a turned or zoomed camera) or no clear
-## spot exists. He points all the same.
-func _place_bubble() -> void:
-	if bubble == null:
+## Dugi's dialogue opens when he starts explaining and keeps him pointing until it closes (a tap
+## past the last page or its read timer; then his arm comes down). It runs along the bottom of the
+## view up to the action buttons or Dugi, whichever is nearer. While the sidebar is open there is no
+## dialogue (the sidebar's 관찰 포인트 card has the same words): one open closes, and an explanation
+## that starts then is pointing only. Dugi stopping (a user change, 처음으로) closes it at once.
+func _run_dialogue() -> void:
+	if dialogue == null or cast.dugi == null:
 		return
-	var wanted := cast.dugi != null and cast.dugi.speaking() and _sidebar_state == "closed"
-	if wanted:
-		var who := dugi_rect()
-		var view_rect := Rect2(Vector2.ZERO, view.size)
-		var keep: Array[Vector2] = []
-		if cast.dugi.has_point():
-			keep.append(view_point(cast.dugi.pointed()))
-		wanted = view_rect.encloses(who) and bubble.place(who, view_rect, overlay_rects(), OVERLAY_MARGIN, keep)
-	if not wanted:
-		bubble.reset_spot()
-	bubble.visible = wanted
+	var dugi := cast.dugi
+	if dialogue.active:
+		if not dugi.speaking() or is_sidebar_open():
+			dialogue.close(true)
+			if dugi.speaking():
+				dugi.stop()
+			return
+		dugi.hold_on()
+		dialogue.visible = _layout_dialogue()
+		return
+	if dugi.speaking() and dugi.state == "raise" and not _dialogue_started and not is_sidebar_open() and _layout_dialogue():
+		_dialogue_started = true
+		_hide_tip()
+		dialogue.open()
+		dialogue.visible = true
+	elif not dugi.speaking():
+		_dialogue_started = false
 
 
-## The overlays a speech bubble must not cover (view space): title, top buttons, key cards,
+## Closes an open dialogue now; Dugi lowers his arm.
+func _close_dialogue() -> void:
+	if dialogue != null and dialogue.active:
+		dialogue.close(true)
+		if cast.dugi.speaking():
+			cast.dugi.stop()
+
+
+## Places the dialogue box: right end at the action buttons or Dugi's left edge (when he stands in
+## the box's height band), whichever is nearer, keeping what Dugi points at uncovered. False when
+## there is no room.
+func _layout_dialogue() -> bool:
+	var view_rect := Rect2(Vector2.ZERO, view.size)
+	var right := _action_row.position.x - OVERLAY_MARGIN
+	var who := dugi_rect()
+	if who.size.x > 0.0 and who.end.y > view.size.y - OVERLAY_MARGIN - DialogueBox.PORTRAIT_SIZE:
+		right = minf(right, who.position.x - OVERLAY_MARGIN)
+	var keep: Array[Vector2] = []
+	if cast.dugi.has_point() and not view.rig.is_position_behind(cast.dugi.pointed()):
+		keep.append(view_point(cast.dugi.pointed()))
+	return dialogue.layout(view_rect, right, OVERLAY_MARGIN, keep)
+
+
+## The overlays Dugi, Puppy and the dialogue must not cover (view space): title, top buttons, key cards,
 ## actions and the gesture tip while it shows.
 func overlay_rects() -> Array[Rect2]:
 	var out: Array[Rect2] = []
@@ -317,6 +349,7 @@ func _layout(snap_slide := true) -> void:
 func open_sidebar(animated := true) -> void:
 	if is_sidebar_open():
 		return
+	_close_dialogue()   # at once: a tap in this frame must reach the controls, not a stale box
 	_sidebar_state = "opening"
 	_sidebar.visible = true
 	_sidebar_button.visible = false
@@ -469,6 +502,8 @@ func _fit_overlays() -> void:
 	_key_row.position = Vector2(m, m + maxf(_title_bar.size.y, _top_buttons.size.y) + 8.0)
 	_action_row.size = _action_row.get_combined_minimum_size()
 	_action_row.position = Vector2(width - _action_row.size.x - m, view.size.y - _action_row.size.y - m)
+	if dialogue != null and dialogue.active:
+		dialogue.visible = _layout_dialogue()   # follows the view at once (a resize)
 	# Beside the actions when there is room, otherwise above them (a narrow view with many actions:
 	# orbit's three buttons beside the open sidebar on a tablet).
 	var beside := width - _action_row.size.x - m * 3.0

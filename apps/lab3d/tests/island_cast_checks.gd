@@ -12,16 +12,19 @@
 ##    tip is on the line shoulder -> target (also a moving one); stop(true) is at once.
 ## 4. trigger: the status watch explains once per run after delay_s, a flickering status does not
 ##    repeat it, it re-arms after REARM_S outside or a user change; the projectile's throw through
-##    the screen ends with Dugi pointing at the formula landing point and the bubble showing the
-##    lab's observe text.
+##    the screen ends with Dugi pointing at the formula landing point and the dialogue showing the
+##    lab's observe text; 처음으로 closes it.
 ## 5. placement, every listed experiment: Dugi (also pointing) and Puppy face the front camera and
-##    stand on the island clear
-##    of its trees and rocks, of every apparatus mesh, of the bread cat and of the bodies' motion
-##    (a run of the primary action); Puppy stands behind the apparatus.
-## 6. layout, every listed experiment, phone / tablet / tablet with the sidebar: both in the front
-##    view, clear of the title, key cards, buttons, actions and tip; Dugi hides no body or explain
-##    point; his bubble is inside the view, clear of the overlays and of the point he explains, and
-##    hidden while the sidebar is open (he points all the same).
+##    stand on the island clear of its trees and rocks, of every apparatus mesh, of the bread cat and
+##    of the bodies' motion (a run of the primary action); Puppy stands behind the whole apparatus.
+## 6. layout, every listed experiment, phone / tablet / tablet with the sidebar, on the view: both in
+##    the front view clear of the title, key cards, buttons, actions and tip; Dugi hides no
+##    apparatus cell, sampled body position or the cat farther than him; Puppy overlaps none of them
+##    nor Dugi (phone, tablet); the dialogue box and portrait inside the view, clear of the overlays
+##    and Dugi (it may cover Puppy for a while), none beside the open sidebar (Dugi points all the same).
+##    Dialogue: pages split at spaces, at most 2 lines that fit, joining back to the observe text in
+##    every experiment; typewriter, tap = whole page / next / close (Dugi lowers), the read timer,
+##    the sidebar closes it.
 ## 7. physics unchanged, every listed experiment: engine bodies (every step) and panel texts are the
 ##    same with and without the cast while Dugi explains (from its own trigger, or made to explain
 ##    at step 120 when the run reaches no result status in 420 steps).
@@ -43,6 +46,8 @@ const RUN_STEPS := 600
 
 var tree: SceneTree
 var expect: Callable
+## Per experiment (check_placement): apparatus cells, sampled motion, the cat's box (for layout).
+var _scene := {}
 
 
 func _init(scene_tree: SceneTree, expect_fn: Callable) -> void:
@@ -59,6 +64,7 @@ func run() -> void:
 	for definition in ExperimentRegistry.load_all():
 		await check_placement(definition.id)
 		await check_layout(definition.id)
+	await check_dialogue()
 	await check_physics_unchanged()
 
 
@@ -391,16 +397,17 @@ func check_projectile_explains() -> void:
 	for k in int(DugiActor.RAISE_S * 60.0) + 4:
 		await tree.process_frame
 	var aim := _aim_error(cast.dugi, landing)
-	var bubble: SpeechBubble = screen.bubble
+	var box: DialogueBox = screen.dialogue
 	expect.call(cast.explain_count == 1 and status in ["landed", "fence"] and lab.explain_point().distance_to(landing) < 1e-4 and aim < POINT_TOL_DEG,
 		"cast (projectile): after the throw lands Dugi points at the formula landing point (the end of the formula path)",
 		"status %s, %d explanations, point %s vs %s, aim %.3f deg" % [status, cast.explain_count, lab.explain_point(), landing, aim])
-	expect.call(bubble.visible and bubble.label.text == screen.definition.observe and bubble.name_label.text == "두기두기",
-		"cast (projectile): the bubble shows the lab's observe text exactly", bubble.label.text)
+	expect.call(box.visible and box.active and box.joined() == screen.definition.observe and box.name_label.text == "두기두기"
+		and box.label.text == box.page_text(0),
+		"cast (projectile): the dialogue opens with the lab's observe text exactly (only split into pages)", box.label.text)
 	screen.experiment_action("reset")
 	await tree.process_frame
-	expect.call(cast.dugi.state == "rest" and not bubble.visible and not cast.dugi.pointer.visible,
-		"cast (projectile): 처음으로 puts Dugi back at rest and hides the bubble at once", cast.dugi.state)
+	expect.call(cast.dugi.state == "rest" and not box.visible and not box.active and not cast.dugi.pointer.visible,
+		"cast (projectile): 처음으로 puts Dugi back at rest and closes the dialogue at once", cast.dugi.state)
 	await _close(screen)
 
 
@@ -464,13 +471,13 @@ func check_placement(id: String) -> void:
 			if flat.has_point(p):
 				problems.append("%s in the bodies' motion at %s" % [who, p])
 				break
-	# Puppy behind the apparatus: in front of nothing it could hide (camera -> apparatus lines).
-	var apparatus_front := -INF
+	# Puppy behind the whole apparatus (its front behind the apparatus' back).
+	var apparatus_back := INF
 	for k in cells:
-		apparatus_front = maxf(apparatus_front, (k.z + 1) * CELL)
-	var puppy_back := cast.puppy.bounds().end.z
-	if id != "orbit" and puppy_back > apparatus_front - 0.0 and cast.puppy.global_position.z > -2.5:
-		problems.append("Puppy not at the back (z %.2f)" % cast.puppy.global_position.z)
+		apparatus_back = minf(apparatus_back, k.z * CELL)
+	if cast.puppy.bounds().end.z >= apparatus_back:
+		problems.append("Puppy not behind the apparatus (front z %.2f, apparatus back %.2f)" % [cast.puppy.bounds().end.z, apparatus_back])
+	_scene[id] = {"cells": cells, "motion": motion, "cat": cat_box}
 	if id == "orbit":
 		var top := maxf(boxes["Dugi"].end.y, maxf(boxes["Dugi pointing"].end.y, boxes["Puppy"].end.y))
 		var consts: Dictionary = (lab.get_script() as GDScript).get_script_constant_map()
@@ -483,56 +490,171 @@ func check_placement(id: String) -> void:
 
 # --- 6. layout --------------------------------------------------------------------------------
 
+## What the front view must keep visible, on the view: [rect, distance from the camera] of every
+## apparatus cell, every sampled body position (a 0.6 m box) and the bread cat.
+func _keep(screen: Control, scene: Dictionary) -> Array:
+	var eye: Vector3 = screen.view.rig.global_position
+	var out := []
+	for k in scene.cells:
+		var b := AABB(Vector3(k) * CELL, Vector3.ONE * CELL)
+		out.append([screen.view_rect_of(b), eye.distance_to(b.get_center()), "apparatus"])
+	for p in scene.motion:
+		out.append([screen.view_rect_of(AABB(p - Vector3.ONE * 0.3, Vector3.ONE * 0.6)), eye.distance_to(p), "motion"])
+	var cat: AABB = scene.cat
+	if cat.size != Vector3.ZERO:
+		out.append([screen.view_rect_of(cat), eye.distance_to(cat.get_center()), "cat"])
+	return out
+
+
 func check_layout(id: String) -> void:
+	if not _scene.has(id):
+		return
 	for setup in [[PHONE, false, "phone"], [TABLET, false, "tablet"], [TABLET, true, "tablet, sidebar open"]]:
 		var screen := await _open(id, setup[0], setup[1])
 		var cast: IslandCast = screen.cast
-		if cast == null:
-			await _close(screen)
-			return
 		var lab: Experiment = screen.experiment
 		var view_rect := Rect2(Vector2.ZERO, screen.view.size)
 		var problems := []
 		var overlays: Array[Rect2] = screen.overlay_rects()
-		for who: Node3D in [cast.dugi, cast.puppy]:
-			var r: Rect2 = screen.view_rect_of(who.bounds())
+		var keep := _keep(screen, _scene[id])
+		var eye: Vector3 = screen.view.rig.global_position
+		var dugi_r: Rect2 = screen.view_rect_of(cast.dugi.bounds())
+		var puppy_r: Rect2 = screen.view_rect_of(cast.puppy.bounds())
+		for pair in [["Dugi", dugi_r], ["Puppy", puppy_r]]:
+			var r: Rect2 = pair[1]
 			if r.size.x < 8.0 or not view_rect.grow(-4.0).encloses(r):
-				problems.append("%s not in the view %s" % [who.name, r])
+				problems.append("%s not in the view %s" % [pair[0], r])
 			for o in overlays:
 				if o.intersects(r):
-					problems.append("%s under an overlay" % who.name)
-		var eye: Vector3 = screen.view.rig.global_position
-		var points: Array[Vector3] = [lab.explain_point()]
-		for b in lab.find_children("*", "RigidBody3D", true, false):
-			points.append((b as Node3D).global_position)
-		var dugi_box: AABB = cast.dugi.bounds()
-		for p in points:
-			if dugi_box.intersects_segment(eye, p):
-				problems.append("Dugi hides %s" % p)
-		# Explaining: the bubble.
+					problems.append("%s under an overlay" % pair[0])
+		# Dugi hides nothing farther than him (apparatus, bodies' motion, cat); things may pass in front.
+		var dugi_depth := eye.distance_to(cast.dugi.bounds().get_center()) - 0.4
+		var hidden := 0
+		for k in keep:
+			if k[1] > dugi_depth and (k[0] as Rect2).intersects(dugi_r.grow(2.0)):
+				hidden += 1
+		if hidden > 0:
+			problems.append("Dugi hides %d apparatus / motion / cat rects" % hidden)
+		# Puppy (full views): never over the apparatus, the motion, the cat or Dugi on the view.
+		if not setup[1]:
+			var over := 0
+			for k in keep:
+				if (k[0] as Rect2).intersects(puppy_r.grow(4.0)):
+					over += 1
+			if over > 0 or puppy_r.intersects(dugi_r):
+				problems.append("Puppy overlaps %d apparatus / motion / cat rects%s" % [over, ", Dugi" if puppy_r.intersects(dugi_r) else ""])
+		# Explaining: the dialogue.
 		cast.dugi.explain(lab.explain_point)
 		for k in int(DugiActor.RAISE_S * 60.0) + 3:
 			await tree.process_frame
-		var bubble: SpeechBubble = screen.bubble
-		var br := bubble.rect()
+		var box: DialogueBox = screen.dialogue
 		if not cast.dugi.speaking():
 			problems.append("Dugi not explaining")
 		if setup[1]:
-			if bubble.visible:
-				problems.append("bubble shown beside the open sidebar")
+			if box.visible or box.active:
+				problems.append("dialogue shown beside the open sidebar")
 		else:
-			if not bubble.visible or not view_rect.encloses(br):
-				problems.append("bubble not shown inside the view (%s, %s)" % [bubble.visible, br])
-			for o in overlays:
-				if o.intersects(br):
-					problems.append("bubble under an overlay")
-			if br.has_point(screen.view_point(lab.explain_point())):
-				problems.append("bubble covers the explained point")
-			if br.intersects(screen.dugi_rect()):
-				problems.append("bubble covers Dugi")
-		expect.call(problems.is_empty(), "cast (%s, %s): Dugi and Puppy in the front view clear of the overlays, Dugi hides no body, his bubble clear of the overlays and of what he explains (hidden beside the open sidebar)" % [id, setup[2]],
+			if not (box.visible and box.active):
+				problems.append("dialogue not shown")
+			for r in box.rects():
+				if not view_rect.encloses(r):
+					problems.append("dialogue %s outside the view" % r)
+				for o in overlays:
+					if o.intersects(r):
+						problems.append("dialogue under an overlay")
+				if r.intersects(screen.dugi_rect()):
+					problems.append("dialogue covers Dugi")
+				if r.grow(4.0).has_point(screen.view_point(lab.explain_point())):
+					problems.append("dialogue covers what Dugi points at")
+		expect.call(problems.is_empty(), "cast (%s, %s): Dugi and Puppy in the front view clear of the overlays; Dugi hides no apparatus, motion or cat; Puppy over none of them nor Dugi; the dialogue clear of the controls, cards, Dugi and what he points at (none beside the open sidebar)" % [id, setup[2]],
 			"; ".join(problems))
 		await _close(screen)
+
+
+## The dialogue: pages = the observe text split at spaces into at most 2 lines that fit, for every
+## experiment on phone and tablet; typewriter, tap to show all / next / close (Dugi lowers his arm),
+## the read timer, and opening the sidebar closes it.
+func check_dialogue() -> void:
+	var split_problems := []
+	var max_pages := 0
+	for definition in ExperimentRegistry.load_all():
+		for size in [PHONE, TABLET]:
+			var screen := await _open(definition.id, size)
+			var box: DialogueBox = screen.dialogue
+			if not screen._layout_dialogue():
+				split_problems.append("%s %s: no room" % [definition.id, size])
+			else:
+				var font := box.label.get_theme_font("font")
+				var fs := box.label.get_theme_font_size("font_size")
+				if box.joined() != definition.observe:
+					split_problems.append("%s: pages != observe" % definition.id)
+				for pg in box.pages():
+					if pg.lines.size() > DialogueBox.LINES:
+						split_problems.append("%s: %d lines" % [definition.id, pg.lines.size()])
+					for line in pg.lines:
+						if font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > box.label.size.x + 0.5:
+							split_problems.append("%s: line too wide" % definition.id)
+				if box.more.position.x < box.label.position.x + box.label.size.x or box.more.position.x + box.more.get_minimum_size().x > box.box.size.x:
+					split_problems.append("%s: the ▼ overlaps the words or leaves the box" % definition.id)
+				max_pages = maxi(max_pages, box.pages().size())
+			await _close(screen)
+	expect.call(split_problems.is_empty(), "dialogue: every observe text splits at its spaces into pages of at most %d lines that fit (phone, tablet), and joins back exactly" % DialogueBox.LINES,
+		"; ".join(split_problems) if not split_problems.is_empty() else "up to %d pages" % max_pages)
+
+	var screen := await _open("collision", TABLET)
+	var cast: IslandCast = screen.cast
+	var box: DialogueBox = screen.dialogue
+	box.set_process(false)
+	cast.dugi.explain(screen.experiment.explain_point)
+	for k in 3:
+		await tree.process_frame
+	var opened := box.active and box.visible and box.page == 0
+	box.step(0.1)
+	var partial := box.label.visible_characters > 0 and not box.typed()
+	box.advance()   # tap: the whole page
+	var full := box.typed() and box.page == 0 and box.label.visible_characters == -1
+	var pages := box.pages().size()
+	box.advance()   # tap: next page
+	var second := pages > 1 and box.page == 1 and not box.typed()
+	for k in pages:
+		box.advance()
+		box.advance()
+	for k in int(DugiActor.LOWER_S * 60.0) + 4:
+		await tree.process_frame
+	var closed := not box.active and not box.visible and cast.dugi.state == "rest"
+	expect.call(opened and partial and full and second and closed,
+		"dialogue (collision, %d pages): types out, a tap shows the page, the next turns it, past the last it closes and Dugi lowers his arm" % pages,
+		"opened %s, typing %s, full %s, page 2 %s, closed %s" % [opened, partial, full, second, closed])
+	# Untouched: it reads itself through and closes; Dugi points all the while.
+	cast.dugi.explain(screen.experiment.explain_point)
+	for k in 3:
+		await tree.process_frame
+	var pointing := true
+	var t := 0.0
+	while box.active and t < 60.0:
+		box.step(0.1)
+		t += 0.1
+		await tree.process_frame
+		pointing = pointing and (cast.dugi.state == "point" or cast.dugi.state == "raise" or not box.active)
+	var expected := 0.0
+	for k in pages:
+		var n := box.page_text(k).length()
+		expected += n / DialogueBox.CHARS_PER_S + DialogueBox.READ_S + DialogueBox.READ_PER_CHAR_S * n
+	expect.call(not box.active and pointing and t > expected - 1.0 and t < expected + 1.0 and t > DugiActor.POINT_S,
+		"dialogue: untouched it closes after reading every page (Dugi pointing until then, longer than his own %.0f s)" % DugiActor.POINT_S,
+		"closed after %.1f s (expected %.1f s)" % [t, expected])
+	# The sidebar closes it.
+	cast.dugi.stop(true)
+	await tree.process_frame
+	cast.dugi.explain(screen.experiment.explain_point)
+	for k in 3:
+		await tree.process_frame
+	var was := box.active
+	screen.open_sidebar(false)
+	for k in 2:
+		await tree.process_frame
+	expect.call(was and not box.active and not box.visible, "dialogue: opening the sidebar closes it (no dialogue beside the sidebar)", "")
+	await _close(screen)
 
 
 # --- 7. physics unchanged ---------------------------------------------------------------------

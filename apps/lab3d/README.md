@@ -23,7 +23,7 @@ apps/lab3d/
   scripts/shell/                      Experiment(실험 기반 클래스), ExperimentRegistry, ExperimentScreen,
                                       View3D(3D 뷰·제스처), CameraRig(카메라 6모드·보조 시점), GraphView,
                                       Manipulator(물체 조작), ManipSurface(조작 평면), PressLineSurface(아래로 누르는·당기는 손잡이 선),
-                                      RollingGraph(손잡이를 잡은 동안만 흐르는 10초 창 그래프), SpeechBubble(두기두기 말풍선)
+                                      RollingGraph(손잡이를 잡은 동안만 흐르는 10초 창 그래프), DialogueBox(두기두기 게임식 대화창)
   experiments/incline_friction/       빗면 마찰 실험(장면, InclineFrictionCorrector = 접촉 힘 보정 설정, InclineProps 소품)
   experiments/uniform_field/          균일장 실험 공용 기반 UniformFieldLab(중력 선택, 공, 바닥, 보정기 연결, 실행 상태·그래프 샘플·release/reset 공통)
   experiments/free_fall/              자유 낙하 실험(장면, FreeFallProps 소품)
@@ -39,7 +39,7 @@ apps/lab3d/
   experiments/manipulation_dev/       조작 확인용 개발 장면(목록에 없음, --experiment=manipulation-dev)
   content/mechanics-labs.json         역학 실험 문구(웹 2D와 공유, "콘텐츠 공유")
   content/experiments/                실험 정의 JSON(index.json + 실험별 파일: 3D 전용 필드)
-  assets/characters/                  빵고양이·두기두기·퍼피 glb + 텍스처 아틀라스(소스: art_src/characters/bread_cat.py, dugi.py, puppy.py, Blender 스크립트)
+  assets/characters/                  빵고양이·두기두기·퍼피 glb + 텍스처 아틀라스(소스: art_src/characters/bread_cat.py, dugi.py, puppy.py, Blender 스크립트), 두기두기 대화창 초상화 portraits/(dugi_portrait.py)
   assets/props/                       털실 공·택배 박스 glb + 텍스처(소스: art_src/props/yarn_ball.py, parcel_box.py)
   art_src/                            캐릭터·소품 생성 Blender 스크립트(외부 .blend 없음)
   assets/fonts/                       Noto Sans CJK KR 서브셋(Regular·Bold, SIL OFL 1.1), 기호 대체 글꼴
@@ -62,7 +62,7 @@ apps/lab3d/
 | 3D 위에 핵심 관찰값 카드(`key_observations`)·액션 버튼을, 사이드바에 질문·시점·조건·관찰값·그래프·설명을 그린다 | `set_control(id, value)` · `control_value(id)` · `run_action(id)` |
 | 관찰값·그래프를 10 Hz로 갱신한다 | `observations()` → `{id: 숫자 또는 문자열}`, `graph_series()` → `{시리즈 id: PackedVector2Array}` |
 | 카메라 모드·제한을 처리한다(기본 정면) | `follow_point()`(따라가기 대상), JSON의 `camera` |
-| 섬에 두기두기·퍼피를 세우고, 설명할 때 두기두기가 가리키며 말풍선에 `observe`를 띄운다(`IslandCast`, Task 4h) | JSON의 `cast`, `status()`, `explain_point()`(가리킬 점, 기본 `follow_point()`) |
+| 섬에 두기두기·퍼피를 세우고, 설명할 때 두기두기가 가리키며 대화창에 `observe`를 띄운다(`IslandCast`, Task 4h) | JSON의 `cast`, `status()`, `explain_point()`(가리킬 점, 기본 `follow_point()`) |
 | 3D를 품질 단계 해상도의 SubViewport에 그린다 | 장면은 `ArtKit`·`ArtMeshBuilder`로 꾸민다(엔진 조명·그림자 없음, [아트 디렉션](docs/art-direction.md)) |
 | 착지 때 카메라를 살짝 흔든다(`CameraRig.nudge`) | `impact(strength)` 신호(연출용, 선택) |
 | 한 손가락 조작: 집기·끌기·스냅·미리보기·높이 손잡이·취소·보조 시점(`Manipulator`) | JSON `manipulation`의 규칙, `manipulation_body`·`manipulation_surface`·`manipulation_juice`, 결과 통보(`manipulation_started`·`_placed`·`_cancelled`), 추가 규칙 `placement_allowed`, 화면 재구성 때 유지할 `placements()` |

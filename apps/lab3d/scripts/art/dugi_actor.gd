@@ -22,8 +22,8 @@ extends Node3D
 const SCENE := preload("res://assets/characters/dugi.glb")
 const RAISE_S := 0.45
 const LOWER_S := 0.45
-## How long he keeps pointing (and the speech bubble shows) once the arm is up: long enough to read
-## a two-line explanation.
+## How long he keeps pointing once the arm is up when nothing holds him (hold_on(): the screen's
+## dialogue keeps him pointing while it is open).
 const POINT_S := 6.0
 ## Arm blend (0 rest .. 1 pointing) from which the stick shows: by then its tip is well above the
 ## ground (tests/island_cast_checks.gd).
@@ -135,7 +135,7 @@ func has_point() -> bool:
 	return _has_point
 
 
-## The bubble is shown while he raises his arm and points.
+## Explaining: raising the arm or pointing.
 func speaking() -> bool:
 	return state == "raise" or state == "point"
 
@@ -152,8 +152,18 @@ func bounds() -> AABB:
 func explain(point: Callable) -> void:
 	target = point
 	_left = POINT_S
+	var p: Variant = point.call() if point.is_valid() else null
+	if p is Vector3 and (p as Vector3).is_finite():
+		_point = p   # known at once (the dialogue keeps it uncovered from its first frame)
+		_has_point = true
 	if state == "rest" or state == "lower":
 		state = "raise"
+
+
+## Keeps pointing for another POINT_S (called every frame while the dialogue is open).
+func hold_on() -> void:
+	if state == "point" or state == "raise":
+		_left = POINT_S
 
 
 ## Back to rest: the arm comes down over LOWER_S, or at once (`instant`: 처음으로).

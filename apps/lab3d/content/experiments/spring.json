@@ -40,8 +40,8 @@
   ],
   "key_observations": ["extension", "speed", "total"],
   "cast": {
-    "dugi": { "at": [5.5, 0.75], "explain_on": ["moving", "rest"], "delay_s": 1.5 },
-    "puppy": { "at": [-6.75, -3.0] }
+    "dugi": { "at": [2.5, 5.75], "explain_on": ["moving", "rest"], "delay_s": 1.5 },
+    "puppy": { "at": [-9.0, -6.0] }
   },
   "observations": [
     { "id": "state", "label": "상태" },

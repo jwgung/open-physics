@@ -42,8 +42,8 @@
   ],
   "key_observations": ["critical_angle", "state", "acceleration"],
   "cast": {
-    "dugi": { "at": [5.5, 1.0], "explain_on": ["sliding", "left"], "delay_s": 0.6 },
-    "puppy": { "at": [-6.25, -3.0] }
+    "dugi": { "at": [2.5, 2.5], "explain_on": ["sliding", "left"], "delay_s": 0.6 },
+    "puppy": { "at": [3.25, -9.25] }
   },
   "observations": [
     { "id": "critical_angle", "label": "임계각 θc (tan θc = μs)", "unit": "°", "digits": 1 },

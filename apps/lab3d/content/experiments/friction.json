@@ -46,8 +46,8 @@
   ],
   "key_observations": ["applied", "max_static", "state"],
   "cast": {
-    "dugi": { "at": [7.25, -0.75], "explain_on": ["sliding", "end"], "delay_s": 0.6 },
-    "puppy": { "at": [-6.0, -3.0] }
+    "dugi": { "at": [7.25, -1.0], "explain_on": ["sliding", "end"], "delay_s": 0.6 },
+    "puppy": { "at": [-1.0, -10.25] }
   },
   "observations": [
     { "id": "state", "label": "상자 상태" },

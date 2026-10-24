@@ -205,6 +205,9 @@ static func _validate_cast(cast: Variant) -> PackedStringArray:
 			var on: Variant = spec.get("explain_on", [])
 			if not (on is Array and not on.is_empty() and on.all(func(v: Variant) -> bool: return v is String)):
 				problems.append("cast.dugi.explain_on must list statuses")
+			var delay: Variant = spec.get("delay_s", 0.0)
+			if not ((delay is float or delay is int) and delay >= 0.0):
+				problems.append("cast.dugi.delay_s must be a number >= 0")
 	return problems
 
 

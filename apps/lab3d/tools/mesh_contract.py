@@ -5,8 +5,9 @@
 Per mesh: glTF vertex / triangle counts; seam normal agreement (vertices at one position must share
 one normal, else the inverted-hull outline tears there); and, after welding the UV-seam copies,
 open / non-manifold edges (closed shells -> 0) and shells wound inward (signed volume <= 0).
-Exits 1 when any mesh breaks the contract. The app's headless tests check the same contract on the
-imported meshes (tests/island_cast_checks.gd), so CI needs no Blender.
+Exits 1 when any mesh breaks the contract. The app's headless tests check the seam normals and the
+closed shells on the imported meshes (tests/island_cast_checks.gd), so CI needs no Blender; the
+inward-shell check is Blender-only.
 """
 import math
 import sys

@@ -214,17 +214,17 @@ func _process(delta: float) -> void:
 func _place_bubble() -> void:
 	if bubble == null:
 		return
-	var show := cast.dugi != null and cast.dugi.speaking() and _sidebar_state == "closed"
-	if show:
+	var wanted := cast.dugi != null and cast.dugi.speaking() and _sidebar_state == "closed"
+	if wanted:
 		var who := dugi_rect()
 		var view_rect := Rect2(Vector2.ZERO, view.size)
 		var keep: Array[Vector2] = []
 		if cast.dugi.has_point():
 			keep.append(view_point(cast.dugi.pointed()))
-		show = view_rect.encloses(who) and bubble.place(who, view_rect, overlay_rects(), OVERLAY_MARGIN, keep)
-	if not show:
+		wanted = view_rect.encloses(who) and bubble.place(who, view_rect, overlay_rects(), OVERLAY_MARGIN, keep)
+	if not wanted:
 		bubble.reset_spot()
-	bubble.visible = show
+	bubble.visible = wanted
 
 
 ## The overlays a speech bubble must not cover (view space): title, top buttons, key cards,

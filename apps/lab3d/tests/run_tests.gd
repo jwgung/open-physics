@@ -43,11 +43,11 @@
 ##    length and F d = m g h from the engine bodies, panel, art, hand-over-hand input, the demo.
 ## 7c. camera close-up (tests/camera_focus_checks.gd): the rig's close-up state machine, the throw and
 ##    the push framed closer and back, 처음으로 at once, the physics timeline unchanged.
+## 15. key cards (Task 2d): every listed experiment opens in the front view with 2-3 key cards that
+##    show the panel's text.
 ## 16. island cast (Task 4h, tests/island_cast_checks.gd): the Dugi / Puppy models' mesh contract,
 ##    the explain cycle (rest -> point -> rest, the stick hidden at rest), the status trigger, placement
 ##    and layout in every experiment, physics and panels unchanged with the cast.
-## 15. key cards (Task 2d): every listed experiment opens in the front view with 2-3 key cards that
-##    show the panel's text.
 ## Times are engine fixed steps (60 Hz), independent of rendering FPS.
 extends SceneTree
 

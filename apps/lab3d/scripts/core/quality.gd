@@ -23,15 +23,16 @@ const UI_MODES := ["native", "root", "scale3d"]
 const BASE_SIZE := Vector2i(720, 720)
 
 ## renderer: "mobile" (Vulkan) or "gl_compatibility" (OpenGL ES 3); applied by restarting the app.
-## view_scale: 3D view resolution as a fraction of the screen pixels it covers (0.45 = the Task 1
-## low tier's 540 px on a 1200 px wide screen). msaa: 0 or 2 (x).
+## view_scale: 3D view resolution as a fraction of the screen pixels it covers (low 0.75 = 900 px
+## on the 1200 px short side of SM-P200; it was 0.45 = 540 px without MSAA until 2026-10-24, too
+## blocky on the tablet: spikes/bench/results/phase1-low-sharp/README.md). msaa: 0 or 2 (x).
 ## ui_mode (measurement switch, see docs/ui-resolution.md):
 ##   native  = UI at screen resolution, 3D in a SubViewport at view_scale (chosen),
 ##   root    = Task 1 method: the whole root viewport (UI too) at root_short px on the short side,
 ##   scale3d = UI at screen resolution, 3D SubViewport at screen size with scaling_3d_scale.
 ## root_short: short side of the root viewport in ui_mode=root.
 const TIERS := {
-	"low": {"renderer": "gl_compatibility", "view_scale": 0.45, "msaa": 0, "ui_mode": "native", "root_short": 540},
+	"low": {"renderer": "gl_compatibility", "view_scale": 0.75, "msaa": 2, "ui_mode": "native", "root_short": 540},
 	"medium": {"renderer": "mobile", "view_scale": 0.6, "msaa": 2, "ui_mode": "native", "root_short": 720},
 	"high": {"renderer": "mobile", "view_scale": 1.0, "msaa": 2, "ui_mode": "native", "root_short": 0},
 }

@@ -485,7 +485,7 @@ func check_storybook() -> void:
 			if ok:
 				var c: Vector4 = outline.get_shader_parameter("color")
 				ok = is_equal_approx(outline.get_shader_parameter("world_width"), ArtKit.OUTLINE_WORLD) and ArtKit.OUTLINE_WORLD >= 0.010 \
-					and outline.get_shader_parameter("screen_width") > 0.0 \
+					and is_equal_approx(outline.get_shader_parameter("screen_pixels"), ArtKit.OUTLINE_PIXELS) and ArtKit.OUTLINE_PIXELS >= 1.0 \
 					and Vector3(c.x, c.y, c.z).distance_to(Vector3(outline_lin.r, outline_lin.g, outline_lin.b)) < 1e-4
 			if not ok:
 				wired = false

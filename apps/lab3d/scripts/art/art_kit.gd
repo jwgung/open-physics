@@ -14,10 +14,10 @@ const TEXTURE_SHADER := preload("res://scripts/art/art_lit_tex.gdshader")
 ## props and island keep the island light.
 const TOON_SHADER := preload("res://scripts/art/art_toon_tex.gdshader")
 const OUTLINE_SHADER := preload("res://scripts/art/art_outline.gdshader")
-## Outline width: the Blender reference renders' 0.010 m, at least OUTLINE_SCREEN of the view
-## height (art_outline.gdshader).
+## Outline width: the Blender reference renders' 0.010 m, at least OUTLINE_PIXELS render-target
+## pixels of the 3D view (art_outline.gdshader, art-direction.md section 11).
 const OUTLINE_WORLD := 0.010
-const OUTLINE_SCREEN := 0.0035
+const OUTLINE_PIXELS := 1.5
 ## The cel step's shade multiplier (linear; Blender ramp 0.86 x (0.97, 0.90, 0.93)) and where it
 ## sits in N.L (art_toon_tex.gdshader).
 const TOON_SHADE := Vector4(0.834, 0.774, 0.8, 1.0)
@@ -105,7 +105,7 @@ static func outline_material() -> ShaderMaterial:
 		var c := ArtPalette.OUTLINE.srgb_to_linear()
 		_outline.set_shader_parameter("color", Vector4(c.r, c.g, c.b, 1.0))   # linear, as a vector (see yarn_ball)
 		_outline.set_shader_parameter("world_width", OUTLINE_WORLD)
-		_outline.set_shader_parameter("screen_width", OUTLINE_SCREEN)
+		_outline.set_shader_parameter("screen_pixels", OUTLINE_PIXELS)
 	return _outline
 
 

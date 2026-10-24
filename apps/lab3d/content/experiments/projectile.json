@@ -44,6 +44,10 @@
     { "id": "reset", "label": "처음으로" }
   ],
   "key_observations": ["range", "flight_time", "landing"],
+  "cast": {
+    "dugi": { "at": [7.0, -1.25], "explain_on": ["landed", "fence"], "delay_s": 0.6 },
+    "puppy": { "at": [-4.0, -3.0] }
+  },
   "observations": [
     { "id": "g", "label": "중력 가속도 g", "unit": "m/s²", "digits": 2 },
     { "id": "time", "label": "던진 뒤 시간 t", "unit": "s", "digits": 2 },

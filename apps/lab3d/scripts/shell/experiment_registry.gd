@@ -180,6 +180,31 @@ static func validate(definition: Dictionary) -> PackedStringArray:
 	if not graph.has("series") or graph.series.is_empty():
 		problems.append("graph.series missing")
 	problems.append_array(_validate_manipulation(definition.get("manipulation"), definition.actions))
+	problems.append_array(_validate_cast(definition.get("cast")))
+	return problems
+
+
+## `cast` (Task 4h, optional): {"dugi": {"at": [x, z], "explain_on": [status...], "delay_s"?},
+## "puppy": {"at": [x, z]}} (IslandCast).
+static func _validate_cast(cast: Variant) -> PackedStringArray:
+	var problems := PackedStringArray()
+	if cast == null:
+		return problems
+	if not cast is Dictionary:
+		problems.append("cast must be an object")
+		return problems
+	for who in cast:
+		var spec: Variant = cast[who]
+		if who not in ["dugi", "puppy"] or not spec is Dictionary:
+			problems.append("cast.%s unknown" % who)
+			continue
+		var at: Variant = spec.get("at")
+		if not (at is Array and at.size() == 2 and at.all(func(v: Variant) -> bool: return v is float or v is int)):
+			problems.append("cast.%s.at must be [x, z]" % who)
+		if who == "dugi":
+			var on: Variant = spec.get("explain_on", [])
+			if not (on is Array and not on.is_empty() and on.all(func(v: Variant) -> bool: return v is String)):
+				problems.append("cast.dugi.explain_on must list statuses")
 	return problems
 
 

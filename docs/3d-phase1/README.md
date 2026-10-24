@@ -30,6 +30,7 @@ Notion Story·Task와 GitHub Issue는 발행하지 않는다. 이 문서가 Phas
 | 4f | 공 회전·구름 | 자유 낙하·던지기 공이 비행 중 각속도 일정, 착지 뒤 튕김(e v, 공식 시각·최고점), 쿨롱 마찰 충격, 미끄러짐 → 구름(v = ωr), 구름 저항(μ_r 0.05) → 정지, 던지기 섬 양끝 울타리 되튐을 교과서 공식대로(엔진 바디 궤적·각속도 헤드리스 대조). 보이는 회전 = 바디 회전(흰 띠). 여러 공 색 구분(빨강·노랑·보라), 받침판 흰색 | 4 | 완료(검토 대기) — [공식 보정 Task 4f](../../apps/lab3d/docs/formula-correction.md#실험-구현-task-4f-공-회전구름), [결과](../../spikes/bench/results/phase1-ball-spin/README.md) | `feat/ball-spin-rolling` |
 | 4g | 빵고양이 캐릭터 | 빵봉투에 들어간 고양이 '빵고양이'가 학생 조작을 대신 연기한다. 던지기(공을 공식 발사점·시각에 손에서 놓음)와 마찰 밀기(손이 상자 면에 붙어 함께 이동)부터. 물리는 공식 모델이 맡고 고양이는 동기화된 연기만(운동 불변을 테스트로 확인). 로우폴리 섬 스타일, low 60 fps | 4f | 완료(검토 대기) — [아트 디렉션 11절](../../apps/lab3d/docs/art-direction.md#11-빵고양이-task-4g), [결과](../../spikes/bench/results/phase1-task4g/README.md) | `feat/bread-cat` |
 | 4g2 | 캐릭터 동화책 스타일 | 4g 후속. Blender 참고 그림의 동화책 모양(갈색 뒤집힌 껍질 외곽선 + 두 단계 셀 셰이딩)을 앱 캐릭터에 적용(빵고양이, 두기두기용 재질 재사용). 렌더링만 바꾸고 물리·패널 불변, low 60 fps | 4g | 완료(검토 대기) — [아트 디렉션 11절](../../apps/lab3d/docs/art-direction.md#11-빵고양이-task-4g), [결과](../../spikes/bench/results/phase1-task4g2/README.md) | `feat/dugi-rabbit` |
+| 4h | 두기두기·퍼피 섬 등장 | 최종 캐릭터 모델 3종(빵고양이 얼굴 칠, 두기두기, 퍼피)을 저장소에 넣고, 두기두기가 안내형 실험마다 섬에 서서 결과가 나오면 막대로 그 대상을 가리키며 관찰 포인트를 말풍선으로 보여 준다. 퍼피는 뒤에서 "과학섬" 깃발을 든다. 물리·패널 불변, low 60 fps | 4g2 | 완료(검토 대기) — [아트 디렉션 12절](../../apps/lab3d/docs/art-direction.md#12-두기두기와-퍼피-task-4h), [결과](../../spikes/bench/results/phase1-task4h/README.md) | `feat/island-cast` |
 | 5 | 역학 빈 실험실 3D | 고정 블록·줄·용수철·지렛대·도르래·힘·중력원·물 | 2a, 2b, 2c, 3 | 대기 | |
 | 6 | 출시 준비 | 서명, 스토어 자료, 개인정보처리방침(수집 없음), Kids/Families 정책, 모바일 CI, iOS 실기기 확인 | 4, 5 | 대기 | |
 
@@ -325,3 +326,13 @@ Notion Story·Task와 GitHub Issue는 발행하지 않는다. 이 문서가 Phas
   - 궤도 끌기: 원인은 `orbit_analyze`(3–5 ms)가 아니라 끄는 동안 칸마다 새로 짓던 안내 원 메시(18–39 ms). 대시 하나의 MultiMesh로 바꾸고 예측 결과를 재사용 → 58.84 → 59.66 fps(33 ms 넘는 프레임 50 → 16).
   - SM-P200 low 11개 실험 90초 모두 통과(59.64–59.73 fps). medium 43.8·high 40.3 fps(던지기, Task 1과 같은 Mobile 고정 비용, 목표 아님).
   - [결과](../../spikes/bench/results/phase1-sweep/README.md), [apps/lab3d README 카메라 당기기](../../apps/lab3d/README.md#카메라-당기기-close-up-2026-10-24)
+- 2026-10-24: Task 4h 두기두기·퍼피 섬 등장(`feat/island-cast`). 사용자 승인: 최종 모델 3종을 저장소에 넣고 두기두기(설명)·퍼피(깃발)를 섬에 세운다.
+  - 모델: `art_src/characters/{bread_cat,dugi,puppy}.py` → `assets/characters/*.glb`. Blender 4.5.15로 저장소 사본을 두 번 빌드해 바이트가 같다. 외곽선 메시 계약 검사 `apps/lab3d/tools/mesh_contract.py`(Blender)와 헤드리스 시험(CI). 깃발 글자는 Noto Sans CJK Bold(OFL)로 그린 그림(글꼴 파일은 앱에 없음).
+  - 기본값으로 정한 것(사용자 확인 필요):
+    - 두기두기 자리: 실험마다 장치의 화면 오른쪽(오른손 막대로 화면 왼쪽을 가리킴), 퍼피는 장치 뒤 z ≈ −3 왼쪽. 헤드리스 후보 탐색으로 고르고 시험이 지킨다.
+    - 설명 시점: 상태가 결과 상태(던지기 `landed`·`fence`, 자유 낙하 `landed`, 충돌 `collided` 등, 실험 JSON `cast.dugi.explain_on`)가 되고 0.6–1.5초 뒤, 실행마다 한 번. 6초 가리키고 내린다. 사이드바를 여는 것은 설명 계기로 쓰지 않았다(사이드바에 같은 문구가 있음).
+    - 가리키는 것: 던지기는 공식 착지점(울타리면 맞은 점), 나머지는 따라가기 대상(공·상자·짐·추·행성·통, 충돌은 두 공 가운데). 움직이면 따라 가리킨다.
+    - 말풍선 글: 실험의 `observe`(사이드바 관찰 포인트) 그대로. 사이드바가 열려 있으면 말풍선은 숨기고 가리키기만 한다.
+    - 카메라 당기기는 쓰지 않는다: 설명은 대개 몸체가 아직 움직일 때 시작해, 움직임은 멈춘 카메라로 본다는 원칙과 맞지 않는다.
+    - 퍼피는 정지 자세, 깃발 천만 깃대 축으로 최대 7° 흔들림. 외눈 안경 끔.
+  - 검증: 헤드리스 전체 통과(새 `tests/island_cast_checks.gd`: 메시 계약·예산, 쉼 → 가리킴 → 쉼과 막대 숨김, 상태 감시, 11개 실험 자리·폰/태블릿/사이드바 화면, 9개 실험 엔진 몸체 매 스텝·패널 문구가 캐릭터 유무와 같음). SM-P200 low 90초: 던지기 59.64, 궤도 59.70, 충돌 59.62, 진자 59.67, 마찰 밀기 59.65 fps. [결과](../../spikes/bench/results/phase1-task4h/README.md)

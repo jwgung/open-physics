@@ -48,6 +48,10 @@
     { "id": "reset", "label": "처음으로" }
   ],
   "key_observations": ["rope_distance", "rod_distance", "small_period"],
+  "cast": {
+    "dugi": { "at": [5.75, 3.0], "explain_on": ["swinging", "weightless"], "delay_s": 1.5 },
+    "puppy": { "at": [-6.5, -3.0] }
+  },
   "observations": [
     { "id": "state", "label": "상태" },
     { "id": "length", "label": "줄·막대 길이 L", "unit": "m", "digits": 2 },

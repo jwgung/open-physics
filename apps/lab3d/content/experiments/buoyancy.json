@@ -39,6 +39,10 @@
     { "id": "reset", "label": "처음으로" }
   ],
   "key_observations": ["depth", "floating_depth", "buoyant"],
+  "cast": {
+    "dugi": { "at": [3.0, 1.75], "explain_on": ["floating", "sunk", "staying"], "delay_s": 0.6 },
+    "puppy": { "at": [-4.0, -3.0] }
+  },
   "observations": [
     { "id": "state", "label": "상태" },
     { "id": "judgement", "label": "밀도로 본 결과" },

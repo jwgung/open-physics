@@ -202,6 +202,25 @@ def value_noise(u, v, freq, seed):
     return (a * (1 - xf) + b * xf) * (1 - yf) + (c * (1 - xf) + d * xf) * yf
 
 
+def paint_volume(img, qx, qz, front, hw, hh, muzzle_c, muzzle_r, glow, warm, amount=1.0):
+    """Painted volume, like the storybook reference (2026-10-24 user: round heads stay round, the
+    face reads 3D through soft colour, not geometry): very soft warm shading toward the lower rim of
+    the face (lower cheeks, jaw) and just under the muzzle, and a gently brighter muzzle centre.
+    All smooth gradients (no edges for the filter to alias); applied before blush and features.
+    hw / hh: the face's half width / height in the qx / qz units; warm: a multiply tint."""
+    ex, ez = qx / hw, qz / hh
+    r = np.sqrt(ex * ex + ez * ez)
+    low = np.clip((0.30 - ez) / 1.0, 0.0, 1.0)
+    rim = np.clip((r - 0.60) / 0.40, 0.0, 1.0) ** 1.6 * low * 0.60
+    cx, cz = muzzle_c; rx, rz = muzzle_r
+    d = ((qx - cx) / (rx * 1.15)) ** 2 + ((qz - (cz - rz * 0.95)) / (rz * 0.55)) ** 2
+    under = np.exp(-d * 1.6) * (qz < cz) * 0.45
+    m = np.clip((rim + under) * amount, 0.0, 0.7) * front
+    img *= (1.0 - m[..., None] * (1.0 - np.array(warm))[None, None, :])
+    dm = ((qx - cx) / (rx * 0.8)) ** 2 + ((qz - (cz + rz * 0.15)) / (rz * 0.75)) ** 2
+    blend(img, np.exp(-dm * 1.8) * front, glow, 0.55 * amount)
+
+
 def paint_head(P, mouth, eyes="dot"):
     u, v = region_grid(R_HEAD)
     lon = (u - 0.5) * 2 * math.pi
@@ -244,6 +263,9 @@ def paint_head(P, mouth, eyes="dot"):
     # muzzle + chin
     sdf = np.minimum(sd_ellipse(qx, qz, 0.0, -0.085, 0.085, 0.055), sd_ellipse(qx, qz, 0.0, -0.14, 0.12, 0.06))
     blend(img, smooth_fill(sdf, 0.02) * front, cream)
+    # painted volume (soft warm shading low on the face and under the muzzle, a brighter muzzle)
+    paint_volume(img, qx, qz, front, FACE_R * HEAD_SX, FACE_R * HEAD_SZ, (0.0, -0.090), (0.090, 0.058),
+                 hexc("#fffbf2"), (0.95, 0.84, 0.78))
     # blush
     for s in (-1, 1):
         sdf = sd_ellipse(qx, qz, s * 0.150, -0.060, 0.045, 0.026)

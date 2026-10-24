@@ -32,6 +32,12 @@ var experiment: Experiment
 var view: View3D
 ## One-finger object manipulation (null when the experiment declares no `manipulation`).
 var manipulator: Manipulator
+## Dugi and Puppy on the island (Task 4h, null when the definition has no `cast`), next to the lab
+## under the 3D view; Dugi's speech bubble over the view.
+var cast: IslandCast
+var bubble: SpeechBubble
+## Tests: false opens the same screen without the cast (the lab must run the same).
+var show_cast := true
 
 # 3D overlays (children of the view, placed by _fit_overlays).
 var _title_bar: PanelContainer
@@ -101,6 +107,12 @@ func _ready() -> void:
 	experiment.close_up_ended.connect(view.rig.end_focus)
 	experiment.close_up_cut.connect(view.rig.cut_focus)
 	view.set_world(experiment)
+	if show_cast:
+		cast = IslandCast.create(definition, experiment)
+	if cast != null:
+		view.viewport.add_child(cast)
+		bubble = SpeechBubble.new(cast.text)
+		view.add_child(bubble)
 	if definition.has("manipulation"):
 		manipulator = Manipulator.new()
 		manipulator.name = "Manipulator"
@@ -108,6 +120,8 @@ func _ready() -> void:
 		manipulator.setup(view, experiment)
 		view.single_pointer.connect(manipulator.handle_pointer)
 		manipulator.changed.connect(_on_manipulator_changed)
+		if cast != null:
+			manipulator.changed.connect(cast.rearm)
 		manipulator.demo_placed.connect(func() -> void:
 			if manipulator.demo_action != "":
 				_demo_release_left = DEMO_RELEASE_DELAY_S)
@@ -190,6 +204,60 @@ func _process(delta: float) -> void:
 		_demo_release_left -= delta
 		if _demo_release_left < 0.0:
 			_run_measured_action(manipulator.demo_action)
+	_place_bubble()
+
+
+## Dugi's bubble shows while he explains, beside him on the view, clear of the overlays and of what
+## he points at; hidden while the sidebar is open (its 관찰 포인트 card has the same words, and the
+## narrowed view has no clear spot), when he is off the view (a turned or zoomed camera) or no clear
+## spot exists. He points all the same.
+func _place_bubble() -> void:
+	if bubble == null:
+		return
+	var show := cast.dugi != null and cast.dugi.speaking() and _sidebar_state == "closed"
+	if show:
+		var who := dugi_rect()
+		var view_rect := Rect2(Vector2.ZERO, view.size)
+		var keep: Array[Vector2] = []
+		if cast.dugi.has_point():
+			keep.append(view_point(cast.dugi.pointed()))
+		show = view_rect.encloses(who) and bubble.place(who, view_rect, overlay_rects(), OVERLAY_MARGIN, keep)
+	if not show:
+		bubble.reset_spot()
+	bubble.visible = show
+
+
+## The overlays a speech bubble must not cover (view space): title, top buttons, key cards,
+## actions and the gesture tip while it shows.
+func overlay_rects() -> Array[Rect2]:
+	var out: Array[Rect2] = []
+	for c: Control in [_title_bar, _top_buttons, _key_row, _action_row, _tip]:
+		if c.visible:
+			out.append(c.get_rect().grow(4.0))
+	return out
+
+
+## A world point on the view (UI units of the view).
+func view_point(world: Vector3) -> Vector2:
+	return view.rig.unproject_position(world) / (Vector2(view.viewport.size) / view.size)
+
+
+## The view rect of a world AABB (its 8 corners; empty when a corner is behind the camera).
+func view_rect_of(box: AABB) -> Rect2:
+	var r := Rect2()
+	for i in 8:
+		var p := box.get_endpoint(i)
+		if view.rig.is_position_behind(p):
+			return Rect2()
+		r = Rect2(view_point(p), Vector2.ZERO) if i == 0 else r.expand(view_point(p))
+	return r
+
+
+## Dugi on the view (empty without him).
+func dugi_rect() -> Rect2:
+	if cast == null or cast.dugi == null:
+		return Rect2()
+	return view_rect_of(cast.dugi.bounds())
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -541,6 +609,11 @@ func experiment_action(id: String) -> void:
 	_updating = true
 	experiment.change_from_input(experiment.run_action.bind(id))
 	_updating = false
+	if cast != null:
+		if id == "reset":
+			cast.reset()
+		else:
+			cast.user_changed()
 	if id == "reset":
 		_snap_camera_home()
 	_refresh()
@@ -557,6 +630,8 @@ func _set_control(id: String, value: Variant) -> void:
 	_updating = true
 	experiment.change_from_input(experiment.set_control.bind(id, value))
 	_updating = false
+	if cast != null:
+		cast.user_changed()
 	# Only this control's conditions changed: sync it, then redraw the readouts and the series.
 	_sync_control(id)
 	_update_readouts(true)

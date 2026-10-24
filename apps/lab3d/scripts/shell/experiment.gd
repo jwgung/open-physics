@@ -230,6 +230,12 @@ func follow_point() -> Vector3:
 	return global_position
 
 
+## World point Dugi points at when he explains the run (IslandCast, Task 4h): what the lab's
+## observation is about. Default: the body the camera follows. Read only (visual).
+func explain_point() -> Vector3:
+	return follow_point()
+
+
 # --- manipulation (Task 2b) ---------------------------------------------------------------------
 # definition.manipulation.objects lists the objects a finger may pick up and the rules (surface id,
 # grid step, height handle); the shell's Manipulator does the picking, dragging, snapping and the

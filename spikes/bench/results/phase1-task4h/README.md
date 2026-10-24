@@ -1,0 +1,34 @@
+# Task 4h — 두기두기·퍼피 섬 등장 측정
+
+- 기기: SM-P200 (Galaxy Tab A 8.0 2019, Exynos 7904 / Mali-G71 MP2, Android 11, 1200×1920, 60 Hz) — 하한 기기
+- 일시: 2026-10-24
+- 빌드: `feat/island-cast` release APK(이 PR의 첫 커밋과 같은 코드)
+- 조건: [전 실험 측정](../phase1-sweep/README.md)과 같다. USB 연결(SM-P200만), 기기 설정(밝기·`stay_on`·화면 꺼짐·`wm size` 1200x1920) 그대로. 측정 중 호스트 Godot 작업 없음. 끝난 뒤 품질 단계 low(앱 재실행으로 `"quality":"low"` 확인).
+- 명령: `OPBENCH_EXPERIMENT=<id> OPBENCH_SUSTAINED=0 OPBENCH_OVERWRITE=1 OPBENCH_RESULTS_DIR=<dir> apps/lab3d/tools/bench_device.sh low 1 90 5`. 가로, 사이드바 닫힘, 정면 시점, 기본 조건, `--auto-drag=4`(4초마다 끌어 놓고 0.4초 뒤 `demo_action`). 셰이더 캐시 1회 → 30초 예열 → 90초 × 1회. 두기두기는 실행마다 설명한다(가리키기·말풍선 포함).
+- 판정: 평균 ≥ 59.5 fps. 평균 = `t` 30초 이후 행의 초당 fps 평균, 1% low = 초당 p99 평균의 역수, 33 ms 넘는 프레임 = `long` 합, p95 = 초당 p95 평균, GPU = Mali 클럭 평균.
+
+## 1. low 90초 (두기두기·퍼피 포함)
+
+| 실험 | 장면 | 평균 FPS | 최저 초당 | 1% low | 33 ms 넘는 프레임 | p95 ms | GPU MHz | 판정 | 4h 전([전 실험 측정](../phase1-sweep/README.md)) | 폴더 |
+|---|---|---|---|---|---|---|---|---|---|---|
+| 던지기 | PJ | 59.64 | 53.9 | 37.7 | 13 | 19.3 | 609 | 통과 | 59.73 | `low/projectile` |
+| 궤도 | OR | 59.70 | 56.1 | 37.8 | 12 | 19.7 | 669 | 통과 | 59.66 | `low/orbit` |
+| 충돌 | CO | 59.62 | 52.4 | 35.9 | 11 | 19.7 | 688 | 통과 | 59.67 | `low/collision` |
+| 줄·막대 진자 | CN | 59.67 | 53.7 | 37.9 | 13 | 19.2 | 629 | 통과 | 59.64 | `low/constraints` |
+| 마찰 밀기 | FR | 59.65 | 52.8 | 38.6 | 11 | 19.4 | 627 | 통과 | 59.66 | `low/friction` |
+
+- 던지기는 가장 무거운 장면이다(빵고양이 + 빵 상자 + 울타리 + 두기두기·퍼피). 가장 무거운 실험으로 함께 쟀다.
+- 측정 시작 AP 43.8 °C로 4h 전 측정(37.9 °C)보다 뜨거웠다(앞선 빌드·설치·화면 캡처). GPU 클럭이 4h 전보다 높다(던지기 568 → 609 MHz, 캐릭터 그리기 호출 +16).
+- 다섯 실험 모두 기준을 넘는다. 해상도·품질은 바꾸지 않았다.
+
+## 2. 스크린샷 (SM-P200 low, 1920×1200 screencap)
+
+| 파일 | 장면 |
+|---|---|
+| `screens/projectile_dugi_puppy.png` | 던지기: 착지 뒤 두기두기가 공식 착지점을 막대로 가리키고 말풍선에 관찰 포인트. 뒤에 빵고양이 옆 퍼피의 "과학섬" 깃발(다음 던지기 공이 날아가는 중) |
+| `screens/free-fall_dugi_puppy.png` | 자유 낙하: 세 공 착지 뒤 빨간 공을 가리킴. 왼쪽 뒤 퍼피 |
+| `screens/collision_dugi_puppy.png` | 충돌: 충돌 뒤 두 공 가운데를 가리킴. 레일 오른쪽 끝 두기두기, 왼쪽 뒤 퍼피 |
+
+## 3. 헤드리스
+
+`apps/lab3d/tools/build.sh test` 통과. 새 시험 `tests/island_cast_checks.gd`(자리 11개 실험, 화면 33개 배치, 물리 불변 9개 실험) 결과는 [아트 디렉션 12절](../../../../apps/lab3d/docs/art-direction.md#12-두기두기와-퍼피-task-4h).

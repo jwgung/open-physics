@@ -23,6 +23,8 @@ const SURFACE := Color("fbfdff")
 const WHITE := Color("ffffff")
 const CODE_BG := Color("e8f1ff")
 const CODE_TEXT := ArtPalette.BLUE_DARK
+## Dugi's speech bubble (Task 4h): the characters' brown outline as its border, his name in scarf red.
+const SPEECH_LINE := ArtPalette.OUTLINE
 ## Bottom "lip" of buttons and cards (units): the darker edge that makes them look pressable.
 const LIP := 5
 const CARD_LIP := 3
@@ -84,6 +86,9 @@ static func build() -> Theme:
 	# Key observation cards over the 3D view (Task 2d): small caption, the value as in the panel.
 	_label_variation(theme, "KeyLabel", bold, 16, SUBTLE)
 	_label_variation(theme, "KeyValueLabel", bold, 24, INK)
+	# Dugi's speech bubble (Task 4h).
+	_label_variation(theme, "SpeechNameLabel", bold, 16, ArtPalette.SCARF)
+	_label_variation(theme, "SpeechLabel", regular, SIZE_SMALL, INK)
 
 	# Panels: white cards with a soft blue lip.
 	theme.set_stylebox("panel", "PanelContainer", _box(WHITE, LINE, 18, 18, 16, Color.TRANSPARENT, 2, CARD_LIP))
@@ -96,6 +101,7 @@ static func build() -> Theme:
 	_panel_variation(theme, "TopBar", _box(WHITE, Color.TRANSPARENT, 0, 16, 8, LINE))
 	_panel_variation(theme, "IconBadge", _box(ACCENT, Color.TRANSPARENT, 16, 12, 8, Color.TRANSPARENT, 0, LIP, ACCENT_DARK))
 	_panel_variation(theme, "ViewOverlay", _box(Color(1, 1, 1, 0.9), Color.TRANSPARENT, 16, 6, 6))
+	_panel_variation(theme, "SpeechBubble", _box(WHITE, SPEECH_LINE, 16, 14, 10, Color.TRANSPARENT, 2))
 	_panel_variation(theme, "KeyCard", _box(Color(1, 1, 1, 0.9), Color.TRANSPARENT, 14, 12, 8, Color.TRANSPARENT, 1, CARD_LIP, LINE))
 
 	# Buttons: white with a grey-blue lip; pressed = the lip shrinks (the button sinks).

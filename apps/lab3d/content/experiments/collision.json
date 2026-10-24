@@ -62,6 +62,10 @@
     { "id": "reset", "label": "처음으로" }
   ],
   "key_observations": ["after_a", "after_b", "p_after"],
+  "cast": {
+    "dugi": { "at": [8.25, 0.75], "explain_on": ["collided", "rest"], "delay_s": 0.6 },
+    "puppy": { "at": [-5.5, -3.0] }
+  },
   "observations": [
     { "id": "state", "label": "상태" },
     { "id": "restitution", "label": "이번 충돌 반발계수 e", "digits": 2 },

@@ -14,15 +14,17 @@
 ##    repeat it, it re-arms after REARM_S outside or a user change; the projectile's throw through
 ##    the screen ends with Dugi pointing at the formula landing point and the bubble showing the
 ##    lab's observe text.
-## 5. placement, every listed experiment: Dugi (also pointing) and Puppy stand on the island clear
+## 5. placement, every listed experiment: Dugi (also pointing) and Puppy face the front camera and
+##    stand on the island clear
 ##    of its trees and rocks, of every apparatus mesh, of the bread cat and of the bodies' motion
 ##    (a run of the primary action); Puppy stands behind the apparatus.
 ## 6. layout, every listed experiment, phone / tablet / tablet with the sidebar: both in the front
 ##    view, clear of the title, key cards, buttons, actions and tip; Dugi hides no body or explain
 ##    point; his bubble is inside the view, clear of the overlays and of the point he explains, and
 ##    hidden while the sidebar is open (he points all the same).
-## 7. physics unchanged: engine bodies (every step) and panel texts are the same with and without
-##    the cast while it explains.
+## 7. physics unchanged, every listed experiment: engine bodies (every step) and panel texts are the
+##    same with and without the cast while Dugi explains (from its own trigger, or made to explain
+##    at step 120 when the run reaches no result status in 420 steps).
 extends RefCounted
 
 const EXPERIMENT_SCREEN := "res://scripts/shell/experiment_screen.gd"
@@ -420,6 +422,12 @@ func check_placement(id: String) -> void:
 	screen.experiment_action("reset")
 	await tree.physics_frame
 	var problems := []
+	var eye := IslandCast.front_eye(screen.definition.camera)
+	for actor: Node3D in [cast.dugi, cast.puppy]:
+		var to_eye := Vector2(eye.x - actor.global_position.x, eye.z - actor.global_position.z).normalized()
+		var front := Vector2(actor.global_basis.z.x, actor.global_basis.z.z).normalized()
+		if rad_to_deg(front.angle_to(to_eye)) > 1.0:
+			problems.append("%s does not face the front camera" % actor.name)
 	var cat_box := AABB()
 	for c in lab.find_children("CatActor", "", true, false):
 		cat_box = IslandCast.drawn_bounds((c as CatActor).rig)
@@ -545,6 +553,8 @@ func _record(id: String, with_cast: bool) -> Array:
 			for e in [[0, 20.0], [30, 36.0], [150, 0.0]]:
 				if e[0] == k:
 					lab.set_applied_force(e[1])
+		if with_cast and k == 120 and not explained:
+			screen.cast.dugi.explain(lab.explain_point)   # no result status yet: point during the run anyway
 		await tree.physics_frame
 		var row := [str(lab.observations())]
 		for b in lab.find_children("*", "RigidBody3D", true, false):
@@ -557,7 +567,8 @@ func _record(id: String, with_cast: bool) -> Array:
 
 
 func check_physics_unchanged() -> void:
-	for id in ["projectile", "free-fall", "collision", "spring", "friction", "orbit", "buoyancy", "constraints", "incline-friction"]:
+	for definition in ExperimentRegistry.load_all():
+		var id: String = definition.id
 		var without: Array = await _record(id, false)
 		var with_cast: Array = await _record(id, true)
 		var same: bool = without[0] == with_cast[0]
@@ -567,6 +578,6 @@ func check_physics_unchanged() -> void:
 				if without[0][k] != with_cast[0][k]:
 					first = k
 					break
-		expect.call(same and with_cast[0].size() == 420,
-			"cast (%s): engine bodies (every step) and panel texts are the same with and without the cast%s" % [id, " (Dugi explained during the run)" if with_cast[1] else ""],
+		expect.call(same and with_cast[0].size() == 420 and with_cast[1],
+			"cast (%s): engine bodies (every step) and panel texts are the same with and without the cast while Dugi explains" % id,
 			"first difference at step %d" % first if not same else "%d steps" % with_cast[0].size())

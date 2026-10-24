@@ -31,4 +31,4 @@
 
 ## 3. 헤드리스
 
-`apps/lab3d/tools/build.sh test` 통과. 새 시험 `tests/island_cast_checks.gd`(자리 11개 실험, 화면 33개 배치, 물리 불변 9개 실험) 결과는 [아트 디렉션 12절](../../../../apps/lab3d/docs/art-direction.md#12-두기두기와-퍼피-task-4h).
+`apps/lab3d/tools/build.sh test` 통과. 새 시험 `tests/island_cast_checks.gd`(자리 11개 실험, 화면 33개 배치, 물리 불변 11개 실험, 두기두기가 가리키는 동안) 결과는 [아트 디렉션 12절](../../../../apps/lab3d/docs/art-direction.md#12-두기두기와-퍼피-task-4h).

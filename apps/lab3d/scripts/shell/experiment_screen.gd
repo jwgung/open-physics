@@ -245,18 +245,14 @@ func _close_dialogue() -> void:
 
 
 ## Places the dialogue box: right end at the action buttons or Dugi's left edge (when he stands in
-## the box's height band), whichever is nearer, keeping what Dugi points at uncovered. False when
-## there is no room.
+## the box's height band), whichever is nearer. False when there is no room.
 func _layout_dialogue() -> bool:
 	var view_rect := Rect2(Vector2.ZERO, view.size)
 	var right := _action_row.position.x - OVERLAY_MARGIN
 	var who := dugi_rect()
 	if who.size.x > 0.0 and who.end.y > view.size.y - OVERLAY_MARGIN - DialogueBox.PORTRAIT_SIZE:
 		right = minf(right, who.position.x - OVERLAY_MARGIN)
-	var keep: Array[Vector2] = []
-	if cast.dugi.has_point() and not view.rig.is_position_behind(cast.dugi.pointed()):
-		keep.append(view_point(cast.dugi.pointed()))
-	return dialogue.layout(view_rect, right, OVERLAY_MARGIN, keep)
+	return dialogue.layout(view_rect, right, OVERLAY_MARGIN)
 
 
 ## The overlays Dugi, Puppy and the dialogue must not cover (view space): title, top buttons, key cards,

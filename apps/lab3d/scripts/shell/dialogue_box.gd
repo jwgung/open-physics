@@ -44,9 +44,6 @@ var label: Label
 var more: Label
 var portrait: TextureRect
 var active := false
-## The last layout would cover a `keep` point (what Dugi points at). The portrait always stands on
-## the left; the experiments' placements keep the target above the box (tests check every one).
-var covers_keep := false
 var page := 0
 ## [page text, separator before the next page] for the current width.
 var _pages: Array = []
@@ -145,11 +142,11 @@ func joined() -> String:
 # --- layout -----------------------------------------------------------------------------------
 
 ## Lays the box out inside `view` (local units): from the left margin to `right` (the action buttons'
-## or Dugi's left edge), bottom-aligned, the portrait on its left end. `keep` points (what Dugi
-## points at) are not moved around: covers_keep tells whether the layout covers one (the
-## experiments' placements keep the target above the box; tests check it). Returns false when the
-## room is too narrow (then it hides).
-func layout(view: Rect2, right: float, margin: float, keep: Array[Vector2] = []) -> bool:
+## or Dugi's left edge), bottom-aligned, the portrait always on its left end. What Dugi points at is
+## kept uncovered by the experiments' placements (the target stays above the box: tests check it
+## over a whole run in every experiment), not by moving the box. Returns false when the room is too
+## narrow (then it hides).
+func layout(view: Rect2, right: float, margin: float) -> bool:
 	var font := label.get_theme_font("font")
 	var size_px := label.get_theme_font_size("font_size")
 	var line_h := font.get_height(size_px) + label.get_theme_constant("line_spacing")
@@ -162,9 +159,6 @@ func layout(view: Rect2, right: float, margin: float, keep: Array[Vector2] = [])
 		return false
 	var top := view.end.y - margin - height
 	var origin := Vector2(left, top - (PORTRAIT_SIZE - height))
-	var box_rect := Rect2(origin + Vector2(0.0, PORTRAIT_SIZE - height), Vector2(width, height))
-	var portrait_rect := Rect2(origin + Vector2(PORTRAIT_INSET, 0.0), Vector2(PORTRAIT_SIZE, PORTRAIT_SIZE)).grow(6.0)
-	covers_keep = keep.any(func(k: Vector2) -> bool: return box_rect.grow(6.0).has_point(k) or portrait_rect.has_point(k))
 	box.position = Vector2(0.0, PORTRAIT_SIZE - height)
 	box.size = Vector2(width, height)
 	position = origin

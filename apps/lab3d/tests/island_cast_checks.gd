@@ -48,6 +48,7 @@ var tree: SceneTree
 var expect: Callable
 ## Per experiment (check_placement): apparatus cells, sampled motion, the cat's box (for layout).
 var _scene := {}
+var _explained: Array[Vector3] = []     # explain_point() sampled over the last _motion() run
 
 
 func _init(scene_tree: SceneTree, expect_fn: Callable) -> void:
@@ -202,12 +203,14 @@ func _motion(screen: Control) -> Array:
 	if primary != "":
 		screen.experiment_action(primary)
 	var out := []
+	_explained.clear()
 	for k in RUN_STEPS:
 		await tree.physics_frame
 		if k % 6 == 0:
 			for b in lab.find_children("*", "RigidBody3D", true, false):
 				out.append((b as Node3D).global_position)
 			out.append(lab.explain_point())
+			_explained.append(lab.explain_point())
 	return out
 
 
@@ -477,7 +480,7 @@ func check_placement(id: String) -> void:
 		apparatus_back = minf(apparatus_back, k.z * CELL)
 	if cast.puppy.bounds().end.z >= apparatus_back:
 		problems.append("Puppy not behind the apparatus (front z %.2f, apparatus back %.2f)" % [cast.puppy.bounds().end.z, apparatus_back])
-	_scene[id] = {"cells": cells, "motion": motion, "cat": cat_box}
+	_scene[id] = {"cells": cells, "motion": motion, "cat": cat_box, "explained": _explained.duplicate()}
 	if id == "orbit":
 		var top := maxf(boxes["Dugi"].end.y, maxf(boxes["Dugi pointing"].end.y, boxes["Puppy"].end.y))
 		var consts: Dictionary = (lab.get_script() as GDScript).get_script_constant_map()
@@ -566,6 +569,10 @@ func check_layout(id: String) -> void:
 					problems.append("dialogue covers Dugi")
 				if r.grow(4.0).has_point(screen.view_point(lab.explain_point())):
 					problems.append("dialogue covers what Dugi points at")
+				for p: Vector3 in _scene[id].explained:   # the target over a whole run (moving bodies too)
+					if r.grow(4.0).has_point(screen.view_point(p)):
+						problems.append("dialogue covers what Dugi points at during the run (%s)" % p)
+						break
 			if box.portrait.position.x > box.size.x * 0.5:
 				problems.append("portrait not on the left")
 		expect.call(problems.is_empty(), "cast (%s, %s): Dugi and Puppy in the front view clear of the overlays; Dugi hides no apparatus, motion or cat; Puppy over none of them nor Dugi; the dialogue clear of the controls, cards, Dugi and what he points at (none beside the open sidebar)" % [id, setup[2]],

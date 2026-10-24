@@ -30,7 +30,7 @@ from PIL import Image, ImageChops, ImageFilter
 SS = 2                      # supersampling: drawn at size * SS, then reduced
 BASE = 512.0                # design units (the drawing is laid out on a 512 x 512 page)
 
-INK = (0.40, 0.25, 0.17)    # warm brown ink
+INK = (0.47, 0.29, 0.19)    # warm brown ink
 FUR = (1.0, 0.976, 0.94)
 FUR_SHADE = (0.94, 0.86, 0.80)
 PINK = (0.97, 0.70, 0.73)
@@ -95,7 +95,7 @@ def path(ctx, pts, closed=True):
         ctx.close_path()
 
 
-def ink(ctx, rng, pts, closed=True, w=4.2, var=0.45, jitter=0.9, taper=True, color=INK, alpha=1.0):
+def ink(ctx, rng, pts, closed=True, w=4.2, var=0.65, jitter=1.1, taper=True, color=INK, alpha=1.0):
     """A hand-inked line: a ribbon whose width breathes along the stroke (and tapers at open ends),
     nudged off the exact curve by a smooth wobble."""
     n = len(pts)
@@ -130,7 +130,7 @@ def ink(ctx, rng, pts, closed=True, w=4.2, var=0.45, jitter=0.9, taper=True, col
         ctx.fill()
 
 
-def wash(ctx, rng, pts, base, shade, light_dir=(-0.5, -0.8), blobs=7, blob_alpha=0.05, rim=0.55):
+def wash(ctx, rng, pts, base, shade, light_dir=(-0.5, -0.8), blobs=7, blob_alpha=0.08, rim=0.65):
     """Flat fill + a soft watercolour shading: darker toward the side away from the light, a few
     faint blotches, all clipped to the shape."""
     xs = [p[0] for p in pts]
@@ -186,13 +186,14 @@ def rotate_pts(pts, ang, ox, oy):
 
 def ear(cx, base_y, tip_y, half_w, lean):
     """An ear as a long rounded leaf from the head top (base) up to a round tip."""
+    bend = -0.16 * lean   # the ear bows outward a little
     pts = [
         (cx - half_w * 0.55, base_y),
-        (cx - half_w * 0.95 + lean * 0.35, base_y - (base_y - tip_y) * 0.45),
+        (cx - half_w * 0.95 + lean * 0.35 - bend, base_y - (base_y - tip_y) * 0.45),
         (cx - half_w * 0.70 + lean * 0.85, tip_y + half_w * 0.55),
         (cx + lean, tip_y),
         (cx + half_w * 0.75 + lean * 0.85, tip_y + half_w * 0.6),
-        (cx + half_w * 0.95 + lean * 0.35, base_y - (base_y - tip_y) * 0.45),
+        (cx + half_w * 0.95 + lean * 0.35 - bend, base_y - (base_y - tip_y) * 0.45),
         (cx + half_w * 0.55, base_y),
     ]
     return catmull(pts, closed=True, steps=10)
@@ -212,7 +213,7 @@ def draw(expr, size, seed=7):
 
     tilt = {"talk": -0.06, "smile": 0.07, "point": -0.04}[expr]
     neck = (256.0, 452.0)
-    hx, hy, hrx, hry = 252.0, 336.0, 150.0, 120.0
+    hx, hy, hrx, hry = 252.0, 340.0, 138.0, 122.0
 
     # Body / shoulders (behind the head), cut by the frame bottom.
     body = catmull([(104, 560), (112, 482), (166, 438), (256, 426), (346, 438), (400, 482), (408, 560)], closed=True, steps=10)
@@ -222,7 +223,7 @@ def draw(expr, size, seed=7):
 
     # The pointing paw and stick (viewer's right), behind the scarf and the head's cheek.
     if expr == "point":
-        arm = catmull([(338, 470), (360, 430), (392, 392), (418, 372), (436, 384), (424, 410), (392, 448), (372, 486)], closed=True, steps=8)
+        arm = catmull([(330, 452), (352, 426), (388, 392), (416, 372), (436, 386), (424, 410), (396, 446), (384, 488), (350, 492)], closed=True, steps=8)
         wash(ctx, rng, arm, FUR, FUR_SHADE, light_dir=(-0.8, -0.4), rim=0.5)
         ink(ctx, rng, arm, w=4.0)
         # stick from the paw up and out to the right, red ball tip
@@ -245,21 +246,21 @@ def draw(expr, size, seed=7):
         x = 190 + 55 * k + rng.uniform(-6, 6)
         ink(ctx, rng, catmull([(x, 462), (x + 6, 476), (x + 2, 488)], closed=False, steps=6), closed=False, w=2.2, color=SCARF_SHADE, alpha=0.8)
     tails = [
-        catmull([(220, 478), (206, 506), (196, 530), (218, 530), (232, 500)], closed=True, steps=6),
-        catmull([(236, 480), (252, 508), (262, 530), (282, 524), (256, 486)], closed=True, steps=6),
+        catmull([(178, 472), (160, 500), (150, 526), (172, 528), (188, 494)], closed=True, steps=6),
+        catmull([(192, 474), (204, 502), (212, 528), (232, 522), (210, 480)], closed=True, steps=6),
     ]
     for t in tails:
         wash(ctx, rng, t, SCARF, SCARF_SHADE, rim=0.5, blobs=3)
         ink(ctx, rng, t, w=3.8)
-    knot = ellipse(232, 474, 22, 18, n=28, rot=0.2)
+    knot = ellipse(188, 468, 21, 17, n=28, rot=0.4)
     wash(ctx, rng, knot, SCARF, SCARF_SHADE, rim=0.6, blobs=2)
     ink(ctx, rng, knot, w=4.0)
 
     # Ears (behind the head): long, slightly spread, round tips; pink inside.
     spread = 1.25 if expr == "smile" else 1.0
     ears = [
-        (ear(208, 252, 60, 46, -60 * spread), ear(209, 246, 88, 26, -55 * spread)),
-        (ear(298, 250, 64, 46, 62 * spread), ear(297, 244, 92, 26, 57 * spread)),
+        (ear(214, 248, 50, 42, -66 * spread), ear(215, 242, 80, 23, -60 * spread)),
+        (ear(292, 246, 56, 42, 70 * spread), ear(291, 240, 86, 23, 64 * spread)),
     ]
     for outer, inner in ears:
         outer = rotate_pts(outer, tilt, *neck)
@@ -275,7 +276,7 @@ def draw(expr, size, seed=7):
         a = 2 * math.pi * k / 64
         c, sn = math.cos(a), math.sin(a)
         e = 2.0 / 2.25   # a soft superellipse: round, a little fuller than an ellipse
-        x = math.copysign(abs(c) ** e, c) * hrx * (1.0 + 0.05 * max(0.0, sn))   # fuller cheeks below
+        x = math.copysign(abs(c) ** e, c) * hrx * (1.0 + 0.10 * max(0.0, sn) * (1.0 - abs(sn) * 0.5))   # fuller cheeks below
         y = math.copysign(abs(sn) ** e, sn) * hry * (0.94 if sn < 0 else 1.0)
         head_pts.append((hx + x, hy + y))
     head = rotate_pts(head_pts, tilt, *neck)
@@ -301,8 +302,8 @@ def draw(expr, size, seed=7):
             soft_spot(ctx, x - 5, ey - 7, 6.0, 6.0, (1, 1, 1), 1.0)
             soft_spot(ctx, x + 4, ey + 5, 2.0, 2.0, (1, 1, 1), 0.8)
     # nose
-    nose = catmull([(hx - 9, ey + 26), (hx + 9, ey + 26), (hx, ey + 37)], closed=True, steps=6)
-    ctx.set_source_rgb(*PINK_DEEP)
+    nose = catmull([(hx - 6, ey + 27), (hx + 6, ey + 27), (hx, ey + 34)], closed=True, steps=6)
+    ctx.set_source_rgb(*INK)
     path(ctx, nose)
     ctx.fill()
     ink(ctx, rng, nose, w=1.8, var=0.2, alpha=0.7)
@@ -317,11 +318,7 @@ def draw(expr, size, seed=7):
         ctx.save()
         path(ctx, mouth)
         ctx.clip()
-        soft_spot(ctx, hx, ey + 72, 15, 11, TONGUE, 1.0)
-        ctx.set_source_rgb(1, 1, 1)
-        ctx.rectangle(hx - 8, ey + 45, 7, 8)
-        ctx.rectangle(hx + 1, ey + 45, 7, 8)
-        ctx.fill()
+        soft_spot(ctx, hx, ey + 70, 16, 13, TONGUE, 1.0)
         ctx.restore()
         ink(ctx, rng, mouth, w=3.0, var=0.3)
     # monocle on the eye at the viewer's right, with a thin chain to the scarf
@@ -356,7 +353,7 @@ def paper(S, seed):
     """A soft paper grain: two layers of seeded value noise, 0.93-1.0."""
     rng = random.Random(seed * 31 + 5)
     layers = []
-    for cells, lo in ((24, 0.975), (128, 0.985)):
+    for cells, lo in ((24, 0.968), (128, 0.982)):
         small = Image.new("L", (cells, cells))
         small.putdata([int(255 * rng.uniform(lo, 1.0)) for _ in range(cells * cells)])
         layers.append(small.resize((S, S), Image.BICUBIC).filter(ImageFilter.GaussianBlur(1)))

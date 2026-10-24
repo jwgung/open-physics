@@ -6,9 +6,9 @@
 
 ## 결정
 
-**UI는 원본 해상도(루트 뷰포트 `canvas_items` 스트레치), 3D는 SubViewport에서 화면 픽셀의 45%로 그려 TextureRect로 늘린다(`ui_mode=native`, `view_scale` 0.45).** (2026-10-24부터 low 3D는 75 % + MSAA 2x, 7절.) 함께 지키는 규칙: 전체 화면을 덮는 2D 레이어를 두지 않는다. 배경은 clear color로 칠하고, 패널 시트도 바탕을 칠하지 않는다.
+**UI는 원본 해상도(루트 뷰포트 `canvas_items` 스트레치), 3D는 SubViewport에서 화면 픽셀의 일부로 그려 TextureRect로 늘린다(`ui_mode=native`). low의 3D는 75 % + MSAA 2x(`view_scale` 0.75, 2026-10-24, 7절)이고, Task 2a 결정 당시에는 45 %(`view_scale` 0.45, MSAA 없음)였다.** 함께 지키는 규칙: 전체 화면을 덮는 2D 레이어를 두지 않는다. 배경은 clear color로 칠하고, 패널 시트도 바탕을 칠하지 않는다.
 
-- 최종 빌드에서 low 60.0 fps(아래 3절), Task 1 방식(루트 전체 540)과 fps가 같고 UI는 원본 해상도로 선명하다.
+- (Task 2a 측정, 3D 45 %) 최종 빌드에서 low 60.0 fps(아래 3절), Task 1 방식(루트 전체 540)과 fps가 같고 UI는 원본 해상도로 선명하다.
 - Task 1 방식보다 GPU 여유는 적다(평균 GPU 클럭 411 vs 343 MHz). 패널에 전체 화면 레이어를 하나 더 얹으면 다시 47 fps로 떨어진다(2절).
 
 ## 1. 비교한 방식

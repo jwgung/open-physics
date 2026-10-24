@@ -32,6 +32,13 @@ var experiment: Experiment
 var view: View3D
 ## One-finger object manipulation (null when the experiment declares no `manipulation`).
 var manipulator: Manipulator
+## Dugi and Puppy on the island (Task 4h, null when the definition has no `cast`), next to the lab
+## under the 3D view; Dugi's dialogue box over the view.
+var cast: IslandCast
+var dialogue: DialogueBox
+## Tests: false opens the same screen without the cast (the lab must run the same).
+var show_cast := true
+var _dialogue_started := false          # the dialogue of the current explanation was opened
 
 # 3D overlays (children of the view, placed by _fit_overlays).
 var _title_bar: PanelContainer
@@ -101,6 +108,14 @@ func _ready() -> void:
 	experiment.close_up_ended.connect(view.rig.end_focus)
 	experiment.close_up_cut.connect(view.rig.cut_focus)
 	view.set_world(experiment)
+	if show_cast:
+		cast = IslandCast.create(definition, experiment)
+	if cast != null:
+		view.viewport.add_child(cast)
+	if cast != null and cast.dugi != null:
+		dialogue = DialogueBox.new(cast.text)
+		view.add_child(dialogue)
+		dialogue.closed.connect(func() -> void: cast.dugi.stop())
 	if definition.has("manipulation"):
 		manipulator = Manipulator.new()
 		manipulator.name = "Manipulator"
@@ -108,6 +123,8 @@ func _ready() -> void:
 		manipulator.setup(view, experiment)
 		view.single_pointer.connect(manipulator.handle_pointer)
 		manipulator.changed.connect(_on_manipulator_changed)
+		if cast != null:
+			manipulator.changed.connect(cast.rearm)
 		manipulator.demo_placed.connect(func() -> void:
 			if manipulator.demo_action != "":
 				_demo_release_left = DEMO_RELEASE_DELAY_S)
@@ -190,6 +207,84 @@ func _process(delta: float) -> void:
 		_demo_release_left -= delta
 		if _demo_release_left < 0.0:
 			_run_measured_action(manipulator.demo_action)
+	_run_dialogue()
+
+
+## Dugi's dialogue opens when he starts explaining and keeps him pointing until it closes (a tap
+## past the last page or its read timer; then his arm comes down). It runs along the bottom of the
+## view up to the action buttons or Dugi, whichever is nearer. While the sidebar is open there is no
+## dialogue (the sidebar's 관찰 포인트 card has the same words): one open closes, and an explanation
+## that starts then is pointing only. Dugi stopping (a user change, 처음으로) closes it at once.
+func _run_dialogue() -> void:
+	if dialogue == null or cast.dugi == null:
+		return
+	var dugi := cast.dugi
+	if dialogue.active:
+		if not dugi.speaking() or is_sidebar_open():
+			_close_dialogue()
+			return
+		dugi.hold_on()
+		dialogue.visible = _layout_dialogue()
+		return
+	if dugi.speaking() and dugi.state == "raise" and not _dialogue_started and not is_sidebar_open() and _layout_dialogue():
+		_dialogue_started = true
+		_hide_tip()
+		dialogue.open()
+		dialogue.visible = true
+	elif not dugi.speaking():
+		_dialogue_started = false
+
+
+## Closes an open dialogue now; Dugi lowers his arm.
+func _close_dialogue() -> void:
+	if dialogue != null and dialogue.active:
+		dialogue.close(true)
+		if cast.dugi.speaking():
+			cast.dugi.stop()
+
+
+## Places the dialogue box: right end at the action buttons or Dugi's left edge (when he stands in
+## the box's height band), whichever is nearer. False when there is no room.
+func _layout_dialogue() -> bool:
+	var view_rect := Rect2(Vector2.ZERO, view.size)
+	var right := _action_row.position.x - OVERLAY_MARGIN
+	var who := dugi_rect()
+	if who.size.x > 0.0 and who.end.y > view.size.y - OVERLAY_MARGIN - DialogueBox.PORTRAIT_SIZE:
+		right = minf(right, who.position.x - OVERLAY_MARGIN)
+	return dialogue.layout(view_rect, right, OVERLAY_MARGIN)
+
+
+## The overlays Dugi, Puppy and the dialogue must not cover (view space): title, top buttons, key cards,
+## actions and the gesture tip while it shows.
+func overlay_rects() -> Array[Rect2]:
+	var out: Array[Rect2] = []
+	for c: Control in [_title_bar, _top_buttons, _key_row, _action_row, _tip]:
+		if c.visible:
+			out.append(c.get_rect().grow(4.0))
+	return out
+
+
+## A world point on the view (UI units of the view).
+func view_point(world: Vector3) -> Vector2:
+	return view.rig.unproject_position(world) / (Vector2(view.viewport.size) / view.size)
+
+
+## The view rect of a world AABB (its 8 corners; empty when a corner is behind the camera).
+func view_rect_of(box: AABB) -> Rect2:
+	var r := Rect2()
+	for i in 8:
+		var p := box.get_endpoint(i)
+		if view.rig.is_position_behind(p):
+			return Rect2()
+		r = Rect2(view_point(p), Vector2.ZERO) if i == 0 else r.expand(view_point(p))
+	return r
+
+
+## Dugi on the view (empty without him).
+func dugi_rect() -> Rect2:
+	if cast == null or cast.dugi == null:
+		return Rect2()
+	return view_rect_of(cast.dugi.bounds())
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -249,6 +344,7 @@ func _layout(snap_slide := true) -> void:
 func open_sidebar(animated := true) -> void:
 	if is_sidebar_open():
 		return
+	_close_dialogue()   # at once: a tap in this frame must reach the controls, not a stale box
 	_sidebar_state = "opening"
 	_sidebar.visible = true
 	_sidebar_button.visible = false
@@ -401,6 +497,8 @@ func _fit_overlays() -> void:
 	_key_row.position = Vector2(m, m + maxf(_title_bar.size.y, _top_buttons.size.y) + 8.0)
 	_action_row.size = _action_row.get_combined_minimum_size()
 	_action_row.position = Vector2(width - _action_row.size.x - m, view.size.y - _action_row.size.y - m)
+	if dialogue != null and dialogue.active:
+		dialogue.visible = _layout_dialogue()   # follows the view at once (a resize)
 	# Beside the actions when there is room, otherwise above them (a narrow view with many actions:
 	# orbit's three buttons beside the open sidebar on a tablet).
 	var beside := width - _action_row.size.x - m * 3.0
@@ -541,6 +639,11 @@ func experiment_action(id: String) -> void:
 	_updating = true
 	experiment.change_from_input(experiment.run_action.bind(id))
 	_updating = false
+	if cast != null:
+		if id == "reset":
+			cast.reset()
+		else:
+			cast.user_changed()
 	if id == "reset":
 		_snap_camera_home()
 	_refresh()
@@ -557,6 +660,8 @@ func _set_control(id: String, value: Variant) -> void:
 	_updating = true
 	experiment.change_from_input(experiment.set_control.bind(id, value))
 	_updating = false
+	if cast != null:
+		cast.user_changed()
 	# Only this control's conditions changed: sync it, then redraw the readouts and the series.
 	_sync_control(id)
 	_update_readouts(true)

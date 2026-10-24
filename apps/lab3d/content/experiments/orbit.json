@@ -40,6 +40,10 @@
     { "id": "reset", "label": "처음으로" }
   ],
   "key_observations": ["state", "launch_speed", "escape_speed"],
+  "cast": {
+    "dugi": { "at": [8.0, 4.75], "explain_on": ["orbiting", "leaving", "crash", "far"], "delay_s": 1.5 },
+    "puppy": { "at": [5.0, -8.75] }
+  },
   "observations": [
     { "id": "state", "label": "상태" },
     { "id": "predicted", "label": "예상 결과" },

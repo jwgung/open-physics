@@ -28,9 +28,10 @@ Conventions:
           HandL / HandR     (empty at the paw tip: grip point)
           Pointer           (ArmR only, optional: stick mesh, pivot in the paw -> hide when not pointing)
             PointerTip      (empty at the stick's red tip)
-- Rest pose = paws hanging by the tummy. To point, swing ArmR about the shoulder so PointerTip
-  aims at the target: `pose_point()` below does exactly that on the Blender objects.
-- Budget (SM-P200 low): 7 meshes, 1 material, 1 texture (1024 px), < 6000 triangles (5,866): the
+- Rest pose (arm variant A, 2026-10-24 user decision) = the arms attach at the body's sides right
+  under the head and hang down along the sides, paws by the hips. To point, swing ArmR about the
+  shoulder so PointerTip aims at the target: `pose_point()` below does exactly that on the Blender objects.
+- Budget (SM-P200 low): 7 meshes, 1 material, 1 texture (1024 px), < 6000 triangles (5,626): the
   segments go to the silhouette (head ring 40 x 24, ears, paws), hidden parts stay coarse (head
   below -62 deg, body underside, tail puff).
 - Outline mesh contract (same as bread_cat.py): closed shells, outward faces, smooth shading only,
@@ -47,9 +48,10 @@ import bpy
 import numpy as np
 from mathutils import Matrix, Quaternion, Vector
 
+sys.dont_write_bytecode = True
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import bread_cat as bc  # noqa: E402  (generic helpers only; no cat geometry is built)
-from bread_cat import (add_face, bezier, blend, build_sphere, build_tube, hexc, new_bm,  # noqa: E402
+from bread_cat import (add_face, bezier, blend, build_sphere, build_tube, hexc, new_bm, paint_volume,  # noqa: E402
                        sd_ellipse, sd_segment, smooth_fill, sph_dir)
 
 TEX = 1024
@@ -143,6 +145,9 @@ def paint_head(mouth="open", monocle=True):
     # soft cream muzzle patch for a little depth on the white face
     muzzle = np.minimum(sd_ellipse(qx, qz, -0.034, -0.100, 0.056, 0.046), sd_ellipse(qx, qz, 0.034, -0.100, 0.056, 0.046))
     blend(img, smooth_fill(muzzle, 0.02) * front, hexc(P["cream"]), 0.7)
+    # painted volume (soft warm shading low on the face and under the muzzle, a brighter muzzle)
+    paint_volume(img, qx, qz, front, HEAD_R * HEAD_SX, HEAD_R * HEAD_SZ, (0.0, -0.100), (0.090, 0.050),
+                 np.ones(3), (0.96, 0.88, 0.86))
     for s in (-1, 1):  # blush ovals, outside and below the eyes
         blend(img, smooth_fill(sd_ellipse(qx, qz, s * 0.192, -0.095, 0.046, 0.028), 0.012) * front,
               hexc(P["blush"]), 0.85)
@@ -345,8 +350,12 @@ def make_scarf(bm):
     for i in range(N + 1):
         a = 2 * math.pi * i / N
         loop.append(Vector((0.200 * math.sin(a), -0.178 * math.cos(a) + 0.01, SCARF_Z - 0.012 * math.cos(a))))
+    before = set(bm.verts)
     build_tube(bm, loop, [0.036] * len(loop), 8, lambda u, v: red, up_hint=Vector((0, 0, 1)), squash=0.55,
                cap_start=False, cap_end=False)
+    # the band's first and last rings meet only approximately (their end tangents differ), which
+    # left 16 open edges at the seam: weld them so the band is a closed ring (outline contract)
+    bmesh.ops.remove_doubles(bm, verts=[v for v in bm.verts if v not in before], dist=0.006)
     knot = Vector((0.095, -0.200, SCARF_Z - 0.02))
     ellipsoid(bm, knot, (0.040, 0.030, 0.036), dark, 10, 6)
     for k, (dxz, ang) in enumerate((((0.025, -0.115), -25), ((0.075, -0.100), -50))):  # hanging down
@@ -367,25 +376,54 @@ def make_body(bm):
     make_scarf(bm)
 
 
-# Short stubby chibi arms, one segment each (user: "관절을 하나 빼란거야"): shoulder -> paw, no
-# elbow, about half the earlier reach. At rest each paw hangs on its own side of the tummy.
-SHOULDER = {1: Vector((0.170, -0.090, 0.425)), -1: Vector((-0.170, -0.090, 0.425))}
-HAND = {1: Vector((0.205, -0.180, 0.330)), -1: Vector((-0.205, -0.180, 0.330))}
-# Pointer stick held in the right paw (user: "가리키고 싶으면 손가락 봉같은걸 하나 주자"), lying along
-# the arm so swinging the arm at a target aims the stick's red tip at it.
+# Short thick mitten arms, one segment each (user: "관절을 하나 빼란거야"; 2026-10-24 "팔이 너무
+# 부자연스러워" -> like the reference: short, thick, the same width down to a round paw, held close).
+# The shoulder pivot sits under the body's surface. SHOULDER / HAND below are the older v2 placement;
+# the default is variant A (set_arm_variant("A") after ARM_VARIANTS).
+SHOULDER = {1: Vector((0.150, -0.060, 0.450)), -1: Vector((-0.150, -0.060, 0.450))}
+HAND = {1: Vector((0.110, -0.215, 0.320)), -1: Vector((-0.205, -0.150, 0.320))}
+# Arm placement variants (2026-10-24 user: "팔 위치가 어색해" -> a contact sheet to pick from). All
+# attach at the body's SIDES right under the head / scarf line, like the reference rabbit.
+#   v2: the earlier placement (shoulders on the front-sides, paws on the tummy)
+#   A: arms hang down along the body sides, paws by the hips
+#   B: arms crossed on the chest (the reference rabbit's rest pose)
+#   C: arms slightly forward, paws together in front of the tummy
+#   D: short arms angled forward-down, paws resting on the front edge of the belly silhouette
+ARM_VARIANTS = {
+    "v2": (SHOULDER, HAND),
+    "A": ({1: Vector((0.190, -0.010, 0.465)), -1: Vector((-0.190, -0.010, 0.465))},
+          {1: Vector((0.275, -0.040, 0.285)), -1: Vector((-0.275, -0.040, 0.285))}),
+    "B": ({1: Vector((0.180, -0.050, 0.465)), -1: Vector((-0.180, -0.050, 0.465))},
+          {1: Vector((-0.030, -0.255, 0.395)), -1: Vector((0.030, -0.265, 0.365))}),
+    "C": ({1: Vector((0.185, -0.040, 0.465)), -1: Vector((-0.185, -0.040, 0.465))},
+          {1: Vector((0.060, -0.250, 0.300)), -1: Vector((-0.060, -0.250, 0.300))}),
+    "D": ({1: Vector((0.185, -0.030, 0.470)), -1: Vector((-0.185, -0.030, 0.470))},
+          {1: Vector((0.215, -0.170, 0.320)), -1: Vector((-0.215, -0.170, 0.320))}),
+}
+
+
+def set_arm_variant(name):
+    global SHOULDER, HAND
+    SHOULDER, HAND = ARM_VARIANTS[name]
+
+
+set_arm_variant("A")   # 2026-10-24 user decision: A (side shoulders, arms hanging along the sides)
+# Pointer stick held in the right paw (user: "가리키고 싶으면 손가락 봉같은걸 하나 주자"), continuing the
+# arm out of the fist, so swinging the arm at a target aims the stick's red tip at it.
 POINTER_LEN, POINTER_R, POINTER_TIP_R = 0.36, 0.009, 0.020
-ARM_R = 0.054
-PAW_R = 0.058
+ARM_R = 0.064
+PAW_R = 0.070
 
 
 def capsule(pts, radii, start=True, end=True):
-    """Extend a tube's centre line with quarter-circle rings so its ends are round domes (sausage)."""
+    """Extend a tube's centre line with quarter-circle rings so its ends are round domes (sausage).
+    The rings run from the end outward (75 -> 30 deg); listing them 30 -> 75 folded the dome back."""
     pts, radii = list(pts), list(radii)
     for at_end in ((False,) if start else ()) + ((True,) if end else ()):
         i, j = (-1, -2) if at_end else (0, 1)
         ax = (pts[i] - pts[j]).normalized()
         r = radii[i]
-        dome = [(pts[i] + ax * r * math.cos(f), r * math.sin(f)) for f in (math.radians(a) for a in (30, 55, 75))]
+        dome = [(pts[i] + ax * r * math.cos(f), r * math.sin(f)) for f in (math.radians(a) for a in (75, 55, 30))]
         if at_end:
             pts += [p for p, _ in dome]; radii += [q for _, q in dome]
         else:
@@ -402,24 +440,33 @@ def arm_reach(side):
     return (HAND[side] - SHOULDER[side]).length + PAW_R * 1.10
 
 
-def make_arm(bm, side):
-    """Plump sausage from a round shoulder dome to a round bean paw; returns the paw tip."""
-    S, H = SHOULDER[side], HAND[side]
+def make_mitten_arm(bm, S, H, arm_r, paw_r, uv_fn, paw_uv):
+    """Short thick mitten arm like the storybook reference: one straight sausage, the same width all
+    the way to a generous round paw (no thin wrist, no elbow). Its root starts deep inside the body
+    (S is under the body's surface at the shoulder), so the arm grows out of the rounded shoulder
+    without an outline ring; returns the paw centre."""
+    ax = (H - S).normalized()
+    root = S - ax * arm_r * 0.9
     n = 4
-    line = [S.lerp(H, i / (n - 1)) for i in range(n)]
-    radii = [ARM_R * (1.0 + 0.05 * math.sin(math.pi * i / (n - 1))) for i in range(n)]
+    line = [root.lerp(H, i / (n - 1)) for i in range(n)]
+    radii = [arm_r * (1.0 + 0.04 * math.sin(math.pi * i / (n - 1))) for i in range(n)]
     pts, radii = capsule(line, radii, end=False)
-    build_tube(bm, pts, radii, 14, lambda u, v: region_uv(R_ARM, u, v), up_hint=Vector((0, 0, 1)))
-    ax = arm_axis(side)
+    build_tube(bm, pts, radii, 12, uv_fn, up_hint=Vector((0, 0, 1)))
     rot = Vector((1, 0, 0)).rotation_difference(ax).to_matrix()
-    ellipsoid(bm, H, (PAW_R * 1.10, PAW_R, PAW_R * 0.95), swatch_uv("white"), 16, 10, rot)  # round where it meets the arm
-    return H + ax * PAW_R * 1.10  # the paw's front surface
+    ellipsoid(bm, H + ax * paw_r * 0.10, (paw_r * 1.05, paw_r, paw_r * 0.97), paw_uv, 14, 8, rot)
+    return H
+
+
+def make_arm(bm, side):
+    return make_mitten_arm(bm, SHOULDER[side], HAND[side], ARM_R, PAW_R, lambda u, v: region_uv(R_ARM, u, v),
+                           swatch_uv("white"))
 
 
 def make_pointer(bm, side):
-    """Thin brown stick through the paw along the arm, a red ball at its tip; returns the tip."""
+    """Thin brown stick through the centre of the right paw along the arm, a red ball at its tip;
+    returns the tip."""
     ax = arm_axis(side)
-    start = HAND[side] - ax * PAW_R * 0.6
+    start = HAND[side] - ax * PAW_R * 0.5
     end = start + ax * POINTER_LEN
     build_tube(bm, [start.lerp(end, t / 3) for t in range(4)], [POINTER_R] * 4, 6,
                lambda u, v: swatch_uv("frame"), up_hint=Vector((0, 0, 1)))
@@ -472,7 +519,7 @@ def empty(name, loc_world, parent, parent_pivot, size=0.03):
     return ob
 
 
-def build(monocle=True, mouth="open", pointer=True):
+def build(monocle=True, mouth="open", pointer=True, pointer_side=-1):
     img = build_atlas(mouth, monocle)
     mat = make_material(img)
     origin = Vector((0, 0, 0))
@@ -488,7 +535,7 @@ def build(monocle=True, mouth="open", pointer=True):
         bm = new_bm(); tip = make_arm(bm, side)
         arm = mesh_object("Arm" + nm, bm, SHOULDER[side], body, origin, mat)
         empty("Hand" + nm, tip, arm, SHOULDER[side])
-        if side == -1 and pointer:
+        if side == pointer_side and pointer:   # the app model: right paw; the portrait: either
             bm = new_bm(); ptip = make_pointer(bm, side)
             stick = mesh_object("Pointer", bm, HAND[side], arm, SHOULDER[side], mat)
             empty("PointerTip", ptip, stick, HAND[side])
@@ -533,7 +580,7 @@ def stats():
 
 def parse_args():
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
-    opts = {"out": None, "monocle": "on", "mouth": "open", "pointer": "on"}
+    opts = {"out": None, "monocle": "on", "mouth": "open", "pointer": "on", "arms": "A"}
     i = 0
     while i < len(argv):
         k = argv[i].lstrip("-")
@@ -547,6 +594,7 @@ def parse_args():
 if __name__ == "__main__":
     opts = parse_args()
     bc.clear_scene()
+    set_arm_variant(opts["arms"])
     build(opts["monocle"] != "off", opts["mouth"], opts["pointer"] != "off")
     print("DUGI_STATS", stats())
     if opts["out"]:

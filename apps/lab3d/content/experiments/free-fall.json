@@ -48,6 +48,10 @@
     { "id": "reset", "label": "처음으로" }
   ],
   "key_observations": ["time", "fall_time", "speed"],
+  "cast": {
+    "dugi": { "at": [2.75, 5.0], "explain_on": ["landed"], "delay_s": 0.6 },
+    "puppy": { "at": [4.75, -9.0] }
+  },
   "observations": [
     { "id": "g", "label": "중력 가속도 g", "unit": "m/s²", "digits": 2 },
     { "id": "time", "label": "놓은 뒤 시간 t", "unit": "s", "digits": 2 },

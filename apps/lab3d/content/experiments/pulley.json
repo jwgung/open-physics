@@ -39,6 +39,10 @@
     { "id": "reset", "label": "처음으로", "style": "primary" }
   ],
   "key_observations": ["strands", "required", "lift"],
+  "cast": {
+    "dugi": { "at": [3.5, 4.0], "explain_on": ["held", "top"], "delay_s": 0.6 },
+    "puppy": { "at": [6.5, -7.5] }
+  },
   "observations": [
     { "id": "state", "label": "상태" },
     { "id": "strands", "label": "짐을 받치는 줄 n", "unit": "줄", "digits": 0 },

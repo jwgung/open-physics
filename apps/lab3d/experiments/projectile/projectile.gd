@@ -329,6 +329,17 @@ func follow_point() -> Vector3:
 	return ball.global_position if ball else global_position
 
 
+## Dugi points at where the formula flight ends (Task 4h): the landing point (the ball's centre when
+## it touches the floor) or the fence contact, the end of the formula path; a flight without one
+## (zero gravity past the island) points at the ball.
+func explain_point() -> Vector3:
+	var c := ball_center()
+	var t := minf(flight_time_for(launch_vy(), launch_height()), fence_time_for(c.x, launch_vx(), launch_vy(), launch_height()))
+	if not is_finite(t) or t > PATH_MAX_S:
+		return follow_point()
+	return Vector3(c.x + formula_x(t), formula_y(t) + BALL_RADIUS, c.z)
+
+
 ## Formula path dots from the launch to the landing or the fence contact (or up to PATH_MAX_S /
 ## the island's edge).
 func formula_path() -> PackedVector3Array:

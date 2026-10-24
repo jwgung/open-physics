@@ -23,6 +23,11 @@ const SURFACE := Color("fbfdff")
 const WHITE := Color("ffffff")
 const CODE_BG := Color("e8f1ff")
 const CODE_TEXT := ArtPalette.BLUE_DARK
+## Dugi's dialogue box (Task 4h): cream paper with the characters' brown outline; 24 units = 40 px on
+## the SM-P200 in landscape.
+const DIALOGUE_PAPER := Color("fff6e6")
+const DIALOGUE_LINE := ArtPalette.OUTLINE
+const SIZE_DIALOGUE := 24
 ## Bottom "lip" of buttons and cards (units): the darker edge that makes them look pressable.
 const LIP := 5
 const CARD_LIP := 3
@@ -84,6 +89,11 @@ static func build() -> Theme:
 	# Key observation cards over the 3D view (Task 2d): small caption, the value as in the panel.
 	_label_variation(theme, "KeyLabel", bold, 16, SUBTLE)
 	_label_variation(theme, "KeyValueLabel", bold, 24, INK)
+	# Dugi's dialogue box (Task 4h): cream paper, brown storybook outline, a brown name tag.
+	_label_variation(theme, "DialogueLabel", regular, SIZE_DIALOGUE, INK)
+	theme.set_constant("line_spacing", "DialogueLabel", 6)
+	_label_variation(theme, "DialogueNameLabel", bold, 20, DIALOGUE_PAPER)
+	_label_variation(theme, "DialogueMoreLabel", bold, 20, DIALOGUE_LINE)
 
 	# Panels: white cards with a soft blue lip.
 	theme.set_stylebox("panel", "PanelContainer", _box(WHITE, LINE, 18, 18, 16, Color.TRANSPARENT, 2, CARD_LIP))
@@ -96,6 +106,8 @@ static func build() -> Theme:
 	_panel_variation(theme, "TopBar", _box(WHITE, Color.TRANSPARENT, 0, 16, 8, LINE))
 	_panel_variation(theme, "IconBadge", _box(ACCENT, Color.TRANSPARENT, 16, 12, 8, Color.TRANSPARENT, 0, LIP, ACCENT_DARK))
 	_panel_variation(theme, "ViewOverlay", _box(Color(1, 1, 1, 0.9), Color.TRANSPARENT, 16, 6, 6))
+	_panel_variation(theme, "DialogueBox", _box(Color(DIALOGUE_PAPER, 0.93), DIALOGUE_LINE, 18, 6, 4, Color.TRANSPARENT, 3))
+	_panel_variation(theme, "DialogueNameTag", _box(DIALOGUE_LINE, Color.TRANSPARENT, 12, 16, 4))
 	_panel_variation(theme, "KeyCard", _box(Color(1, 1, 1, 0.9), Color.TRANSPARENT, 14, 12, 8, Color.TRANSPARENT, 1, CARD_LIP, LINE))
 
 	# Buttons: white with a grey-blue lip; pressed = the lip shrinks (the button sinks).

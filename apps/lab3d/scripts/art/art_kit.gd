@@ -24,6 +24,11 @@ const TOON_SHADE := Vector4(0.834, 0.774, 0.8, 1.0)
 const TOON_THRESHOLD := -0.03
 ## The island top (build_island): a 14-sided prism of circumradius ISLAND_RADIUS around its centre.
 const ISLAND_RADIUS := 11.0
+## Island decoration, relative to the island centre: trees (x, z, size), rocks (x, z, radius),
+## flowers (x, z). island_obstacles() turns them into footprints (characters stand clear of them).
+const TREES := [[-5.5, -4.0, 1.0], [7.0, -3.8, 1.2], [-8.1, 2.2, 0.8], [8.9, -0.4, 0.9], [2.5, -5.8, 1.1]]
+const ROCKS := [[4.7, 4.4, 0.45], [-4.5, 5.0, 0.35], [8.1, 3.2, 0.3]]
+const FLOWERS := [[-2.5, 3.8], [-1.9, 4.3], [3.3, 5.2], [6.5, 4.8], [-6.9, -0.8], [4.1, -2.8], [-0.1, -4.4]]
 const ISLAND_SIDES := 14
 const SUN_DIR := Vector3(-0.35, 0.85, 0.45)   # world direction towards the (baked) light
 const LIGHT_THRESHOLD := 0.55
@@ -268,6 +273,19 @@ static func add_world(parent: Node3D, center: Vector3, blob_at: Variant = null, 
 		s.add_blob(Transform3D(Basis(), Vector3(blob_at.x, 0.012, blob_at.z)), blob_radius, shadow_alpha(0.9)))
 
 
+## Footprints [x, z, radius] (world) of the island's trees (their blob shadow), rocks and flowers
+## around `center`.
+static func island_obstacles(center: Vector3) -> Array:
+	var out := []
+	for t in TREES:
+		out.append([center.x + t[0], center.z + t[1], 1.3 * t[2]])
+	for r in ROCKS:
+		out.append([center.x + r[0], center.z + r[1], r[2] * 1.3])
+	for f in FLOWERS:
+		out.append([center.x + f[0], center.z + f[1], 0.15])
+	return out
+
+
 ## Adds the floating grass island (top surface at y = 0) with trees, rocks, flowers and clouds
 ## around `center` (x/z), as ONE prop mesh + ONE shadow mesh (2 draw calls). The decoration
 ## leaves a strip of about 8 x 6 m around the centre free for the apparatus.
@@ -284,8 +302,8 @@ static func build_island(parent: Node3D, center := Vector3(-1.5, 0.0, -0.8), ext
 	b.ao_height = 4.0
 	b.add_cylinder(_at(cx, -4.2, cz), 4.0, 11.0, 3.7, 14, ArtPalette.SOIL, false)
 	b.add_cylinder(_at(cx, -6.5, cz), 1.2, 4.0, 2.3, 9, ArtPalette.SOIL_DEEP, false)
-	# Trees: trunk + two cones. Positions are relative to the island centre (x, z, size).
-	for t in [[-5.5, -4.0, 1.0], [7.0, -3.8, 1.2], [-8.1, 2.2, 0.8], [8.9, -0.4, 0.9], [2.5, -5.8, 1.1]]:
+	# Trees: trunk + two cones.
+	for t in TREES:
 		var x: float = cx + t[0]
 		var z: float = cz + t[1]
 		var k: float = t[2]
@@ -299,7 +317,7 @@ static func build_island(parent: Node3D, center := Vector3(-1.5, 0.0, -0.8), ext
 	# Rocks.
 	b.ao_min = 0.75
 	b.ao_height = 0.3
-	for r in [[4.7, 4.4, 0.45], [-4.5, 5.0, 0.35], [8.1, 3.2, 0.3]]:
+	for r in ROCKS:
 		var x: float = cx + r[0]
 		var z: float = cz + r[1]
 		var radius: float = r[2]
@@ -307,7 +325,7 @@ static func build_island(parent: Node3D, center := Vector3(-1.5, 0.0, -0.8), ext
 		b.add_sphere(xf, radius, 4, 6, ArtPalette.ROCK)
 		s.add_blob(_at(x, 0.012, z), radius * 1.8, shadow_alpha())
 	# Flowers.
-	var spots := [[-2.5, 3.8], [-1.9, 4.3], [3.3, 5.2], [6.5, 4.8], [-6.9, -0.8], [4.1, -2.8], [-0.1, -4.4]]
+	var spots := FLOWERS
 	b.ao_min = 1.0
 	for i in spots.size():
 		var f: Array = spots[i]
@@ -325,6 +343,7 @@ static func build_island(parent: Node3D, center := Vector3(-1.5, 0.0, -0.8), ext
 		extra_shadows.call(s)
 	var island := instance(b.commit())
 	island.name = "Island"
+	island.set_meta("center", Vector3(cx, 0.0, cz))   # tests: where the cast may stand (island_obstacles)
 	parent.add_child(island)
 	var shadows := instance(s.commit(), shadow_material())
 	shadows.name = "IslandShadows"

@@ -39,6 +39,10 @@
     { "id": "reset", "label": "처음으로", "style": "primary" }
   ],
   "key_observations": ["effort_arm", "required", "applied"],
+  "cast": {
+    "dugi": { "at": [4.75, 1.25], "explain_on": ["lifted"], "delay_s": 0.6 },
+    "puppy": { "at": [-7.75, -6.0] }
+  },
   "observations": [
     { "id": "state", "label": "상태" },
     { "id": "weight", "label": "짐 무게 F₂ = mg", "unit": "N", "digits": 1 },

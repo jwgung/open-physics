@@ -45,6 +45,10 @@
     { "id": "reset", "label": "처음으로", "style": "primary" }
   ],
   "key_observations": ["applied", "max_static", "state"],
+  "cast": {
+    "dugi": { "at": [7.25, -1.0], "explain_on": ["sliding", "end"], "delay_s": 0.6 },
+    "puppy": { "at": [6.5, -7.5] }
+  },
   "observations": [
     { "id": "state", "label": "상자 상태" },
     { "id": "applied", "label": "내가 주는 힘 F", "unit": "N", "digits": 1 },

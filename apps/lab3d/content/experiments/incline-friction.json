@@ -41,6 +41,10 @@
     { "id": "reset", "label": "처음으로" }
   ],
   "key_observations": ["critical_angle", "state", "acceleration"],
+  "cast": {
+    "dugi": { "at": [2.5, 2.5], "explain_on": ["sliding", "left"], "delay_s": 0.6 },
+    "puppy": { "at": [3.25, -9.25] }
+  },
   "observations": [
     { "id": "critical_angle", "label": "임계각 θc (tan θc = μs)", "unit": "°", "digits": 1 },
     { "id": "state", "label": "상자 상태" },

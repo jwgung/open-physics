@@ -39,6 +39,10 @@
     { "id": "reset", "label": "처음으로" }
   ],
   "key_observations": ["extension", "speed", "total"],
+  "cast": {
+    "dugi": { "at": [2.5, 5.75], "explain_on": ["moving", "rest"], "delay_s": 1.5 },
+    "puppy": { "at": [-9.0, -6.0] }
+  },
   "observations": [
     { "id": "state", "label": "상태" },
     { "id": "extension", "label": "늘어난 길이 x (+ 늘어남, − 눌림)", "unit": "m", "digits": 2 },

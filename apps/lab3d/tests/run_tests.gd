@@ -45,6 +45,9 @@
 ##    the push framed closer and back, 처음으로 at once, the physics timeline unchanged.
 ## 15. key cards (Task 2d): every listed experiment opens in the front view with 2-3 key cards that
 ##    show the panel's text.
+## 16. island cast (Task 4h, tests/island_cast_checks.gd): the Dugi / Puppy models' mesh contract,
+##    the explain cycle (rest -> point -> rest, the stick hidden at rest), the status trigger, placement
+##    and layout in every experiment, physics and panels unchanged with the cast.
 ## Times are engine fixed steps (60 Hz), independent of rendering FPS.
 extends SceneTree
 
@@ -180,6 +183,11 @@ func _run() -> void:
 	_expect(reset_checks != null and reset_checks.can_instantiate(), "reset checks compile", "")
 	if reset_checks != null and reset_checks.can_instantiate():
 		await reset_checks.new(self, _expect).run()
+	print("== island cast (Task 4h): Dugi explains, Puppy's flag, placement, layout, physics unchanged ==")
+	var cast_checks: GDScript = load("res://tests/island_cast_checks.gd")
+	_expect(cast_checks != null and cast_checks.can_instantiate(), "island cast checks compile", "")
+	if cast_checks != null and cast_checks.can_instantiate():
+		await cast_checks.new(self, _expect).run()
 	print("== key cards and front camera, every experiment (Task 2d) ==")
 	await _check_key_cards()
 	await _check_gesture_tip()
@@ -578,7 +586,8 @@ func _check_list_cards() -> void:
 func _check_art_atlases() -> void:
 	var problems := []
 	for path in ["res://assets/props/parcel_box_parcel_box_atlas.png", "res://assets/props/yarn_ball_yarn_ball_atlas.png",
-			"res://assets/characters/bread_cat_bread_cat_atlas.png"]:
+			"res://assets/characters/bread_cat_bread_cat_atlas.png", "res://assets/characters/dugi_dugi_atlas.png",
+			"res://assets/characters/puppy_puppy_atlas.png"]:
 		var source := Image.load_from_file(ProjectSettings.globalize_path(path))
 		var imported := (load(path) as Texture2D).get_image()
 		imported.clear_mipmaps()

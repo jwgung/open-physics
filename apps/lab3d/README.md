@@ -18,11 +18,12 @@ apps/lab3d/
                                       IslandBanner(목록 머리 그림)
   scripts/art/                        셸 공용 아트: ArtPalette, PadProps(받침판 뒤집기·소품 공통), ArtMeshBuilder(로우폴리 메시), art_lit 셰이더(구운 조명),
                                       ArtKit(재질·환경·떠 있는 섬), ArtJuice(연출·블롭 그림자), VelocityArrow(화살표·손잡이 메시),
-                                      CatActor(빵고양이 연기·모델 동기화), CatLook·BreadCat(빵고양이 겉모습 = glb), art_lit_tex 셰이더, art_toon_tex·art_outline 셰이더(캐릭터 동화책 스타일)
+                                      CatActor(빵고양이 연기·모델 동기화), CatLook·BreadCat(빵고양이 겉모습 = glb), art_lit_tex 셰이더, art_toon_tex·art_outline 셰이더(캐릭터 동화책 스타일),
+                                      IslandCast·DugiActor·PuppyActor(설명하는 두기두기, 깃발 든 퍼피)
   scripts/shell/                      Experiment(실험 기반 클래스), ExperimentRegistry, ExperimentScreen,
                                       View3D(3D 뷰·제스처), CameraRig(카메라 6모드·보조 시점), GraphView,
                                       Manipulator(물체 조작), ManipSurface(조작 평면), PressLineSurface(아래로 누르는·당기는 손잡이 선),
-                                      RollingGraph(손잡이를 잡은 동안만 흐르는 10초 창 그래프)
+                                      RollingGraph(손잡이를 잡은 동안만 흐르는 10초 창 그래프), DialogueBox(두기두기 게임식 대화창)
   experiments/incline_friction/       빗면 마찰 실험(장면, InclineFrictionCorrector = 접촉 힘 보정 설정, InclineProps 소품)
   experiments/uniform_field/          균일장 실험 공용 기반 UniformFieldLab(중력 선택, 공, 바닥, 보정기 연결, 실행 상태·그래프 샘플·release/reset 공통)
   experiments/free_fall/              자유 낙하 실험(장면, FreeFallProps 소품)
@@ -38,7 +39,7 @@ apps/lab3d/
   experiments/manipulation_dev/       조작 확인용 개발 장면(목록에 없음, --experiment=manipulation-dev)
   content/mechanics-labs.json         역학 실험 문구(웹 2D와 공유, "콘텐츠 공유")
   content/experiments/                실험 정의 JSON(index.json + 실험별 파일: 3D 전용 필드)
-  assets/characters/                  빵고양이 glb + 텍스처 아틀라스(소스: art_src/characters/bread_cat.py, Blender 스크립트)
+  assets/characters/                  빵고양이·두기두기·퍼피 glb + 텍스처 아틀라스(소스: art_src/characters/bread_cat.py, dugi.py, puppy.py, Blender 스크립트), 두기두기 대화창 초상화 portraits/(모델 렌더, dugi_portrait.py)
   assets/props/                       털실 공·택배 박스 glb + 텍스처(소스: art_src/props/yarn_ball.py, parcel_box.py)
   art_src/                            캐릭터·소품 생성 Blender 스크립트(외부 .blend 없음)
   assets/fonts/                       Noto Sans CJK KR 서브셋(Regular·Bold, SIL OFL 1.1), 기호 대체 글꼴
@@ -61,6 +62,7 @@ apps/lab3d/
 | 3D 위에 핵심 관찰값 카드(`key_observations`)·액션 버튼을, 사이드바에 질문·시점·조건·관찰값·그래프·설명을 그린다 | `set_control(id, value)` · `control_value(id)` · `run_action(id)` |
 | 관찰값·그래프를 10 Hz로 갱신한다 | `observations()` → `{id: 숫자 또는 문자열}`, `graph_series()` → `{시리즈 id: PackedVector2Array}` |
 | 카메라 모드·제한을 처리한다(기본 정면) | `follow_point()`(따라가기 대상), JSON의 `camera` |
+| 섬에 두기두기·퍼피를 세우고, 설명할 때 두기두기가 가리키며 대화창에 `observe`를 띄운다(`IslandCast`, Task 4h) | JSON의 `cast`, `status()`, `explain_point()`(가리킬 점, 기본 `follow_point()`) |
 | 3D를 품질 단계 해상도의 SubViewport에 그린다 | 장면은 `ArtKit`·`ArtMeshBuilder`로 꾸민다(엔진 조명·그림자 없음, [아트 디렉션](docs/art-direction.md)) |
 | 착지 때 카메라를 살짝 흔든다(`CameraRig.nudge`) | `impact(strength)` 신호(연출용, 선택) |
 | 한 손가락 조작: 집기·끌기·스냅·미리보기·높이 손잡이·취소·보조 시점(`Manipulator`) | JSON `manipulation`의 규칙, `manipulation_body`·`manipulation_surface`·`manipulation_juice`, 결과 통보(`manipulation_started`·`_placed`·`_cancelled`), 추가 규칙 `placement_allowed`, 화면 재구성 때 유지할 `placements()` |
@@ -168,13 +170,14 @@ apps/lab3d/
 
 정면 시점에서 빵고양이는 화면 높이의 약 11 %라 얼굴이 흐리다. 캐릭터가 연기하는 동안만 카메라가 다가가고, 끝나면 사용자가 보던 시점(대개 실험 전체가 보이는 정면)으로 되돌아온다. 카메라만 움직이며 물리·패널·발사 시각은 그대로다.
 
-- 실험은 `close_up(spec)` 신호로 요청하고 `close_up_ended(after_s)`로 끝내며, `close_up_cut`은 당기기와 그 복귀를 그 프레임에 끝낸다(셸이 `CameraRig.focus` / `end_focus` / `cut_focus`에 연결). `spec.in_s`·`hold_s`·`out_s`를 주면 정해진 시간으로 들어갔다 나온다. `spec.box`(찍을 것의 세계 AABB), `fill`(뷰 높이 중 그 상자가 차지할 몫, 기본 0.3), `anchor`(상자 중심이 놓일 화면 위치, 왼쪽 위 기준 비율). 방위·고도는 그대로 두고 거리와 바라보는 점만 바꾼다. 열린 당기기(마찰 밀기)는 들어갈 때·돌아올 때 모두 모드 전환과 같은 감쇠(약 0.37초에 95 %), `in_s`를 준 정해진 당기기(던지기)는 smoothstep으로 in·hold·out 시간에 맞춰 끝나면 정확히 사용자 시점에 멈춘다. Task 4h 두기두기 설명도 같은 신호로 두기두기 AABB를 넘기면 된다.
+- 실험은 `close_up(spec)` 신호로 요청하고 `close_up_ended(after_s)`로 끝내며, `close_up_cut`은 당기기와 그 복귀를 그 프레임에 끝낸다(셸이 `CameraRig.focus` / `end_focus` / `cut_focus`에 연결). `spec.in_s`·`hold_s`·`out_s`를 주면 정해진 시간으로 들어갔다 나온다. `spec.box`(찍을 것의 세계 AABB), `fill`(뷰 높이 중 그 상자가 차지할 몫, 기본 0.3), `anchor`(상자 중심이 놓일 화면 위치, 왼쪽 위 기준 비율). 방위·고도는 그대로 두고 거리와 바라보는 점만 바꾼다. 열린 당기기(마찰 밀기)는 들어갈 때·돌아올 때 모두 모드 전환과 같은 감쇠(약 0.37초에 95 %), `in_s`를 준 정해진 당기기(던지기)는 smoothstep으로 in·hold·out 시간에 맞춰 끝나면 정확히 사용자 시점에 멈춘다. Task 4h 두기두기 설명은 이 신호를 쓰지 않는다(아래, [아트 디렉션 12절](docs/art-direction.md#12-두기두기와-퍼피-task-4h)).
 - 날아가거나 미끄러지는 운동은 늘 멈춘 카메라로 본다(2026-10-24 사용자 결정, 물리 공식 일치 원칙): 카메라는 운동이 시작되기 전에 다 돌아와 있다.
 - 던지기: `공 놓기`를 누르면 정해진 시간으로 당겼다 돌아온다(0.15초 당김, 0.12초 머묾, 0.17초 복귀 = 0.44초). 고양이와 공을 화면 높이 30 %로(정면의 약 2.7배), 상자 중심은 왼쪽 36 %·위에서 58 % 자리. 공이 손을 떠나는 때(누른 뒤 29프레임, 0.48초, 전과 같음)에는 이미 정면 시점에 멈춰 있고, 늦은 프레임 때문에 덜 돌아왔으면 발사 때 남은 만큼 바로 정면으로 간다(`close_up_cut`). 고양이는 감기 동안 크게 보이고, 휘두르기·발사·비행은 정면에서 본다.
 - 마찰 밀기: 멈춘 상자의 손잡이를 잡으면 고양이·상자·손잡이를 당기고(화면 높이 30 %, 중심은 왼쪽 45 %·위에서 60 %), 첫 힘(손잡이를 한 눈금 옮김)이나 손잡이를 놓으면 트랙 전체로 돌아가기 시작한다. 상자가 미끄러지기 시작하는 스텝에 아직 돌아오는 중이면 남은 만큼 바로 정면으로 간다(`close_up_cut`, 세게 한 번에 당길 때의 점프). 상자가 언제 움직일지는 손가락이 정하므로 미리 다 돌아오게 할 수는 없다. 그래서 첫 힘에서 돌아가기 시작하고 미끄러짐에서 끊는다. 카메라가 움직이는 동안 잡은 물체는 세계에서 제자리에 있다(`Manipulator._keep_held`: 손가락이 멈춰 있으면 힘이 바뀌지 않음). 그다음 손가락 움직임은 새 시점으로 이어진다.
 - 끝나는 경우: 두 손가락 제스처(회전·확대·이동)는 당기기를 끝내고 사용자 시점에서 이어진다. `처음으로`·시점 칩·화면 재구성은 당기기를 버리고 바로 그 시점(처음으로는 같은 프레임에 연 시점). 정면이 아닌 시점(3/4·위·옆·따라가기·돌린 시점)에서는 당기지 않는다. 저장되는 카메라 상태(`get_state`)는 늘 사용자 시점이다.
 - 측정 데모(`--auto-drag`)는 물체를 세계 경로(집은 자리 → 목표 칸)로 끈다. 당기기로 카메라가 움직여도 같은 자리에 놓는다.
 - 시험: `tests/camera_focus_checks.gd`.
+- 두기두기 설명(Task 4h)은 당기기를 쓰지 않는다. 설명은 몸체가 아직 움직일 때 시작하는 일이 많아서, 움직임을 멈춘 카메라로 보는 원칙과 맞지 않는다([아트 디렉션 12절](docs/art-direction.md#12-두기두기와-퍼피-task-4h)).
 
 ### 조작 (Task 2b)
 
@@ -360,12 +363,13 @@ python3 -I apps/lab3d/tools/device_gesture.py orbit  # orbit | pinch | pinch-fix
    - `observations`: `id`·`label`·`unit`·`digits`(문자열 값이면 단위 없음)
    - `key_observations`: 3D 위 카드로 늘 보일 관찰값 id 2~3개(실험 질문에 답하는 값). 레지스트리가 개수·중복·id를 검사한다
    - `graph`: `title`, `x`(`label`·`unit`·`max`), `y`(`label`·`unit`·`min_max`), `series`(`id`·`label`·`color`·`style: line|points`)
+   - `cast`(선택, Task 4h): 두기두기·퍼피 자리 `at: [x, z]`, 두기두기가 설명할 상태 `explain_on`과 지연 `delay_s`. 장치 오른쪽(가리킬 것이 그의 오른쪽)·뒤쪽에 두고 `tests/island_cast_checks.gd`의 자리·화면 시험을 통과시킨다([아트 디렉션 12절](docs/art-direction.md#12-두기두기와-퍼피-task-4h)). 가리킬 점이 따라가기 대상과 다르면 `explain_point()`를 재정의한다
 2. `content/experiments/index.json`의 `experiments`에 파일 이름을 더한다. 목록 화면은 이 순서와 `category`로 묶어 보여준다.
 3. `experiments/<이름>/<이름>.gd`에 `extends Experiment` 스크립트를 만든다(공식 모델을 `BodyModelDriver`로 구동하는 안내형 실험은 `extends ModelDrivenLab`: `_ready()`·run 상태·그래프 장부·`release()`를 베이스가 맡고 `_build_world()`·`_load_model()`·`_graph_point()` 등을 채운다. 조건이 바뀌어 run을 다시 시작할 때는 `_restart()`와 `reset_run()`). `_ready()`에서 3D 월드를 만들고 `definition.controls`의 기본값으로 `set_control()`을 부른다. 보이는 소품·환경·연출은 `<이름>_props.gd`로 나눠 [아트 디렉션 9절](docs/art-direction.md#9-새-실험-소품-만드는-법)을 따른다. 바닥·마찰 없는 재질·보정 바디 설정과 상태 변화 알림은 `Experiment` 베이스의 `_add_floor()`·`_frictionless_material()`·`_setup_free_body()`·`_update_status()`(반응은 `_status_changed()`를 재정의)를 쓰고, 공식의 중력은 베이스의 `engine_g`에서 읽는다. 화면 숫자는 공식(`PhysicsLaws`)에서 내고, 엔진 측정값은 따로 표시한다(공식 보정 원칙, [CONTEXT](../../CONTEXT.md)).
 4. 움직임은 [공식 보정](docs/formula-correction.md) 4절 표의 방식으로 보정한다(보정기를 붙이고 화면 숫자는 `formula_values()`에서). 새 법칙은 `tools/formula-vectors.test.ts`의 실험 그룹에 TS 사례를 더하고 `PhysicsLaws`에 포트한다(parity는 자동). 문구를 바꿨으면 글꼴 서브셋을 다시 만든다.
 5. `tools/build.sh`로 테스트·APK를 만들고 `bench_device.sh`로 low 60 fps를 확인한다.
 
-`ExperimentRegistry.validate()`가 필수 필드·카메라 모드·조건 형식·`manipulation` 규칙을 검사하고, 잘못된 실험은 목록에서 빼고 오류를 남긴다.
+`ExperimentRegistry.validate()`가 필수 필드·카메라 모드·조건 형식·`manipulation`·`cast` 규칙을 검사하고, 잘못된 실험은 목록에서 빼고 오류를 남긴다.
 
 물체를 손으로 옮기게 하려면 JSON에 `manipulation`을 더하고 스크립트에 `manipulation_body`·`manipulation_surface`(필요하면 `manipulation_juice`·`placement_allowed`·`placements`)와 결과 통보를 구현한다(1절 "조작"). 목록에 내지 않을 장면은 `index.json`의 `hidden`에 둔다.
 

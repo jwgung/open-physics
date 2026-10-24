@@ -136,18 +136,40 @@ def rot(pts, ang, ox, oy):
     return [(ox + (x - ox) * c - (y - oy) * s, oy + (x - ox) * s + (y - oy) * c) for x, y in pts]
 
 
-def ear_pts(root, length, half_w, tilt, bend):
-    """A long, flat, round-tipped ear from `root` (bottom centre), turned by `tilt` (rad, + = to the
-    viewer's right) and bowing sideways by `bend` (px, at the middle)."""
-    x0, y0 = root
-    prof = [(-0.70, 0.00), (-0.98, -0.22), (-1.00, -0.50), (-0.86, -0.78), (-0.50, -0.95), (0.00, -1.00),
-            (0.50, -0.95), (0.86, -0.78), (1.00, -0.50), (0.98, -0.22), (0.70, 0.00)]
-    pts = []
-    for u, v in prof:
-        t = -v                                   # 0 at the root, 1 at the tip
-        bow = bend * math.sin(math.pi * min(1.0, t * 1.1))
-        pts.append((x0 + u * half_w + bow, y0 + v * length))
-    return rot(pts, tilt, x0, y0)
+def ear_pts(root, length, half_w, tilt, flop, tip_cut=0.0, scale=1.0):
+    """A broad, round-tipped ear grown along a spine from `root` (bottom centre). The spine leaves at
+    `tilt` (rad, + = to the viewer's right) and turns a further `flop` rad over its upper half, so a
+    floppy ear folds outward like the reference. `tip_cut`/`scale` give the inner ear on the same spine
+    (it starts at the root, hidden by the head, and stops short of the tip)."""
+    n = 28
+    spine, ang = [], []
+    x, y = root
+    step = length / n
+    for i in range(n + 1):
+        t = i / n
+        k = min(1.0, max(0.0, (t - 0.35) / 0.35))
+        a = tilt + flop * k * k * (3 - 2 * k)
+        spine.append((x, y))
+        ang.append(a)
+        x += math.sin(a) * step
+        y -= math.cos(a) * step
+    lo, hi = 0, int(round(n * (1.0 - tip_cut)))
+    left, right = [], []
+    for i in range(lo, hi + 1):
+        t = i / n
+        w = half_w * scale * (0.80 + 0.20 * math.sin(math.pi * min(1.0, t / 1.2)))
+        (sx, sy), a = spine[i], ang[i]
+        nx, ny = math.cos(a), math.sin(a)       # normal to the spine (viewer's right side)
+        left.append((sx - nx * w, sy - ny * w))
+        right.append((sx + nx * w, sy + ny * w))
+    (tx, ty), a = spine[hi], ang[hi]
+    w = half_w * scale * (0.80 + 0.20 * math.sin(math.pi * min(1.0, hi / n / 1.2)))
+    cap = []
+    for j in range(1, 8):                       # round tip
+        ph = math.pi * j / 8
+        cap.append((tx - math.cos(a) * w * math.cos(ph) + math.sin(a) * w * math.sin(ph) * 1.05,
+                    ty - math.sin(a) * w * math.cos(ph) - math.cos(a) * w * math.sin(ph) * 1.05))
+    return left + cap + right[::-1]
 
 
 def draw(expr, size):
@@ -185,14 +207,16 @@ def draw(expr, size):
         shape(ctx, tail, SCARF, INNER_W, edge=SCARF_EDGE, edge_w=8, edge_a=0.5)
     shape(ctx, ellipse_pts(202, 478, 15, 12, rot=0.3), SCARF, INNER_W, edge=SCARF_EDGE, edge_w=6, edge_a=0.6)
 
-    # Ears: long and splayed, the viewer's left one nearly upright, the right one leaning and bowing out.
-    splay = 1.25 if expr == "smile" else 1.0
-    for root, length, half_w, tilt, bend in (((224, 258), 240, 40, -0.20 * splay, -20), ((290, 256), 232, 40, 0.36 * splay, 30)):
-        outer = ear_pts(root, length, half_w, tilt, bend)
-        inner = ear_pts((root[0], root[1] - 16), length * 0.82, half_w * 0.56, tilt, bend * 0.95)
+    # Ears: broad and close together on the crown; the viewer's left one leans out a little, the right
+    # one leans more and folds outward over its upper half, as in the reference.
+    splay = 1.2 if expr == "smile" else 1.0
+    for root, length, half_w, tilt, flop in (((212, 280), 224, 50, -0.22 * splay, -0.12),
+                                             ((300, 280), 212, 50, 0.24 * splay, 0.55)):
+        outer = ear_pts(root, length, half_w, tilt, flop)
+        inner = ear_pts(root, length, half_w, tilt, flop, tip_cut=0.12, scale=0.62)
         shape(ctx, outer, FUR, OUTER_W, light=(-0.8, -0.4), edge_w=14)
         smooth(ctx, inner)
-        g = cairo.LinearGradient(root[0], root[1] - 12, root[0] + math.sin(tilt) * length, root[1] - math.cos(tilt) * length)
+        g = cairo.LinearGradient(root[0], root[1] - 30, root[0] + math.sin(tilt) * length, root[1] - math.cos(tilt) * length)
         g.add_color_stop_rgb(0.0, *EAR_IN_DEEP)
         g.add_color_stop_rgb(0.45, *EAR_IN)
         g.add_color_stop_rgb(1.0, *EAR_IN)

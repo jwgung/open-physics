@@ -80,7 +80,21 @@ func _go_back() -> void:
 		get_tree().quit()
 
 
+## The home is the 3D island (Plan G2): tap a spot, the cat hops over, the experiment opens. The
+## old card list stays behind the map's "목록" button (teachers, accessibility).
 func show_list() -> void:
+	_drop_held()
+	var screen := IslandHomeScreen.new()
+	screen.definitions = _definitions
+	screen.experiment_chosen.connect(show_experiment)
+	screen.settings_requested.connect(func() -> void:
+		_return_to = {}
+		show_settings())
+	screen.list_requested.connect(_show_list_screen)
+	_swap(screen, "list")
+
+
+func _show_list_screen() -> void:
 	_drop_held()
 	var screen := ListScreen.new()
 	screen.definitions = _definitions

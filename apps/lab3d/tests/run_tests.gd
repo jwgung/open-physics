@@ -197,6 +197,11 @@ func _run() -> void:
 	_expect(mission != null and mission.can_instantiate(), "mission checks compile", "")
 	if mission != null and mission.can_instantiate():
 		await mission.new(self, _expect).run()
+	print("== game G2: the island home (map, tap -> hop -> experiment, stamps, buttons) ==")
+	var home: GDScript = load("res://tests/island_home_checks.gd")
+	_expect(home != null and home.can_instantiate(), "island home checks compile", "")
+	if home != null and home.can_instantiate():
+		await home.new(self, _expect).run()
 	print("== key cards and front camera, every experiment (Task 2d) ==")
 	await _check_key_cards()
 	await _check_gesture_tip()

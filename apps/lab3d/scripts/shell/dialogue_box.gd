@@ -6,7 +6,8 @@
 ## art_src/characters/dugi_portrait.py), the name tag "두기두기" sits on the top edge beside it,
 ## and a blinking ▼ shows when the page is fully shown.
 ##
-## The words are the lab's observe text exactly, only split into pages of at most LINES lines at
+## The words are the lab's observe text exactly (or the mission's question / reason, set with
+## set_words before opening — Plan G1), only split into pages of at most LINES lines at
 ## the spaces (joined() is the text again). Each page types out at
 ## CHARS_PER_S; a tap shows the whole page, the next tap turns the page, and after the last page
 ## it closes. Untouched, a full page turns after READ_S + READ_PER_CHAR_S per character. UI only:
@@ -186,6 +187,15 @@ func rects() -> Array[Rect2]:
 
 
 # --- acting -----------------------------------------------------------------------------------
+
+## Replaces the words (the mission's question before the run, the reason after it — Plan G1).
+## Repaginates for the current width (layout()); call it while closed.
+func set_words(words: String) -> void:
+	text = words
+	_pages = paginate(text, label.get_theme_font("font"), label.get_theme_font_size("font_size"),
+		_text_width if _text_width > 0.0 else MIN_TEXT_WIDTH)
+	page = 0
+
 
 ## Opens at the first page (laid out by the caller first).
 func open() -> void:

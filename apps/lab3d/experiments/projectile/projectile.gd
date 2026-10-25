@@ -248,6 +248,13 @@ func status() -> String:
 	return "floating" if g <= 0.0 else "flying"
 
 
+## The engine ball has landed: the corrector's own report (the first sample at or after the
+## formula touch), not has_landed_by's clock slack (the status can say "landed" a few steps
+## before the bounce and roll are done; the mission's stamp waits for this).
+func settled() -> bool:
+	return not released or corrector().landed_step >= 0 or out_of_bounds
+
+
 ## The flight met the fence below its top (2026-10-23 user decision) and the clock has reached that
 ## formula time: the ball bounced back from it (RollingContact) and stays on the island.
 func hit_fence() -> bool:

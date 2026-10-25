@@ -44,6 +44,22 @@
     { "id": "reset", "label": "처음으로" }
   ],
   "key_observations": ["range", "flight_time", "landing"],
+  "predict": {
+    "question": "공을 더 세게 던지면 더 멀리 갈까?",
+    "choices": [
+      { "id": "farther", "label": "더 멀리" },
+      { "id": "same", "label": "똑같이" }
+    ],
+    "reason": "세게 던지면 빠르기 v0가 커져요. 거리 공식 R = v0·v0·sin(2θ) ÷ g 에서 v0가 크면 R도 커져요. 그래서 더 멀리 갑니다."
+  },
+  "missions": {
+    "observe": "range",
+    "stages": [
+      { "threshold": 3.0, "text": "3 m보다 멀리 보내기!" },
+      { "threshold": 5.0, "text": "5 m보다 멀리 보내기!" },
+      { "threshold": 7.0, "text": "7 m보다 멀리 보내기!" }
+    ]
+  },
   "cast": {
     "dugi": { "at": [7.25, -1.0], "explain_on": ["landed", "fence"], "delay_s": 0.6 },
     "puppy": { "at": [-2.0, -6.25] }

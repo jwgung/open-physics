@@ -48,6 +48,10 @@
 ## 16. island cast (Task 4h, tests/island_cast_checks.gd): the Dugi / Puppy models' mesh contract,
 ##    the explain cycle (rest -> point -> rest, the stick hidden at rest), the status trigger, placement
 ##    and layout in every experiment, physics and panels unchanged with the cast.
+## 17. game G1 (tests/mission_checks.gd): the missions / predict blocks of the content, the
+##    MissionTracker (a landed run judged by the formula value, a short throw changes nothing),
+##    the ProgressStore (user://progress.cfg, a corrupt file starts over) and the physics
+##    invariant: the trajectory and the displayed values are the same with or without the mission.
 ## Times are engine fixed steps (60 Hz), independent of rendering FPS.
 extends SceneTree
 
@@ -188,6 +192,11 @@ func _run() -> void:
 	_expect(cast_checks != null and cast_checks.can_instantiate(), "island cast checks compile", "")
 	if cast_checks != null and cast_checks.can_instantiate():
 		await cast_checks.new(self, _expect).run()
+	print("== game G1: missions and predict blocks, MissionTracker, ProgressStore, physics unchanged ==")
+	var mission: GDScript = load("res://tests/mission_checks.gd")
+	_expect(mission != null and mission.can_instantiate(), "mission checks compile", "")
+	if mission != null and mission.can_instantiate():
+		await mission.new(self, _expect).run()
 	print("== key cards and front camera, every experiment (Task 2d) ==")
 	await _check_key_cards()
 	await _check_gesture_tip()

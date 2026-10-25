@@ -181,6 +181,40 @@ static func validate(definition: Dictionary) -> PackedStringArray:
 		problems.append("graph.series missing")
 	problems.append_array(_validate_manipulation(definition.get("manipulation"), definition.actions))
 	problems.append_array(_validate_cast(definition.get("cast")))
+	problems.append_array(_validate_missions(definition.get("missions"), definition.observations))
+	return problems
+
+
+## `missions` (Plan G1, optional): the easy stage thresholds —
+## {"observe": <an observation id>, "stages": [{"threshold": <number > 0>, "text": <non-empty>}, ...]}.
+## The child clears stage n when the lab lands with the formula value of `observe` farther than
+## threshold n (MissionTracker: it reads, it never changes the run).
+static func _validate_missions(missions: Variant, observations: Array) -> PackedStringArray:
+	var problems := PackedStringArray()
+	if missions == null:
+		return problems
+	if not missions is Dictionary:
+		problems.append("missions must be an object")
+		return problems
+	var observe: Variant = missions.get("observe")
+	var ids := {}
+	for observation in observations:
+		if observation.get("id") is String:
+			ids[observation.id] = true
+	if not (observe is String and ids.has(observe)):
+		problems.append("missions.observe must be one of the observation ids")
+	var stages: Variant = missions.get("stages")
+	if not (stages is Array and stages.size() > 0 and stages.size() <= ProgressStore.MAX_STAMPS):
+		problems.append("missions.stages must list %d or fewer non-empty stages" % ProgressStore.MAX_STAMPS)
+		return problems
+	for i in stages.size():
+		var stage: Variant = stages[i]
+		var threshold: Variant = stage.get("threshold") if stage is Dictionary else null
+		var text: Variant = stage.get("text") if stage is Dictionary else null
+		if not (stage is Dictionary and (threshold is int or threshold is float) and threshold > 0.0):
+			problems.append("missions.stages[%d].threshold must be a number > 0" % i)
+		elif not (text is String and text != ""):
+			problems.append("missions.stages[%d].text must be a text" % i)
 	return problems
 
 

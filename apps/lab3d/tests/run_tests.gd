@@ -207,6 +207,11 @@ func _run() -> void:
 	_expect(slingshot != null and slingshot.can_instantiate(), "slingshot checks compile", "")
 	if slingshot != null and slingshot.can_instantiate():
 		await slingshot.new(self, _expect).run()
+	print("== game G4: the mission round (strip, prediction question, reason, stamps, done) ==")
+	var round: GDScript = load("res://tests/game_round_checks.gd")
+	_expect(round != null and round.can_instantiate(), "game round checks compile", "")
+	if round != null and round.can_instantiate():
+		await round.new(self, _expect).run()
 	print("== key cards and front camera, every experiment (Task 2d) ==")
 	await _check_key_cards()
 	await _check_gesture_tip()

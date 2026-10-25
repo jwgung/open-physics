@@ -197,8 +197,14 @@ func set_words(words: String) -> void:
 	page = 0
 
 
-## Opens at the first page (laid out by the caller first).
-func open() -> void:
+## Opens at the first page (laid out by the caller first). `words` (optional) replaces the box's
+## words for this open (the prediction's reason, Plan G4; the caller's observe text stays for the
+## next open).
+func open(words := "") -> void:
+	if words != "":
+		text = words
+		_pages = paginate(text, label.get_theme_font("font"), label.get_theme_font_size("font_size"),
+			_text_width if _text_width > 0.0 else MIN_TEXT_WIDTH)
 	active = true
 	page = 0
 	_show_page(true)

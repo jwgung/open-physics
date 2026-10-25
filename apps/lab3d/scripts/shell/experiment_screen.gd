@@ -78,6 +78,15 @@ var _updating := false                  # a control/action is running: refresh o
 var _graph_revision := -2               # Experiment.graph_revision() of the series on the graph
 var _slingshot_hud: Label = null        # the big pull readout (Plan G3)
 var _slingshot_units: PackedStringArray = PackedStringArray(["°", "m/s"])
+## The game's first round (Plan G4): the mission strip (도장), Dugi's prediction question and the
+## puppy's celebration when the last stamp comes.
+var _mission_strip: HBoxContainer = null
+var _stamp_labels: Array = []
+var _mission_text: Label = null
+var _predict_overlay: Control = null
+var _predict_pick: String = ""   # the picked choice ("farther" / "same"); shown on the strip after the run
+var _predict_ended: bool = false
+var _mission_just_stamped := false   # the last stamp just came (the puppy celebrates)
 
 
 ## `state` (optional): capture_state() of a previous screen of the same experiment (conditions
@@ -147,6 +156,7 @@ func _ready() -> void:
 		_camera_home = view.rig.get_state()   # a measurement's --camera is the view it opens with
 	_refresh()
 	_setup_slingshot()   # after the state: a restored launch point is the pull's origin
+	_setup_game()        # after the state: the stamp count and the question belong to the saved run
 	Bench.reset(definition.get("bench_id", definition.id))
 
 
@@ -211,6 +221,10 @@ func _process(delta: float) -> void:
 		_demo_release_left -= delta
 		if _demo_release_left < 0.0:
 			_run_measured_action(manipulator.demo_action)
+	if _mission_just_stamped:
+		_mission_just_stamped = false
+		if cast != null and cast.puppy != null:
+			cast.puppy.celebrate()
 	_run_dialogue()
 
 
@@ -383,6 +397,7 @@ func _make_missions() -> MissionTracker:
 		return null
 	var tracker := MissionTracker.new()
 	tracker.definition = definition
+	tracker.progress = _mission_progress
 	return tracker
 
 
@@ -440,8 +455,144 @@ func _missions_judge() -> void:
 	if status == MissionTracker.SUCCESS_STATUS:
 		_missions_end = true
 		_missions.on_run_ended(status, experiment, experiment.observations())
+		_predict_finish()   # the run ended: the prediction's reason (once per screen)
 	elif status == "ready":
 		_missions_end = false   # the ball is back on the stand: the next run is judged again
+
+
+# --- game: the mission round (Plan G4) -----------------------------------------------------------
+
+## The experiment has missions: the stamp strip (도장) under the key cards, Dugi's prediction
+## question (the two pictures) before the run, and the celebration when the last stamp comes.
+## Nothing here moves a body or sets a control (physics stays the formulas').
+func _setup_game() -> void:
+	if _missions == null:
+		return
+	_make_mission_strip()
+	var stamps := ProgressStore.stamps(ProgressStore.load(), str(definition.get("id", "")))
+	_show_stamps(stamps)
+	if MissionTracker.predict(definition).is_empty():
+		return
+	if stamps < 3:
+		_show_predict(MissionTracker.predict(definition).get("question", ""))
+	else:
+		_predict_ended = true   # the round is done: no more question
+
+
+## The stamp strip: "미션" + one 도장 per stage (filled by the saved count) + the current stage's
+## text. Filled when a stage clears, the next stage's text appears.
+func _make_mission_strip() -> void:
+	_mission_strip = Ui.hbox(10)
+	_mission_strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	view.add_child(_mission_strip)
+	var caption := Ui.label("미션", "KeyLabel", true)
+	caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_mission_strip.add_child(caption)
+	for i in MissionTracker.missions(definition).get("stages", []).size():
+		var stamp := Ui.label("도장", "KeyValueLabel", true)
+		stamp.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_mission_strip.add_child(stamp)
+		_stamp_labels.append(stamp)
+	_mission_text = Ui.label("", "KeyValueLabel", true)
+	_mission_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_mission_strip.add_child(_mission_text)
+	_fit_mission_strip()
+
+
+func _fit_mission_strip() -> void:
+	if _mission_strip == null:
+		return
+	_mission_strip.size = _mission_strip.get_combined_minimum_size()
+	_mission_strip.position = _key_row.position + Vector2(0.0, _key_row.size.y + 8.0)
+
+
+func _show_stamps(count: int) -> void:
+	var stages: Array = MissionTracker.missions(definition).get("stages", [])
+	for i in _stamp_labels.size():
+		(_stamp_labels[i] as Label).add_theme_color_override("font_color",
+			Color("4d8f3f") if i < count else Color("c9b892"))
+	if _mission_text == null:
+		return
+	if count >= stages.size():
+		_mission_text.text = "모두 완료! (깃발이 섬에 섰어요)"
+	else:
+		_mission_text.text = str(stages[count].get("text", ""))
+
+
+## The prediction (predict block): Dugi asks his question, then the two pictures are tappable.
+## A tap picks one and shows it until the run ends; after the run Dugi tells the reason. The
+## question is Dugi's own (the dialogue box keeps the observe text of the lab).
+func _show_predict(question: String) -> void:
+	var predict: Dictionary = MissionTracker.predict(definition)
+	_predict_overlay = Control.new()
+	_predict_overlay.name = "PredictOverlay"
+	_predict_overlay.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_predict_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	view.add_child(_predict_overlay)
+	_predict_overlay.gui_input.connect(_on_predict_input)
+	var stack := Ui.vbox(10)
+	stack.position = Vector2(40.0, view.size.y * 0.3)
+	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_predict_overlay.add_child(stack)
+	var ask := Ui.label(question, "HeadingLabel", true)
+	ask.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stack.add_child(ask)
+	var row := Ui.hbox(12)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stack.add_child(row)
+	for choice in predict.get("choices", []):
+		var button := Ui.button(str(choice.get("label", "")), "PrimaryButton", 64)
+		button.custom_minimum_size.x = 132
+		button.pressed.connect(_predict_pick_choice.bind(str(choice.get("id", ""))))
+		row.add_child(button)
+
+
+func _predict_pick_choice(choice_id: String) -> void:
+	if _predict_overlay == null:
+		return
+	_predict_pick = choice_id
+	# The picked label (it stays on the strip after the run).
+	var picked: String = ""
+	for choice in MissionTracker.predict(definition).get("choices", []):
+		if str(choice.get("id", "")) == choice_id:
+			picked = str(choice.get("label", ""))
+	for c: Node in _predict_overlay.get_children():
+		if c is Control:
+			(c as Control).mouse_filter = Control.MOUSE_FILTER_IGNORE
+	if _mission_text != null and picked != "":
+		_mission_text.text = "예측: " + picked
+
+
+func _on_predict_input(_event: InputEvent) -> void:
+	# A tap anywhere else closes the question (the run can start without a pick).
+	if _predict_overlay != null:
+		_predict_overlay.queue_free()
+		_predict_overlay = null
+
+
+## The run ended (judged): the reason behind the prediction (Dugi explains it), then the overlay
+## is gone. Runs once per screen when a prediction was shown.
+func _predict_finish() -> void:
+	if _predict_ended:
+		return
+	_predict_ended = true
+	if _predict_overlay != null:
+		_predict_overlay.queue_free()
+		_predict_overlay = null
+	var reason: String = MissionTracker.predict(definition).get("reason", "")
+	if reason == "" or dialogue == null:
+		return
+	# Dugi explains the reason (the prediction's path, separate from the lab's observe text).
+	dialogue.set_words(reason)
+
+
+## A stamp was saved (MissionTracker, on its own run): the strip fills it in (the next stage's
+## text appears) and, when the last one comes, the puppy celebrates for a moment.
+func _mission_progress(_id: String, stamps: int) -> void:
+	_show_stamps(stamps)
+	if _mission_strip != null and _mission_strip.visible and cast != null and cast.puppy != null \
+			and MissionTracker.missions(definition).get("stages", []).size() == stamps:
+		_mission_just_stamped = true
 
 
 # --- layout ---------------------------------------------------------------------------------
@@ -635,6 +786,8 @@ func _fit_overlays() -> void:
 	_key_row.position = Vector2(m, m + maxf(_title_bar.size.y, _top_buttons.size.y) + 8.0)
 	_action_row.size = _action_row.get_combined_minimum_size()
 	_action_row.position = Vector2(width - _action_row.size.x - m, view.size.y - _action_row.size.y - m)
+	if _mission_strip != null:
+		_fit_mission_strip()
 	if _slingshot_hud != null and _slingshot_hud.visible:
 		_fit_slingshot_hud()
 	if dialogue != null and dialogue.active:

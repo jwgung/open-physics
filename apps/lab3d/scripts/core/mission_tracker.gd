@@ -37,6 +37,13 @@ static func missions(definition: Dictionary) -> Dictionary:
 	return missions if missions is Dictionary else {}
 
 
+## The definition's prediction (the question, the two choices, the reason) or {} when it has
+## none. (Plan G4: Dugi asks before the run and explains the reason after it.)
+static func predict(definition: Dictionary) -> Dictionary:
+	var predict: Variant = definition.get("predict")
+	return predict if predict is Dictionary else {}
+
+
 ## The stage texts of `definition` (a list when it has missions, [] otherwise).
 static func stage_texts(definition: Dictionary) -> PackedStringArray:
 	var out := PackedStringArray()

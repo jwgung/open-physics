@@ -21,6 +21,14 @@ var shadow: MeshInstance3D
 var pole_axis := Vector3.UP
 var _cloth_rest := Transform3D()
 var _clock := 0.0
+## The celebration (Plan G4: the last stamp of a round): a faster, larger wave for CELEBRATE_S.
+var _celebrate_left := 0.0
+const CELEBRATE_S := 2.0
+
+
+## A bigger, faster flag wave for a moment (the puppy celebrates a cleared round).
+func celebrate() -> void:
+	_celebrate_left = CELEBRATE_S
 
 
 func _init() -> void:
@@ -73,10 +81,11 @@ func bounds() -> AABB:
 	return IslandCast.drawn_bounds(self, shadow)
 
 
-## The banner's turn about the pole now (rad).
+## The banner's turn about the pole now (rad; a celebration doubles the swing and speed).
 func wave_angle() -> float:
 	var w := TAU * WAVE_HZ * _clock
-	return deg_to_rad(WAVE_DEG) * (sin(w) + FLUTTER * sin(w * 2.3 + 0.8)) / (1.0 + FLUTTER)
+	var angle := deg_to_rad(WAVE_DEG) * (sin(w) + FLUTTER * sin(w * 2.3 + 0.8)) / (1.0 + FLUTTER)
+	return angle * (2.0 if _celebrate_left > 0.0 else 1.0)
 
 
 func _process(delta: float) -> void:
@@ -85,4 +94,6 @@ func _process(delta: float) -> void:
 
 func advance(delta: float) -> void:
 	_clock += delta
+	if _celebrate_left > 0.0:
+		_celebrate_left -= delta
 	cloth.transform = Transform3D(Basis(pole_axis, wave_angle()) * _cloth_rest.basis, _cloth_rest.origin)

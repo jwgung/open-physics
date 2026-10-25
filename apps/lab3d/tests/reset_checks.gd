@@ -242,8 +242,8 @@ func _manipulation_case(definition: Dictionary, cancel: bool) -> Array:
 		drag.position = from.lerp(to, i / 6.0)
 		view._gui_input(drag)
 		await tree.process_frame
-	if screen.manipulator.mode != "drag":
-		problems.append("the ball was not picked up")
+	if screen.manipulator.mode not in ["drag", "slingshot"]:
+		problems.append("the ball was not picked up (mode %s)" % screen.manipulator.mode)
 	var dragged: Vector3 = lab.ball.global_position
 	_view_touch(view, to, false, cancel)
 	# Put down: on the launch line (the new launch point). Put back: the run stopped at the pick-up,

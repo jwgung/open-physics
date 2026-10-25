@@ -76,6 +76,8 @@ var _state: Dictionary = {}             # capture_state() of a screen being rebu
 var _camera_home: Dictionary = {}       # the experiment's opening view (kept across a rebuild): 처음으로 snaps back to it
 var _updating := false                  # a control/action is running: refresh once afterwards
 var _graph_revision := -2               # Experiment.graph_revision() of the series on the graph
+var _slingshot_hud: Label = null        # the big pull readout (Plan G3)
+var _slingshot_units: PackedStringArray = PackedStringArray(["°", "m/s"])
 
 
 ## `state` (optional): capture_state() of a previous screen of the same experiment (conditions
@@ -128,6 +130,7 @@ func _ready() -> void:
 		manipulator.demo_placed.connect(func() -> void:
 			if manipulator.demo_action != "":
 				_demo_release_left = DEMO_RELEASE_DELAY_S)
+	_missions = _make_missions()
 	view.rig.follow_source = experiment
 	view.rig.configure(definition.camera)
 	view.rig.mode_changed.connect(_on_mode_changed)
@@ -143,6 +146,7 @@ func _ready() -> void:
 		_apply_launch_args()
 		_camera_home = view.rig.get_state()   # a measurement's --camera is the view it opens with
 	_refresh()
+	_setup_slingshot()   # after the state: a restored launch point is the pull's origin
 	Bench.reset(definition.get("bench_id", definition.id))
 
 
@@ -304,6 +308,140 @@ func handle_back() -> bool:
 		return false
 	close_sidebar()
 	return true
+
+
+# --- slingshot (Plan G3) ------------------------------------------------------------------------
+
+## The slingshot (the ball's pull sets the launch, Angry Birds style): the experiment must offer
+## its own `slingshot_setup()` (object id, launch point, ArrowSurface, and how a pull commits).
+## Pulling the ball shows the big angle / speed readout; letting go commits the pull as the
+## angle and speed controls (the sliders in "자세히" follow) and throws. The formula path stays
+## hidden while a pull is held (no trajectory preview).
+func _setup_slingshot() -> void:
+	if manipulator == null or not experiment.has_method("slingshot_setup"):
+		return
+	var spec: Dictionary = experiment.slingshot_setup()
+	if spec.is_empty():
+		return
+	manipulator.set_slingshot(str(spec.object), Vector3(spec.from), spec.surface)
+	manipulator.slingshot.connect(_on_slingshot)
+	_make_slingshot_hud()
+	_slingshot_units = PackedStringArray([str(spec.units.get("angle", "°")), str(spec.units.get("speed", "m/s"))])
+
+
+## The big readout shown while a pull is held (white with a shadow, over the 3D view):
+## "45° · 9.0 m/s".
+func _make_slingshot_hud() -> void:
+	if _slingshot_hud != null:
+		return
+	_slingshot_hud = Ui.label("", "HeadingLabel", true)
+	_slingshot_hud.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_slingshot_hud.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_slingshot_hud.add_theme_color_override("font_color", Color("ffffff"))
+	# A dark outline so the white numbers read over the island (a Label's shadow, the theme's
+	# own shadow constant: font_shadow_color on the label, its offset from the theme).
+	var theme := get_theme()
+	if theme != null and theme.has_color("font_shadow_color", "Label"):
+		_slingshot_hud.add_theme_color_override("font_shadow_color", Color(0.0, 0.0, 0.0, 0.85))
+		_slingshot_hud.add_theme_constant_override("shadow_offset_x", 2)
+		_slingshot_hud.add_theme_constant_override("shadow_offset_y", 2)
+	view.add_child(_slingshot_hud)
+	_slingshot_hud.visible = false
+
+
+## The pull's readout text: "45° · 9.0 m/s" (whole degrees on the pull's 5 deg grid).
+func _slingshot_readout(value: Variant) -> String:
+	var v: Vector2 = value
+	return "%d%s · %s%s" % [int(roundf(v.x)), _slingshot_units[0], Ui.number(v.y, 1), _slingshot_units[1]]
+
+
+## The big pull readout under the top buttons, centred (it stays clear of the key cards and the
+## action buttons).
+func _fit_slingshot_hud() -> void:
+	if _slingshot_hud == null:
+		return
+	_slingshot_hud.position = Vector2((view.size.x - _slingshot_hud.size.x) * 0.5, _top_buttons.position.y + _top_buttons.size.y + 16.0)
+
+
+## The deferred slingshot throw (see _on_slingshot "release"): runs after the manipulator's
+## manipulation_cancelled has restored the cat's grip.
+func _slingshot_release() -> void:
+	if experiment == null:
+		return
+	_updating = true
+	experiment.change_from_input(experiment.run_action.bind("release"))
+	_updating = false
+	_refresh()
+
+## The mission tracker (Plan G1), when the experiment has missions: judged on the run's end
+## (status + observations), never on the fly.
+var _missions: MissionTracker = null
+
+
+func _make_missions() -> MissionTracker:
+	if MissionTracker.missions(definition).is_empty():
+		return null
+	var tracker := MissionTracker.new()
+	tracker.definition = definition
+	return tracker
+
+
+## Manipulator.slingshot handler: the pull moves the big readout and the experiment's arrow
+## preview (no formula path or ring); a release commits the pulled angle and speed as the
+## controls and throws (the experiment's "release" action).
+func _on_slingshot(state: String, value: Variant) -> void:
+	match state:
+		"pull":
+			_slingshot_hud.text = _slingshot_readout(value)
+			_slingshot_hud.visible = true
+			_fit_slingshot_hud()
+			if experiment.has_method("set_slingshot_preview"):
+				experiment.set_slingshot_preview(value)
+		"release":
+			_slingshot_hud.visible = false
+			if experiment.has_method("set_slingshot_preview"):
+				experiment.set_slingshot_preview(Vector2.INF)
+			var v: Vector2 = value
+			_updating = true
+			experiment.change_from_input(func() -> void:
+				experiment.set_control("angle", v.x)
+				experiment.set_control("speed", v.y))
+			# The cat's grip is restored by the experiment's manipulation_cancelled (the ball's
+			# pick-up put the cat in "free"; the pull's end puts it back in "hold").
+			_updating = false
+			_sync_control("angle")
+			_sync_control("speed")
+			_update_readouts(true)
+			if cast != null:
+				cast.user_changed()
+			_refresh()
+			_missions_judge()
+			# The throw runs after the manipulator's manipulation_cancelled restores the cat's grip
+			# (the signal emission is synchronous; the cancel comes after this handler returns).
+			call_deferred("_slingshot_release")
+
+
+## The run has reached its end state: the mission stamp, judged on the formula value the panel
+## shows (MissionTracker reads the lab and the observations; it never moves anything). Judged once
+## per run: while the ball waits (status "ready"), a new run's landing is the next one.
+var _missions_end := false
+
+
+func _missions_judge() -> void:
+	if _missions == null or _missions_end:
+		return
+	var status := experiment.status()
+	# The engine's settled report can land between the lab's status changes (the "landed" status
+	# is reported once during the flight, then the ball rests): a lab that flags its landing
+	# (projectile's _landed_now) is judged on the first settled poll after it.
+	if status != MissionTracker.SUCCESS_STATUS and experiment.has_method("landed_now") \
+			and (experiment as Node).landed_now():
+		status = MissionTracker.SUCCESS_STATUS
+	if status == MissionTracker.SUCCESS_STATUS:
+		_missions_end = true
+		_missions.on_run_ended(status, experiment, experiment.observations())
+	elif status == "ready":
+		_missions_end = false   # the ball is back on the stand: the next run is judged again
 
 
 # --- layout ---------------------------------------------------------------------------------
@@ -497,6 +635,8 @@ func _fit_overlays() -> void:
 	_key_row.position = Vector2(m, m + maxf(_title_bar.size.y, _top_buttons.size.y) + 8.0)
 	_action_row.size = _action_row.get_combined_minimum_size()
 	_action_row.position = Vector2(width - _action_row.size.x - m, view.size.y - _action_row.size.y - m)
+	if _slingshot_hud != null and _slingshot_hud.visible:
+		_fit_slingshot_hud()
 	if dialogue != null and dialogue.active:
 		dialogue.visible = _layout_dialogue()   # follows the view at once (a resize)
 	# Beside the actions when there is room, otherwise above them (a narrow view with many actions:
@@ -682,6 +822,7 @@ func _drop_held_object() -> void:
 ## inside a manipulator callback (placed / cancelled) by its `changed`.
 func _on_state_changed() -> void:
 	if not _updating and not (manipulator != null and manipulator.notifying):
+		_missions_judge()   # the end state (landed, out, fence) judges the mission stamp
 		_refresh()
 
 
@@ -817,6 +958,7 @@ func _poll() -> void:
 	if experiment == null or not experiment.is_inside_tree():
 		return
 	_update_readouts(false)
+	_missions_judge()   # a run can end between state_changed events (the engine's settled report)
 
 
 ## The displayed text of an observation value (panel tiles and key cards show the same text).

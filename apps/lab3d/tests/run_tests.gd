@@ -202,6 +202,11 @@ func _run() -> void:
 	_expect(home != null and home.can_instantiate(), "island home checks compile", "")
 	if home != null and home.can_instantiate():
 		await home.new(self, _expect).run()
+	print("== game G3: the slingshot (pull = angle / speed, big readout, no path, formula stamp) ==")
+	var slingshot: GDScript = load("res://tests/slingshot_checks.gd")
+	_expect(slingshot != null and slingshot.can_instantiate(), "slingshot checks compile", "")
+	if slingshot != null and slingshot.can_instantiate():
+		await slingshot.new(self, _expect).run()
 	print("== key cards and front camera, every experiment (Task 2d) ==")
 	await _check_key_cards()
 	await _check_gesture_tip()

@@ -31,6 +31,9 @@ extends Node3D
 signal changed
 ## The auto-drag demo (start_demo) put its object down.
 signal demo_placed
+## A slingshot pull (Plan G3): (angle deg, speed m/s) while the finger holds (a preview), and
+## ("release", [angle, speed]) when it is let go (the experiment throws).
+signal slingshot(state: String, value: Variant)
 
 const PICK_RADIUS := 44.0        # UI units
 const HANDLE_RADIUS := 52.0      # UI units around the height knob
@@ -57,8 +60,15 @@ var rules: Dictionary = {}
 ## down, from manipulation.demo_action ("" = none).
 var demo_action := ""
 
-var mode := ""                   # "", "drag", "height"
+var mode := ""                   # "", "drag", "height", "slingshot"
 var active_id := ""
+## The slingshot (Plan G3): the object id whose pull sets the launch, the world point the pull is
+## measured from (the launch point), and the ArrowSurface that snaps the pull vector to (angle,
+## speed). Set by the experiment through set_slingshot().
+var slingshot_id := ""
+var slingshot_from := Vector3.ZERO
+var slingshot_surface: ManipSurface = null
+var _slingshot_value := Vector2.ZERO    # the current snapped (angle, speed)
 var selected_id := ""
 var valid := true
 ## An experiment callback (placed / cancelled) is running: the experiment's own state_changed in
@@ -133,6 +143,14 @@ static func parse_rules(definition: Dictionary) -> Dictionary:
 	return result
 
 
+## The experiment says the slingshot is on: pulling `id` (a pick near its launch point) measures the
+## pull from `from` on `surface` (an ArrowSurface, so the pull snaps to angle / speed). Plan G3.
+func set_slingshot(id: String, from: Vector3, surface: ManipSurface) -> void:
+	slingshot_id = id
+	slingshot_from = from
+	slingshot_surface = surface
+
+
 ## View3D.single_pointer handler (positions in the view's UI units).
 func handle_pointer(kind: String, position: Vector2) -> void:
 	match kind:
@@ -150,6 +168,9 @@ func handle_pointer(kind: String, position: Vector2) -> void:
 ## the experiment under the finger).
 func cancel(shake := false) -> void:
 	if mode == "":
+		return
+	if mode == "slingshot":   # the pull threw nothing: the ball never moved, only the freeze goes back
+		_release_slingshot()
 		return
 	var id := active_id
 	var body := _body
@@ -188,7 +209,26 @@ func _press(position: Vector2) -> void:
 	if id == "":
 		select("")
 		return
+	# The slingshot (Plan G3): a pull that starts on the launch object sets the launch (the finger
+	# plays the arrow's knob: direction = angle, length = speed), not a drag of the object.
+	if _slingshot_current(id):
+		_begin_slingshot(id, position)
+		return
 	_begin(id, "drag", position)
+
+
+## The slingshot is on for `id`: the run is ready (a landed or in-flight ball is a drag, not a
+## pull), and the ball still rests at its launch point (a moved ball is dragged back, not pulled).
+## A rebuilt screen re-registers the slingshot.
+func _slingshot_current(id: String) -> bool:
+	if id != slingshot_id or slingshot_surface == null:
+		return false
+	if experiment.status() != "ready":
+		return false
+	var body := experiment.manipulation_body(id)
+	if body == null:
+		return false
+	return body.global_position.distance_to(slingshot_from) < 0.1
 
 
 func _move(position: Vector2) -> void:
@@ -209,6 +249,8 @@ func _move(position: Vector2) -> void:
 			_target_set = false
 			_update_target()
 			_update_handle()
+	elif mode == "slingshot":
+		_slingshot_to(position)
 
 
 ## Places the dragged object under a finger at `position` (the finger point on the surface plus the
@@ -257,6 +299,9 @@ func _keep_held() -> void:
 func _release() -> void:
 	_placed_last = false
 	if mode == "":
+		return
+	if mode == "slingshot":
+		_release_slingshot()
 		return
 	if not valid:
 		cancel(true)
@@ -344,6 +389,64 @@ func _begin(id: String, kind: String, position: Vector2) -> void:
 		view.rig.begin_assist(Vector3.ZERO, surface.normal())
 	_target_set = false
 	_update_target(false)   # the first place is not announced: nothing moved from a valid one
+
+
+# --- slingshot (Plan G3) ------------------------------------------------------------------------
+
+## A pull that starts on the launch object: like dragging the arrow's knob (the tip) with the
+## finger, only from the ball's own body - the pull vector (tip start -> finger) is the launch
+## vector (direction = angle, length = speed). The ball is not moved (the launch point is fixed);
+## the current (angle, speed) is reported so the preview can move with the pull.
+func _begin_slingshot(id: String, position: Vector2) -> void:
+	active_id = id
+	mode = "slingshot"
+	var body := experiment.manipulation_body(id)
+	if body != null:
+		_body = body
+		_start_xf = body.global_transform
+		_start_freeze = (body as RigidBody3D).freeze if body is RigidBody3D else false
+		experiment.change_from_input(func() -> void:
+			experiment.manipulation_started(id)
+			if body is RigidBody3D:
+				(body as RigidBody3D).freeze = true)
+	_finger = position
+	_finger_camera = view.rig.global_transform
+	_slingshot_value = Vector2.ZERO
+	slingshot.emit("pull", _current_slingshot())
+
+
+## A pull moves: the finger plays the arrow's knob - the tip goes to the finger's plane point, so
+## the snapped (angle, speed) is the surface's snap of that point (direction = angle, length =
+## speed), exactly what the preview shows for the same values.
+func _slingshot_to(position: Vector2) -> void:
+	var ray := _finger_ray(position)
+	var finger: Variant = slingshot_surface.project_ray(ray[0], ray[1], 0.0)
+	if finger == null:
+		return
+	_slingshot_value = slingshot_surface.snap_of(finger as Vector2)
+	slingshot.emit("pull", _current_slingshot())
+
+
+func _release_slingshot() -> void:
+	var value := _current_slingshot()
+	slingshot.emit("release", value)
+	var id := active_id
+	_finish()
+	# The object is not put back (it never moved): only the launch state was frozen at the
+	# pull's start, so restore it and tell the experiment the pull is over.
+	var body := _body
+	_body = null
+	notifying = true
+	experiment.change_from_input(func() -> void:
+		if body is RigidBody3D:
+			(body as RigidBody3D).freeze = _start_freeze
+		experiment.manipulation_cancelled(id))
+	notifying = false
+	changed.emit()
+
+
+func _current_slingshot() -> Vector2:
+	return _slingshot_value
 
 
 func _finish() -> void:

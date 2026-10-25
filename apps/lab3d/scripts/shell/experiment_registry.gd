@@ -296,6 +296,14 @@ static func _validate_manipulation(manipulation: Variant, actions: Array = []) -
 	var demo: Variant = manipulation.get("demo_action", "")
 	if not demo is String or (demo != "" and not actions.any(func(a: Dictionary) -> bool: return a.get("id") == demo)):
 		problems.append("manipulation.demo_action must be the id of one of the actions")
+	# The slingshot (Plan G3): the pull's object (one of the manipulable ids) and its angle step.
+	var slingshot: Variant = manipulation.get("slingshot")
+	if slingshot is Dictionary:
+		if not slingshot.get("object") is String or not ids.has(slingshot.object):
+			problems.append("manipulation.slingshot.object must be one of the manipulation objects")
+		var angle_step: Variant = slingshot.get("angle_step", 15.0)
+		if not (angle_step is float or angle_step is int) or angle_step <= 0.0:
+			problems.append("manipulation.slingshot.angle_step must be a number > 0")
 	return problems
 
 

@@ -92,6 +92,7 @@
       { "id": "ball", "surface": "launch", "snap": 0.5, "height": { "max": 3.0, "step": 0.25 } },
       { "id": "arrow", "surface": "arrow", "snap": 0.0, "height": false }
     ],
-    "demo_action": "release"
+    "demo_action": "release",
+    "slingshot": { "object": "ball", "angle_step": 5.0 }
   }
 }

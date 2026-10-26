@@ -86,6 +86,7 @@ var _judged_run := false              # this attempt earned its stamp (cleared b
 var _mission_strip: HBoxContainer = null
 var _stamp_labels: Array = []
 var _mission_text: Label = null
+var _series_hidden := false           # the graph's hidden_series_until_end lines were left out last time
 var _asking := false                  # Dugi's question is open (his box held, the picture buttons)
 var _question := ""
 var _choices: HBoxContainer = null    # the two picture buttons while asking
@@ -120,6 +121,8 @@ func _ready() -> void:
 	_build_view_overlays()
 	_build_sidebar()
 	experiment = ExperimentRegistry.instantiate(definition)
+	# A game round draws no answer preview before the run (Experiment.answer_preview: visual only).
+	experiment.answer_preview = MissionTracker.missions(definition).is_empty()
 	experiment.state_changed.connect(_on_state_changed)
 	experiment.impact.connect(view.rig.nudge)
 	experiment.close_up.connect(func(spec: Dictionary) -> void: view.rig.focus(spec))
@@ -1214,9 +1217,18 @@ func _update_readouts(force_graph: bool) -> void:
 		if key != null and key.text != text:
 			key.text = text
 	var revision := experiment.graph_revision()
-	if force_graph or revision < 0 or revision != _graph_revision:
+	var series_hidden := _missions != null and not MissionTracker.result_in(definition, experiment.status(), values)
+	if force_graph or revision < 0 or revision != _graph_revision or series_hidden != _series_hidden:
 		_graph_revision = revision
-		_graph.set_data(experiment.graph_series())
+		_series_hidden = series_hidden
+		var series := experiment.graph_series()
+		if series_hidden:
+			# The formula's answer as a line (missions.hidden_series_until_end): drawn once the run has
+			# its result, like the hidden values.
+			for id in MissionTracker.missions(definition).get("hidden_series_until_end", []):
+				if series.has(id):
+					series[id] = PackedVector2Array()
+		_graph.set_data(series)
 
 
 func _on_mode_changed(mode: String) -> void:

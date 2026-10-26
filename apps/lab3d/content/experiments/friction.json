@@ -58,6 +58,7 @@
     "judge_on": ["sliding"],
     "reveal_on": ["sliding", "end"],
     "hidden_until_end": ["max_static", "kinetic"],
+    "hidden_series_until_end": ["max_static"],
     "stages": [
       { "conditions": {"mass": "light"}, "text": "가벼운 상자 움직이기!" },
       { "conditions": {"mass": "normal"}, "text": "보통 상자 움직이기!" },

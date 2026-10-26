@@ -60,6 +60,9 @@
   "missions": {
     "observe": "speed",
     "judge_on": ["landed"],
+    "reveal_on": ["landed", "floating"],
+    "hidden_until_end": ["fall_time"],
+    "hidden_series_until_end": ["yellow", "purple", "red"],
     "stages": [
       { "threshold": 10.0, "text": "빨간 공을 10 m/s보다 빠르게 떨어뜨리기!" },
       { "threshold": 12.0, "text": "빨간 공을 12 m/s보다 빠르게 떨어뜨리기!" },

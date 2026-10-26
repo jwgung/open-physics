@@ -52,6 +52,7 @@
     "judge_on": ["floating"],
     "reveal_on": ["floating", "sunk", "staying"],
     "hidden_until_end": ["judgement", "density", "floating_depth"],
+    "hidden_series_until_end": ["floating"],
     "stages": [
       { "conditions": {"mass": {"min": 75.0}}, "text": "70 kg보다 무거운 통 띄우기!" },
       { "conditions": {"mass": {"min": 95.0}}, "text": "90 kg보다 무거운 통 띄우기!" },

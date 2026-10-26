@@ -54,7 +54,8 @@
     "observe": "acceleration",
     "judge_on": ["sliding", "left"],
     "reveal_on": ["holding", "sliding", "left"],
-    "hidden_until_end": ["acceleration"],
+    "hidden_until_end": ["acceleration", "critical_angle", "tangential", "max_static"],
+    "hidden_series_until_end": ["formula"],
     "stages": [
       { "threshold": 1.0, "text": "가속도 1 m/s²보다 빠르게 미끄러지기!" },
       { "threshold": 2.0, "text": "가속도 2 m/s²보다 빠르게 미끄러지기!" },

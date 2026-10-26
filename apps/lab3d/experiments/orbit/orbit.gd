@@ -4,7 +4,9 @@
 ## 0.1 m/s and 5 deg steps, also sliders) and the start radius (the planet is dragged along the line
 ## east of the star, 0.5 m grid, 2-5 m). "원 궤도 속력" sets the circular speed sqrt(GM / r).
 ## Before the launch the panel and the dotted path show the web's prediction (OrbitChallenge: crash,
-## orbit or escape, with the circular and escape speeds); "발사" launches.
+## orbit or escape, with the circular and escape speeds); "발사" launches. In a game round
+## (answer_preview false) the path and the dashed circle appear only once the planet is launched:
+## the path's colour would answer Dugi's question ("더 세게 쏘면 별을 떠날까?") before the run.
 ## Motion and every displayed number: OrbitModel (the web's PointGravityField, GM = 27 m^3/s^2,
 ## 8 velocity Verlet substeps per fixed step). BodyModelDriver poses the engine planet on it every
 ## step (method "kinematic_model"): the panel has no engine measurement.
@@ -112,13 +114,16 @@ func _load_model() -> void:
 	prediction = analyze(start_radius, v[0], v[1])
 
 
-## The planet waits at its start with the launch arrow; the prediction is shown.
+## The planet waits at its start with the launch arrow; the prediction is shown (not in a game
+## round: it shows at the launch).
 func reset_run() -> void:
 	if planet == null:
 		return
 	_clear_run()
-	props.set_guide(start_radius)
-	props.set_path(prediction.path, prediction.outcome)
+	if answer_preview:
+		_show_prediction(start_radius, prediction)
+	else:
+		props.hide_prediction()
 	props.reset()
 	_preview.clear()
 	_show_waiting()
@@ -126,7 +131,15 @@ func reset_run() -> void:
 
 
 func _notify_released() -> void:
+	if not answer_preview:
+		_show_prediction(start_radius, prediction)
 	props.launched()
+
+
+## The dashed circular-orbit guide at `radius` and the predicted path of `analysis`.
+func _show_prediction(radius: float, analysis: Dictionary) -> void:
+	props.set_guide(radius)
+	props.set_path(analysis.path, analysis.outcome)
 
 
 func _physics_process(_delta: float) -> void:
@@ -178,7 +191,7 @@ func _show_waiting() -> void:
 		knob.global_position = Vector3(at.x + tip.x, ORBIT_Y, at.z + tip.y)
 	var v := launch_velocity(chosen[0], chosen[1])
 	props.show_velocity(at, v[0], v[1], _arrow_length(chosen[1]))
-	if holding == "":
+	if holding == "" or not answer_preview:
 		return
 	var radius := radius_at(at.x)
 	if _preview.size() == 3 and _preview[0] == chosen[0] and _preview[1] == chosen[1] and _preview[2] == radius:
@@ -187,9 +200,7 @@ func _show_waiting() -> void:
 	_preview[0] = chosen[0]
 	_preview[1] = chosen[1]
 	_preview[2] = radius
-	var preview := analyze(radius, v[0], v[1])
-	props.set_guide(radius)
-	props.set_path(preview.path, preview.outcome)
+	_show_prediction(radius, analyze(radius, v[0], v[1]))
 
 
 ## PhysicsLaws.orbit_analyze of a launch from (radius, 0) with (vx, vz), the last one remembered: the
@@ -216,7 +227,7 @@ func status() -> String:
 
 func observations() -> Dictionary:
 	var state_text: String = {
-		"ready": "발사 전 · 예상 길을 먼저 봐요",
+		"ready": "발사 전",
 		"held": "바꾸는 중",
 		"orbiting": "별 둘레를 도는 중",
 		"leaving": "별에서 멀어지는 중",

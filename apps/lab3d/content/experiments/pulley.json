@@ -53,6 +53,7 @@
     "compare": "less",
     "judge_on": ["held", "top"],
     "hidden_until_end": ["required", "applied"],
+    "hidden_series_until_end": ["required"],
     "stages": [
       { "threshold": 150.0, "conditions": {"mass": 20.0}, "text": "20 kg 짐을 150 N보다 작은 힘으로 들기!" },
       { "threshold": 100.0, "conditions": {"mass": 20.0}, "text": "20 kg 짐을 100 N보다 작은 힘으로 들기!" },

@@ -182,7 +182,21 @@ static func validate(definition: Dictionary) -> PackedStringArray:
 	problems.append_array(_validate_manipulation(definition.get("manipulation"), definition.actions))
 	problems.append_array(_validate_cast(definition.get("cast")))
 	problems.append_array(_validate_missions(definition.get("missions"), definition.observations, definition.controls))
+	problems.append_array(_validate_series(definition.get("missions"), graph.get("series", [])))
 	problems.append_array(_validate_predict(definition.get("predict")))
+	return problems
+
+
+## `missions.hidden_series_until_end` (optional): graph series ids drawn only once the run has its
+## result (the formula's answer as a line: the projectile's y(t), the friction limit).
+static func _validate_series(missions: Variant, series: Array) -> PackedStringArray:
+	var problems := PackedStringArray()
+	if not missions is Dictionary or not missions.has("hidden_series_until_end"):
+		return problems
+	var ids := series.map(func(s: Dictionary) -> Variant: return s.get("id"))
+	var hidden: Variant = missions.hidden_series_until_end
+	if not (hidden is Array and hidden.all(func(id: Variant) -> bool: return id is String and id in ids)):
+		problems.append("missions.hidden_series_until_end must list graph series ids")
 	return problems
 
 
@@ -190,12 +204,13 @@ static func validate(definition: Dictionary) -> PackedStringArray:
 ## {"stages": [{"text": <non-empty>, "threshold"?: <number > 0>, "conditions"?: {...}}, ...],
 ##  "observe"?: <an observation id>, "compare"?: "greater" | "less",
 ##  "judge_on"?: [<status>, ...], "reveal_on"?: [<status>, ...],
-##  "hidden_until_end"?: [<observation id>, ...]}.
+##  "hidden_until_end"?: [<observation id>, ...], "hidden_series_until_end"?: [<graph series id>, ...]}.
 ## With `observe` every stage has its threshold; without it a stage is a state goal (no threshold).
 ## A stage's `conditions` name the definition's controls: a choice wants one of its option ids, a
 ## slider a number or a {"min"?, "max"?} range inside its min..max. The tracker only reads (it never
-## changes the run). The hidden_until_end values (the formula's answer) read "?" until the run has
-## its result, so the round is not given away.
+## changes the run). The hidden_until_end values (the formula's answer) read "?" and the
+## hidden_series_until_end lines are not drawn until the run has its result, so the round is not
+## given away.
 static func _validate_missions(missions: Variant, observations: Array, controls: Array = []) -> PackedStringArray:
 	var problems := PackedStringArray()
 	if missions == null:

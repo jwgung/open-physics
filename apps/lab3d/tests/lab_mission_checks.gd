@@ -4,7 +4,8 @@
 ## handle: the push force, the lever's pressed cells, the pulley's stroke): an attempt that misses
 ## its stage (short, or made under other conditions) earns nothing; each stage is reachable inside
 ## the lab's control ranges and earns exactly one stamp (the same attempt never earns a second one,
-## even when it also beats the next stage). The hidden answers read "?" until the run has its result.
+## even when it also beats the next stage). The hidden answers read "?" and the hidden graph lines
+## are not drawn until the run has its result; the orbit draws no predicted path before its launch.
 ## Physics invariance: the same script on a screen without the missions / predict blocks gives the
 ## same formula values, statuses and engine bodies at every physics step. The prediction pictures
 ## of every kind draw.
@@ -121,8 +122,15 @@ func check_round(id: String) -> void:
 	for observation in lab.definition.observations:
 		if observation.id in missions.get("hidden_until_end", []):
 			hidden_ok = hidden_ok and screen._observation_labels[observation.id].text == ExperimentScreen.hidden_observation(observation)
+	screen._update_readouts(true)
+	for series_id in missions.get("hidden_series_until_end", []):
+		hidden_ok = hidden_ok and (screen._graph.series.get(series_id, PackedVector2Array()) as PackedVector2Array).is_empty()
+	if id == "orbit":
+		var props: OrbitProps = lab.props
+		hidden_ok = hidden_ok and props.path.multimesh.visible_instance_count == 0 and props.guide.multimesh.visible_instance_count == 0
 	expect.call(hidden_ok and screen._missions != null and screen._asking,
-		"%s: the round opens with Dugi's question; the hidden answers read ?" % id, str(missions.get("hidden_until_end", [])))
+		"%s: the round opens with Dugi's question; the hidden answers read ? and no answer line or path is drawn" % id,
+		"%s %s" % [str(missions.get("hidden_until_end", [])), str(missions.get("hidden_series_until_end", []))])
 	var problems := []
 	for attempt in ROUNDS[id]:
 		var before := ProgressStore.stamps(ProgressStore.load(), id)
@@ -141,6 +149,12 @@ func check_round(id: String) -> void:
 					if observation.id in missions.get("hidden_until_end", []) \
 							and screen._observation_labels[observation.id].text == ExperimentScreen.hidden_observation(observation):
 						problems.append("%s: %s still hidden after the stamp" % [attempt[0], observation.id])
+				var lines: Dictionary = lab.graph_series()
+				for series_id in missions.get("hidden_series_until_end", []):
+					if screen._graph.series.get(series_id) != lines.get(series_id):
+						problems.append("%s: the %s line still hidden after the stamp" % [attempt[0], series_id])
+				if id == "orbit" and (lab.props as OrbitProps).path.multimesh.visible_instance_count == 0:
+					problems.append("%s: no orbit path after the launch" % attempt[0])
 			if stamped_at >= 0 and k >= stamped_at + AFTER_STAMP:
 				break
 		var stored := ProgressStore.stamps(ProgressStore.load(), id)

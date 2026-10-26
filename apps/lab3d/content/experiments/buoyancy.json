@@ -54,9 +54,9 @@
     "hidden_until_end": ["judgement", "density", "floating_depth"],
     "hidden_series_until_end": ["floating"],
     "stages": [
-      { "conditions": {"mass": {"min": 75.0}}, "text": "70 kg보다 무거운 통 띄우기!" },
-      { "conditions": {"mass": {"min": 95.0}}, "text": "90 kg보다 무거운 통 띄우기!" },
-      { "conditions": {"volume": "small", "mass": {"min": 45.0}}, "text": "작은 통을 40 kg보다 무겁게 띄우기!" }
+      { "conditions": {"volume": "big", "mass": 80.0}, "text": "80킬로그램 통도 둥둥 띄우기!" },
+      { "conditions": {"volume": "big", "mass": 95.0}, "text": "95킬로그램 통도 둥둥 띄우기!" },
+      { "conditions": {"volume": "small", "mass": 45.0}, "text": "작은 통을 45킬로그램으로 띄우기!" }
     ]
   },
   "cast": {

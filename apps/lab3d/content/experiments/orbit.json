@@ -55,9 +55,9 @@
     "reveal_on": ["orbiting", "leaving", "crash", "far"],
     "hidden_until_end": ["predicted", "escape_speed"],
     "stages": [
-      { "threshold": 0.5, "conditions": {"radius": 4.0}, "text": "별에서 4 m 떨어져 반 바퀴 돌기!" },
-      { "threshold": 1.0, "conditions": {"radius": 5.0}, "text": "별에서 5 m 떨어져 한 바퀴 돌기!" },
-      { "threshold": 2.0, "conditions": {"radius": 2.0}, "text": "별 가까이 2 m에서 두 바퀴 돌기!" }
+      { "threshold": 0.5, "conditions": {"radius": 4.0}, "text": "별에서 4미터 떨어져 반 바퀴 돌기!" },
+      { "threshold": 1.0, "conditions": {"radius": 5.0}, "text": "별에서 5미터 떨어져 한 바퀴 돌기!" },
+      { "threshold": 2.0, "conditions": {"radius": 2.0}, "text": "별 가까이 2미터에서 두 바퀴 돌기!" }
     ]
   },
   "cast": {

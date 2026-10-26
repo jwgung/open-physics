@@ -60,9 +60,9 @@
     "hidden_until_end": ["max_static", "kinetic"],
     "hidden_series_until_end": ["max_static"],
     "stages": [
-      { "conditions": {"mass": "light"}, "text": "가벼운 상자 움직이기!" },
-      { "conditions": {"mass": "normal"}, "text": "보통 상자 움직이기!" },
-      { "conditions": {"mass": "heavy"}, "text": "무거운 상자 움직이기!" }
+      { "conditions": {"mass": "light"}, "text": "가벼운 상자를 밀어 움직이기!" },
+      { "conditions": {"mass": "normal"}, "text": "보통 상자를 밀어 움직이기!" },
+      { "conditions": {"mass": "heavy"}, "text": "무거운 상자도 밀어 움직이기!" }
     ]
   },
   "cast": {

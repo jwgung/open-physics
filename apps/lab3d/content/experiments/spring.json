@@ -52,9 +52,9 @@
     "observe": "pull",
     "judge_on": ["moving", "rest"],
     "stages": [
-      { "threshold": 1.5, "text": "용수철을 1.5 m보다 늘였다 놓기!" },
-      { "threshold": 2.0, "text": "용수철을 2 m보다 늘였다 놓기!" },
-      { "threshold": 2.4, "text": "용수철을 2.4 m보다 늘였다 놓기!" }
+      { "threshold": 1.5, "conditions": {"mass": {"min": 2.5}}, "text": "무거운 공을 1.5미터 넘게 당기기!" },
+      { "threshold": 2.0, "conditions": {"mass": {"max": 1.0}}, "text": "가벼운 공을 2미터 넘게 당기기!" },
+      { "threshold": 2.4, "conditions": {"mass": {"min": 2.5}}, "text": "무거운 공을 끝까지 당겼다 놓기!" }
     ]
   },
   "cast": {

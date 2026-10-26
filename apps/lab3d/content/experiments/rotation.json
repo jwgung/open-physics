@@ -55,9 +55,9 @@
     "hidden_until_end": ["required", "advantage", "load_torque", "net_torque"],
     "hidden_series_until_end": ["required"],
     "stages": [
-      { "threshold": 150.0, "conditions": {"mass": 20.0}, "text": "20 kg 짐을 150 N보다 작은 힘으로 들기!" },
-      { "threshold": 100.0, "conditions": {"mass": 20.0}, "text": "20 kg 짐을 100 N보다 작은 힘으로 들기!" },
-      { "threshold": 60.0, "conditions": {"mass": 20.0}, "text": "20 kg 짐을 60 N보다 작은 힘으로 들기!" }
+      { "threshold": 350.0, "conditions": {"mass": 20.0, "effort": "near"}, "text": "손잡이를 가까이 잡고 짐 들기!" },
+      { "threshold": 200.0, "conditions": {"mass": 20.0, "effort": "mid"}, "text": "손잡이를 중간에 잡고 짐 들기!" },
+      { "threshold": 130.0, "conditions": {"mass": 20.0, "effort": "far"}, "text": "손잡이를 멀리 잡고 살살 들기!" }
     ]
   },
   "cast": {

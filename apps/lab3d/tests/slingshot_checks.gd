@@ -213,12 +213,13 @@ func check_trail_and_next_shot() -> void:
 	await _free(screen)
 
 
-## A pull that lands the ball past 3 m earns one stamp (the formula range; one throw, one stage).
+## A gentle pull (살살: the first stage's speed band) that lands the ball past 3 m earns one stamp
+## (the formula range; one throw, one stage).
 func check_mission_stamp_from_formula() -> void:
 	DirAccess.remove_absolute(ProgressStore.path)
 	var screen := await _lab()
 	var lab: Experiment = screen.experiment
-	await _throw(screen, lab, Vector2(-90.0, 70.0))
+	await _throw(screen, lab, Vector2(-55.0, 43.0))
 	for i in 60:
 		await tree.physics_frame
 		if lab.released:
@@ -226,8 +227,9 @@ func check_mission_stamp_from_formula() -> void:
 	var thrown_range: float = lab.flight_range()
 	await _run_to_end(lab)
 	var stamps := ProgressStore.stamps(ProgressStore.load(), "projectile")
-	expect.call(is_finite(thrown_range) and thrown_range > 3.0 and stamps == 1,
-		"slingshot: a throw past 3 m (formula range) earns one stamp", "range %s stamps %d" % [str(thrown_range), stamps])
+	expect.call(is_finite(thrown_range) and thrown_range > 3.0 and lab.speed <= 6.0 and stamps == 1,
+		"slingshot: a gentle throw (up to 6 m/s) past 3 m (formula range) earns one stamp",
+		"range %s, %.1f m/s, stamps %d" % [str(thrown_range), lab.speed, stamps])
 	DirAccess.remove_absolute(ProgressStore.path)
 	await _free(screen)
 

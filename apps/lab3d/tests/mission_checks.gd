@@ -28,8 +28,8 @@ func run() -> void:
 # --- content --------------------------------------------------------------------------------------
 
 ## The projectile's mission and predict blocks (Plan: one predict question, two pictures, the
-## reason matched to R = v0^2 sin2θ / g; the three thresholds inside the earth default-height
-## maximum of ~8.7 m).
+## reason matched to R = v0^2 sin2θ / g; the three thresholds inside the earth default-height maximum of ~8.7 m, each
+## stage thrown in its own speed band so the same throw never earns the next stamp).
 func check_content() -> void:
 	var definition := ExperimentRegistry.find("projectile")
 	expect.call(definition.has("missions") and definition.has("predict"), "projectile: has the missions and predict blocks", "")
@@ -39,6 +39,9 @@ func check_content() -> void:
 	var thresholds := (missions.stages as Array).map(func(s: Dictionary) -> Variant: return s.threshold)
 	expect.call(thresholds == [3.0, 5.0, 7.0] and thresholds.all(func(t: Variant) -> bool: return t <= 8.7),
 		"missions: 3 m -> 5 m -> 7 m, all inside the earth default-height maximum (~8.7 m)", str(thresholds))
+	var bands := (missions.stages as Array).map(func(s: Dictionary) -> Variant: return s.conditions)
+	expect.call(bands == [{"speed": {"max": 6.0}}, {"speed": {"min": 6.5, "max": 7.5}}, {"speed": {"min": 8.0}}],
+		"missions: 살살 (up to 6 m/s) -> 조금 세게 (6.5-7.5 m/s) -> 아주 세게 (8 m/s and up)", str(bands))
 	for stage in missions.stages:
 		expect.call(stage.text != "", "missions: every stage has its text", str(stage.get("threshold")))
 	var predict: Dictionary = definition.predict
@@ -142,8 +145,8 @@ func check_mission_tracker() -> void:
 		store["projectile"] = stamps
 		ProgressStore.save(store)
 	var stubs := [
-		["settled", "extends Experiment\nvar stamps := 0\nfunc status() -> String:\n\treturn \"landed\"\nfunc settled() -> bool:\n\treturn true\n"],
-		["not_settled", "extends Experiment\nvar stamps := 0\nfunc status() -> String:\n\treturn \"landed\"\nfunc settled() -> bool:\n\treturn false\n"],
+		["settled", "extends Experiment\nvar speed := 6.0\nfunc status() -> String:\n\treturn \"landed\"\nfunc settled() -> bool:\n\treturn true\nfunc control_value(_id: String) -> Variant:\n\treturn speed\n"],
+		["not_settled", "extends Experiment\nvar speed := 6.0\nfunc status() -> String:\n\treturn \"landed\"\nfunc settled() -> bool:\n\treturn false\nfunc control_value(_id: String) -> Variant:\n\treturn speed\n"],
 	]
 	var labs := {}
 	for stub in stubs:
@@ -153,7 +156,8 @@ func check_mission_tracker() -> void:
 		var lab = script.new()
 		tree.root.add_child(lab)
 		labs[stub[0]] = lab
-	expect.call(tracker.stage() == 0 and tracker.text() == "3 m보다 멀리 보내기!", "the first stage is 3 m", tracker.text())
+	var stages: Array = definition.missions.stages
+	expect.call(tracker.stage() == 0 and tracker.text() == stages[0].text, "the first stage is 3 m", tracker.text())
 	tracker.on_run_ended("flying", labs.settled, {"range": 4.0})
 	expect.call(tracker.stage() == 0 and awarded.is_empty(), "a throw in flight is not judged", str(awarded))
 	tracker.on_run_ended("landed", labs.settled, {"range": 2.9})
@@ -166,12 +170,24 @@ func check_mission_tracker() -> void:
 	expect.call(tracker.stage() == 0 and awarded.is_empty(), "a landing the engine has not finished is not judged yet", str(awarded))
 	tracker.on_run_ended("landed", labs.settled, {"range": 3.0})
 	expect.call(tracker.stage() == 0 and awarded.is_empty(), "exactly at the threshold is not farther", str(awarded))
+	labs.settled.speed = 6.5
+	tracker.on_run_ended("landed", labs.settled, {"range": 4.76})
+	expect.call(tracker.stage() == 0 and awarded.is_empty(), "a throw past 3 m but not 살살 (6.5 m/s) is not the first stage", str(awarded))
+	labs.settled.speed = 6.0
 	tracker.on_run_ended("landed", labs.settled, {"range": 3.42})
 	await tree.process_frame
-	expect.call(tracker.stage() == 1 and tracker.text() == "5 m보다 멀리 보내기!" and awarded == [["projectile", 1]],
-		"farther than 3 m clears the first stage (one stamp)", "%d stage, %s" % [tracker.stage(), str(awarded)])
+	expect.call(tracker.stage() == 1 and tracker.text() == stages[1].text and awarded == [["projectile", 1]],
+		"farther than 3 m, thrown 살살, clears the first stage (one stamp)", "%d stage, %s" % [tracker.stage(), str(awarded)])
+	tracker.on_run_ended("landed", labs.settled, {"range": 6.1})
+	expect.call(tracker.stage() == 1 and awarded == [["projectile", 1]],
+		"the same setup again (6 m/s) earns no second stamp, even past 5 m", str(awarded))
+	labs.settled.speed = 7.5
 	tracker.on_run_ended("landed", labs.settled, {"range": 6.1})
 	await tree.process_frame
+	tracker.on_run_ended("landed", labs.settled, {"range": 7.71})
+	expect.call(tracker.stage() == 2 and awarded.size() == 2,
+		"the second stage's setup (7.5 m/s) does not clear the third stage, however far", str(awarded))
+	labs.settled.speed = 9.0
 	tracker.on_run_ended("landed", labs.settled, {"range": 7.71})
 	await tree.process_frame
 	expect.call(tracker.stage() == -1 and tracker.text() == "" and awarded == [["projectile", 1], ["projectile", 2], ["projectile", 3]],
@@ -370,8 +386,9 @@ func check_physics_unchanged() -> void:
 	var values: Dictionary = pulled[2]
 	expect.call(values.range is float and float(values.range) > 7.0 and pulled[1].has("landed"),
 		"the 40° 8.5 m/s throw lands past 7 m (formula range %s)" % str(values.range), str(pulled[1]))
-	# Each game screen judged its own landing (one throw, one stage): two stamps; the plain one none.
-	expect.call(ProgressStore.load().get("projectile", 0) == 2,
-		"the game screens' landings earned one stamp each; the plain screen judged nothing",
+	# The 8.5 m/s throws are 아주 세게, not the first stage's 살살 (up to 6 m/s): no stamp anywhere
+	# (game_round_checks earns them stage by stage).
+	expect.call(ProgressStore.load().get("projectile", 0) == 0,
+		"the game screens' 8.5 m/s throws are not the first stage (살살, up to 6 m/s): no stamp; the plain screen judged nothing",
 		"stored %s" % str(ProgressStore.load()))
 	DirAccess.remove_absolute(ProgressStore.path)

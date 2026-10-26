@@ -389,6 +389,8 @@ func check_projectile_explains() -> void:
 	var screen := await _open("projectile", TABLET)
 	var lab: Experiment = screen.experiment
 	var cast: IslandCast = screen.cast
+	screen._end_question()        # the prediction round is not under test here (game_round_checks):
+	screen._reason_pending = ""   # no question, and no reason told first
 	screen.experiment_action("release")
 	var guard := 0
 	while not cast.dugi.speaking() and guard < 600:

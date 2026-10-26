@@ -62,9 +62,9 @@
     "judge_on": ["swinging"],
     "hidden_until_end": ["small_period"],
     "stages": [
-      { "threshold": 3.0, "text": "줄 진자 한 번 왕복을 3초보다 길게!" },
-      { "threshold": 3.5, "text": "줄 진자 한 번 왕복을 3.5초보다 길게!" },
-      { "threshold": 4.0, "text": "줄 진자 한 번 왕복을 4초보다 길게!" }
+      { "threshold": 3.0, "conditions": {"gravity": "earth", "length": {"min": 2.25}}, "text": "줄을 길게 해서 천천히 흔들기!" },
+      { "threshold": 8.0, "conditions": {"gravity": "moon", "length": {"min": 2.75}}, "text": "달에서 긴 줄로 흔들기!" },
+      { "threshold": 4.0, "conditions": {"gravity": "moon", "length": {"max": 1.5}}, "text": "달에서 짧은 줄로 흔들기!" }
     ]
   },
   "cast": {

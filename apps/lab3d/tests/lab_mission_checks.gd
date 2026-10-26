@@ -3,9 +3,10 @@
 ## ball let go where a finger would put it, and the labs' existing test hooks for the hand on a
 ## handle: the push force, the lever's pressed cells, the pulley's stroke): an attempt that misses
 ## its stage (short, or made under other conditions) earns nothing; each stage is reachable inside
-## the lab's control ranges and earns exactly one stamp (the same attempt never earns a second one,
-## even when it also beats the next stage). The hidden answers read "?" and the hidden graph lines
-## are not drawn until the run has its result; the orbit draws no predicted path before its launch.
+## the lab's control ranges and earns exactly one stamp; the setup that cleared a stage, tried again
+## unchanged, never earns the next one (each stage asks for a changed condition: check_conditions
+## for every lab). The hidden answers read "?" and the hidden graph lines are not drawn until the
+## run has its result; the orbit draws no predicted path before its launch.
 ## Physics invariance: the same script on a screen without the missions / predict blocks gives the
 ## same formula values, statuses and engine bodies at every physics step. The prediction pictures
 ## of every kind draw.
@@ -25,73 +26,86 @@ const AFTER_STAMP := 40          # frames an attempt runs on after its stamp (no
 const ROUNDS := {
 	"free-fall": [
 		["5 m on the earth: 9.9 m/s, not past 10", [["act", "release"]], 240, 0],
-		["8 m: 12.5 m/s (past 10 and 12: one stamp)", [["ctl", "height", 8.0], ["act", "release"]], 300, 1],
-		["8 m again: past 12", [["act", "release"]], 300, 2],
-		["8 m: 12.5 m/s, not past 15", [["act", "release"]], 300, 2],
-		["Jupiter, 5 m: 15.7 m/s", [["ctl", "gravity", "jupiter"], ["ctl", "height", 5.0], ["act", "release"]], 240, 3],
+		["8 m on the earth: 12.5 m/s", [["ctl", "height", 8.0], ["act", "release"]], 300, 1],
+		["8 m on the earth again: the same setup earns nothing", [["act", "release"]], 300, 1],
+		["the moon, 7.5 m: 4.9 m/s, not past 5", [["ctl", "gravity", "moon"], ["ctl", "height", 7.5], ["act", "release"]], 360, 1],
+		["the moon, 8 m: 5.09 m/s", [["ctl", "height", 8.0], ["act", "release"]], 360, 2],
+		["Jupiter, 4.5 m: 14.9 m/s, not past 15", [["ctl", "gravity", "jupiter"], ["ctl", "height", 4.5], ["act", "release"]], 240, 2],
+		["Jupiter, 5 m: 15.7 m/s", [["ctl", "height", 5.0], ["act", "release"]], 240, 3],
 	],
 	"collision": [
-		["the start conditions: B leaves at 1.5 m/s", [["act", "release"]], 600, 0],
-		["A at 9 m/s: B at 5.0 m/s (past 2 and 4: one stamp)", [["ctl", "velocity_a", 9.0], ["act", "release"]], 600, 1],
-		["again: past 4", [["act", "release"]], 600, 2],
-		["again: 5.0 m/s, not past 6", [["act", "release"]], 600, 2],
-		["a 10 kg A: B at 15 m/s", [["ctl", "mass_a", 10.0], ["act", "release"]], 600, 3],
+		["the start conditions (B is 2 kg): not the two 1 kg balls", [["act", "release"]], 600, 0],
+		["two 1 kg balls: B at 2.5 m/s", [["ctl", "mass_b", 1.0], ["act", "release"]], 600, 1],
+		["the same two balls again: nothing", [["act", "release"]], 600, 1],
+		["a 10 kg A on the 1 kg B: 5.6 m/s", [["ctl", "mass_a", 10.0], ["act", "release"]], 600, 2],
+		["again (5.6 m/s, past 5): B is not the lightest, nothing", [["act", "release"]], 600, 2],
+		["the 0.5 kg B: 5.9 m/s", [["ctl", "mass_b", 0.5], ["act", "release"]], 600, 3],
 	],
 	"spring": [
 		["놓기 from the start pull 1.2 m", [["act", "release"]], 90, 0],
-		["let go at 2.5 m (past 1.5, 2 and 2.4: one stamp)", [["place", "ball", 2.5]], 90, 1],
-		["let go at 2.1 m: past 2", [["place", "ball", 2.1]], 90, 2],
-		["let go at 2.4 m: not past 2.4", [["place", "ball", 2.4]], 90, 2],
-		["let go at 2.5 m", [["place", "ball", 2.5]], 90, 3],
+		["the 1 kg ball let go at 2.5 m: not a heavy ball", [["place", "ball", 2.5]], 90, 0],
+		["a 3 kg ball let go at 2.5 m: past 1.5", [["ctl", "mass", 3.0], ["place", "ball", 2.5]], 90, 1],
+		["the 3 kg ball at 2.5 m again (past 2.4 too): nothing", [["place", "ball", 2.5]], 90, 1],
+		["the 1 kg ball at 2.1 m: past 2", [["ctl", "mass", 1.0], ["place", "ball", 2.1]], 90, 2],
+		["the 3 kg ball at 2.4 m: not past 2.4", [["ctl", "mass", 3.0], ["place", "ball", 2.4]], 90, 2],
+		["the 3 kg ball at 2.5 m", [["place", "ball", 2.5]], 90, 3],
 	],
 	"friction": [
 		["the 8 kg start box pushed loose: not the light box", [["force", 40.0]], 90, 0],
 		["the light box pushed loose", [["force", 0.0], ["ctl", "mass", "light"], ["force", 5.0]], 90, 1],
+		["the light box pushed again: nothing", [["force", 0.0], ["ctl", "mass", "light"], ["force", 5.0]], 90, 1],
 		["the normal box pushed loose", [["force", 0.0], ["ctl", "mass", "normal"], ["force", 10.0]], 90, 2],
 		["the heavy box held by friction (10 N < 11.8 N)", [["force", 0.0], ["ctl", "mass", "heavy"], ["force", 10.0]], 90, 2],
 		["the heavy box pushed loose (20 N)", [["force", 20.0]], 90, 3],
 	],
 	"rotation": [
-		["the middle point lifts with 186.9 N", [["cells", 50]], 20, 0],
-		["the far point: 124.6 N", [["cells", 0], ["ctl", "effort", "far"], ["cells", 50]], 20, 1],
-		["the load 1.5 m from the fulcrum: 93.4 N", [["cells", 0], ["layout", -0.5, -2.0], ["cells", 50]], 20, 2],
-		["a 1 kg load close in: not the 20 kg load", [["cells", 0], ["layout", -0.5, -1.25], ["ctl", "mass", 1.0], ["cells", 50]], 20, 2],
-		["the 20 kg load 0.75 m from the fulcrum: 46.7 N", [["cells", 0], ["ctl", "mass", 20.0], ["cells", 50]], 20, 3],
+		["the middle point lifts with 186.9 N: not the near point", [["cells", 50]], 20, 0],
+		["the near point: 320.3 N", [["cells", 0], ["ctl", "effort", "near"], ["cells", 50]], 20, 1],
+		["the near point again: nothing", [["cells", 0], ["ctl", "effort", "near"], ["cells", 50]], 20, 1],
+		["the middle point, a 1 kg load: not the 20 kg load", [["cells", 0], ["ctl", "effort", "mid"], ["ctl", "mass", 1.0], ["cells", 50]], 20, 1],
+		["the middle point, 20 kg: 186.9 N", [["cells", 0], ["ctl", "mass", 20.0], ["cells", 50]], 20, 2],
+		["the far point: 124.6 N", [["cells", 0], ["ctl", "effort", "far"], ["cells", 50]], 20, 3],
 	],
 	"orbit": [
 		["the start (3 m): a circle, not from 4 m", [["act", "launch"]], 300, 0],
 		["from 4 m at 3 m/s: half a lap", [["ctl", "radius", 4.0], ["act", "launch"]], 700, 1],
+		["from 4 m again: nothing", [["act", "launch"]], 700, 1],
 		["from 5 m at the circular speed: one lap", [["ctl", "radius", 5.0], ["act", "circular"], ["act", "launch"]], 1000, 2],
 		["from 2 m at 3 m/s: it hits the star", [["ctl", "radius", 2.0], ["ctl", "speed", 3.0], ["act", "launch"]], 300, 2],
 		["from 2 m at the circular speed: two laps", [["act", "circular"], ["act", "launch"]], 600, 3],
 	],
 	"buoyancy": [
-		["70 kg floats: not heavier than 70", [["act", "release"]], 900, 0],
-		["95 kg floats (past 70 and 90: one stamp)", [["ctl", "mass", 95.0], ["act", "release"]], 1200, 1],
-		["95 kg again: past 90", [["act", "release"]], 1200, 2],
+		["70 kg floats: not the 80 kg drum", [["act", "release"]], 900, 0],
+		["80 kg floats", [["ctl", "mass", 80.0], ["act", "release"]], 1200, 1],
+		["80 kg again: nothing", [["act", "release"]], 1200, 1],
+		["95 kg floats", [["ctl", "mass", 95.0], ["act", "release"]], 1200, 2],
 		["50 kg in the small drum stays under (neutral)", [["ctl", "volume", "small"], ["ctl", "mass", 50.0], ["act", "release"]], 900, 2],
 		["45 kg in the small drum floats", [["ctl", "mass", 45.0], ["act", "release"]], 1200, 3],
 	],
 	"constraints": [
 		["L = 2 m on the earth: 2.9 s", [["act", "release"]], 330, 0],
-		["L = 3.5 m: 3.9 s (past 3 and 3.5: one stamp)", [["ctl", "length", 3.5], ["act", "release"]], 400, 1],
-		["L = 3.5 m again: past 3.5", [["act", "release"]], 400, 2],
-		["L = 3.5 m: 3.9 s, not past 4", [["act", "release"]], 400, 2],
-		["the moon, L = 1 m: 5 s", [["ctl", "gravity", "moon"], ["ctl", "length", 1.0], ["act", "release"]], 600, 3],
+		["L = 3.5 m on the earth: 3.9 s", [["ctl", "length", 3.5], ["act", "release"]], 400, 1],
+		["L = 3.5 m on the earth again: nothing", [["act", "release"]], 400, 1],
+		["the moon, L = 3.5 m: 9.6 s", [["ctl", "gravity", "moon"], ["act", "release"]], 1000, 2],
+		["the moon, L = 3.5 m again: nothing", [["act", "release"]], 1000, 2],
+		["the moon, L = 1 m: 5 s", [["ctl", "length", 1.0], ["act", "release"]], 400, 3],
 	],
 	"pulley": [
-		["one strand: 196.2 N", [["stroke", 20]], 20, 0],
-		["two strands: 98.1 N (past 150 only)", [["ctl", "strands", "two"], ["stroke", 20]], 20, 1],
-		["two strands, the next stroke: past 100", [["stroke", 20]], 20, 2],
-		["four strands, a 10 kg load: not the 20 kg load", [["ctl", "strands", "four"], ["ctl", "mass", 10.0], ["stroke", 20]], 20, 2],
-		["four strands, 20 kg: 49.05 N", [["ctl", "mass", 20.0], ["stroke", 20]], 20, 3],
+		["one strand, a 10 kg load: not the 20 kg load", [["ctl", "mass", 10.0], ["stroke", 20]], 20, 0],
+		["one strand, 20 kg: 196.2 N", [["ctl", "mass", 20.0], ["stroke", 20]], 20, 1],
+		["one strand, the next stroke: nothing", [["stroke", 20]], 20, 1],
+		["two strands: 98.1 N", [["ctl", "strands", "two"], ["stroke", 20]], 20, 2],
+		["two strands, the next stroke: nothing", [["stroke", 20]], 20, 2],
+		["four strands: 49.05 N", [["ctl", "strands", "four"], ["stroke", 20]], 20, 3],
 	],
 	"incline-friction": [
 		["20° on wood holds", [["act", "release"]], 90, 0],
-		["25°: 2.19 m/s² (past 1 and 2: one stamp)", [["ctl", "angle", 25.0], ["act", "release"]], 90, 1],
-		["25° again: past 2", [["act", "release"]], 90, 2],
-		["25°: 2.19 m/s², not past 3", [["act", "release"]], 90, 2],
-		["30°: 3.04 m/s²", [["ctl", "angle", 30.0], ["act", "release"]], 90, 3],
+		["25° on wood: 2.19 m/s², not the steel slope", [["ctl", "angle", 25.0], ["act", "release"]], 90, 0],
+		["steel at 25°: 3.43 m/s²", [["ctl", "material", "steel"], ["act", "release"]], 90, 1],
+		["steel at 25° again: nothing", [["act", "release"]], 90, 1],
+		["wood at 25°: 2.19 m/s²", [["ctl", "material", "wood"], ["act", "release"]], 90, 2],
+		["rubber at 35°: 2.25 m/s², not past 3", [["ctl", "material", "rubber"], ["ctl", "angle", 35.0], ["act", "release"]], 90, 2],
+		["rubber at 40°: 3.15 m/s²", [["ctl", "angle", 40.0], ["act", "release"]], 90, 3],
 	],
 }
 
@@ -102,11 +116,49 @@ func _init(scene_tree: SceneTree, expect_fn: Callable) -> void:
 
 
 func run() -> void:
+	check_conditions()
 	for id in ROUNDS:
 		await check_round(id)
 	for id in ROUNDS:
 		await check_physics_unchanged(id)
 	await check_pictures()
+
+
+# --- conditions -----------------------------------------------------------------------------------
+
+## Every lab with missions: no setup meets the conditions of stage n and of stage n + 1 at once (a
+## control both name, with values that cannot both hold), so repeating the run that cleared a stage
+## never clears the next one by itself.
+func check_conditions() -> void:
+	var shared := []
+	for definition in ExperimentRegistry.load_all():
+		var stages: Array = MissionTracker.missions(definition).get("stages", [])
+		for i in stages.size() - 1:
+			if not _disjoint(stages[i].get("conditions", {}), stages[i + 1].get("conditions", {})):
+				shared.append("%s %d-%d" % [definition.id, i + 1, i + 2])
+	expect.call(shared.is_empty(), "every lab: the next stage asks for another condition (no setup meets two stages in a row)", ", ".join(shared))
+
+
+## True when no control values meet both condition sets.
+static func _disjoint(a: Dictionary, b: Dictionary) -> bool:
+	for id in a:
+		if not b.has(id):
+			continue
+		if a[id] is String or b[id] is String:
+			if str(a[id]) != str(b[id]):
+				return true
+			continue
+		var ra := _range(a[id])
+		var rb := _range(b[id])
+		if ra.y < rb.x - MissionTracker.CONDITION_EPS or rb.y < ra.x - MissionTracker.CONDITION_EPS:
+			return true
+	return false
+
+
+static func _range(want: Variant) -> Vector2:
+	if want is Dictionary:
+		return Vector2(float(want.get("min", -INF)), float(want.get("max", INF)))
+	return Vector2(float(want), float(want))
 
 
 # --- the round ------------------------------------------------------------------------------------
@@ -222,9 +274,9 @@ func check_physics_unchanged(id: String) -> void:
 		if plain[0][k] != game[0][k]:
 			first = k
 			break
-	expect.call(first == -1 and plain[0].size() == game[0].size() and plain[0].size() > 30 and plain[1] == game[1] and game[2] == 1,
+	expect.call(first == -1 and plain[0].size() == game[0].size() and plain[0].size() > 30 and plain[1] == game[1] and game[2] == ROUNDS[id][1][3],
 		"%s: with or without the mission round, the formula values, statuses and engine bodies are the same at every step (and the panels after the run)" % id,
-		"first difference at step %d of %d; panels equal %s; game stamps %d" % [first, plain[0].size(), str(plain[1] == game[1]), game[2]])
+		"first difference at step %d of %d; panels equal %s; game stamps %d (want %d)" % [first, plain[0].size(), str(plain[1] == game[1]), game[2], ROUNDS[id][1][3]])
 	DirAccess.remove_absolute(ProgressStore.path)
 
 

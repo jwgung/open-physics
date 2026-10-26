@@ -57,9 +57,9 @@
     "hidden_until_end": ["acceleration", "critical_angle", "tangential", "max_static"],
     "hidden_series_until_end": ["formula"],
     "stages": [
-      { "threshold": 1.0, "text": "가속도 1 m/s²보다 빠르게 미끄러지기!" },
-      { "threshold": 2.0, "text": "가속도 2 m/s²보다 빠르게 미끄러지기!" },
-      { "threshold": 3.0, "text": "가속도 3 m/s²보다 빠르게 미끄러지기!" }
+      { "threshold": 1.0, "conditions": {"material": "steel"}, "text": "강철 미끄럼틀에서 상자 미끄러뜨리기!" },
+      { "threshold": 2.0, "conditions": {"material": "wood"}, "text": "나무 미끄럼틀을 더 기울여 쌩 내려가기!" },
+      { "threshold": 3.0, "conditions": {"material": "rubber"}, "text": "고무 미끄럼틀을 많이 기울여 쌩 내려가기!" }
     ]
   },
   "cast": {

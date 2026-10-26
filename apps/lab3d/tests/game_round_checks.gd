@@ -148,7 +148,8 @@ func check_late_settle() -> void:
 	var script := GDScript.new()
 	script.source_code = "extends Experiment\nvar now := \"landed\"\nvar done := false\n" \
 		+ "func status() -> String:\n\treturn now\nfunc settled() -> bool:\n\treturn done\n" \
-		+ "func observations() -> Dictionary:\n\treturn {\"range\": 4.2}\n"
+		+ "func observations() -> Dictionary:\n\treturn {\"range\": 4.2}\n" \
+		+ "func control_value(_id: String) -> Variant:\n\treturn 6.0\n"   # a 살살 throw (the first stage)
 	script.reload()
 	var stand_in: Experiment = script.new()
 	tree.root.add_child(stand_in)

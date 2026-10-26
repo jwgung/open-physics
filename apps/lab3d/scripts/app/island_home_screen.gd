@@ -40,26 +40,26 @@ const SPOT_RADIUS := 2.2             # m: how far a tap may be from a spot and s
 ## (friction), the playground (springs, rotation, pulley, constraints), the pond (buoyancy) and the
 ## lookout (orbit).
 const ZONES := {
-	"들판": {"at": [-4.5, 3.0], "color": "5fd04a", "spots": [
-		["projectile", [-6.5, 1.5]],
-		["collision", [-3.5, 0.5]],
-		["free-fall", [-5.0, 4.5]],
+	"들판": {"at": [-5.5, 3.5], "color": "5fd04a", "spots": [
+		["projectile", [-8.0, 1.5]],
+		["collision", [-4.0, 0.0]],
+		["free-fall", [-6.5, 5.5]],
 	]},
-	"언덕": {"at": [5.5, 4.0], "color": "c98a4b", "spots": [
-		["incline-friction", [4.0, 3.0]],
-		["friction", [7.0, 5.0]],
+	"언덕": {"at": [6.0, 4.5], "color": "c98a4b", "spots": [
+		["incline-friction", [4.5, 3.0]],
+		["friction", [8.0, 6.0]],
 	]},
-	"놀이터": {"at": [0.5, -4.5], "color": "ffd84a", "spots": [
-		["spring", [-1.0, -3.5]],
-		["rotation", [2.0, -3.5]],
-		["pulley", [0.0, -6.5]],
-		["constraints", [-3.0, -6.5]],
+	"놀이터": {"at": [0.5, -5.5], "color": "ffd84a", "spots": [
+		["spring", [-2.0, -4.0]],
+		["rotation", [3.0, -4.0]],
+		["pulley", [1.0, -8.0]],
+		["constraints", [-4.0, -8.0]],
 	]},
-	"연못": {"at": [-8.0, -3.0], "color": "8fd3ff", "spots": [
-		["buoyancy", [-8.0, -3.5]],
+	"연못": {"at": [-9.0, -3.5], "color": "8fd3ff", "spots": [
+		["buoyancy", [-9.0, -4.0]],
 	]},
-	"전망대": {"at": [8.0, -3.0], "color": "9479ff", "spots": [
-		["orbit", [8.5, -2.5]],
+	"전망대": {"at": [9.0, -3.5], "color": "9479ff", "spots": [
+		["orbit", [9.5, -3.0]],
 	]},
 }
 

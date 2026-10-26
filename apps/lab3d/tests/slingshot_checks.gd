@@ -59,6 +59,10 @@ func check_pull_is_reversed_and_clamped() -> void:
 	expect.call(value.x > 0.0 and value.x < 90.0 and is_equal_approx(fposmod(value.x, 5.0), 0.0)
 		and is_equal_approx(fposmod(value.y, 0.5), 0.0) and value.y >= 1.0 and value.y <= 9.0,
 		"slingshot: a pull down-left throws up-right, on the 5 deg / 0.5 m/s grids", str(value))
+	var hud_rect: Rect2 = screen._slingshot_hud.get_rect()
+	expect.call(hud_rect.size.x > hud_rect.size.y * 2.0 and not hud_rect.intersects(screen._key_row.get_rect())
+		and not hud_rect.intersects(screen._mission_text.get_rect()) and not hud_rect.intersects(screen._mission_strip.get_rect()),
+		"slingshot: the readout is one line, clear of the key cards and the mission strip", str(hud_rect))
 	var hud_text: String = screen._slingshot_hud.text
 	expect.call(hud_text.contains("%d°" % int(value.x)) and hud_text.contains(Ui.number(value.y, 1)),
 		"slingshot: the big readout shows the angle and the speed", hud_text)

@@ -45,6 +45,12 @@ func check_round() -> void:
 		and box.portrait.visible and box.name_label.text == "두기두기" and buttons.size() == 2 and screen._choices.visible,
 		"round: Dugi asks the prediction in his dialogue box with two picture buttons",
 		"asking %s box %s '%s' buttons %d" % [str(screen._asking), str(box.active), box.text, buttons.size()])
+	var strip_ok: bool = screen._stamp_labels.all(func(l: Label) -> bool: return l.size.x > 8.0) \
+		and screen._mission_strip.get_rect().end.x <= screen._mission_text.position.x
+	expect.call(strip_ok, "round: the stamps sit side by side, clear of the stage text", str(screen._mission_strip.get_rect()))
+	var ball_seen: bool = not screen._choices.get_rect().grow(8.0).has_point(screen.view_point(lab.ball_center())) \
+		and not screen._choices.get_rect().intersects(screen.dialogue.rects()[0])
+	expect.call(ball_seen, "round: the picture buttons leave the ball in sight and sit above Dugi's box", str(screen._choices.get_rect()))
 	var pictured := buttons.all(func(b: Button) -> bool:
 		return b.size.x >= screen.CHOICE_SIZE.x - 1.0 and b.find_children("*", "Label", true, false).size() == 1 and b.get_child(0).get_child(0) is Control)
 	expect.call(pictured, "round: each choice is a big button with a picture and a label", "")

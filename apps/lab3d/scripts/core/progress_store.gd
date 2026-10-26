@@ -9,10 +9,12 @@ extends RefCounted
 
 const PATH := "user://progress.cfg"
 const MAX_STAMPS := 3
-## The file in use: PATH in the app. Tests point it at their own file (TEST_PATH) so a run never
-## reads or writes the child's real progress.
+## The file in use: PATH in the app. Tests (TEST_PATH) and device measurements (BENCH_PATH) use
+## their own file, so they never read or write the child's real progress.
 static var path := PATH
 const TEST_PATH := "user://progress-test.cfg"
+## A device measurement (--auto-drag / --auto-release) keeps its stamps here (ExperimentScreen).
+const BENCH_PATH := "user://progress-bench.cfg"
 ## File reads so far (tests: the map reads the store when it opens, never per frame).
 static var load_count := 0
 ## Sections the store owns (a corrupt one is ignored: a future section name is never read here).

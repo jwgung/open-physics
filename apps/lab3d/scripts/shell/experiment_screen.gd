@@ -114,6 +114,8 @@ func capture_state() -> Dictionary:
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	if apply_launch_args and (Quality.cmdline_value("auto-drag") != "" or Quality.cmdline_value("auto-release") != ""):
+		ProgressStore.path = ProgressStore.BENCH_PATH   # a measurement's throws never earn the child's stamps
 	view = View3D.new()
 	add_child(view)
 	_build_view_overlays()
@@ -331,7 +333,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		back_requested.emit()
 
 
-## The screen's own "← 목록" button goes the same way as Android back / Esc: an open sidebar closes first.
+## The screen's own "← 지도" button goes the same way as Android back / Esc: an open sidebar closes first.
 func _on_back_pressed() -> void:
 	if not handle_back():
 		back_requested.emit()
@@ -373,7 +375,7 @@ func _setup_slingshot() -> void:
 func _make_slingshot_hud() -> void:
 	if _slingshot_hud != null:
 		return
-	_slingshot_hud = Ui.label("", "HeadingLabel", true)
+	_slingshot_hud = Ui.label("", "HeadingLabel")   # one line (a wrapping label would have no width)
 	_slingshot_hud.name = "SlingshotReadout"
 	_slingshot_hud.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_slingshot_hud.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -391,12 +393,15 @@ func slingshot_readout(value: Vector2) -> String:
 	return "%d%s · %s %s" % [int(roundf(value.x)), _slingshot_units[0], Ui.number(value.y, 1), _slingshot_units[1]]
 
 
-## The big pull readout under the top buttons, centred (clear of the key cards and the actions).
+## The big pull readout centred under the key cards and the mission strip (clear of both).
 func _fit_slingshot_hud() -> void:
 	if _slingshot_hud == null:
 		return
 	_slingshot_hud.size = _slingshot_hud.get_combined_minimum_size()
-	_slingshot_hud.position = Vector2((view.size.x - _slingshot_hud.size.x) * 0.5, _top_buttons.position.y + _top_buttons.size.y + 16.0)
+	var top := _key_row.position.y + _key_row.size.y
+	if _mission_strip != null:
+		top = maxf(top, maxf(_mission_strip.get_rect().end.y, _mission_text.get_rect().end.y))
+	_slingshot_hud.position = Vector2((view.size.x - _slingshot_hud.size.x) * 0.5, top + 16.0)
 
 
 ## Manipulator.slingshot: "rearm" resets a finished run (the next shot), "pull" moves the readout
@@ -489,7 +494,7 @@ func _make_mission_strip() -> void:
 	_mission_strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	view.add_child(_mission_strip)
 	for i in MissionTracker.missions(definition).get("stages", []).size():
-		var stamp := Ui.label("○", "KeyValueLabel", true)
+		var stamp := Ui.label("○", "KeyValueLabel")   # no wrap: a wrapping label has no width in the row
 		stamp.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_mission_strip.add_child(stamp)
 		_stamp_labels.append(stamp)
@@ -579,8 +584,8 @@ static func _draw_choice_picture(canvas: Control, kind: String) -> void:
 	canvas.draw_line(Vector2(r.position.x, ground), Vector2(r.end.x, ground), Color("8a6a46"), 3.0)
 	var soft := 0.45
 	var far := kind == "long_arc"
-	_draw_arc(canvas, r, soft, 0.5, Color("c9b892"), 3.0)
 	_draw_arc(canvas, r, 0.95 if far else soft, 0.9 if far else 0.5, Color("e2683c"), 6.0)
+	_draw_arc(canvas, r, soft, 0.5, Color("c9b892"), 3.0)   # on top: both show when they land together
 	canvas.draw_circle(Vector2(r.position.x + 8.0, ground - 8.0), 7.0, Color("e2683c"))
 
 
@@ -593,13 +598,14 @@ static func _draw_arc(canvas: Control, r: Rect2, reach: float, rise: float, colo
 	canvas.draw_polyline(points, color, width, true)
 
 
-## The picture buttons over the dialogue box, right of the portrait.
+## The picture buttons over the dialogue box, at its right end (the ball and the cat stand on
+## the left: they stay in sight while Dugi asks).
 func _fit_choices() -> void:
 	if _choices == null:
 		return
 	_choices.size = _choices.get_combined_minimum_size()
 	var box: Rect2 = dialogue.rects()[0]
-	var left := box.position.x + DialogueBox.PORTRAIT_SIZE + OVERLAY_MARGIN
+	var left := maxf(box.position.x + DialogueBox.PORTRAIT_SIZE, box.end.x - _choices.size.x)
 	_choices.position = Vector2(left, box.position.y - DialogueBox.NAME_LIFT - _choices.size.y - 12.0)
 
 
@@ -739,7 +745,7 @@ func _build_view_overlays() -> void:
 	view.add_child(_title_bar)
 	var title_row := Ui.hbox(4)
 	_title_bar.add_child(title_row)
-	var back := Ui.button("← 목록", "FlatButton", 56)
+	var back := Ui.button("← 지도", "FlatButton", 56)
 	back.pressed.connect(_on_back_pressed)
 	title_row.add_child(back)
 	_back_button = back

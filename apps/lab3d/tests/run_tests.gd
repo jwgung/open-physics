@@ -1376,7 +1376,7 @@ func _check_tip_rebuild() -> void:
 	host.queue_free()
 
 
-## The screen's "← 목록" button goes the way of Android back: an open sidebar closes first, the
+## The screen's "← 지도" button goes the way of Android back: an open sidebar closes first, the
 ## screen is left only when it is closed.
 func _check_back_button() -> void:
 	var host := Control.new()

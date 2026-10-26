@@ -213,7 +213,7 @@ func check_trail_and_next_shot() -> void:
 	await _free(screen)
 
 
-## A gentle pull (살살: the first stage's speed band) that lands the ball past 3 m earns one stamp
+## Any pull that lands the ball past 3 m (the first stage has no condition) earns one stamp
 ## (the formula range; one throw, one stage).
 func check_mission_stamp_from_formula() -> void:
 	DirAccess.remove_absolute(ProgressStore.path)

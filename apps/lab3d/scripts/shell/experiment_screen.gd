@@ -1030,7 +1030,7 @@ func _drop_held_object() -> void:
 ## inside a manipulator callback (placed / cancelled) by its `changed`.
 func _on_state_changed() -> void:
 	if not _updating and not (manipulator != null and manipulator.notifying):
-		_missions_judge()   # the end state (landed, out, fence) judges the mission stamp
+		_missions_judge()   # a result state (the missions' judge_on) judges the mission stamp
 		_refresh()
 
 

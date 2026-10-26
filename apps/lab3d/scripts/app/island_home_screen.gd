@@ -1,7 +1,8 @@
 ## The island home (Plan G2): the 3D island seen from above, with the 5 zones and their 11 spots.
-## A tap on a spot makes the bread cat hop over, then the experiment opens. Each spot shows its
-## stamps (0-3); at 3 a flag stands and the spot is done. The list and settings buttons sit on the
-## map (the list screen stays behind "목록" for teachers and accessibility).
+## A tap on a spot makes the bread cat hop over, then the experiment opens. A spot with missions
+## wears a "미션" badge; when all its stamps (3) are collected a flag stands there. The list and
+## settings buttons sit on the map (the list screen stays behind "목록" for teachers and
+## accessibility). The stamps are read once when the map opens (refresh_progress), never per frame.
 ##
 ## The home is a Control that owns a View3D (top camera, ArtKit's island) and the bread cat
 ## (CatActor) who hops between spots. Spot names and stamps are 2D labels projected onto the map
@@ -28,6 +29,10 @@ var _walk_t := 0.0
 var _walk_total := 0.0
 var _walk_spot := -1
 var _down := [Vector2.INF, false]    # screen point of the press, cancelled (a drag)
+var _progress: Dictionary = {}       # ProgressStore.load(), read on open (refresh_progress)
+var _labels_for := Vector2.ZERO      # the view size the spot labels were placed for
+var _labels_camera := Transform3D()  # the camera they were placed for
+var _label_frames := 0               # frames the labels are placed again (their sizes settle)
 
 const TAP_SLOP := 14.0               # UI units a press may move and still count as a tap
 const WALK_SPEED := 6.0              # m/s the cat hops
@@ -89,6 +94,7 @@ func _ready() -> void:
 		_build_zone(zone, world)
 
 	view.rig.configure(_map_camera())
+	refresh_progress()
 	_build_top_bar()
 	_layout()
 	resized.connect(_layout)
@@ -201,15 +207,28 @@ func _layout() -> void:
 	bar.size = Vector2(size.x, top.get_combined_minimum_size().y)
 
 
-## The 2D spot labels (name + stamps) projected onto the map each frame.
-func _process(_delta: float) -> void:
+## The stamps of every spot from the store (one file read), and the flags they stand.
+func refresh_progress() -> void:
+	_progress = ProgressStore.load()
+	for spot in _spots:
+		_refresh_flag(spot)
+
+
+## The cat's hop, and the 2D spot labels placed over the map when the view size or the camera changed.
+func _process(delta: float) -> void:
 	if _walking:
-		_step_walk()
-	_place_labels()
+		_step_walk(delta)
+	if view != null and view.rig != null and (view.size != _labels_for or view.rig.global_transform != _labels_camera):
+		_labels_for = view.size
+		_labels_camera = view.rig.global_transform
+		_label_frames = 3
+	if _label_frames > 0:
+		_label_frames -= 1
+		_place_labels()
 
 
-func _step_walk() -> void:
-	_walk_t += 1.0 / 60.0
+func _step_walk(delta: float) -> void:
+	_walk_t += delta
 	var k := clampf(_walk_t / _walk_total, 0.0, 1.0)
 	var eased := k * k * (3.0 - 2.0 * k)
 	var pos := _walk_from.lerp(_walk_to, eased)
@@ -222,7 +241,7 @@ func _step_walk() -> void:
 		experiment_chosen.emit(spot.definition)
 
 
-## One 2D label per spot (its name and stamps), placed over its marker. Created lazily on the
+## One 2D label per spot (its name, and the "미션" badge when it has missions), placed over its marker. Created lazily on the
 ## first frame the view has a size.
 var _labels: Dictionary = {}
 
@@ -238,7 +257,6 @@ func _place_labels() -> void:
 		var screen_point := _world_to_screen(spot.at + Vector3.UP * 1.4)
 		label.position = screen_point - label.size * 0.5
 		label.visible = screen_point != Vector2.INF
-		_refresh_flag(spot)
 
 
 ## Stands the spot's flag when it has all its stamps (3), otherwise lowers it.
@@ -250,7 +268,7 @@ func _refresh_flag(spot: Dictionary) -> void:
 	if stages.is_empty():
 		flag.visible = false
 		return
-	var stamps := ProgressStore.stamps(ProgressStore.load(), str(spot.id))
+	var stamps := ProgressStore.stamps(_progress, str(spot.id))
 	flag.visible = stamps >= stages.size()
 
 

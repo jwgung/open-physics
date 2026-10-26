@@ -1,4 +1,5 @@
-## App root: theme, screen navigation (list -> experiment, settings) and the fps overlay.
+## App root: theme, screen navigation (island map -> experiment, the card list and settings from the
+## map; back always returns to the map, back on the map quits) and the fps overlay.
 ## Landscape only (Task 2d): project.godot locks the screen to sensor landscape on Android and iOS.
 ## Launch args (command line or Android `opargs`, see Quality.all_args):
 ##   --experiment=<id>   open that experiment directly (measurements, screenshots)
@@ -17,13 +18,6 @@ const SLIDE_S := 0.22
 
 var _definitions: Array[Dictionary] = []
 var _screen: Control
-var _return_to: Dictionary = {}           # experiment to return to from settings ({} = list)
-## The experiment screen is kept (out of the tree) while settings is open, so angle, material,
-## release state and camera survive. A same-renderer quality change rebuilds its 3D view
-## (Quality.changed): then only the conditions and camera are kept (_saved_state). A renderer
-## restart ends the process and returns to the list.
-var _held: ExperimentScreen
-var _saved_state: Dictionary = {}
 var _fps_label: Label
 var _show_fps := false
 
@@ -45,7 +39,6 @@ func _ready() -> void:
 	_fps_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	overlay.add_child(_fps_label)
 	Bench.report.connect(_on_bench_report)
-	Quality.changed.connect(_on_quality_changed)
 
 	var config := ConfigFile.new()
 	config.load(SETTINGS_PATH)
@@ -75,52 +68,43 @@ func _go_back() -> void:
 		if not (_screen as ExperimentScreen).handle_back():   # an open sidebar closes first
 			show_list()
 	elif _screen is SettingsScreen:
-		_leave_settings()
+		show_list()
+	elif _screen is ListScreen:
+		show_list()   # the card list opened from the map goes back to the map
 	else:
-		get_tree().quit()
+		get_tree().quit()   # the map is the home
 
 
 ## The home is the 3D island (Plan G2): tap a spot, the cat hops over, the experiment opens. The
 ## old card list stays behind the map's "목록" button (teachers, accessibility).
 func show_list() -> void:
-	_drop_held()
 	var screen := IslandHomeScreen.new()
 	screen.definitions = _definitions
 	screen.experiment_chosen.connect(show_experiment)
-	screen.settings_requested.connect(func() -> void:
-		_return_to = {}
-		show_settings())
+	screen.settings_requested.connect(show_settings)
 	screen.list_requested.connect(_show_list_screen)
-	_swap(screen, "list")
+	_swap(screen, "home")
 
 
 func _show_list_screen() -> void:
-	_drop_held()
 	var screen := ListScreen.new()
 	screen.definitions = _definitions
 	screen.experiment_chosen.connect(show_experiment)
-	screen.settings_requested.connect(func() -> void:
-		_return_to = {}
-		show_settings())
+	screen.settings_requested.connect(show_settings)
 	_swap(screen, "list")
 
 
 func show_experiment(definition: Dictionary, state := {}, launch_args := false) -> void:
-	_drop_held()
 	var screen := ExperimentScreen.new()
 	screen.setup(definition, state, launch_args)
 	screen.back_requested.connect(show_list)
-	screen.settings_requested.connect(func() -> void:
-		_return_to = definition
-		_held = screen
-		show_settings())
 	_swap(screen, "")  # the screen resets Bench with the experiment's bench id
 
 
 func show_settings() -> void:
 	var screen := SettingsScreen.new()
 	screen.show_fps = _show_fps
-	screen.back_requested.connect(_leave_settings)
+	screen.back_requested.connect(show_list)   # settings opens from the map (Plan G2) and goes back to it
 	screen.fps_toggled.connect(func(on: bool) -> void:
 		_set_fps(on)
 		var config := ConfigFile.new()
@@ -130,32 +114,10 @@ func show_settings() -> void:
 	_swap(screen, "settings")
 
 
-func _leave_settings() -> void:
-	if _return_to.is_empty():
-		show_list()
-	elif _held != null:
-		var screen := _held
-		_held = null
-		_swap(screen, "")
-		Bench.reset(screen.definition.get("bench_id", screen.definition.id))
-	else:
-		var state := _saved_state
-		_saved_state = {}
-		show_experiment(_return_to, state)
-
-
-func _drop_held() -> void:
-	if _held != null:
-		_held.queue_free()
-		_held = null
-	_saved_state = {}
-
-
 func _swap(screen: Control, bench_scene: String) -> void:
 	if _screen:
 		remove_child(_screen)
-		if _screen != _held:
-			_screen.queue_free()
+		_screen.queue_free()
 	_screen = screen
 	add_child(screen)
 	_slide_in(screen)
@@ -164,7 +126,7 @@ func _swap(screen: Control, bench_scene: String) -> void:
 
 
 func _slide_in(screen: Control) -> void:
-	# A held screen comes back more than once: stop its previous slide so two tweens never fight.
+	# A screen that comes back (re-added) stops its previous slide so two tweens never fight.
 	var old: Tween = screen.get_meta("slide_tween") if screen.has_meta("slide_tween") else null
 	if old and old.is_valid():
 		old.kill()
@@ -174,15 +136,6 @@ func _slide_in(screen: Control) -> void:
 	screen.set_meta("slide_tween", tween)
 	tween.tween_property(screen, "position:x", 0.0, SLIDE_S).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	tween.tween_property(screen, "modulate:a", 1.0, SLIDE_S * 0.7)
-
-
-func _on_quality_changed() -> void:
-	# Same-renderer tier change: the held experiment screen is rebuilt on return so lights and the
-	# 3D view re-read the tier; its conditions and camera carry over.
-	if _held != null:
-		_saved_state = _held.capture_state()
-		_held.queue_free()
-		_held = null
 
 
 func _set_fps(on: bool) -> void:

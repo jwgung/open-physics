@@ -18,8 +18,10 @@ func _init(scene_tree: SceneTree, expect_fn: Callable) -> void:
 func run() -> void:
 	await check_home_builds()
 	await check_tap_opens_experiment()
+	await check_walk_timing()
 	await check_stamp_display()
 	await check_buttons_and_layout()
+	await check_back_navigation()
 
 
 ## The home renders: the island, the cat, the 5 zones' pads and 11 spot markers, the top bar with
@@ -107,10 +109,24 @@ func check_tap_opens_experiment() -> void:
 	await _free(screen)
 
 
+## The cat's hop takes its time in seconds, not in frames: one long frame moves it as far as many
+## short ones (a slow device does not make the walk slower).
+func check_walk_timing() -> void:
+	var screen := await _home(PHONE)
+	var chosen := []
+	screen.experiment_chosen.connect(func(d: Dictionary) -> void: chosen.append(d.id))
+	screen._walk_to_spot(0)
+	var total: float = screen._walk_total
+	screen._process(total + 0.01)
+	expect.call(not screen._walking and chosen == [screen._spots[0].id],
+		"the hop ends after its duration in seconds (one %.2f s frame)" % total, "walking %s chosen %s" % [str(screen._walking), str(chosen)])
+	await _free(screen)
+
+
 ## Spots with missions show a "미션" badge; at 3 stamps the flag stands. Progress (0/3) is
 ## shown only in the experiment screen, not on the map.
 func check_stamp_display() -> void:
-	DirAccess.remove_absolute(ProgressStore.PATH)
+	DirAccess.remove_absolute(ProgressStore.path)
 	var screen := await _home(TABLET)
 	# A fresh map: the projectile spot (it has 3 stages) shows a "미션" badge next to its name.
 	await tree.process_frame
@@ -135,26 +151,28 @@ func check_stamp_display() -> void:
 				collision_badge = true
 	expect.call(collision_label != null and collision_label.text.contains("충돌") and not collision_badge,
 		"a non-mission spot has no badge", collision_label.text if collision_label else "")
-	# Award 3 stamps: the flag stands.
-	ProgressStore.save({"projectile": 3})
-	screen._labels.clear()
-	for i in 4:
-		screen._process(1.0 / 60.0)
+	# The map reads the store when it opens, never per frame (SM-P200: 11 file reads a frame cost
+	# the home its 60 fps).
+	var reads := ProgressStore.load_count
+	for i in 30:
 		await tree.process_frame
+	expect.call(ProgressStore.load_count == reads, "the map reads no progress file per frame",
+		"%d reads in 30 frames" % (ProgressStore.load_count - reads))
+	await _free(screen)
+	# Award 3 stamps: the map opened again stands the flag.
+	ProgressStore.save({"projectile": 3})
+	screen = await _home(TABLET)
 	var flag: Node3D = screen._flags.get("projectile")
-	await tree.process_frame
 	expect.call(flag != null and flag.visible, "a finished spot stands its flag", "flag visible %s" % str(flag.visible if flag else null))
+	await _free(screen)
 	# An unfinished spot has no flag.
 	ProgressStore.save({"projectile": 1, "orbit": 2})
-	screen._labels.clear()
-	for i in 4:
-		screen._process(1.0 / 60.0)
-		await tree.process_frame
+	screen = await _home(TABLET)
 	var orbit_label: Label = _label_text(screen, "orbit")
 	var orbit_flag: Node3D = screen._flags.get("orbit")
 	expect.call(orbit_label != null and orbit_label.text.contains("궤도"), "a spot label shows the lab's short name (orbit = 궤도)", orbit_label.text if orbit_label else "")
 	expect.call(orbit_flag != null and not orbit_flag.visible, "an unfinished spot has no flag", "flag visible %s" % str(orbit_flag.visible if orbit_flag else null))
-	DirAccess.remove_absolute(ProgressStore.PATH)
+	DirAccess.remove_absolute(ProgressStore.path)
 	await _free(screen)
 
 
@@ -184,6 +202,30 @@ func check_buttons_and_layout() -> void:
 			problems.append("view size %s (want full %s)" % [str(screen.view.size), str(setup[0])])
 		expect.call(problems.is_empty(), "island home (%s): top bar with list and settings on the map, the 3D view full" % setup[1], "; ".join(problems))
 		await _free(screen)
+
+
+## Android back (App._go_back): the card list opened from the map, an experiment and settings all go
+## back to the map; only back on the map quits (not called here: it would end the run).
+func check_back_navigation() -> void:
+	var app: Control = load("res://scripts/app/app.gd").new()
+	tree.root.add_child(app)
+	await tree.process_frame
+	var trail := [app._screen.get_class() if not app._screen is IslandHomeScreen else "map"]
+	app._show_list_screen()
+	app._go_back()
+	trail.append("map" if app._screen is IslandHomeScreen else str(app._screen))
+	app.show_experiment(ExperimentRegistry.find("free-fall"))
+	await tree.process_frame
+	app._go_back()
+	trail.append("map" if app._screen is IslandHomeScreen else str(app._screen))
+	app.show_settings()
+	app._go_back()
+	trail.append("map" if app._screen is IslandHomeScreen else str(app._screen))
+	expect.call(trail == ["map", "map", "map", "map"],
+		"back: the app opens on the map; back from the card list, an experiment and settings returns to the map", str(trail))
+	app.queue_free()
+	for i in 3:
+		await tree.process_frame
 
 
 ## The text label inside a spot's label panel (null when the spot has no label yet).

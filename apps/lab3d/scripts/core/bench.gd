@@ -6,7 +6,8 @@
 ## Alongside it, one OPPERF line per second (separate tag, so OPBENCH stays spec-exact) with the
 ## window means of Godot monitors and the active quality label; field meanings are in
 ## spikes/godot/README.md ("OPPERF"). `scene` is the experiment's bench id (incline friction = "S3",
-## the guided incline of the benchmark spec) or "list" / "settings" outside an experiment.
+## the guided incline of the benchmark spec) or "home" (the island map) / "list" / "settings" outside an
+## experiment.
 extends Node
 
 signal report(line: String, fps: float, scene: String, p95_ms: float)

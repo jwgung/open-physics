@@ -12,7 +12,8 @@
 # the experiment definition's bench_id (content/experiments/<id>.json, the name the app logs; the id
 # when it has none). OPBENCH_CTL=<comma-separated launch args> (default: --ctl-angle=30, the
 # incline's measured angle, for incline-friction only; none for the others; "" for the defaults);
-# OPBENCH_SUSTAINED=0 skips the 600 s sustained capture.
+# OPBENCH_SUSTAINED=0 skips the 600 s sustained capture. OPBENCH_EXPERIMENT=home measures the island
+# map home (Plan G2; scene "home", no experiment, nothing played).
 # Usage: apps/lab3d/tools/bench_device.sh <tier> [runs] [seconds] [rest_s]   e.g. low 3 90 60
 # Output: $OPBENCH_RESULTS_DIR/lab3d-<tier>-<scene>-*.jsonl, plus gpu-clock-<tier>.log ("<unix s>
 # <Mali kHz> <AP °C>" every 5 s). The default folder is per experiment and play mode,
@@ -36,12 +37,15 @@ case $play in
 esac
 experiment=${OPBENCH_EXPERIMENT:-incline-friction}
 definition="$here/../content/experiments/$experiment.json"
-if [[ ! -f $definition ]]; then
+if [[ $experiment == home ]]; then
+  mode=idle
+  definition=/dev/null
+elif [[ ! -f $definition ]]; then
   echo "bench_device: no experiment definition $definition" >&2
   exit 2
 fi
 scene=$(sed -n 's/.*"bench_id"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "$definition" | head -n 1)
-scene=${scene:-$experiment}
+scene=${scene:-$experiment}   # home: the map's own bench scene name
 [[ -n "${OPBENCH_SCENE:-}" ]] && echo "OPBENCH_SCENE is ignored; using bench_id $scene from $definition" >&2
 if [[ $experiment == incline-friction ]]; then
   ctl=${OPBENCH_CTL---ctl-angle=30}
@@ -58,7 +62,11 @@ if [[ ${OPBENCH_OVERWRITE:-0} != 1 ]] && compgen -G "$OPBENCH_RESULTS_DIR/lab3d-
   echo "bench_device: $OPBENCH_RESULTS_DIR already holds lab3d-$tier-$scene-* results (OPBENCH_OVERWRITE=1 replaces them)" >&2
   exit 2
 fi
-args="--experiment=$experiment,--quality=$tier${sidebar:+,$sidebar},$play${ctl:+,$ctl}"
+if [[ $experiment == home ]]; then
+  args="--quality=$tier"
+else
+  args="--experiment=$experiment,--quality=$tier${sidebar:+,$sidebar},$play${ctl:+,$ctl}"
+fi
 mkdir -p "$OPBENCH_RESULTS_DIR"
 
 adb_ready() { adb start-server >/dev/null 2>&1; adb wait-for-device; }

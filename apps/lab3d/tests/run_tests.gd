@@ -76,6 +76,11 @@ func _initialize() -> void:
 
 
 func _run() -> void:
+	# Every screen with missions saves stamps: the run uses its own progress file, never the
+	# child's (user://progress.cfg is checked unchanged at the end).
+	var real_progress := _file_state(ProgressStore.PATH)
+	ProgressStore.path = ProgressStore.TEST_PATH
+	DirAccess.remove_absolute(ProgressStore.path)
 	_vectors = JSON.parse_string(FileAccess.get_file_as_string(VECTORS_PATH))
 	print("== parity: GDScript PhysicsLaws vs TS core vectors ==")
 	_check_parity()
@@ -218,8 +223,17 @@ func _run() -> void:
 	await _check_tip_rebuild()
 	await _check_back_button()
 	await _check_small_window_title()
+	DirAccess.remove_absolute(ProgressStore.path)
+	_expect(_file_state(ProgressStore.PATH) == real_progress, "the tests never touch the real progress file (user://progress.cfg)", "")
 	print("RESULT: %s (%d failure(s))" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
+
+
+## [exists, modified time, text] of a file (the real progress file before and after the run).
+func _file_state(path: String) -> Array:
+	if not FileAccess.file_exists(path):
+		return [false]
+	return [true, FileAccess.get_modified_time(path), FileAccess.get_file_as_string(path)]
 
 
 func _expect(ok: bool, label: String, detail: String) -> void:

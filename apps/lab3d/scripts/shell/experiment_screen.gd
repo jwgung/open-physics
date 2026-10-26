@@ -378,7 +378,7 @@ func _setup_slingshot() -> void:
 
 
 ## The big readout shown while a pull is held (white with a dark shadow, over the 3D view):
-## "45° · 9.0 m/s".
+## "45도 · 초속 9.0미터".
 func _make_slingshot_hud() -> void:
 	if _slingshot_hud != null:
 		return
@@ -395,9 +395,10 @@ func _make_slingshot_hud() -> void:
 	_slingshot_hud.visible = false
 
 
-## The pull's readout text: "45° · 9.0 m/s" (the values the release throws, already on the grids).
+## The pull's readout text in a child's words: "45도 · 초속 9.0미터" (the values the release throws,
+## already on the grids; kid_value).
 func slingshot_readout(value: Vector2) -> String:
-	return "%d%s · %s %s" % [int(roundf(value.x)), _slingshot_units[0], Ui.number(value.y, 1), _slingshot_units[1]]
+	return "%s · %s" % [kid_value(_slingshot_units[0], roundf(value.x), 0), kid_value(_slingshot_units[1], value.y, 1)]
 
 
 ## The big pull readout centred under the key cards and the mission strip (clear of both).
@@ -1225,6 +1226,36 @@ static func format_observation(observation: Dictionary, value: Variant) -> Strin
 	return "—"
 
 
+## A number in a child's words (ExperimentRegistry.KID_UNITS): one decimal at most and the unit
+## spelled out, "1.3초", "12.5미터", "초속 12.5미터", "45도", "2줄". `minus` (optional) reads a
+## negative value as its size after that word ("눌려서 0.3미터"). Only the rounding and the words
+## differ from format_observation: the value is the same formula value.
+static func kid_value(unit: String, value: float, digits: int, minus := "") -> String:
+	var words: Array = ExperimentRegistry.KID_UNITS.get(unit, ["", " " + unit])
+	var places := mini(digits, 1)
+	var text := Ui.number(absf(value), places)
+	var lead := ""
+	if value < 0.0 and text != Ui.number(0.0, places):   # a -0.04 reads 0.0, never "-0.0"
+		lead = minus + " " if minus != "" else "-"
+	return lead + str(words[0]) + text + str(words[1])
+
+
+## The text of a key card over the 3D view (the sidebar keeps format_observation): a number in
+## kid_value words, a lab status text in the definition's kid.states words, "?" with the unit's words
+## while the answer is hidden ("? 미터", "초속 ? 미터").
+static func card_text(definition: Dictionary, observation: Dictionary, value: Variant, hidden := false) -> String:
+	var unit := str(observation.get("unit", ""))
+	var words: Array = ExperimentRegistry.KID_UNITS.get(unit, ["", " " + unit])
+	if hidden:
+		return (str(words[0]) + "? " + str(words[1])).strip_edges()
+	var kid: Dictionary = definition.get("kid", {}) if definition.get("kid") is Dictionary else {}
+	if value is float or value is int:
+		return kid_value(unit, float(value), int(observation.get("digits", 2)), str(kid.get("minus", {}).get(observation.id, "")))
+	if value is String:
+		return str(kid.get("states", {}).get(value, value))
+	return "—"
+
+
 func _update_readouts(force_graph: bool) -> void:
 	var values := experiment.observations()
 	var hidden := _hidden_answers(values)
@@ -1236,8 +1267,11 @@ func _update_readouts(force_graph: bool) -> void:
 		if label.text != text:
 			label.text = text
 		var key: Label = _key_labels.get(observation.id)
-		if key != null and key.text != text:
-			key.text = text
+		if key == null:
+			continue
+		var card := card_text(definition, observation, values.get(observation.id), hidden.has(observation.id))
+		if key.text != card:
+			key.text = card
 	var revision := experiment.graph_revision()
 	var series_hidden := _missions != null and not MissionTracker.result_in(definition, experiment.status(), values)
 	if force_graph or revision < 0 or revision != _graph_revision or series_hidden != _series_hidden:

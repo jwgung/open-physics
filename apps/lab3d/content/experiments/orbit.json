@@ -65,7 +65,8 @@
     "place": "별 돌기",
     "say": "별이 행성을 끌어당겨요. 빠르기에 따라 별을 돌기도 하고 떠나기도 해요.",
     "tip": "노란 손잡이를 끌어 쏠 방향을 정해요.",
-    "cards": {"state": "행성은?", "launch_speed": "쏘는 빠르기", "escape_speed": "떠나는 빠르기"}
+    "cards": {"state": "행성은?", "launch_speed": "쏘는 빠르기", "escape_speed": "떠나는 빠르기"},
+    "states": {"발사 전": "쏘기 전", "별 둘레를 도는 중": "별을 빙글빙글 돌아요", "별에서 멀어지는 중": "별에서 멀어져요"}
   },
   "cast": {
     "dugi": { "at": [8.0, 4.75], "explain_on": ["orbiting", "leaving", "crash", "far"], "delay_s": 1.5 },

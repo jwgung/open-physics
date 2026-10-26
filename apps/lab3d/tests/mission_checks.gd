@@ -20,17 +20,76 @@ func _init(scene_tree: SceneTree, expect_fn: Callable) -> void:
 func run() -> void:
 	check_content()
 	check_kid_words()
+	check_key_card_words()
 	check_registry_validation()
 	await check_mission_tracker()
 	check_progress_store()
 	await check_physics_unchanged()
 
 
+## The key cards over the 3D view of every listed lab (2026-10-27, 7~10세): a number reads with one
+## decimal and its unit in words ("1.3초", "초속 12.5미터", "? 미터" while hidden), never a unit
+## symbol or a formula letter; a lab's status text reads in its kid words. The sidebar's text of the
+## same value is format_observation's, unchanged (the formula value at full precision, its unit).
+func check_key_card_words() -> void:
+	var symbols := RegEx.create_from_string("[A-Za-z√θ₀²³·μ=°]")
+	var found := []
+	var definitions := ExperimentRegistry.load_all()
+	for definition in definitions:
+		for observation in definition.observations:
+			if observation.id not in definition.key_observations:
+				continue
+			var cards := []
+			if observation.has("unit"):
+				for value in [12.345, -0.678, 0.04, -0.04, 3.0]:
+					var card := ExperimentScreen.card_text(definition, observation, value)
+					cards.append(card)
+					var digits := int(observation.get("digits", 2))
+					var places := mini(digits, 1)
+					var unit: String = observation.unit
+					var sidebar := ExperimentScreen.format_observation(observation, value)
+					if sidebar != Ui.number(value, digits) + (unit if unit == "°" else " " + unit):
+						found.append("%s.%s sidebar %s" % [definition.id, observation.id, sidebar])
+					if not card.contains(Ui.number(absf(value), places)) or (card.contains("-0.0")):
+						found.append("%s.%s card %s (one decimal of %s)" % [definition.id, observation.id, card, str(value)])
+				cards.append(ExperimentScreen.card_text(definition, observation, null, true))
+			else:
+				for text in definition.get("kid", {}).get("states", {}).keys():
+					cards.append(ExperimentScreen.card_text(definition, observation, text))
+			for card in cards:
+				if symbols.search(card) or card == "":
+					found.append("%s.%s: '%s'" % [definition.id, observation.id, card])
+	expect.call(definitions.size() == 11 and found.is_empty(),
+		"key cards of all %d labs: one decimal, the unit in words, no unit symbol; the sidebar text unchanged" % definitions.size(),
+		"; ".join(found))
+	var cases := [
+		[{"unit": "m", "digits": 2}, 12.345, "12.3미터"], [{"unit": "s", "digits": 2}, 1.26, "1.3초"],
+		[{"unit": "m/s", "digits": 2}, 12.46, "초속 12.5미터"], [{"unit": "°", "digits": 1}, 31.0, "31.0도"],
+		[{"unit": "줄", "digits": 0}, 4.0, "4줄"], [{"unit": "m", "digits": 2}, -0.04, "0.0미터"]]
+	var wrong := []
+	for c in cases:
+		var observation: Dictionary = c[0].merged({"id": "x"})
+		if ExperimentScreen.card_text({}, observation, c[1]) != c[2]:
+			wrong.append("%s -> %s" % [c[2], ExperimentScreen.card_text({}, observation, c[1])])
+	var spring := ExperimentRegistry.find("spring")
+	var stretch: Dictionary = spring.observations.filter(func(o: Dictionary) -> bool: return o.id == "extension")[0]
+	var friction := ExperimentRegistry.find("friction")
+	var state: Dictionary = friction.observations.filter(func(o: Dictionary) -> bool: return o.id == "state")[0]
+	expect.call(wrong.is_empty() and ExperimentScreen.card_text(spring, stretch, -0.31) == "눌려서 0.3미터"
+		and ExperimentScreen.card_text({}, {"unit": "m", "id": "x"}, null, true) == "? 미터"
+		and ExperimentScreen.card_text({}, {"unit": "m/s", "id": "x"}, null, true) == "초속 ? 미터"
+		and ExperimentScreen.card_text(friction, state, "버티는 중 · 마찰이 막고 있어요") == "꼼짝 안 해요"
+		and ExperimentScreen.card_text(friction, state, "새 상태") == "새 상태"
+		and not spring.key_observations.has("total"),
+		"key card words: 12.3미터, 1.3초, 초속 12.5미터, 31.0도, 4줄, 눌려서 0.3미터, ? 미터, a status in kid words; spring's 에너지 합 only in 자세히",
+		"; ".join(wrong))
+
+
 # --- content --------------------------------------------------------------------------------------
 
 ## The projectile's mission and predict blocks (Plan: one predict question, two pictures, a reason a
-## 7-year-old reads; the three thresholds inside the earth default-height maximum of ~8.7 m, each
-## stage thrown in its own speed band so the same throw never earns the next stamp).
+## 7-year-old reads; the three thresholds inside the earth default-height maximum of ~8.7 m; the
+## first stage takes any throw, the next ones a changed throw so the same throw never earns the next stamp).
 func check_content() -> void:
 	var definition := ExperimentRegistry.find("projectile")
 	expect.call(definition.has("missions") and definition.has("predict"), "projectile: has the missions and predict blocks", "")
@@ -40,9 +99,12 @@ func check_content() -> void:
 	var thresholds := (missions.stages as Array).map(func(s: Dictionary) -> Variant: return s.threshold)
 	expect.call(thresholds == [3.0, 5.0, 7.0] and thresholds.all(func(t: Variant) -> bool: return t <= 8.7),
 		"missions: 3 m -> 5 m -> 7 m, all inside the earth default-height maximum (~8.7 m)", str(thresholds))
-	var bands := (missions.stages as Array).map(func(s: Dictionary) -> Variant: return s.conditions)
-	expect.call(bands == [{"speed": {"max": 6.0}}, {"speed": {"min": 6.5, "max": 7.5}}, {"speed": {"min": 8.0}}],
-		"missions: 살살 (up to 6 m/s) -> 조금 세게 (6.5-7.5 m/s) -> 아주 세게 (8 m/s and up)", str(bands))
+	var rules := (missions.stages as Array).map(func(s: Dictionary) -> Variant: return [s.get("conditions", {}), s.get("change", [])])
+	expect.call(rules == [[{}, []], [{}, ["speed", "angle"]], [{}, ["angle"]]],
+		"missions: any throw -> another speed or angle than the first stamp's -> another angle than the second's", str(rules))
+	var texts := (missions.stages as Array).map(func(s: Dictionary) -> Variant: return s.text)
+	expect.call(texts == ["3미터 넘게 던지기!", "세기나 각도를 바꿔 5미터 넘기기!", "각도를 바꿔 7미터 넘기기!"],
+		"missions: the stage texts say the rule in a child's words", str(texts))
 	for stage in missions.stages:
 		expect.call(stage.text != "", "missions: every stage has its text", str(stage.get("threshold")))
 	var predict: Dictionary = definition.predict
@@ -79,6 +141,8 @@ func check_kid_words() -> void:
 		var texts := [ExperimentScreen.DONE_TEXT, ExperimentScreen.PICK_PREFIX, IslandHomeScreen.BADGE]
 		for key in ExperimentRegistry.KID_TEXTS:
 			texts.append(ExperimentRegistry.kid_text(definition, key))
+		texts.append_array(definition.get("kid", {}).get("states", {}).values())
+		texts.append_array(definition.get("kid", {}).get("minus", {}).values())
 		for id in definition.key_observations:
 			texts.append(ExperimentRegistry.card_label(definition, id))
 			if not definition.get("kid", {}).get("cards", {}).has(id):
@@ -185,8 +249,8 @@ func check_mission_tracker() -> void:
 		store["projectile"] = stamps
 		ProgressStore.save(store)
 	var stubs := [
-		["settled", "extends Experiment\nvar speed := 6.0\nfunc status() -> String:\n\treturn \"landed\"\nfunc settled() -> bool:\n\treturn true\nfunc control_value(_id: String) -> Variant:\n\treturn speed\n"],
-		["not_settled", "extends Experiment\nvar speed := 6.0\nfunc status() -> String:\n\treturn \"landed\"\nfunc settled() -> bool:\n\treturn false\nfunc control_value(_id: String) -> Variant:\n\treturn speed\n"],
+		["settled", "extends Experiment\nvar speed := 6.0\nvar angle := 45.0\nfunc status() -> String:\n\treturn \"landed\"\nfunc settled() -> bool:\n\treturn true\nfunc control_value(id: String) -> Variant:\n\treturn angle if id == \"angle\" else speed\n"],
+		["not_settled", "extends Experiment\nvar speed := 6.0\nvar angle := 45.0\nfunc status() -> String:\n\treturn \"landed\"\nfunc settled() -> bool:\n\treturn false\nfunc control_value(id: String) -> Variant:\n\treturn angle if id == \"angle\" else speed\n"],
 	]
 	var labs := {}
 	for stub in stubs:
@@ -210,28 +274,43 @@ func check_mission_tracker() -> void:
 	expect.call(tracker.stage() == 0 and awarded.is_empty(), "a landing the engine has not finished is not judged yet", str(awarded))
 	tracker.on_run_ended("landed", labs.settled, {"range": 3.0})
 	expect.call(tracker.stage() == 0 and awarded.is_empty(), "exactly at the threshold is not farther", str(awarded))
-	labs.settled.speed = 6.5
-	tracker.on_run_ended("landed", labs.settled, {"range": 4.76})
-	expect.call(tracker.stage() == 0 and awarded.is_empty(), "a throw past 3 m but not 살살 (6.5 m/s) is not the first stage", str(awarded))
-	labs.settled.speed = 6.0
-	tracker.on_run_ended("landed", labs.settled, {"range": 3.42})
-	await tree.process_frame
-	expect.call(tracker.stage() == 1 and tracker.text() == stages[1].text and awarded == [["projectile", 1]],
-		"farther than 3 m, thrown 살살, clears the first stage (one stamp)", "%d stage, %s" % [tracker.stage(), str(awarded)])
-	tracker.on_run_ended("landed", labs.settled, {"range": 6.1})
-	expect.call(tracker.stage() == 1 and awarded == [["projectile", 1]],
-		"the same setup again (6 m/s) earns no second stamp, even past 5 m", str(awarded))
-	labs.settled.speed = 7.5
-	tracker.on_run_ended("landed", labs.settled, {"range": 6.1})
-	await tree.process_frame
-	tracker.on_run_ended("landed", labs.settled, {"range": 7.71})
-	expect.call(tracker.stage() == 2 and awarded.size() == 2,
-		"the second stage's setup (7.5 m/s) does not clear the third stage, however far", str(awarded))
 	labs.settled.speed = 9.0
-	tracker.on_run_ended("landed", labs.settled, {"range": 7.71})
+	tracker.on_run_ended("landed", labs.settled, {"range": 8.26})
+	await tree.process_frame
+	expect.call(tracker.stage() == 1 and tracker.text() == stages[1].text and awarded == [["projectile", 1]]
+		and ProgressStore.cleared("projectile") == {"speed": 9.0, "angle": 45.0},
+		"any throw past 3 m (even the strongest, 9 m/s) clears the first stage; its speed and angle are kept",
+		"%d stage, %s, kept %s" % [tracker.stage(), str(awarded), str(ProgressStore.cleared("projectile"))])
+	tracker.on_run_ended("landed", labs.settled, {"range": 8.26})
+	expect.call(tracker.stage() == 1 and awarded == [["projectile", 1]],
+		"the same throw again (45°, 9 m/s) earns no second stamp, even past 5 m", str(awarded))
+	# A reopened place reads the kept throw: the same throw still earns nothing there.
+	var reopened := MissionTracker.new()
+	reopened.definition = definition
+	ProgressStore.save({"projectile": 1})
+	reopened.start()
+	reopened.on_run_ended("landed", labs.settled, {"range": 8.26})
+	expect.call(reopened.stamps == 1 and reopened.cleared == {"speed": 9.0, "angle": 45.0},
+		"a reopened place keeps the first stamp's throw: the same throw again earns nothing", str(reopened.cleared))
+	labs.settled.angle = 40.0
+	tracker.on_run_ended("landed", labs.settled, {"range": 4.9})
+	expect.call(tracker.stage() == 1 and awarded.size() == 1, "a changed throw short of 5 m changes nothing", str(awarded))
+	tracker.on_run_ended("landed", labs.settled, {"range": 8.13})
+	await tree.process_frame
+	expect.call(tracker.stage() == 2 and awarded.size() == 2, "another angle (40°) past 5 m clears the second stage", str(awarded))
+	labs.settled.speed = 8.5
+	tracker.on_run_ended("landed", labs.settled, {"range": 7.26})
+	expect.call(tracker.stage() == 2 and awarded.size() == 2,
+		"the third stage wants another angle: the second stamp's 40° (only the speed changed) earns nothing, however far", str(awarded))
+	labs.settled.angle = 45.0
+	tracker.on_run_ended("landed", labs.settled, {"range": 7.37})
 	await tree.process_frame
 	expect.call(tracker.stage() == -1 and tracker.text() == "" and awarded == [["projectile", 1], ["projectile", 2], ["projectile", 3]],
-		"5 m and 7 m clear the rest; all three stamps, done", "stage %d, %s" % [tracker.stage(), str(awarded)])
+		"another angle (45°) past 7 m clears the last stage; all three stamps, done", "stage %d, %s" % [tracker.stage(), str(awarded)])
+	# MissionTracker.changed alone: no ids or no kept run counts as changed.
+	expect.call(MissionTracker.changed([], labs.settled, {"angle": 45.0}) and MissionTracker.changed(["angle"], labs.settled, {})
+		and not MissionTracker.changed(["angle"], labs.settled, {"angle": 45.0}) and MissionTracker.changed(["angle"], labs.settled, {"angle": 40.0}),
+		"change: nothing named or nothing kept is a change; the same value is not, another one is", "")
 	# A lab without missions: nothing to track.
 	var plain := ExperimentRegistry.find("free-fall").duplicate(true)
 	plain.erase("missions")
@@ -329,6 +408,18 @@ func check_progress_store() -> void:
 	# The store is the app's own file: a save after a corrupt read replaces it.
 	ProgressStore.save({"projectile": 1})
 	expect.call(ProgressStore.load() == {"projectile": 1}, "a save after a corrupt read replaces the file", str(ProgressStore.load()))
+	# The kept throw (MissionTracker `change`) lives beside the stamps: a stamp save keeps it, a value
+	# that is not an object reads back as none.
+	ProgressStore.save({"projectile": 1})
+	ProgressStore.save_cleared("projectile", {"speed": 7.5, "angle": 40.0})
+	ProgressStore.save({"projectile": 2})
+	var kept := ProgressStore.cleared("projectile")
+	file = FileAccess.open(ProgressStore.path, FileAccess.WRITE)
+	file.store_string("[progress]\nprojectile=2\n[cleared]\nprojectile=\"oops\"\n")
+	file.close()
+	expect.call(kept == {"speed": 7.5, "angle": 40.0} and ProgressStore.load() == {"projectile": 2} and ProgressStore.cleared("projectile").is_empty()
+		and ProgressStore.cleared("orbit").is_empty(),
+		"the kept throw survives a stamp save; a broken one or none reads back as {}", str(kept))
 	DirAccess.remove_absolute(ProgressStore.path)
 	if backup != "":
 		file = FileAccess.open(ProgressStore.path, FileAccess.WRITE)
@@ -426,9 +517,10 @@ func check_physics_unchanged() -> void:
 	var values: Dictionary = pulled[2]
 	expect.call(values.range is float and float(values.range) > 7.0 and pulled[1].has("landed"),
 		"the 40° 8.5 m/s throw lands past 7 m (formula range %s)" % str(values.range), str(pulled[1]))
-	# The 8.5 m/s throws are 아주 세게, not the first stage's 살살 (up to 6 m/s): no stamp anywhere
-	# (game_round_checks earns them stage by stage).
-	expect.call(ProgressStore.load().get("projectile", 0) == 0,
-		"the game screens' 8.5 m/s throws are not the first stage (살살, up to 6 m/s): no stamp; the plain screen judged nothing",
+	# The first game screen's throw (past 3 m) earns the first stamp; the same throw again on the
+	# slingshot screen earns no second one (stage 2 wants another speed or angle); the plain screen
+	# judged nothing (game_round_checks earns them stage by stage).
+	expect.call(ProgressStore.load().get("projectile", 0) == 1,
+		"the game screens' 40° 8.5 m/s throws: the first earns the first stamp, the same throw again no second; the plain screen judged nothing",
 		"stored %s" % str(ProgressStore.load()))
 	DirAccess.remove_absolute(ProgressStore.path)

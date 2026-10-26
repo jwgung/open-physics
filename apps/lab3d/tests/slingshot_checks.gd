@@ -64,8 +64,8 @@ func check_pull_is_reversed_and_clamped() -> void:
 		and not hud_rect.intersects(screen._mission_text.get_rect()) and not hud_rect.intersects(screen._mission_strip.get_rect()),
 		"slingshot: the readout is one line, clear of the key cards and the mission strip", str(hud_rect))
 	var hud_text: String = screen._slingshot_hud.text
-	expect.call(hud_text.contains("%d°" % int(value.x)) and hud_text.contains(Ui.number(value.y, 1)),
-		"slingshot: the big readout shows the angle and the speed", hud_text)
+	expect.call(hud_text.contains("%d도" % int(value.x)) and hud_text.contains("초속") and not hud_text.contains("m/s") and hud_text.contains(Ui.number(value.y, 1)),
+		"slingshot: the big readout shows the angle and the speed in words (45도 · 초속 9.0미터)", hud_text)
 	# Pulls that point outside 0..90 deg: the nearer end, shown as thrown.
 	_drag(screen, ball + Vector2(80.0, 60.0))   # pull down-right: launch up-left (beyond 90)
 	var steep: Vector2 = events[events.size() - 1][1]

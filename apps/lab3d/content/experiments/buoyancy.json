@@ -38,7 +38,7 @@
     { "id": "release", "label": "놓기", "style": "primary" },
     { "id": "reset", "label": "처음으로" }
   ],
-  "key_observations": ["depth", "floating_depth", "buoyant"],
+  "key_observations": ["depth", "floating_depth", "state"],
   "predict": {
     "question": "무게가 같으면 어느 통이 잘 뜰까?",
     "choices": [
@@ -64,7 +64,8 @@
     "place": "물에 띄우기",
     "say": "물에 많이 잠길수록 물이 통을 더 세게 밀어 올려요.",
     "tip": "통을 위아래로 끌어 물에 넣어요.",
-    "cards": {"depth": "물에 잠긴 깊이", "floating_depth": "뜰 때 잠기는 깊이", "buoyant": "물이 밀어 올리는 힘"}
+    "cards": {"depth": "물에 잠긴 깊이", "floating_depth": "뜰 때 잠기는 깊이", "state": "통은?"},
+    "states": {"놓기 전 · 통을 끌어 물에 넣어요": "통을 물에 넣어 봐요", "통을 옮기는 중": "옮기는 중", "떠 있어요 · 부력 = 무게": "둥둥 떠 있어요", "물속에 그대로 머물러요": "물속에 머물러요", "바닥에 가라앉았어요": "가라앉았어요"}
   },
   "cast": {
     "dugi": { "at": [2.5, 3.0], "explain_on": ["floating", "sunk", "staying"], "delay_s": 0.6 },

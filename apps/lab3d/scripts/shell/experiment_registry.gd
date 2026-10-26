@@ -185,6 +185,8 @@ static func validate(definition: Dictionary) -> PackedStringArray:
 	problems.append_array(_validate_series(definition.get("missions"), graph.get("series", [])))
 	problems.append_array(_validate_predict(definition.get("predict")))
 	problems.append_array(_validate_kid(definition.get("kid"), definition.observations.map(func(o: Dictionary) -> Variant: return o.get("id"))))
+	if definition.get("kid") is Dictionary:
+		problems.append_array(_validate_kid_cards(definition))
 	return problems
 
 
@@ -193,9 +195,19 @@ static func validate(definition: Dictionary) -> PackedStringArray:
 ## the 3D experiment file puts the child-facing ones here and the screen shows them in place of the
 ## shared ones (the "자세히" sidebar keeps the shared texts and the formula labels):
 ##   "kid": {"title": <the title bar>, "place": <the map's spot name>, "say": <Dugi's dialogue>,
-##           "tip": <the short gesture hint>, "cards": {<observation id>: <its key card's caption>}}
+##           "tip": <the short gesture hint>, "cards": {<observation id>: <its key card's caption>},
+##           "states": {<a status text of the lab>: <its key card words>},
+##           "minus": {<observation id>: <the word a negative value reads with: "눌려서", "왼쪽으로">}}
 ## Every key is optional; a missing one falls back to the shared text (kid_text, card_label).
+## The key cards over the 3D view show a number with one decimal and its unit in words (KID_UNITS:
+## "1.3초", "초속 12.5미터"); a game lab's key observations have such a unit (a force, an energy, an
+## acceleration stays in "자세히"). States and minus words change the card's words only: the lab's
+## text and the value (the sidebar's, full precision) stay the formula's (ExperimentScreen.card_text).
 const KID_TEXTS := {"title": "title", "place": "title", "say": "observe", "tip": "tip_short"}
+const KID_MAPS := ["cards", "states", "minus"]
+## Observation unit -> [the words before the number, the words after it] on a key card.
+const KID_UNITS := {"": ["", ""], "m": ["", "미터"], "s": ["", "초"], "m/s": ["초속 ", "미터"],
+	"°": ["", "도"], "kg": ["", "킬로그램"], "바퀴": ["", "바퀴"], "줄": ["", "줄"], "배": ["", "배"]}
 
 
 static func _validate_kid(kid: Variant, ids: Array) -> PackedStringArray:
@@ -206,14 +218,24 @@ static func _validate_kid(kid: Variant, ids: Array) -> PackedStringArray:
 		problems.append("kid must be an object")
 		return problems
 	for key in kid:
-		if key == "cards":
-			var cards: Variant = kid.cards
-			if not (cards is Dictionary and cards.keys().all(func(id: Variant) -> bool: return id in ids and cards[id] is String and cards[id] != "")):
-				problems.append("kid.cards must name observations with a text each")
+		if key in KID_MAPS:
+			var map: Variant = kid[key]
+			var named: bool = key == "states" or (map is Dictionary and map.keys().all(func(id: Variant) -> bool: return id in ids))
+			if not (map is Dictionary and named and map.values().all(func(t: Variant) -> bool: return t is String and t != "")):
+				problems.append("kid.%s must name %s with a text each" % [key, "status texts" if key == "states" else "observations"])
 		elif not KID_TEXTS.has(key):
-			problems.append("kid.%s unknown (title, place, say, tip, cards)" % key)
+			problems.append("kid.%s unknown (title, place, say, tip, cards, states, minus)" % key)
 		elif not (kid[key] is String and kid[key] != ""):
 			problems.append("kid.%s must be a text" % key)
+	return problems
+
+
+## A game lab's key cards (it has `kid`): every key observation's unit has its words (KID_UNITS).
+static func _validate_kid_cards(definition: Dictionary) -> PackedStringArray:
+	var problems := PackedStringArray()
+	for observation in definition.observations:
+		if observation.get("id") in definition.key_observations and not KID_UNITS.has(str(observation.get("unit", ""))):
+			problems.append("key_observations: %s (%s) has no kid unit words; keep it in the sidebar" % [observation.id, observation.unit])
 	return problems
 
 
@@ -255,7 +277,8 @@ static func _validate_series(missions: Variant, series: Array) -> PackedStringAr
 
 
 ## `missions` (Plan G1, G2, optional): the stages and how a run is judged (MissionTracker's header) —
-## {"stages": [{"text": <non-empty>, "threshold"?: <number > 0>, "conditions"?: {...}}, ...],
+## {"stages": [{"text": <non-empty>, "threshold"?: <number > 0>, "conditions"?: {...},
+##              "change"?: [<control id>, ...]}, ...],
 ##  "observe"?: <an observation id>, "compare"?: "greater" | "less",
 ##  "judge_on"?: [<status>, ...], "reveal_on"?: [<status>, ...],
 ##  "hidden_until_end"?: [<observation id>, ...], "hidden_series_until_end"?: [<graph series id>, ...]}.
@@ -306,6 +329,10 @@ static func _validate_missions(missions: Variant, observations: Array, controls:
 			problems.append("missions.stages[%d].text must be a text" % i)
 		else:
 			problems.append_array(_validate_conditions(stage.get("conditions", {}), controls, i))
+			var change: Variant = stage.get("change", [])
+			var control_ids := controls.map(func(c: Dictionary) -> Variant: return c.get("id"))
+			if not (change is Array and change.all(func(id: Variant) -> bool: return id in control_ids)):
+				problems.append("missions.stages[%d].change must list control ids" % i)
 	return problems
 
 

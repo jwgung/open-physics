@@ -70,6 +70,8 @@ const PHONE_LANDSCAPE := Vector2(1560, 720)
 const TABLET_LANDSCAPE := Vector2(1152, 720)
 
 var _failures := 0
+## A key card over the 3D view never shows a unit symbol or a formula letter (N, m/s², J, √, θ, v₀...).
+var _kid_symbols := RegEx.create_from_string("[A-Za-z√θ₀²³·μ=°]")
 var _lab: Experiment
 var _vectors: Dictionary
 
@@ -764,7 +766,7 @@ func _check_content() -> Dictionary:
 	_expect(ExperimentRegistry.validate(views_missing).size() == 1 and "follow" in ExperimentRegistry.validate(views_missing)[0],
 		"registry requires a view for every preset camera mode", ", ".join(ExperimentRegistry.validate(views_missing)))
 	# Task 2d: key_observations are 2-3 distinct observation ids; a view target is [x, y, z].
-	var key_cases := {"one": ["state"], "four": ["state", "acceleration", "distance", "run"], "unknown": ["state", "speed"],
+	var key_cases := {"one": ["state"], "four": ["state", "critical_angle", "distance", "run"], "unknown": ["state", "speed"],
 		"duplicate": ["state", "state"], "missing": null}
 	var key_problems := PackedStringArray()
 	for case in key_cases:
@@ -1258,15 +1260,22 @@ func _check_key_cards() -> void:
 			and Rect2(Vector2.ZERO, screen.view.size).encloses(tip.get_rect()))
 		var sidebar_fits: bool = is_equal_approx(screen._sidebar.size.x, screen.sidebar_width()) \
 			and is_equal_approx(screen._sidebar.position.x + screen._sidebar.size.x, TABLET_LANDSCAPE.x)
+		# The cards read the panel's values in a child's words (the screen's card_text: one decimal,
+		# the unit spelled out, no symbol); the sidebar keeps format_observation's full text.
 		var same := true
 		var shown := PackedStringArray()
+		var values: Dictionary = screen.experiment.observations()
+		var hidden: Array = screen._hidden_answers(values)
 		for id in definition.key_observations:
+			var observation: Dictionary = screen._observation(id)
 			var card: String = screen._key_labels[id].text
-			same = same and card == screen._observation_labels[id].text and card != ""
+			var panel: String = screen.hidden_observation(observation) if hidden.has(id) else screen.format_observation(observation, values.get(id))
+			same = same and card == screen.card_text(definition, observation, values.get(id), hidden.has(id)) and card != "" \
+				and screen._observation_labels[id].text == panel and not _kid_symbols.search(card)
 			shown.append(card)
 		_expect(definition.camera.default_mode == "front" and screen.view.rig.mode == "front" and same and sidebar_fits and tip_clear \
 			and definition.key_observations.size() >= 2 and definition.key_observations.size() <= 3,
-			"%s: front camera, key cards %s = panel values, the open sidebar keeps its width, the tip clears the actions and cards" % [definition.id, definition.key_observations],
+			"%s: front camera, key cards %s = panel values in kid words (no unit symbol), the open sidebar keeps its width, the tip clears the actions and cards" % [definition.id, definition.key_observations],
 			"%s; sidebar %.0f units" % [", ".join(shown), screen._sidebar.size.x])
 		screen.queue_free()
 		await process_frame

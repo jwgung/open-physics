@@ -38,7 +38,7 @@
     { "id": "release", "label": "놓기", "style": "primary" },
     { "id": "reset", "label": "처음으로" }
   ],
-  "key_observations": ["extension", "speed", "total"],
+  "key_observations": ["extension", "speed"],
   "predict": {
     "question": "무거운 공을 달면 용수철이 더 늘어날까?",
     "choices": [
@@ -62,7 +62,8 @@
     "place": "용수철",
     "say": "당긴 만큼 용수철이 공을 다시 당겨요. 그래서 공이 왔다 갔다 해요.",
     "tip": "공을 끌었다가 놓아 봐요!",
-    "cards": {"extension": "늘어난 길이", "speed": "빠르기", "total": "에너지 합"}
+    "cards": {"extension": "얼마나 늘어났나", "speed": "빠르기"},
+    "minus": {"extension": "눌려서"}
   },
   "cast": {
     "dugi": { "at": [2.5, 5.75], "explain_on": ["moving", "rest"], "delay_s": 1.5 },

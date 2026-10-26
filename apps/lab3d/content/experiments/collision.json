@@ -61,7 +61,7 @@
     { "id": "release", "label": "출발", "style": "primary" },
     { "id": "reset", "label": "처음으로" }
   ],
-  "key_observations": ["after_a", "after_b", "p_after"],
+  "key_observations": ["before_a", "after_a", "after_b"],
   "predict": {
     "question": "무거운 공이 가벼운 공을 치면?",
     "choices": [
@@ -85,7 +85,8 @@
     "place": "공 부딪히기",
     "say": "부딪히면 두 공이 서로 밀어요. 파란 공의 움직임이 주황 공으로 넘어가요.",
     "tip": "노란 손잡이를 끌어서 세기를 정해요.",
-    "cards": {"after_a": "부딪힌 뒤 파란 공", "after_b": "부딪힌 뒤 주황 공", "p_after": "두 공 움직임 합"}
+    "cards": {"before_a": "부딪히기 전 파란 공", "after_a": "부딪힌 뒤 파란 공", "after_b": "부딪힌 뒤 주황 공"},
+    "minus": {"before_a": "왼쪽으로", "after_a": "왼쪽으로", "after_b": "왼쪽으로"}
   },
   "cast": {
     "dugi": { "at": [8.5, 0.5], "explain_on": ["collided", "rest"], "delay_s": 0.6 },

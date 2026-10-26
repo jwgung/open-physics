@@ -22,6 +22,10 @@
 ##   lab's current control values the run must have been made with ("가벼운 상자", "20 kg 짐",
 ##   "출발 반지름 2 m"). Read through Experiment.control_value; a number matches within 1e-6, a range
 ##   is inclusive.
+## - a stage's `change` (optional): [control id, ...] — the run must differ in at least one of these
+##   controls from the run that cleared the stage before ("세기나 각도를 바꿔"): throwing the same
+##   throw again never earns the next stamp. The cleared run's control values are kept with the
+##   stamps (ProgressStore.cleared); with none kept (a first stage, an older save) any run counts.
 ## - `reveal_on` (default `judge_on`): the statuses where the run has its result: the
 ##   hidden_until_end values (the formula's answer) read "?" until then, and the prediction's question
 ##   is over. With `observe`, the result is in once that value is a number too (the pendulum's period
@@ -51,6 +55,8 @@ var definition: Dictionary
 ## The cleared stages so far (0..stages.size()); the current stage is stamps (one stamp per stage).
 var stamps := 0
 var _judged := 0   # the count last saved or handed over (start(): the stored one)
+## The control values of the run that cleared the last stage (a stage's `change`; start(): the stored ones).
+var cleared: Dictionary = {}
 ## (id: String, stamps: int) when a stage is cleared; the screen reacts (the stamp animation).
 var progress: Callable
 
@@ -97,14 +103,15 @@ static func stamps_of(definition: Dictionary) -> int:
 ## status is a judge_on one, the lab is settled, the stage's conditions hold (the lab's control
 ## values) and, with `observe`, its formula value beats the stage's threshold (`compare`). Anything
 ## else keeps the count. The caller (the screen) passes the observations() the panels show.
+## `cleared`: the control values of the run that cleared the stage before (a stage's `change`).
 static func judge(definition: Dictionary, stamps: int, status: String, lab: Experiment,
-		observations: Dictionary) -> int:
+		observations: Dictionary, cleared := {}) -> int:
 	var block := missions(definition)
 	var stages: Array = block.get("stages", [])
 	if stamps >= stages.size() or status not in judge_on(definition) or not lab.settled():
 		return stamps
 	var stage: Dictionary = stages[stamps]
-	if not conditions_met(stage.get("conditions", {}), lab):
+	if not conditions_met(stage.get("conditions", {}), lab) or not changed(stage.get("change", []), lab, cleared):
 		return stamps
 	var observe := str(block.get("observe", ""))
 	if observe != "":
@@ -137,6 +144,31 @@ static func conditions_met(conditions: Dictionary, lab: Experiment) -> bool:
 	return true
 
 
+## The run differs from the `cleared` one in at least one of the `ids` controls (a number by more
+## than CONDITION_EPS). No ids, or no cleared run kept: true.
+static func changed(ids: Array, lab: Experiment, cleared: Dictionary) -> bool:
+	if ids.is_empty() or cleared.is_empty():
+		return true
+	for id in ids:
+		var have: Variant = lab.control_value(id)
+		var had: Variant = cleared.get(id)
+		if _number(have) and _number(had):
+			if absf(float(have) - float(had)) > CONDITION_EPS:
+				return true
+		elif str(have) != str(had):
+			return true
+	return false
+
+
+## The control values a later stage's `change` compares with (every control any stage names).
+static func change_controls(definition: Dictionary, lab: Experiment) -> Dictionary:
+	var out := {}
+	for stage in missions(definition).get("stages", []):
+		for id in stage.get("change", []):
+			out[id] = lab.control_value(id)
+	return out
+
+
 static func _number(value: Variant) -> bool:
 	return (value is int or value is float) and is_finite(float(value))
 
@@ -160,19 +192,29 @@ func text() -> String:
 func start() -> void:
 	stamps = stamps_of(definition)
 	_judged = stamps
+	cleared = ProgressStore.cleared(str(definition.get("id", ""))) if _changes() else {}
 
 
 ## The run is seen in `status`: the static judge, then the stamp is saved (ProgressStore) and
 ## handed over through `progress` when it grew past what was already saved. True when this run
 ## earned a stamp (the screen's attempt is then done).
 func on_run_ended(status: String, lab: Experiment, observations: Dictionary) -> bool:
-	stamps = judge(definition, stamps, status, lab, observations)
+	var id := str(definition.get("id", ""))
+	stamps = judge(definition, stamps, status, lab, observations, cleared)
 	if stamps <= _judged:
 		return false
 	_judged = stamps
 	var store := ProgressStore.load()
-	store[str(definition.get("id", ""))] = stamps
+	store[id] = stamps
 	ProgressStore.save(store)
+	if _changes():
+		cleared = change_controls(definition, lab)
+		ProgressStore.save_cleared(id, cleared)
 	if progress.is_valid():
-		progress.call(str(definition.get("id", "")), stamps)
+		progress.call(id, stamps)
 	return true
+
+
+## A stage names a `change` (only then is the cleared run read and kept).
+func _changes() -> bool:
+	return (missions(definition).get("stages", []) as Array).any(func(s: Variant) -> bool: return s is Dictionary and not (s.get("change", []) as Array).is_empty())

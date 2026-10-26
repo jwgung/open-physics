@@ -38,7 +38,7 @@
   "actions": [
     { "id": "reset", "label": "처음으로", "style": "primary" }
   ],
-  "key_observations": ["effort_arm", "required", "applied"],
+  "key_observations": ["effort_arm", "advantage", "state"],
   "predict": {
     "question": "손잡이를 멀리 잡으면 힘이 덜 들까?",
     "choices": [
@@ -65,7 +65,8 @@
     "place": "시소 들기",
     "say": "손잡이를 멀리 잡을수록 힘이 덜 들어요. 막대가 들리면 양쪽이 딱 맞아요.",
     "tip": "빨간 손잡이를 아래로 눌러 봐요.",
-    "cards": {"effort_arm": "손잡이까지 거리", "required": "들려면 필요한 힘", "applied": "내가 누르는 힘"}
+    "cards": {"effort_arm": "손잡이까지 거리", "advantage": "몇 배 덜 힘들까", "state": "막대는?"},
+    "states": {"힘점을 골라 빨간 손잡이를 아래로 눌러 보세요": "손잡이를 눌러 봐요", "손잡이를 아래로 눌러요": "손잡이를 눌러요", "누르는 중 · 아직 힘이 모자라요": "아직 힘이 모자라요", "들렸다! 힘이 충분해요": "들렸다!", "받침점·짐 위치를 옮기는 중": "옮기는 중"}
   },
   "cast": {
     "dugi": { "at": [4.75, 1.25], "explain_on": ["lifted"], "delay_s": 0.6 },

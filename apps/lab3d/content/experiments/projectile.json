@@ -60,9 +60,9 @@
     "hidden_until_end": ["range", "flight_time", "apex"],
     "hidden_series_until_end": ["formula"],
     "stages": [
-      { "threshold": 3.0, "conditions": {"speed": {"max": 6.0}}, "text": "살살 던져서 3미터 넘기기!" },
-      { "threshold": 5.0, "conditions": {"speed": {"min": 6.5, "max": 7.5}}, "text": "조금 세게 던져서 5미터 넘기기!" },
-      { "threshold": 7.0, "conditions": {"speed": {"min": 8.0}}, "text": "아주 세게 던져서 7미터 넘기기!" }
+      { "threshold": 3.0, "text": "3미터 넘게 던지기!" },
+      { "threshold": 5.0, "change": ["speed", "angle"], "text": "세기나 각도를 바꿔 5미터 넘기기!" },
+      { "threshold": 7.0, "change": ["angle"], "text": "각도를 바꿔 7미터 넘기기!" }
     ]
   },
   "kid": {

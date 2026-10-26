@@ -38,7 +38,7 @@
   "actions": [
     { "id": "reset", "label": "처음으로", "style": "primary" }
   ],
-  "key_observations": ["strands", "required", "lift"],
+  "key_observations": ["strands", "pulled", "lift"],
   "predict": {
     "question": "줄이 많으면 힘이 덜 들까?",
     "choices": [
@@ -65,7 +65,7 @@
     "place": "줄로 짐 들기",
     "say": "줄이 많을수록 힘이 덜 들어요. 대신 줄을 더 길게 당겨야 해요.",
     "tip": "빨간 손잡이를 아래로 당겨요.",
-    "cards": {"strands": "짐을 잡은 줄", "required": "필요한 힘", "lift": "짐이 올라간 높이"}
+    "cards": {"strands": "짐을 잡은 줄", "pulled": "내가 당긴 줄 길이", "lift": "짐이 올라간 높이"}
   },
   "cast": {
     "dugi": { "at": [3.5, 4.0], "explain_on": ["held", "top"], "delay_s": 0.6 },

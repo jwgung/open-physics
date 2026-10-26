@@ -127,14 +127,16 @@ func run() -> void:
 # --- conditions -----------------------------------------------------------------------------------
 
 ## Every lab with missions: no setup meets the conditions of stage n and of stage n + 1 at once (a
-## control both name, with values that cannot both hold), so repeating the run that cleared a stage
-## never clears the next one by itself.
+## control both name, with values that cannot both hold), or stage n + 1 names a `change` (another
+## value than the run that cleared stage n: the projectile), so repeating the run that cleared a
+## stage never clears the next one by itself.
 func check_conditions() -> void:
 	var shared := []
 	for definition in ExperimentRegistry.load_all():
 		var stages: Array = MissionTracker.missions(definition).get("stages", [])
 		for i in stages.size() - 1:
-			if not _disjoint(stages[i].get("conditions", {}), stages[i + 1].get("conditions", {})):
+			# A stage with `change` wants another throw than the one that cleared the stage before.
+			if (stages[i + 1].get("change", []) as Array).is_empty() and not _disjoint(stages[i].get("conditions", {}), stages[i + 1].get("conditions", {})):
 				shared.append("%s %d-%d" % [definition.id, i + 1, i + 2])
 	expect.call(shared.is_empty(), "every lab: the next stage asks for another condition (no setup meets two stages in a row)", ", ".join(shared))
 

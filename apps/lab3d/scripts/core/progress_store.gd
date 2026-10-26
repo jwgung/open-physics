@@ -19,6 +19,8 @@ const BENCH_PATH := "user://progress-bench.cfg"
 static var load_count := 0
 ## Sections the store owns (a corrupt one is ignored: a future section name is never read here).
 const SECTIONS := ["progress"]
+## The control values of the run that cleared each spot's last stage (MissionTracker `change`).
+const CLEARED := "cleared"
 
 
 static func load() -> Dictionary:
@@ -51,12 +53,37 @@ static func _as_int(value: Variant) -> int:
 	return -1
 
 
-## Writes the whole store (atomic enough for a small cfg: ConfigFile.save).
+## Writes the whole stamp store (atomic enough for a small cfg: ConfigFile.save). The file's other
+## sections (the cleared throws) stay; a corrupt file is replaced.
 static func save(progress: Dictionary) -> void:
-	var config := ConfigFile.new()
+	var config := _read()
+	if config.has_section("progress"):
+		config.erase_section("progress")
 	for id in progress:
 		config.set_value("progress", id, int(progress[id]))
 	config.save(path)
+
+
+## The control values of the run that cleared `id`'s last stage ({} when none is stored or the
+## stored value is not an object): MissionTracker's `change` compares the next stage's run with it.
+static func cleared(id: String) -> Dictionary:
+	var value: Variant = _read().get_value(CLEARED, id, {})
+	return value if value is Dictionary else {}
+
+
+## Stores the control values of the run that cleared `id`'s last stage (the stamps stay).
+static func save_cleared(id: String, controls: Dictionary) -> void:
+	var config := _read()
+	config.set_value(CLEARED, id, controls)
+	config.save(path)
+
+
+## The file as it is, or an empty config when it is missing or corrupt.
+static func _read() -> ConfigFile:
+	var config := ConfigFile.new()
+	if config.load(path) != OK:
+		config = ConfigFile.new()
+	return config
 
 
 ## The stamps of `id` (0 when it has none).

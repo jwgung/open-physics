@@ -38,6 +38,12 @@ func check_round() -> void:
 	expect.call(screen._mission_strip != null and screen._mission_strip.visible and screen._stamp_labels.size() == stages.size()
 		and screen._mission_text.text == str(stages[0].text),
 		"round: the strip shows one stamp per stage and the first stage", screen._mission_text.text)
+	# The formula's answer is hidden before the throw (key card and sidebar both read "?").
+	screen._update_readouts(false)
+	var range_hidden: bool = screen._key_labels["range"].text == "? m" and screen._observation_labels["range"].text == "? m" \
+		and screen._key_labels["flight_time"].text == "? s"
+	expect.call(range_hidden, "round: before the throw the formula range and flight time read ?",
+		"%s, %s" % [screen._key_labels["range"].text, screen._key_labels["flight_time"].text])
 	# Dugi asks in his own box (portrait, name tag), the two picture buttons over it.
 	var box: DialogueBox = screen.dialogue
 	var buttons: Array = screen._choices.get_children() if screen._choices != null else []
@@ -83,6 +89,10 @@ func check_round() -> void:
 	# First throw (45°, 6 m/s: past 3 m): one stamp, then Dugi tells the reason.
 	await _throw(screen, lab, 45.0, 6.0)
 	await _run_to_end(lab)
+	screen._update_readouts(false)
+	var range_text := ExperimentScreen.format_observation(_observation(lab, "range"), lab.observations().get("range"))
+	expect.call(screen._key_labels["range"].text == range_text and range_text != "? m",
+		"round: once the ball landed the formula range shows", "%s / %s" % [screen._key_labels["range"].text, range_text])
 	expect.call(ProgressStore.stamps(ProgressStore.load(), "projectile") == 1 and screen._mission_text.text == str(stages[1].text),
 		"round: the first throw past 3 m earns the first stamp; the next stage shows",
 		"stamps %d, '%s'" % [ProgressStore.stamps(ProgressStore.load(), "projectile"), screen._mission_text.text])
@@ -232,3 +242,11 @@ func _free(screen: Control) -> void:
 	screen.get_parent().queue_free()
 	for i in 3:
 		await tree.process_frame
+
+
+## The definition's observation entry with this id.
+func _observation(lab: Experiment, id: String) -> Dictionary:
+	for observation in lab.definition.observations:
+		if observation.id == id:
+			return observation
+	return {}

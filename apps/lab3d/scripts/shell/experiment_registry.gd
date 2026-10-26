@@ -186,9 +186,11 @@ static func validate(definition: Dictionary) -> PackedStringArray:
 
 
 ## `missions` (Plan G1, optional): the easy stage thresholds —
-## {"observe": <an observation id>, "stages": [{"threshold": <number > 0>, "text": <non-empty>}, ...]}.
+## {"observe": <an observation id>, "stages": [{"threshold": <number > 0>, "text": <non-empty>}, ...],
+##  "hidden_until_end"?: [<observation id>, ...]}.
 ## The child clears stage n when the lab lands with the formula value of `observe` farther than
-## threshold n (MissionTracker: it reads, it never changes the run).
+## threshold n (MissionTracker: it reads, it never changes the run). The hidden_until_end values
+## (the formula's answer) read "?" until the throw has ended, so the round is not given away.
 static func _validate_missions(missions: Variant, observations: Array) -> PackedStringArray:
 	var problems := PackedStringArray()
 	if missions == null:
@@ -203,6 +205,9 @@ static func _validate_missions(missions: Variant, observations: Array) -> Packed
 			ids[observation.id] = true
 	if not (observe is String and ids.has(observe)):
 		problems.append("missions.observe must be one of the observation ids")
+	var hidden: Variant = missions.get("hidden_until_end", [])
+	if not (hidden is Array and hidden.all(func(id: Variant) -> bool: return id is String and ids.has(id))):
+		problems.append("missions.hidden_until_end must list observation ids")
 	var stages: Variant = missions.get("stages")
 	if not (stages is Array and stages.size() > 0 and stages.size() <= ProgressStore.MAX_STAMPS):
 		problems.append("missions.stages must list %d or fewer non-empty stages" % ProgressStore.MAX_STAMPS)

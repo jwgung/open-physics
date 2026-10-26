@@ -54,6 +54,7 @@
   },
   "missions": {
     "observe": "range",
+    "hidden_until_end": ["range", "flight_time", "apex"],
     "stages": [
       { "threshold": 3.0, "text": "3 m보다 멀리 보내기!" },
       { "threshold": 5.0, "text": "5 m보다 멀리 보내기!" },

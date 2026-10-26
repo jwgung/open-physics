@@ -1178,6 +1178,22 @@ func _poll() -> void:
 
 
 ## The displayed text of an observation value (panel tiles and key cards show the same text).
+## A mission's answer before the throw has ended (missions.hidden_until_end): "?" and the unit.
+static func hidden_observation(observation: Dictionary) -> String:
+	var unit: String = observation.get("unit", "")
+	if unit == "":
+		return "?"
+	return "?" + unit if unit == "°" else "? " + unit
+
+
+## The observation ids a mission round hides now: its hidden_until_end ones while the throw has
+## not ended (ready, being pulled, flying); none once it landed (or went out / hit the fence).
+func _hidden_answers() -> Array:
+	if _missions == null or experiment.status() in RUN_END:
+		return []
+	return MissionTracker.missions(definition).get("hidden_until_end", [])
+
+
 static func format_observation(observation: Dictionary, value: Variant) -> String:
 	if value is float or value is int:
 		var text := Ui.number(value, int(observation.get("digits", 2)))
@@ -1192,8 +1208,11 @@ static func format_observation(observation: Dictionary, value: Variant) -> Strin
 
 func _update_readouts(force_graph: bool) -> void:
 	var values := experiment.observations()
+	var hidden := _hidden_answers()
 	for observation in definition.observations:
 		var text := format_observation(observation, values.get(observation.id))
+		if hidden.has(observation.id):
+			text = hidden_observation(observation)
 		var label: Label = _observation_labels[observation.id]
 		if label.text != text:
 			label.text = text

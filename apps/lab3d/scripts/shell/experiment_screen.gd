@@ -254,9 +254,10 @@ func _run_dialogue() -> void:
 	if dugi.speaking() and dugi.state == "raise" and not _dialogue_started and not is_sidebar_open() and _layout_dialogue():
 		_dialogue_started = true
 		_hide_tip()
-		dialogue.open(_reason_pending if _predict_ended else "")   # the reason once, after the first throw
-		if _predict_ended:
-			_reason_pending = ""
+		# Dugi explains only after a throw has ended (cast explain_on): the first explanation tells the
+		# prediction's reason once, whether or not the stamp was judged yet.
+		dialogue.open(_reason_pending)
+		_reason_pending = ""
 		dialogue.visible = true
 	elif not dugi.speaking():
 		_dialogue_started = false

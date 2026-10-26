@@ -257,7 +257,13 @@ func _refresh_flag(spot: Dictionary) -> void:
 func _make_label(spot: Dictionary) -> Control:
 	var box := PanelContainer.new()
 	box.name = "SpotLabel_%s" % spot.id
-	box.add_child(Ui.label(_spot_title(spot.definition), "HeadingLabel"))
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 6)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(row)
+	row.add_child(Ui.label(_spot_name(spot.definition), "HeadingLabel"))
+	if not MissionTracker.missions(spot.definition).get("stages", []).is_empty():
+		row.add_child(Ui.label("미션", "KeyLabel"))
 	add_child(box)
 	return box
 
@@ -272,18 +278,6 @@ func _spot_name(definition: Dictionary) -> String:
 		"orbit": "궤도",
 	}
 	return names.get(definition.id, definition.title)
-
-
-func _spot_title(definition: Dictionary) -> String:
-	var name := _spot_name(definition)
-	var stamps := ProgressStore.stamps(ProgressStore.load(), str(definition.id))
-	var missions: Dictionary = MissionTracker.missions(definition)
-	var stages: Array = missions.get("stages", [])
-	if not stages.is_empty() and stamps >= stages.size():
-		return name + "  (완료)"
-	if not stages.is_empty():
-		return name + "  도장 %d/%d" % [stamps, stages.size()]
-	return name
 
 
 func _on_pointer(kind: String, position: Vector2) -> void:

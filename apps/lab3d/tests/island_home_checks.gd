@@ -107,37 +107,51 @@ func check_tap_opens_experiment() -> void:
 	await _free(screen)
 
 
-## The stamps show on the spot labels; at 3 stamps the flag stands.
+## Spots with missions show a "미션" badge; at 3 stamps the flag stands. Progress (0/3) is
+## shown only in the experiment screen, not on the map.
 func check_stamp_display() -> void:
 	DirAccess.remove_absolute(ProgressStore.PATH)
 	var screen := await _home(TABLET)
-	# A fresh map: the projectile spot (it has 3 stages) shows 도장 0/3.
+	# A fresh map: the projectile spot (it has 3 stages) shows a "미션" badge next to its name.
 	await tree.process_frame
 	await tree.process_frame
 	var label: Label = _label_text(screen, "projectile")
 	expect.call(label != null, "the projectile spot has a label", str(screen._labels.keys()))
-	expect.call(label.text.contains("던지기") and label.text.contains("도장 0/3"), "a fresh spot shows its name and 도장 0/3", label.text if label else "")
-	# Award 3 stamps: the label says 완료 and the flag stands.
+	var box: Node = screen._labels.get("projectile")
+	var has_badge: bool = false
+	if box != null:
+		for c: Node in box.find_children("*", "Label", true, false):
+			if (c as Label).text == "미션":
+				has_badge = true
+	expect.call(label != null and label.text.contains("던지기") and has_badge,
+		"a mission spot shows its name and a 미션 badge", label.text if label else "")
+	# A non-mission spot (collision) has no badge.
+	var collision_label: Label = _label_text(screen, "collision")
+	var collision_box: Node = screen._labels.get("collision")
+	var collision_badge: bool = false
+	if collision_box != null:
+		for c: Node in collision_box.find_children("*", "Label", true, false):
+			if (c as Label).text == "미션":
+				collision_badge = true
+	expect.call(collision_label != null and collision_label.text.contains("충돌") and not collision_badge,
+		"a non-mission spot has no badge", collision_label.text if collision_label else "")
+	# Award 3 stamps: the flag stands.
 	ProgressStore.save({"projectile": 3})
 	screen._labels.clear()
 	for i in 4:
 		screen._process(1.0 / 60.0)
 		await tree.process_frame
-	label = _label_text(screen, "projectile")
 	var flag: Node3D = screen._flags.get("projectile")
-	expect.call(label != null and label.text.contains("완료"), "a finished spot (3 stamps) says 완료", label.text if label else "")
 	await tree.process_frame
 	expect.call(flag != null and flag.visible, "a finished spot stands its flag", "flag visible %s" % str(flag.visible if flag else null))
-	# An unfinished spot with 1 stamp shows 도장 1/3 and no flag.
+	# An unfinished spot has no flag.
 	ProgressStore.save({"projectile": 1, "orbit": 2})
 	screen._labels.clear()
 	for i in 4:
 		screen._process(1.0 / 60.0)
 		await tree.process_frame
-	label = _label_text(screen, "projectile")
 	var orbit_label: Label = _label_text(screen, "orbit")
 	var orbit_flag: Node3D = screen._flags.get("orbit")
-	expect.call(label != null and label.text.contains("도장 1/3"), "a spot with one stamp shows 도장 1/3", label.text if label else "")
 	expect.call(orbit_label != null and orbit_label.text.contains("궤도"), "a spot label shows the lab's short name (orbit = 궤도)", orbit_label.text if orbit_label else "")
 	expect.call(orbit_flag != null and not orbit_flag.visible, "an unfinished spot has no flag", "flag visible %s" % str(orbit_flag.visible if orbit_flag else null))
 	DirAccess.remove_absolute(ProgressStore.PATH)

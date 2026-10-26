@@ -593,24 +593,24 @@ func check_dialogue() -> void:
 			if not screen._layout_dialogue():
 				split_problems.append("%s %s: no room" % [definition.id, size])
 			else:
-				var font := box.label.get_theme_font("font")
-				var fs := box.label.get_theme_font_size("font_size")
-				if box.joined() != definition.observe:
-					split_problems.append("%s: pages != observe" % definition.id)
-				for pg in box.pages():
-					if pg.lines.size() > DialogueBox.LINES:
-						split_problems.append("%s: %d lines" % [definition.id, pg.lines.size()])
-					for line in pg.lines:
-						if font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > box.label.size.x + 0.5:
-							split_problems.append("%s: line too wide" % definition.id)
-				if box.more.position.x < box.label.position.x + box.label.size.x or box.more.position.x + box.more.get_minimum_size().x > box.box.size.x:
-					split_problems.append("%s: the ▼ overlaps the words or leaves the box" % definition.id)
-				max_pages = maxi(max_pages, box.pages().size())
+				# A lab with a prediction opens with Dugi's question (Plan G4): its pages first, then
+				# the question goes and the observe text is checked the same way.
+				var texts: Array = [definition.observe]
+				if screen._asking:
+					texts.push_front(str(MissionTracker.predict(definition).question))
+				for text in texts:
+					if text == definition.observe and screen._asking:
+						screen._end_question()
+						box.open()
+						screen._layout_dialogue()
+					split_problems.append_array(_page_problems(box, definition.id, text))
+					max_pages = maxi(max_pages, box.pages().size())
 			await _close(screen)
-	expect.call(split_problems.is_empty(), "dialogue: every observe text splits at its spaces into pages of at most %d lines that fit (phone, tablet), and joins back exactly" % DialogueBox.LINES,
+	expect.call(split_problems.is_empty(), "dialogue: every observe text (and prediction question) splits at its spaces into pages of at most %d lines that fit (phone, tablet), and joins back exactly" % DialogueBox.LINES,
 		"; ".join(split_problems) if not split_problems.is_empty() else "up to %d pages" % max_pages)
 
 	var screen := await _open("collision", TABLET)
+	screen._end_question()   # the prediction's question first goes (the round is not under test here)
 	var cast: IslandCast = screen.cast
 	var box: DialogueBox = screen.dialogue
 	box.set_process(false)
@@ -673,6 +673,25 @@ func check_dialogue() -> void:
 		await tree.process_frame
 	expect.call(was and not box.active and not box.visible, "dialogue: opening the sidebar closes it (no dialogue beside the sidebar)", "")
 	await _close(screen)
+
+
+## The problems of `box`'s pages for `text`: joined back exactly, at most LINES lines a page, every
+## line within the label, the ▼ clear of the words.
+static func _page_problems(box: DialogueBox, id: String, text: String) -> Array:
+	var problems := []
+	var font := box.label.get_theme_font("font")
+	var fs := box.label.get_theme_font_size("font_size")
+	if box.joined() != text:
+		problems.append("%s: pages != %s" % [id, text.left(12)])
+	for pg in box.pages():
+		if pg.lines.size() > DialogueBox.LINES:
+			problems.append("%s: %d lines" % [id, pg.lines.size()])
+		for line in pg.lines:
+			if font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > box.label.size.x + 0.5:
+				problems.append("%s: line too wide" % id)
+	if box.more.position.x < box.label.position.x + box.label.size.x or box.more.position.x + box.more.get_minimum_size().x > box.box.size.x:
+		problems.append("%s: the ▼ overlaps the words or leaves the box" % id)
+	return problems
 
 
 # --- 7. physics unchanged ---------------------------------------------------------------------

@@ -39,6 +39,26 @@
     { "id": "reset", "label": "처음으로", "style": "primary" }
   ],
   "key_observations": ["strands", "required", "lift"],
+  "predict": {
+    "question": "짐을 받치는 줄이 많으면 힘이 덜 들까?",
+    "choices": [
+      { "id": "less", "label": "덜 들어요", "picture": "pulley_many" },
+      { "id": "same", "label": "똑같아요", "picture": "pulley_same" }
+    ],
+    "answer": "less",
+    "reason": "짐을 받치는 줄이 n개면 힘이 나뉘어서 F = m × g ÷ n만 있으면 돼요. 줄이 많을수록 힘이 덜 들어요. 대신 줄은 n배 길게 당겨야 해요."
+  },
+  "missions": {
+    "observe": "required",
+    "compare": "less",
+    "judge_on": ["held", "top"],
+    "hidden_until_end": ["required", "applied"],
+    "stages": [
+      { "threshold": 150.0, "conditions": {"mass": 20.0}, "text": "20 kg 짐을 150 N보다 작은 힘으로 들기!" },
+      { "threshold": 100.0, "conditions": {"mass": 20.0}, "text": "20 kg 짐을 100 N보다 작은 힘으로 들기!" },
+      { "threshold": 50.0, "conditions": {"mass": 20.0}, "text": "20 kg 짐을 50 N보다 작은 힘으로 들기!" }
+    ]
+  },
   "cast": {
     "dugi": { "at": [3.5, 4.0], "explain_on": ["held", "top"], "delay_s": 0.6 },
     "puppy": { "at": [6.5, -7.5] }

@@ -234,6 +234,7 @@ func observations() -> Dictionary:
 		"period": model.circular_period(),
 		"speed": model.speed(),
 		"lap": model.first_lap_time if model.first_lap_time >= 0.0 else "—",
+		"laps": absf(model.swept) / TAU,   # turns round the star since the launch (either way)
 	}
 
 

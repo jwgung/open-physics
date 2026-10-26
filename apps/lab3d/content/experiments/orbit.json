@@ -40,6 +40,26 @@
     { "id": "reset", "label": "처음으로" }
   ],
   "key_observations": ["state", "launch_speed", "escape_speed"],
+  "predict": {
+    "question": "더 빠르게 쏘면 별을 떠날까?",
+    "choices": [
+      { "id": "leave", "label": "떠나요", "picture": "orbit_leave" },
+      { "id": "stay", "label": "계속 돌아요", "picture": "orbit_stay" }
+    ],
+    "answer": "leave",
+    "reason": "별은 행성을 끌어당겨요. 조금 빠르면 별에서 멀리 나갔다가 길쭉하게 돌아와요. 탈출 속력 √(2GM ÷ r)보다 빠르면 별이 끌어당겨도 돌아오지 못하고 떠나요."
+  },
+  "missions": {
+    "observe": "laps",
+    "judge_on": ["orbiting"],
+    "reveal_on": ["orbiting", "leaving", "crash", "far"],
+    "hidden_until_end": ["predicted", "escape_speed"],
+    "stages": [
+      { "threshold": 0.5, "conditions": {"radius": 4.0}, "text": "별에서 4 m 떨어져 반 바퀴 돌기!" },
+      { "threshold": 1.0, "conditions": {"radius": 5.0}, "text": "별에서 5 m 떨어져 한 바퀴 돌기!" },
+      { "threshold": 2.0, "conditions": {"radius": 2.0}, "text": "별 가까이 2 m에서 두 바퀴 돌기!" }
+    ]
+  },
   "cast": {
     "dugi": { "at": [8.0, 4.75], "explain_on": ["orbiting", "leaving", "crash", "far"], "delay_s": 1.5 },
     "puppy": { "at": [5.0, -8.75] }
@@ -53,7 +73,8 @@
     { "id": "radius", "label": "지금 궤도 반지름 r", "unit": "m", "digits": 2 },
     { "id": "period", "label": "원 궤도 예상 주기 2π√(r³/GM)", "unit": "s", "digits": 2 },
     { "id": "speed", "label": "지금 속력", "unit": "m/s", "digits": 2 },
-    { "id": "lap", "label": "한 바퀴 걸린 시간", "unit": "s", "digits": 2 }
+    { "id": "lap", "label": "한 바퀴 걸린 시간", "unit": "s", "digits": 2 },
+    { "id": "laps", "label": "별 둘레를 돈 바퀴 수", "unit": "바퀴", "digits": 2 }
   ],
   "manipulation": {
     "objects": [

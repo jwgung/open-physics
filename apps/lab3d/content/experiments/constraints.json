@@ -48,6 +48,25 @@
     { "id": "reset", "label": "처음으로" }
   ],
   "key_observations": ["rope_distance", "rod_distance", "small_period"],
+  "predict": {
+    "question": "줄이 길면 더 천천히 흔들릴까?",
+    "choices": [
+      { "id": "slower", "label": "천천히", "picture": "swing_slow" },
+      { "id": "same", "label": "똑같이", "picture": "swing_same" }
+    ],
+    "answer": "slower",
+    "reason": "진자가 한 번 왕복하는 시간은 T = 2π√(L ÷ g)예요. 줄 길이 L이 길수록 T가 길어져서 더 천천히 흔들려요. 추의 무게는 T에 없어요."
+  },
+  "missions": {
+    "observe": "rope_period",
+    "judge_on": ["swinging"],
+    "hidden_until_end": ["small_period"],
+    "stages": [
+      { "threshold": 3.0, "text": "줄 진자 한 번 왕복을 3초보다 길게!" },
+      { "threshold": 3.5, "text": "줄 진자 한 번 왕복을 3.5초보다 길게!" },
+      { "threshold": 4.0, "text": "줄 진자 한 번 왕복을 4초보다 길게!" }
+    ]
+  },
   "cast": {
     "dugi": { "at": [3.5, 4.0], "explain_on": ["swinging", "weightless"], "delay_s": 1.5 },
     "puppy": { "at": [-7.5, -6.25] }

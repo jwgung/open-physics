@@ -39,6 +39,26 @@
     { "id": "reset", "label": "처음으로", "style": "primary" }
   ],
   "key_observations": ["effort_arm", "required", "applied"],
+  "predict": {
+    "question": "손잡이를 멀리 잡으면 힘이 덜 들까?",
+    "choices": [
+      { "id": "less", "label": "덜 들어요", "picture": "lever_far" },
+      { "id": "same", "label": "똑같아요", "picture": "lever_same" }
+    ],
+    "answer": "less",
+    "reason": "지렛대는 F₁ × r₁ = F₂ × r₂가 되면 들려요. 손잡이를 받침점에서 멀리 잡으면 r₁이 커져서, 필요한 힘 F₁ = F₂ × r₂ ÷ r₁이 작아져요. 그래서 힘이 덜 들어요."
+  },
+  "missions": {
+    "observe": "applied",
+    "compare": "less",
+    "judge_on": ["lifted"],
+    "hidden_until_end": ["required"],
+    "stages": [
+      { "threshold": 150.0, "conditions": {"mass": 20.0}, "text": "20 kg 짐을 150 N보다 작은 힘으로 들기!" },
+      { "threshold": 100.0, "conditions": {"mass": 20.0}, "text": "20 kg 짐을 100 N보다 작은 힘으로 들기!" },
+      { "threshold": 60.0, "conditions": {"mass": 20.0}, "text": "20 kg 짐을 60 N보다 작은 힘으로 들기!" }
+    ]
+  },
   "cast": {
     "dugi": { "at": [4.75, 1.25], "explain_on": ["lifted"], "delay_s": 0.6 },
     "puppy": { "at": [-7.75, -6.0] }

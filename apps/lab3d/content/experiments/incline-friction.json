@@ -41,6 +41,26 @@
     { "id": "reset", "label": "처음으로" }
   ],
   "key_observations": ["critical_angle", "state", "acceleration"],
+  "predict": {
+    "question": "빗면을 더 기울이면 더 빨리 미끄러질까?",
+    "choices": [
+      { "id": "faster", "label": "더 빨리", "picture": "slope_steep" },
+      { "id": "same", "label": "똑같이", "picture": "slope_same" }
+    ],
+    "answer": "faster",
+    "reason": "빗면이 기울수록 상자를 아래로 끄는 힘 m × g × sinθ가 커져요. 미끄러질 때 가속도는 a = g × (sinθ − μk × cosθ)라서 θ가 크면 더 빨리 미끄러져요. 임계각보다 덜 기울면 멈춰 있어요."
+  },
+  "missions": {
+    "observe": "acceleration",
+    "judge_on": ["sliding", "left"],
+    "reveal_on": ["holding", "sliding", "left"],
+    "hidden_until_end": ["acceleration"],
+    "stages": [
+      { "threshold": 1.0, "text": "가속도 1 m/s²보다 빠르게 미끄러지기!" },
+      { "threshold": 2.0, "text": "가속도 2 m/s²보다 빠르게 미끄러지기!" },
+      { "threshold": 3.0, "text": "가속도 3 m/s²보다 빠르게 미끄러지기!" }
+    ]
+  },
   "cast": {
     "dugi": { "at": [2.5, 2.5], "explain_on": ["sliding", "left"], "delay_s": 0.6 },
     "puppy": { "at": [3.25, -9.25] }

@@ -39,6 +39,25 @@
     { "id": "reset", "label": "처음으로" }
   ],
   "key_observations": ["depth", "floating_depth", "buoyant"],
+  "predict": {
+    "question": "무게가 같으면 큰 통과 작은 통, 어느 게 더 잘 뜰까?",
+    "choices": [
+      { "id": "big", "label": "큰 통", "picture": "drum_big" },
+      { "id": "small", "label": "작은 통", "picture": "drum_small" }
+    ],
+    "answer": "big",
+    "reason": "무게가 같으면 큰 통이 물을 더 많이 밀어낼 수 있어요. 부력 F = ρ물 × g × V잠김이라서 큰 통은 더 큰 부력을 받아요. 통의 밀도 m ÷ V가 물(1000 kg/m³)보다 작으면 떠요."
+  },
+  "missions": {
+    "judge_on": ["floating"],
+    "reveal_on": ["floating", "sunk", "staying"],
+    "hidden_until_end": ["judgement", "density", "floating_depth"],
+    "stages": [
+      { "conditions": {"mass": {"min": 75.0}}, "text": "70 kg보다 무거운 통 띄우기!" },
+      { "conditions": {"mass": {"min": 95.0}}, "text": "90 kg보다 무거운 통 띄우기!" },
+      { "conditions": {"volume": "small", "mass": {"min": 45.0}}, "text": "작은 통을 40 kg보다 무겁게 띄우기!" }
+    ]
+  },
   "cast": {
     "dugi": { "at": [2.5, 3.0], "explain_on": ["floating", "sunk", "staying"], "delay_s": 0.6 },
     "puppy": { "at": [-5.25, -9.25] }

@@ -62,6 +62,24 @@
     { "id": "reset", "label": "처음으로" }
   ],
   "key_observations": ["after_a", "after_b", "p_after"],
+  "predict": {
+    "question": "무거운 공이 가벼운 공에 부딪히면?",
+    "choices": [
+      { "id": "light_fast", "label": "가벼운 공이 빨리", "picture": "light_flies" },
+      { "id": "both_stop", "label": "둘 다 멈춤", "picture": "both_stop" }
+    ],
+    "answer": "light_fast",
+    "reason": "부딪혀도 두 공의 운동량 p = m × v를 더한 값은 그대로예요. 무거운 공의 큰 운동량이 가벼운 공으로 넘어가면, 가벼운 공은 m이 작아서 v가 크게 돼요. 그래서 가벼운 공이 빠르게 튀어 나가요."
+  },
+  "missions": {
+    "observe": "after_b",
+    "judge_on": ["collided", "rest"],
+    "stages": [
+      { "threshold": 2.0, "text": "주황 공을 2 m/s보다 빠르게 보내기!" },
+      { "threshold": 4.0, "text": "주황 공을 4 m/s보다 빠르게 보내기!" },
+      { "threshold": 6.0, "text": "주황 공을 6 m/s보다 빠르게 보내기!" }
+    ]
+  },
   "cast": {
     "dugi": { "at": [8.5, 0.5], "explain_on": ["collided", "rest"], "delay_s": 0.6 },
     "puppy": { "at": [-2.0, -10.0] }

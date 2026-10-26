@@ -45,6 +45,25 @@
     { "id": "reset", "label": "처음으로", "style": "primary" }
   ],
   "key_observations": ["applied", "max_static", "state"],
+  "predict": {
+    "question": "고무 바닥과 금속 바닥, 어디가 더 밀기 힘들까?",
+    "choices": [
+      { "id": "rubber", "label": "고무", "picture": "rubber_floor" },
+      { "id": "steel", "label": "금속", "picture": "steel_floor" }
+    ],
+    "answer": "rubber",
+    "reason": "고무는 잘 미끄러지지 않아요 (μs = 0.6). 금속은 미끄러워요 (μs = 0.26). 상자를 움직이려면 최대 정지 마찰력 μs × m × g보다 세게 밀어야 해서, 고무 바닥이 더 힘들어요."
+  },
+  "missions": {
+    "judge_on": ["sliding"],
+    "reveal_on": ["sliding", "end"],
+    "hidden_until_end": ["max_static", "kinetic"],
+    "stages": [
+      { "conditions": {"mass": "light"}, "text": "가벼운 상자 움직이기!" },
+      { "conditions": {"mass": "normal"}, "text": "보통 상자 움직이기!" },
+      { "conditions": {"mass": "heavy"}, "text": "무거운 상자 움직이기!" }
+    ]
+  },
   "cast": {
     "dugi": { "at": [7.25, -1.0], "explain_on": ["sliding", "end"], "delay_s": 0.6 },
     "puppy": { "at": [6.5, -7.5] }

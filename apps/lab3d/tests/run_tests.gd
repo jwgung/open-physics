@@ -52,6 +52,9 @@
 ##    MissionTracker (a landed run judged by the formula value, a short throw changes nothing),
 ##    the ProgressStore (user://progress.cfg, a corrupt file starts over) and the physics
 ##    invariant: the trajectory and the displayed values are the same with or without the mission.
+## 18. game, the other 10 labs (tests/lab_mission_checks.gd): per lab a scripted round through the
+##    screen (a missed stage earns nothing, each stage reachable in the control ranges, one stamp per
+##    attempt, the hidden answers), the same steps with and without the round, every picture.
 ## Times are engine fixed steps (60 Hz), independent of rendering FPS.
 extends SceneTree
 
@@ -217,6 +220,11 @@ func _run() -> void:
 	_expect(round != null and round.can_instantiate(), "game round checks compile", "")
 	if round != null and round.can_instantiate():
 		await round.new(self, _expect).run()
+	print("== game G2 (next): the other 10 labs' missions (stages reachable, one stamp per attempt, physics unchanged) ==")
+	var labs: GDScript = load("res://tests/lab_mission_checks.gd")
+	_expect(labs != null and labs.can_instantiate(), "lab mission checks compile", "")
+	if labs != null and labs.can_instantiate():
+		await labs.new(self, _expect).run()
 	print("== key cards and front camera, every experiment (Task 2d) ==")
 	await _check_key_cards()
 	await _check_gesture_tip()
@@ -1339,7 +1347,8 @@ func _check_tip_rebuild() -> void:
 	root.add_child(host)
 	var screen_class: GDScript = load(EXPERIMENT_SCREEN)
 	screen_class.reset_tips_shown()
-	var definition := ExperimentRegistry.find("incline-friction")
+	var definition := ExperimentRegistry.find("incline-friction").duplicate(true)
+	definition.erase("predict")   # Dugi's question hides the hint at once (Plan G4): not under test here
 	var first: Control = screen_class.new()
 	first.setup(definition)
 	host.add_child(first)

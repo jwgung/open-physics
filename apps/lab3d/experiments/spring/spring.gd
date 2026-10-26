@@ -158,6 +158,7 @@ func observations() -> Dictionary:
 	return {
 		"state": state_text,
 		"extension": model.extension,
+		"pull": model.x0,   # the extension it was let go from (the amplitude without damping)
 		"speed": absf(model.velocity),
 		"force": model.force(),
 		"acceleration": model.force() / model.mass,

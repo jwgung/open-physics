@@ -45,13 +45,13 @@
   ],
   "key_observations": ["range", "flight_time", "landing"],
   "predict": {
-    "question": "공을 더 세게 던지면 더 멀리 갈까?",
+    "question": "더 세게 던지면 더 멀리 갈까?",
     "choices": [
       { "id": "farther", "label": "더 멀리", "picture": "long_arc" },
       { "id": "same", "label": "똑같이", "picture": "same_arc" }
     ],
     "answer": "farther",
-    "reason": "같은 각도로 더 세게 던지면 빠르기 v₀가 커져요. 공이 앞으로 더 빨리 가고, 위로 던지면 더 오래 떠 있어서 거리 R이 늘어나요. 그래서 더 멀리 가요. 높이 없이 던질 때는 R = v₀·v₀·sin(2θ) ÷ g 예요."
+    "reason": "세게 던지면 공이 더 빨리 날아가요. 그래서 더 멀리 가요."
   },
   "missions": {
     "observe": "range",
@@ -64,6 +64,13 @@
       { "threshold": 5.0, "conditions": {"speed": {"min": 6.5, "max": 7.5}}, "text": "조금 세게 던져서 5미터 넘기기!" },
       { "threshold": 7.0, "conditions": {"speed": {"min": 8.0}}, "text": "아주 세게 던져서 7미터 넘기기!" }
     ]
+  },
+  "kid": {
+    "title": "공을 멀리 던져 보자!",
+    "place": "공 던지기",
+    "say": "공이 앞으로 가면서 아래로 떨어져요. 그래서 둥글게 날아가요.",
+    "tip": "공을 뒤로 쭉 당겼다 놓아 봐요!",
+    "cards": {"range": "얼마나 멀리", "flight_time": "날아간 시간", "landing": "떨어진 곳"}
   },
   "cast": {
     "dugi": { "at": [7.25, -1.0], "explain_on": ["landed", "fence"], "delay_s": 0.6 },

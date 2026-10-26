@@ -49,13 +49,13 @@
   ],
   "key_observations": ["time", "fall_time", "speed"],
   "predict": {
-    "question": "무거운 공과 가벼운 공, 누가 먼저 떨어질까?",
+    "question": "무거운 공이 먼저 떨어질까?",
     "choices": [
-      { "id": "together", "label": "같이", "picture": "fall_together" },
-      { "id": "heavy", "label": "무거운 공", "picture": "fall_heavy_first" }
+      { "id": "together", "label": "같이 닿아요", "picture": "fall_together" },
+      { "id": "heavy", "label": "무거운 공 먼저", "picture": "fall_heavy_first" }
     ],
     "answer": "together",
-    "reason": "공기 저항이 없으면 무거운 공도 가벼운 공도 똑같이 1초마다 g만큼 빨라져요. 바닥까지 걸리는 시간 t = √(2h ÷ g)에는 무게 m이 없어요. 그래서 같은 높이에서 놓으면 같이 닿아요."
+    "reason": "무거운 공도 가벼운 공도 똑같이 빨라져요. 그래서 같이 땅에 닿아요."
   },
   "missions": {
     "observe": "speed",
@@ -68,6 +68,13 @@
       { "threshold": 5.0, "conditions": {"gravity": "moon"}, "text": "달에서 공을 맨 위에서 떨어뜨리기!" },
       { "threshold": 15.0, "conditions": {"gravity": "jupiter"}, "text": "목성에서 공을 높이 올려 떨어뜨리기!" }
     ]
+  },
+  "kid": {
+    "title": "무거운 공이 먼저 떨어질까?",
+    "place": "공 떨어뜨리기",
+    "say": "무거운 공도 가벼운 공도 같이 땅에 닿아요. 달에서는 더 천천히 떨어져요.",
+    "tip": "공을 끌어서 옮겨 봐요. 두 손가락으로 돌려 봐요.",
+    "cards": {"time": "놓은 뒤 시간", "fall_time": "땅까지 걸리는 시간", "speed": "빨간 공 빠르기"}
   },
   "cast": {
     "dugi": { "at": [2.75, 5.0], "explain_on": ["landed"], "delay_s": 0.6 },

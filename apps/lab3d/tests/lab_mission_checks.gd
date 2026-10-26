@@ -212,7 +212,7 @@ func check_round(id: String) -> void:
 		var stored := ProgressStore.stamps(ProgressStore.load(), id)
 		if stored != want or screen._missions.stamps != want:
 			problems.append("%s: stamps %d (want %d, status %s, %s)" % [attempt[0], stored, want, lab.status(), _observed(lab)])
-	expect.call(problems.is_empty() and ProgressStore.stamps(ProgressStore.load(), id) == 3 and screen._mission_text.text.contains("모두 완료"),
+	expect.call(problems.is_empty() and ProgressStore.stamps(ProgressStore.load(), id) == 3 and screen._mission_text.text == ExperimentScreen.DONE_TEXT,
 		"%s: a missed stage earns nothing, each of the 3 stages is reachable in the control ranges and earns one stamp per attempt" % id,
 		"; ".join(problems))
 	await _free(screen)

@@ -78,7 +78,7 @@ func check_round() -> void:
 	# The pick: the question goes at once, the strip shows the pick, the next touch reaches the ball.
 	(buttons[0] as Button).pressed.emit()
 	expect.call(screen._predict_pick == "farther" and not screen._asking and not box.active and screen._choices == null
-		and screen._mission_text.text == "예측: 더 멀리",
+		and screen._mission_text.text == ExperimentScreen.PICK_PREFIX + "더 멀리",
 		"round: a picked picture is kept and the question goes at once", screen._mission_text.text)
 	await tree.process_frame
 	var ball: Vector2 = screen.view_point(lab.ball_center())
@@ -110,7 +110,7 @@ func check_round() -> void:
 	expect.call(ProgressStore.stamps(ProgressStore.load(), "projectile") == 2, "round: the second throw (no 처음으로 between) earns the second stamp",
 		"stamps %d" % ProgressStore.stamps(ProgressStore.load(), "projectile"))
 	said = await _next_explanation(screen)
-	expect.call(said == lab.definition.observe, "round: later explanations are the lab's observe text again (the reason was told once)", said)
+	expect.call(said == ExperimentRegistry.kid_text(lab.definition, "say"), "round: later explanations are the lab's kid say text again (the reason was told once)", said)
 	expect.call(not screen.cast.puppy.celebrating(), "round: no celebration before the last stamp", "")
 	# Third throw (9 m/s: past 7 m): the last stamp, the done text, the puppy hops and waves.
 	await _throw(screen, lab, 45.0, 9.0)
@@ -123,7 +123,7 @@ func check_round() -> void:
 			hopped = true
 		if hopped and ProgressStore.stamps(ProgressStore.load(), "projectile") == 3:
 			break
-	expect.call(ProgressStore.stamps(ProgressStore.load(), "projectile") == 3 and screen._mission_text.text.contains("모두 완료"),
+	expect.call(ProgressStore.stamps(ProgressStore.load(), "projectile") == 3 and screen._mission_text.text == ExperimentScreen.DONE_TEXT,
 		"round: the third throw past 7 m earns the last stamp; the done text shows", screen._mission_text.text)
 	expect.call(hopped and screen.cast.puppy.celebrating(), "round: on the last stamp the puppy hops and waves the flag fast", "hopped %s" % str(hopped))
 	await _free(screen)
@@ -132,7 +132,7 @@ func check_round() -> void:
 	var lab2: Experiment = again.experiment
 	var awarded := []
 	again._missions.progress = func(id: String, stamps: int) -> void: awarded.append(stamps)
-	expect.call(again._mission_text.text.contains("모두 완료") and not again._asking and again._choices == null,
+	expect.call(again._mission_text.text == ExperimentScreen.DONE_TEXT and not again._asking and again._choices == null,
 		"round: a reopened finished place keeps its stamps and asks nothing", again._mission_text.text)
 	await _throw(again, lab2, 45.0, 9.0)
 	await _run_to_end(lab2)

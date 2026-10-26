@@ -46,7 +46,7 @@
       { "id": "same", "label": "똑같아요", "picture": "lever_same" }
     ],
     "answer": "less",
-    "reason": "지렛대는 F₁ × r₁ = F₂ × r₂가 되면 들려요. 손잡이를 받침점에서 멀리 잡으면 r₁이 커져서, 필요한 힘 F₁ = F₂ × r₂ ÷ r₁이 작아져요. 그래서 힘이 덜 들어요."
+    "reason": "받침에서 멀리 누를수록 막대가 쉽게 들려요. 그래서 힘이 덜 들어요."
   },
   "missions": {
     "observe": "applied",
@@ -59,6 +59,13 @@
       { "threshold": 200.0, "conditions": {"mass": 20.0, "effort": "mid"}, "text": "손잡이를 중간에 잡고 짐 들기!" },
       { "threshold": 130.0, "conditions": {"mass": 20.0, "effort": "far"}, "text": "손잡이를 멀리 잡고 살살 들기!" }
     ]
+  },
+  "kid": {
+    "title": "긴 막대로 무거운 짐을 들어 보자!",
+    "place": "시소 들기",
+    "say": "손잡이를 멀리 잡을수록 힘이 덜 들어요. 막대가 들리면 양쪽이 딱 맞아요.",
+    "tip": "빨간 손잡이를 아래로 눌러 봐요.",
+    "cards": {"effort_arm": "손잡이까지 거리", "required": "들려면 필요한 힘", "applied": "내가 누르는 힘"}
   },
   "cast": {
     "dugi": { "at": [4.75, 1.25], "explain_on": ["lifted"], "delay_s": 0.6 },

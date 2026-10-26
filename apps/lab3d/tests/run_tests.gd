@@ -1296,7 +1296,7 @@ func _check_gesture_tip() -> void:
 	for i in 3:
 		await process_frame
 	var tip: Label = first._tip
-	var short_ok: bool = tip.visible and tip.text == incline.tip_short and tip.text.length() < incline.tip.length() \
+	var short_ok: bool = tip.visible and tip.text == ExperimentRegistry.kid_text(incline, "tip") and tip.text.length() < incline.tip.length() \
 		and tip.get_line_count() <= 2 and tip.size.x <= 340.0
 	var clear: bool = not tip.get_rect().intersects(first._action_row.get_rect()) and not tip.get_rect().intersects(first._key_row.get_rect()) \
 		and not tip.get_rect().intersects(first._title_bar.get_rect()) and Rect2(Vector2.ZERO, first.view.size).encloses(tip.get_rect())

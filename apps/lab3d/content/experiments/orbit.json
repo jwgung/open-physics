@@ -36,18 +36,18 @@
   ],
   "actions": [
     { "id": "launch", "label": "발사", "style": "primary" },
-    { "id": "circular", "label": "원 궤도 속력으로" },
+    { "id": "circular", "label": "동그랗게 돌게" },
     { "id": "reset", "label": "처음으로" }
   ],
   "key_observations": ["state", "launch_speed", "escape_speed"],
   "predict": {
-    "question": "더 빠르게 쏘면 별을 떠날까?",
+    "question": "더 세게 쏘면 별을 떠날까?",
     "choices": [
       { "id": "leave", "label": "떠나요", "picture": "orbit_leave" },
       { "id": "stay", "label": "계속 돌아요", "picture": "orbit_stay" }
     ],
     "answer": "leave",
-    "reason": "별은 행성을 끌어당겨요. 조금 빠르면 별에서 멀리 나갔다가 길쭉하게 돌아와요. 탈출 속력 √(2GM ÷ r)보다 빠르면 별이 끌어당겨도 돌아오지 못하고 떠나요."
+    "reason": "별은 행성을 끌어당겨요. 아주 빠르게 쏘면 별이 붙잡지 못해서 멀리 떠나요."
   },
   "missions": {
     "observe": "laps",
@@ -59,6 +59,13 @@
       { "threshold": 1.0, "conditions": {"radius": 5.0}, "text": "별에서 5미터 떨어져 한 바퀴 돌기!" },
       { "threshold": 2.0, "conditions": {"radius": 2.0}, "text": "별 가까이 2미터에서 두 바퀴 돌기!" }
     ]
+  },
+  "kid": {
+    "title": "별 둘레를 빙글빙글 돌아 보자!",
+    "place": "별 돌기",
+    "say": "별이 행성을 끌어당겨요. 빠르기에 따라 별을 돌기도 하고 떠나기도 해요.",
+    "tip": "노란 손잡이를 끌어 쏠 방향을 정해요.",
+    "cards": {"state": "행성은?", "launch_speed": "쏘는 빠르기", "escape_speed": "떠나는 빠르기"}
   },
   "cast": {
     "dugi": { "at": [8.0, 4.75], "explain_on": ["orbiting", "leaving", "crash", "far"], "delay_s": 1.5 },

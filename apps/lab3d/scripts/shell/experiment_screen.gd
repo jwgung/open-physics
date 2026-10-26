@@ -22,6 +22,9 @@ const TIP_MAX_WIDTH := 340.0
 const TIP_MIN_WIDTH := 240.0   # narrower than this beside the actions: the tip goes above them
 const DEMO_RELEASE_DELAY_S := 0.4   # --auto-drag: the auto-release waits this long after the demo put its object down
 const CHOICE_SIZE := Vector2(210.0, 170.0)    # a prediction picture button (UI units)
+## The strip's words for a 7-year-old: all stages done, and the picked prediction before the run.
+const DONE_TEXT := "다 했어요! 섬에 깃발이 섰어요!"
+const PICK_PREFIX := "내 생각: "
 
 ## Set by App for the screen it opens from --experiment: then the launch args (--ctl-*, --camera,
 ## ...) apply to this screen only (a rebuilt screen with a saved state restores that state instead).
@@ -565,7 +568,7 @@ func _show_stamps(count: int) -> void:
 	if _mission_text == null:
 		return
 	if count >= stages.size():
-		_mission_text.text = "모두 완료! (깃발이 섬에 섰어요)"
+		_mission_text.text = DONE_TEXT
 	else:
 		_mission_text.text = str(stages[count].get("text", ""))
 	_fit_mission_strip()
@@ -634,7 +637,8 @@ func _predict_pick_choice(choice_id: String) -> void:
 			picked = str(choice.get("label", ""))
 	_end_question()
 	if _mission_text != null and picked != "":
-		_mission_text.text = "예측: " + picked
+		_mission_text.text = PICK_PREFIX + picked
+		_fit_mission_strip()
 
 
 ## The question ends (an answer or a pull): the box closes and the buttons go.
@@ -762,7 +766,7 @@ func _build_view_overlays() -> void:
 	back.pressed.connect(_on_back_pressed)
 	title_row.add_child(back)
 	_back_button = back
-	var title := Ui.label(definition.title, "HeadingLabel")
+	var title := Ui.label(ExperimentRegistry.kid_text(definition, "title"), "HeadingLabel")
 	_title_label = title
 	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -792,7 +796,7 @@ func _build_view_overlays() -> void:
 		var stack := Ui.vbox(0)
 		stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		card.add_child(stack)
-		var caption := Ui.label(observation.label, "KeyLabel", true)
+		var caption := Ui.label(ExperimentRegistry.card_label(definition, id), "KeyLabel", true)
 		caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		stack.add_child(caption)
 		var value := Ui.label("—", "KeyValueLabel", true)   # a status text may take two lines
@@ -811,8 +815,7 @@ func _build_view_overlays() -> void:
 		_action_row.add_child(button)
 		_action_buttons[action.id] = button
 
-	var short_tip: String = definition.get("tip_short", definition.get("tip", ""))
-	_tip = Ui.label(short_tip, "HintLabel", true)
+	_tip = Ui.label(ExperimentRegistry.kid_text(definition, "tip"), "HintLabel", true)
 	_tip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	view.add_child(_tip)
 	_tip.visible = _tip.text != "" and not _tips_shown.has(definition.id)   # recorded in _hide_tip(), once it was seen

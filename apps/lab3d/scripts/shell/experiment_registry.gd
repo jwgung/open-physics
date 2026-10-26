@@ -184,7 +184,61 @@ static func validate(definition: Dictionary) -> PackedStringArray:
 	problems.append_array(_validate_missions(definition.get("missions"), definition.observations, definition.controls))
 	problems.append_array(_validate_series(definition.get("missions"), graph.get("series", [])))
 	problems.append_array(_validate_predict(definition.get("predict")))
+	problems.append_array(_validate_kid(definition.get("kid"), definition.observations.map(func(o: Dictionary) -> Variant: return o.get("id"))))
 	return problems
+
+
+## The game layer's words for a 7-year-old (`kid`, optional): short everyday sentences without the
+## formula's names. Content shared with the web (content/mechanics-labs.json) keeps its own texts;
+## the 3D experiment file puts the child-facing ones here and the screen shows them in place of the
+## shared ones (the "자세히" sidebar keeps the shared texts and the formula labels):
+##   "kid": {"title": <the title bar>, "place": <the map's spot name>, "say": <Dugi's dialogue>,
+##           "tip": <the short gesture hint>, "cards": {<observation id>: <its key card's caption>}}
+## Every key is optional; a missing one falls back to the shared text (kid_text, card_label).
+const KID_TEXTS := {"title": "title", "place": "title", "say": "observe", "tip": "tip_short"}
+
+
+static func _validate_kid(kid: Variant, ids: Array) -> PackedStringArray:
+	var problems := PackedStringArray()
+	if kid == null:
+		return problems
+	if not kid is Dictionary:
+		problems.append("kid must be an object")
+		return problems
+	for key in kid:
+		if key == "cards":
+			var cards: Variant = kid.cards
+			if not (cards is Dictionary and cards.keys().all(func(id: Variant) -> bool: return id in ids and cards[id] is String and cards[id] != "")):
+				problems.append("kid.cards must name observations with a text each")
+		elif not KID_TEXTS.has(key):
+			problems.append("kid.%s unknown (title, place, say, tip, cards)" % key)
+		elif not (kid[key] is String and kid[key] != ""):
+			problems.append("kid.%s must be a text" % key)
+	return problems
+
+
+## The child-facing text `key` of the game layer (KID_TEXTS): the definition's kid text, or the
+## shared one it replaces (the tip falls back to the long tip, the place to the title).
+static func kid_text(definition: Dictionary, key: String) -> String:
+	var kid: Variant = definition.get("kid")
+	if kid is Dictionary and kid.get(key) is String and kid[key] != "":
+		return kid[key]
+	var shared := str(definition.get(KID_TEXTS.get(key, key), ""))
+	if key == "tip" and shared == "":
+		shared = str(definition.get("tip", ""))
+	return shared
+
+
+## The caption of a key observation's card over the 3D view: the kid wording, or the observation's
+## label (the sidebar always shows the label).
+static func card_label(definition: Dictionary, id: String) -> String:
+	var kid: Variant = definition.get("kid")
+	if kid is Dictionary and kid.get("cards") is Dictionary and kid.cards.get(id) is String:
+		return kid.cards[id]
+	for observation in definition.get("observations", []):
+		if observation.get("id") == id:
+			return str(observation.get("label", ""))
+	return ""
 
 
 ## `missions.hidden_series_until_end` (optional): graph series ids drawn only once the run has its

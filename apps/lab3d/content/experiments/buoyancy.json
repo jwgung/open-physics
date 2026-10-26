@@ -40,13 +40,13 @@
   ],
   "key_observations": ["depth", "floating_depth", "buoyant"],
   "predict": {
-    "question": "무게가 같으면 큰 통과 작은 통, 어느 게 더 잘 뜰까?",
+    "question": "무게가 같으면 어느 통이 잘 뜰까?",
     "choices": [
       { "id": "big", "label": "큰 통", "picture": "drum_big" },
       { "id": "small", "label": "작은 통", "picture": "drum_small" }
     ],
     "answer": "big",
-    "reason": "무게가 같으면 큰 통이 물을 더 많이 밀어낼 수 있어요. 부력 F = ρ물 × g × V잠김이라서 큰 통은 더 큰 부력을 받아요. 통의 밀도 m ÷ V가 물(1000 kg/m³)보다 작으면 떠요."
+    "reason": "큰 통은 물을 많이 밀어내요. 그만큼 물이 통을 세게 밀어 올려서 잘 떠요."
   },
   "missions": {
     "judge_on": ["floating"],
@@ -58,6 +58,13 @@
       { "conditions": {"volume": "big", "mass": 95.0}, "text": "95킬로그램 통도 둥둥 띄우기!" },
       { "conditions": {"volume": "small", "mass": 45.0}, "text": "작은 통을 45킬로그램으로 띄우기!" }
     ]
+  },
+  "kid": {
+    "title": "통을 물에 띄워 보자!",
+    "place": "물에 띄우기",
+    "say": "물에 많이 잠길수록 물이 통을 더 세게 밀어 올려요.",
+    "tip": "통을 위아래로 끌어 물에 넣어요.",
+    "cards": {"depth": "물에 잠긴 깊이", "floating_depth": "뜰 때 잠기는 깊이", "buoyant": "물이 밀어 올리는 힘"}
   },
   "cast": {
     "dugi": { "at": [2.5, 3.0], "explain_on": ["floating", "sunk", "staying"], "delay_s": 0.6 },

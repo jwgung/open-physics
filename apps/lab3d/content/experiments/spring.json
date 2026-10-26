@@ -46,7 +46,7 @@
       { "id": "same", "label": "똑같아요", "picture": "spring_same" }
     ],
     "answer": "same",
-    "reason": "이 용수철은 옆으로 누워 있어요. 늘어난 길이 x는 내가 공을 당긴 만큼이라서 무거운 공을 달아도 똑같아요. 대신 무거운 공은 더 천천히 왔다 갔다 해요. 한 번 왕복하는 시간 T = 2π√(m ÷ k)가 길어져요."
+    "reason": "용수철은 내가 당긴 만큼만 늘어나요. 무거운 공도 똑같아요. 대신 더 천천히 흔들려요."
   },
   "missions": {
     "observe": "pull",
@@ -56,6 +56,13 @@
       { "threshold": 2.0, "conditions": {"mass": {"max": 1.0}}, "text": "가벼운 공을 2미터 넘게 당기기!" },
       { "threshold": 2.4, "conditions": {"mass": {"min": 2.5}}, "text": "무거운 공을 끝까지 당겼다 놓기!" }
     ]
+  },
+  "kid": {
+    "title": "용수철을 당겼다 놓아 보자!",
+    "place": "용수철",
+    "say": "당긴 만큼 용수철이 공을 다시 당겨요. 그래서 공이 왔다 갔다 해요.",
+    "tip": "공을 끌었다가 놓아 봐요!",
+    "cards": {"extension": "늘어난 길이", "speed": "빠르기", "total": "에너지 합"}
   },
   "cast": {
     "dugi": { "at": [2.5, 5.75], "explain_on": ["moving", "rest"], "delay_s": 1.5 },

@@ -19,6 +19,7 @@ func _init(scene_tree: SceneTree, expect_fn: Callable) -> void:
 
 func run() -> void:
 	check_content()
+	check_kid_words()
 	check_registry_validation()
 	await check_mission_tracker()
 	check_progress_store()
@@ -27,8 +28,8 @@ func run() -> void:
 
 # --- content --------------------------------------------------------------------------------------
 
-## The projectile's mission and predict blocks (Plan: one predict question, two pictures, the
-## reason matched to R = v0^2 sin2θ / g; the three thresholds inside the earth default-height maximum of ~8.7 m, each
+## The projectile's mission and predict blocks (Plan: one predict question, two pictures, a reason a
+## 7-year-old reads; the three thresholds inside the earth default-height maximum of ~8.7 m, each
 ## stage thrown in its own speed band so the same throw never earns the next stamp).
 func check_content() -> void:
 	var definition := ExperimentRegistry.find("projectile")
@@ -45,13 +46,12 @@ func check_content() -> void:
 	for stage in missions.stages:
 		expect.call(stage.text != "", "missions: every stage has its text", str(stage.get("threshold")))
 	var predict: Dictionary = definition.predict
-	expect.call(predict.question == "공을 더 세게 던지면 더 멀리 갈까?" and (predict.choices as Array).size() == 2,
+	expect.call(predict.question == "더 세게 던지면 더 멀리 갈까?" and (predict.choices as Array).size() == 2,
 		"predict: the one question, two pictures", str(predict.get("question")))
 	var ids := (predict.choices as Array).map(func(c: Dictionary) -> Variant: return c.id)
 	expect.call(ids == ["farther", "same"], "predict: the two pictures are 멀리 and 똑같이", str(ids))
-	expect.call(predict.reason.contains("v₀") and predict.reason.contains("R") and predict.reason.contains("같은 각도")
-		and predict.reason.contains("높이 없이"),
-		"predict: the reason says R grows with v₀ at the same angle, and gives R = v₀²·sin2θ/g only for a launch without height", predict.reason)
+	expect.call(predict.reason.contains("세게") and predict.reason.contains("멀리") and not predict.reason.contains("v₀"),
+		"predict: the reason says a harder throw goes farther, in a child's words (the formula stays in 자세히)", predict.reason)
 	expect.call(predict.answer == "farther", "predict: the answer is 멀리", str(predict.get("answer")))
 	# Every listed lab has its round now (Plan G2): three stages, a question with two pictures and an
 	# answer, a reason, and every threshold / condition inside the lab's controls (the registry).
@@ -62,6 +62,42 @@ func check_content() -> void:
 			(question.get("choices", []) as Array).map(func(c: Dictionary) -> Variant: return c.id) and str(question.get("reason", "")) != ""
 			and ExperimentRegistry.validate(other).is_empty(),
 			"%s: three stages, a question with two pictures, its answer and reason" % other.id, ", ".join(ExperimentRegistry.validate(other)))
+
+
+## Words a 7-year-old does not read (the formula's names and symbols): they stay in "자세히".
+const JARGON := ["가속도", "탈출", "반지름", "질량", "구속", "주기", "계수", "임계", "운동량", "마찰력", "부력",
+	"토크", "역학", "속력", "탄성", "밀도", "공식", "궤도", "v₀", "μ", "√", "=", "÷", "×", "m/s", " N", "kg"]
+
+
+## The game layer of every lab speaks a child's words (Plan G2 follow-up, 2026-10-27): the title
+## bar, the map's place, Dugi's say, the gesture tip, the key cards' captions, the stage texts, the
+## question, its two choices, the reason and the strip's done / pick texts have none of JARGON;
+## every key card has its kid caption.
+func check_kid_words() -> void:
+	var found := []
+	for definition in ExperimentRegistry.load_all():
+		var texts := [ExperimentScreen.DONE_TEXT, ExperimentScreen.PICK_PREFIX, IslandHomeScreen.BADGE]
+		for key in ExperimentRegistry.KID_TEXTS:
+			texts.append(ExperimentRegistry.kid_text(definition, key))
+		for id in definition.key_observations:
+			texts.append(ExperimentRegistry.card_label(definition, id))
+			if not definition.get("kid", {}).get("cards", {}).has(id):
+				found.append("%s: no kid caption for %s" % [definition.id, id])
+		for stage in MissionTracker.missions(definition).get("stages", []):
+			texts.append(str(stage.text))
+		var predict := MissionTracker.predict(definition)
+		texts.append(str(predict.get("question", "")))
+		texts.append(str(predict.get("reason", "")))
+		for choice in predict.get("choices", []):
+			texts.append(str(choice.label))
+		for action in definition.actions:
+			texts.append(str(action.label))
+		for text in texts:
+			for word in JARGON:
+				if word in text:
+					found.append("%s: '%s' in %s" % [definition.id, word, text])
+	expect.call(found.is_empty(), "kid words: the game layer of every lab has no formula names or symbols, and every key card a kid caption",
+		"; ".join(found))
 
 
 # --- registry validation ---------------------------------------------------------------------------
@@ -108,6 +144,10 @@ func check_registry_validation() -> void:
 		["a predict picture", func(d: Dictionary) -> void: d.predict.choices[0].picture = "rocket", "picture"],
 		["a predict answer", func(d: Dictionary) -> void: d.predict.answer = "maybe", "answer"],
 		["one choice", func(d: Dictionary) -> void: d.predict.choices = [d.predict.choices[0]], "two choices"],
+		["a kid key", func(d: Dictionary) -> void: d.kid["color"] = "빨강", "kid.color"],
+		["an empty kid text", func(d: Dictionary) -> void: d.kid.say = "", "kid.say"],
+		["a kid card", func(d: Dictionary) -> void: d.kid.cards = {"nope": "없어요"}, "kid.cards"],
+		["a hidden line", func(d: Dictionary) -> void: d.missions.hidden_series_until_end = ["nope"], "hidden_series_until_end"],
 	]
 	for case in bad:
 		var changed := defined.duplicate(true)

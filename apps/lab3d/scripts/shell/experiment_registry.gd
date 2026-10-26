@@ -181,30 +181,41 @@ static func validate(definition: Dictionary) -> PackedStringArray:
 		problems.append("graph.series missing")
 	problems.append_array(_validate_manipulation(definition.get("manipulation"), definition.actions))
 	problems.append_array(_validate_cast(definition.get("cast")))
-	problems.append_array(_validate_missions(definition.get("missions"), definition.observations))
+	problems.append_array(_validate_missions(definition.get("missions"), definition.observations, definition.controls))
+	problems.append_array(_validate_predict(definition.get("predict")))
 	return problems
 
 
-## `missions` (Plan G1, optional): the easy stage thresholds —
-## {"observe": <an observation id>, "stages": [{"threshold": <number > 0>, "text": <non-empty>}, ...],
+## `missions` (Plan G1, G2, optional): the stages and how a run is judged (MissionTracker's header) —
+## {"stages": [{"text": <non-empty>, "threshold"?: <number > 0>, "conditions"?: {...}}, ...],
+##  "observe"?: <an observation id>, "compare"?: "greater" | "less",
+##  "judge_on"?: [<status>, ...], "reveal_on"?: [<status>, ...],
 ##  "hidden_until_end"?: [<observation id>, ...]}.
-## The child clears stage n when the lab lands with the formula value of `observe` farther than
-## threshold n (MissionTracker: it reads, it never changes the run). The hidden_until_end values
-## (the formula's answer) read "?" until the throw has ended, so the round is not given away.
-static func _validate_missions(missions: Variant, observations: Array) -> PackedStringArray:
+## With `observe` every stage has its threshold; without it a stage is a state goal (no threshold).
+## A stage's `conditions` name the definition's controls: a choice wants one of its option ids, a
+## slider a number or a {"min"?, "max"?} range inside its min..max. The tracker only reads (it never
+## changes the run). The hidden_until_end values (the formula's answer) read "?" until the run has
+## its result, so the round is not given away.
+static func _validate_missions(missions: Variant, observations: Array, controls: Array = []) -> PackedStringArray:
 	var problems := PackedStringArray()
 	if missions == null:
 		return problems
 	if not missions is Dictionary:
 		problems.append("missions must be an object")
 		return problems
-	var observe: Variant = missions.get("observe")
 	var ids := {}
 	for observation in observations:
 		if observation.get("id") is String:
 			ids[observation.id] = true
-	if not (observe is String and ids.has(observe)):
+	var observe: Variant = missions.get("observe")
+	if missions.has("observe") and not (observe is String and ids.has(observe)):
 		problems.append("missions.observe must be one of the observation ids")
+	if missions.get("compare", "greater") not in MissionTracker.COMPARES:
+		problems.append("missions.compare must be greater or less")
+	for key in ["judge_on", "reveal_on"]:
+		var statuses: Variant = missions.get(key, MissionTracker.DEFAULT_JUDGE_ON)
+		if not (statuses is Array and not statuses.is_empty() and statuses.all(func(v: Variant) -> bool: return v is String and v != "")):
+			problems.append("missions.%s must list statuses" % key)
 	var hidden: Variant = missions.get("hidden_until_end", [])
 	if not (hidden is Array and hidden.all(func(id: Variant) -> bool: return id is String and ids.has(id))):
 		problems.append("missions.hidden_until_end must list observation ids")
@@ -216,10 +227,74 @@ static func _validate_missions(missions: Variant, observations: Array) -> Packed
 		var stage: Variant = stages[i]
 		var threshold: Variant = stage.get("threshold") if stage is Dictionary else null
 		var text: Variant = stage.get("text") if stage is Dictionary else null
-		if not (stage is Dictionary and (threshold is int or threshold is float) and threshold > 0.0):
+		if not stage is Dictionary:
+			problems.append("missions.stages[%d] must be an object" % i)
+		elif missions.has("observe") and not ((threshold is int or threshold is float) and threshold > 0.0):
 			problems.append("missions.stages[%d].threshold must be a number > 0" % i)
+		elif not missions.has("observe") and stage.has("threshold"):
+			problems.append("missions.stages[%d].threshold needs missions.observe" % i)
 		elif not (text is String and text != ""):
 			problems.append("missions.stages[%d].text must be a text" % i)
+		else:
+			problems.append_array(_validate_conditions(stage.get("conditions", {}), controls, i))
+	return problems
+
+
+## A stage's `conditions`: {control id: option id (choice) | number or {"min"?, "max"?} (slider)}.
+static func _validate_conditions(conditions: Variant, controls: Array, i: int) -> PackedStringArray:
+	var problems := PackedStringArray()
+	if not conditions is Dictionary:
+		problems.append("missions.stages[%d].conditions must be an object" % i)
+		return problems
+	for id in conditions:
+		var control: Dictionary = {}
+		for c in controls:
+			if c.get("id") == id:
+				control = c
+		var want: Variant = conditions[id]
+		if control.is_empty():
+			problems.append("missions.stages[%d].conditions: %s is not a control" % [i, str(id)])
+		elif control.get("type") == "choice":
+			if not (want is String and control.get("options", []).any(func(o: Dictionary) -> bool: return o.get("id") == want)):
+				problems.append("missions.stages[%d].conditions.%s must be an option id" % [i, id])
+		else:
+			var lo := float(control.get("min", -INF))
+			var hi := float(control.get("max", INF))
+			var bounds: Array = [want.get("min", lo), want.get("max", hi)] if want is Dictionary else [want, want]
+			if not (bounds.all(func(v: Variant) -> bool: return (v is int or v is float) and v >= lo and v <= hi) and bounds[0] <= bounds[1]):
+				problems.append("missions.stages[%d].conditions.%s must be a number or {min, max} inside the slider" % [i, id])
+	return problems
+
+
+## `predict` (Plan G4, optional): Dugi's question before the run —
+## {"question": <text>, "choices": [{"id", "label", "picture": <PredictPictures kind>} x 2],
+##  "answer": <a choice id>, "reason": <text>}.
+static func _validate_predict(predict: Variant) -> PackedStringArray:
+	var problems := PackedStringArray()
+	if predict == null:
+		return problems
+	if not predict is Dictionary:
+		problems.append("predict must be an object")
+		return problems
+	for key in ["question", "reason"]:
+		if not (predict.get(key) is String and predict.get(key) != ""):
+			problems.append("predict.%s must be a text" % key)
+	var choices: Variant = predict.get("choices")
+	var ids := []
+	if not (choices is Array and choices.size() == 2):
+		problems.append("predict.choices must list two choices")
+		return problems
+	for choice in choices:
+		if not (choice is Dictionary and choice.get("id") is String and choice.get("label") is String and choice.label != ""):
+			problems.append("predict choice needs id and label")
+			continue
+		if choice.get("picture") not in PredictPictures.KINDS:
+			problems.append("predict choice %s: picture must be one of PredictPictures.KINDS" % choice.id)
+		ids.append(choice.id)
+	if ids.size() == 2 and ids[0] == ids[1]:
+		problems.append("predict choices need distinct ids")
+	if predict.get("answer") not in ids:
+		problems.append("predict.answer must be one of the choice ids")
 	return problems
 
 

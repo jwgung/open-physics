@@ -21,7 +21,6 @@ const TIP_FADE_S := 0.3
 const TIP_MAX_WIDTH := 340.0
 const TIP_MIN_WIDTH := 240.0   # narrower than this beside the actions: the tip goes above them
 const DEMO_RELEASE_DELAY_S := 0.4   # --auto-drag: the auto-release waits this long after the demo put its object down
-const RUN_END := ["landed", "out", "fence"]   # a throw's end states (the mission judges one of these)
 const CHOICE_SIZE := Vector2(210.0, 170.0)    # a prediction picture button (UI units)
 
 ## Set by App for the screen it opens from --experiment: then the launch args (--ctl-*, --camera,
@@ -83,7 +82,7 @@ var _slingshot_controls: PackedStringArray = PackedStringArray()   # the two con
 ## The game's first round (Plan G4): the mission strip (도장), Dugi's prediction question and the
 ## reason he tells once after the first throw.
 var _missions: MissionTracker = null
-var _judged_run := false              # this throw was judged (cleared when the lab is ready again)
+var _judged_run := false              # this attempt earned its stamp (cleared by the next attempt)
 var _mission_strip: HBoxContainer = null
 var _stamp_labels: Array = []
 var _mission_text: Label = null
@@ -410,6 +409,7 @@ func _fit_slingshot_hud() -> void:
 func _on_slingshot(state: String, value: Variant) -> void:
 	match state:
 		"rearm":
+			_new_attempt()
 			_updating = true
 			experiment.change_from_input(experiment.run_action.bind("reset"))
 			_updating = false
@@ -430,6 +430,7 @@ func _on_slingshot(state: String, value: Variant) -> void:
 			_slingshot_hud.visible = false
 			experiment.set_slingshot_preview(Vector2.INF)
 			var v: Vector2 = value
+			_new_attempt()
 			_updating = true
 			experiment.change_from_input(func() -> void:
 				experiment.set_control(_slingshot_controls[0], v.x)
@@ -454,10 +455,12 @@ func _make_missions() -> MissionTracker:
 	return tracker
 
 
-## A throw is judged once, when it has ended (landed, out, fence) and the lab is settled (the
-## engine has finished the landing, not merely reached the formula landing within the slack):
-## the stamp from the formula value the panel shows (MissionTracker only reads). Nothing is
-## latched before that judgement; a lab back at "ready" waits for its next throw.
+## The mission judges the current attempt (MissionTracker's header) while the lab's status is one
+## of the missions' judge_on states and the lab is settled (the engine has finished the landing,
+## not merely reached the formula landing within the slack): the stamp from the formula values the
+## panel shows and the lab's control values (MissionTracker only reads). Nothing is latched before
+## a stamp; an attempt that earned one is done until the next attempt (_new_attempt, or the lab
+## back at "ready"). Once the run has its result (reveal_on) the prediction's question is over.
 func _missions_judge() -> void:
 	if _missions == null:
 		return
@@ -465,11 +468,20 @@ func _missions_judge() -> void:
 	if status == "ready":
 		_judged_run = false
 		return
-	if _judged_run or status not in RUN_END or not experiment.settled():
+	var judging := not _judged_run and _missions.stage() >= 0 and status in MissionTracker.judge_on(definition)
+	if not (judging or (not _predict_ended and status in MissionTracker.reveal_on(definition))) or not experiment.settled():
 		return
-	_judged_run = true
-	_missions.on_run_ended(status, experiment, experiment.observations())
-	_predict_finish()
+	var values := experiment.observations()
+	if judging and _missions.on_run_ended(status, experiment, values):
+		_judged_run = true
+	if MissionTracker.result_in(definition, status, values):
+		_predict_finish()
+
+
+## The child acted on the lab (an action, a condition, an object put down or back, a slingshot
+## throw): a new attempt, which may earn its own stamp.
+func _new_attempt() -> void:
+	_judged_run = false
 
 
 ## The experiment has missions: the stamp strip (도장) under the key cards, and Dugi's prediction
@@ -553,7 +565,7 @@ func _ask(question: String, choices: Array) -> void:
 	_choices.visible = false   # _run_dialogue lays the box out, then shows both
 
 
-## A big picture button: a drawn throw (PICTURES) over its label.
+## A big picture button: its drawing (PredictPictures) over its label.
 func _choice_button(choice: Dictionary) -> Button:
 	var button := Ui.button("", "", 0)
 	button.name = "Choice_%s" % str(choice.get("id", ""))
@@ -567,7 +579,7 @@ func _choice_button(choice: Dictionary) -> Button:
 	picture.custom_minimum_size = Vector2(CHOICE_SIZE.x - 20.0, CHOICE_SIZE.y - 70.0)
 	picture.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	var kind := str(choice.get("picture", ""))
-	picture.draw.connect(func() -> void: _draw_choice_picture(picture, kind))
+	picture.draw.connect(func() -> void: PredictPictures.draw(picture, kind))
 	stack.add_child(picture)
 	var caption := Ui.label(str(choice.get("label", "")), "HeadingLabel")
 	caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -575,28 +587,6 @@ func _choice_button(choice: Dictionary) -> Button:
 	stack.add_child(caption)
 	button.pressed.connect(_predict_pick_choice.bind(str(choice.get("id", ""))))
 	return button
-
-
-## The choice's picture: two throws from the same hand, a soft one (thin, pale) and a strong one
-## (thick). "long_arc": the strong one lands farther; otherwise ("same_arc") both land together.
-static func _draw_choice_picture(canvas: Control, kind: String) -> void:
-	var r := Rect2(Vector2.ZERO, canvas.size).grow(-6.0)
-	var ground := r.end.y
-	canvas.draw_line(Vector2(r.position.x, ground), Vector2(r.end.x, ground), Color("8a6a46"), 3.0)
-	var soft := 0.45
-	var far := kind == "long_arc"
-	_draw_arc(canvas, r, 0.95 if far else soft, 0.9 if far else 0.5, Color("e2683c"), 6.0)
-	_draw_arc(canvas, r, soft, 0.5, Color("c9b892"), 3.0)   # on top: both show when they land together
-	canvas.draw_circle(Vector2(r.position.x + 8.0, ground - 8.0), 7.0, Color("e2683c"))
-
-
-## A throw drawn as a parabola from the left end over `reach` of the width, `rise` of the height.
-static func _draw_arc(canvas: Control, r: Rect2, reach: float, rise: float, color: Color, width: float) -> void:
-	var points := PackedVector2Array()
-	for i in 17:
-		var k := i / 16.0
-		points.append(Vector2(r.position.x + 8.0 + k * (r.size.x - 8.0) * reach, r.end.y - 8.0 - 4.0 * k * (1.0 - k) * r.size.y * rise))
-	canvas.draw_polyline(points, color, width, true)
 
 
 ## The picture buttons over the dialogue box, at its right end (the ball and the cat stand on
@@ -992,6 +982,7 @@ func _run_measured_action(id: String) -> void:
 
 func experiment_action(id: String) -> void:
 	_drop_held_object()
+	_new_attempt()
 	_updating = true
 	experiment.change_from_input(experiment.run_action.bind(id))
 	_updating = false
@@ -1013,6 +1004,7 @@ func _snap_camera_home() -> void:
 
 func _set_control(id: String, value: Variant) -> void:
 	_drop_held_object()
+	_new_attempt()
 	_updating = true
 	experiment.change_from_input(experiment.set_control.bind(id, value))
 	_updating = false
@@ -1043,6 +1035,7 @@ func _on_state_changed() -> void:
 
 
 func _on_manipulator_changed() -> void:
+	_new_attempt()   # an object put down or put back (a let-go handle, a placed ball)
 	if not _updating:
 		_refresh()
 
@@ -1186,10 +1179,11 @@ static func hidden_observation(observation: Dictionary) -> String:
 	return "?" + unit if unit == "°" else "? " + unit
 
 
-## The observation ids a mission round hides now: its hidden_until_end ones while the throw has
-## not ended (ready, being pulled, flying); none once it landed (or went out / hit the fence).
-func _hidden_answers() -> Array:
-	if _missions == null or experiment.status() in RUN_END:
+## The observation ids a mission round hides now: its hidden_until_end ones until the run has its
+## result (MissionTracker.result_in: the throw landed, went out or hit the fence; the box slides; the
+## pendulum's first period is measured); `values` are the observations shown now.
+func _hidden_answers(values: Dictionary) -> Array:
+	if _missions == null or MissionTracker.result_in(definition, experiment.status(), values):
 		return []
 	return MissionTracker.missions(definition).get("hidden_until_end", [])
 
@@ -1208,7 +1202,7 @@ static func format_observation(observation: Dictionary, value: Variant) -> Strin
 
 func _update_readouts(force_graph: bool) -> void:
 	var values := experiment.observations()
-	var hidden := _hidden_answers()
+	var hidden := _hidden_answers(values)
 	for observation in definition.observations:
 		var text := format_observation(observation, values.get(observation.id))
 		if hidden.has(observation.id):

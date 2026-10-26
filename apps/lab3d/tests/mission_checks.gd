@@ -49,11 +49,16 @@ func check_content() -> void:
 	expect.call(predict.reason.contains("v₀") and predict.reason.contains("R") and predict.reason.contains("같은 각도")
 		and predict.reason.contains("높이 없이"),
 		"predict: the reason says R grows with v₀ at the same angle, and gives R = v₀²·sin2θ/g only for a launch without height", predict.reason)
-	# The other experiments have no missions or predict yet (next Plan).
+	expect.call(predict.answer == "farther", "predict: the answer is 멀리", str(predict.get("answer")))
+	# Every listed lab has its round now (Plan G2): three stages, a question with two pictures and an
+	# answer, a reason, and every threshold / condition inside the lab's controls (the registry).
 	for other in ExperimentRegistry.load_all():
-		if other.id != "projectile":
-			expect.call(not other.has("missions") and not other.has("predict"),
-				"%s: no missions or predict yet" % other.id, "")
+		var block := MissionTracker.missions(other)
+		var question := MissionTracker.predict(other)
+		expect.call((block.get("stages", []) as Array).size() == 3 and question.get("answer") in
+			(question.get("choices", []) as Array).map(func(c: Dictionary) -> Variant: return c.id) and str(question.get("reason", "")) != ""
+			and ExperimentRegistry.validate(other).is_empty(),
+			"%s: three stages, a question with two pictures, its answer and reason" % other.id, ", ".join(ExperimentRegistry.validate(other)))
 
 
 # --- registry validation ---------------------------------------------------------------------------
@@ -86,6 +91,35 @@ func check_registry_validation() -> void:
 	nethreshold.missions.stages[0].threshold = 0.0
 	found = ExperimentRegistry.validate(nethreshold)
 	expect.call(found.size() == 1 and "threshold" in found[0], "registry rejects a non-positive threshold", ", ".join(found))
+	# The G2 fields: compare, judge_on / reveal_on, state goals, conditions on the controls.
+	var bad := [
+		["compare", func(d: Dictionary) -> void: d.missions.compare = "more", "compare"],
+		["judge_on", func(d: Dictionary) -> void: d.missions.judge_on = [], "judge_on"],
+		["reveal_on", func(d: Dictionary) -> void: d.missions.reveal_on = ["landed", 3], "reveal_on"],
+		["a missing threshold", func(d: Dictionary) -> void: d.missions.stages[1].erase("threshold"), "threshold"],
+		["a threshold without observe", func(d: Dictionary) -> void: d.missions.erase("observe"), "needs missions.observe"],
+		["an unknown control", func(d: Dictionary) -> void: d.missions.stages[0]["conditions"] = {"wind": 1.0}, "not a control"],
+		["an unknown option", func(d: Dictionary) -> void: d.missions.stages[0]["conditions"] = {"gravity": "mars"}, "option id"],
+		["a slider value out of range", func(d: Dictionary) -> void: d.missions.stages[0]["conditions"] = {"speed": 12.0}, "inside the slider"],
+		["an empty range", func(d: Dictionary) -> void: d.missions.stages[0]["conditions"] = {"speed": {"min": 8.0, "max": 2.0}}, "inside the slider"],
+		["a predict picture", func(d: Dictionary) -> void: d.predict.choices[0].picture = "rocket", "picture"],
+		["a predict answer", func(d: Dictionary) -> void: d.predict.answer = "maybe", "answer"],
+		["one choice", func(d: Dictionary) -> void: d.predict.choices = [d.predict.choices[0]], "two choices"],
+	]
+	for case in bad:
+		var changed := defined.duplicate(true)
+		case[1].call(changed)
+		found = ExperimentRegistry.validate(changed)
+		expect.call(not found.is_empty() and Array(found).all(func(p: String) -> bool: return case[2] in p),
+			"registry rejects %s" % case[0], ", ".join(found))
+	var fine := defined.duplicate(true)
+	fine.missions.compare = "less"
+	fine.missions.stages[0]["conditions"] = {"gravity": "moon", "speed": {"min": 2.0}, "angle": 45.0}
+	expect.call(ExperimentRegistry.validate(fine).is_empty(), "registry takes compare less and conditions (an option, a range, a value)",
+		", ".join(ExperimentRegistry.validate(fine)))
+	var goal := ExperimentRegistry.find("friction").duplicate(true)
+	expect.call(not goal.missions.has("observe") and ExperimentRegistry.validate(goal).is_empty(),
+		"registry takes a state goal (no observe, no thresholds: the friction box moving)", "")
 	# A file without `missions` still validates (optional block).
 	var none := defined.duplicate(true)
 	none.erase("missions")
@@ -144,14 +178,62 @@ func check_mission_tracker() -> void:
 		"5 m and 7 m clear the rest; all three stamps, done", "stage %d, %s" % [tracker.stage(), str(awarded)])
 	# A lab without missions: nothing to track.
 	var plain := ExperimentRegistry.find("free-fall").duplicate(true)
+	plain.erase("missions")
 	var bare := MissionTracker.new()
 	bare.definition = plain
 	expect.call(bare.stage() == -1 and bare.text() == "", "a lab without missions has no stage", "")
 	bare.on_run_ended("landed", labs.settled, {"range": 99.0})
 	expect.call(bare.stage() == -1, "a lab without missions is never judged", "")
+	await _check_judge_kinds()
 	for lab in labs.values():
 		lab.queue_free()
 	await tree.process_frame
+
+
+## The G2 judgements on the tracker alone: "less" (a smaller force clears), a stage's conditions
+## (the lab's control values), a state goal (no observe), judge_on statuses, one stamp per call.
+func _check_judge_kinds() -> void:
+	DirAccess.remove_absolute(ProgressStore.path)
+	var script := GDScript.new()
+	script.source_code = "extends Experiment\nvar mass := 20.0\nvar size := \"big\"\n" \
+		+ "func control_value(id: String) -> Variant:\n\treturn mass if id == \"mass\" else size\n"
+	script.reload()
+	var lab: Experiment = script.new()
+	tree.root.add_child(lab)
+	var definition := {"id": "kinds", "missions": {"observe": "force", "compare": "less", "judge_on": ["lifted"], "stages": [
+		{"threshold": 150.0, "text": "a", "conditions": {"mass": 20.0}},
+		{"threshold": 100.0, "text": "b", "conditions": {"mass": {"min": 15.0}, "size": "big"}}]}}
+	var tracker := MissionTracker.new()
+	tracker.definition = definition
+	var seen := []
+	seen.append(tracker.on_run_ended("lifted", lab, {"force": 186.9}))   # not less than 150
+	seen.append(tracker.on_run_ended("lifted", lab, {"force": 150.0}))   # exactly at it: not less
+	seen.append(tracker.on_run_ended("pressing", lab, {"force": 40.0}))  # not a judge_on status
+	lab.mass = 19.0
+	seen.append(tracker.on_run_ended("lifted", lab, {"force": 40.0}))    # another load (20 kg wanted)
+	lab.mass = 20.0
+	seen.append(tracker.on_run_ended("lifted", lab, {"force": 124.6}))   # clears stage 1
+	seen.append(tracker.on_run_ended("lifted", lab, {"force": 99.0}))    # stage 2 (min 15 kg, big)
+	expect.call(seen == [false, false, false, false, true, true] and tracker.stamps == 2,
+		"tracker: compare less (strict), judge_on, the stage's control conditions (a value, a range, an option)", str(seen))
+	DirAccess.remove_absolute(ProgressStore.path)
+	var state := MissionTracker.new()
+	state.definition = {"id": "state", "missions": {"judge_on": ["floating"], "stages": [
+		{"text": "a", "conditions": {"size": "small"}}, {"text": "b"}]}}
+	lab.size = "big"
+	var first := state.on_run_ended("floating", lab, {})
+	lab.size = "small"
+	var second := state.on_run_ended("floating", lab, {})
+	var third := state.on_run_ended("moving", lab, {})
+	expect.call(not first and second and not third and state.stamps == 1,
+		"tracker: a state goal clears on its judge_on status with its conditions (no observe)", "%s %s %s" % [first, second, third])
+	expect.call(MissionTracker.result_in(ExperimentRegistry.find("constraints"), "swinging", {"rope_period": "한 번 왕복하면 보여요"}) == false
+		and MissionTracker.result_in(ExperimentRegistry.find("constraints"), "swinging", {"rope_period": 2.9})
+		and MissionTracker.result_in(ExperimentRegistry.find("projectile"), "fence", {"range": 9.0})
+		and not MissionTracker.result_in(ExperimentRegistry.find("projectile"), "flying", {"range": 9.0}),
+		"tracker: the result is in on a reveal_on status once the observed value is a number", "")
+	lab.queue_free()
+	DirAccess.remove_absolute(ProgressStore.path)
 
 
 # --- the store -------------------------------------------------------------------------------------

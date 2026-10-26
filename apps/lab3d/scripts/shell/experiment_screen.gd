@@ -9,7 +9,6 @@ class_name ExperimentScreen
 extends Control
 
 signal back_requested
-signal settings_requested
 
 const UI_REFRESH_HZ := 10.0
 const SIDEBAR_WIDTH := 470.0
@@ -22,6 +21,8 @@ const TIP_FADE_S := 0.3
 const TIP_MAX_WIDTH := 340.0
 const TIP_MIN_WIDTH := 240.0   # narrower than this beside the actions: the tip goes above them
 const DEMO_RELEASE_DELAY_S := 0.4   # --auto-drag: the auto-release waits this long after the demo put its object down
+const RUN_END := ["landed", "out", "fence"]   # a throw's end states (the mission judges one of these)
+const CHOICE_SIZE := Vector2(210.0, 170.0)    # a prediction picture button (UI units)
 
 ## Set by App for the screen it opens from --experiment: then the launch args (--ctl-*, --camera,
 ## ...) apply to this screen only (a rebuilt screen with a saved state restores that state instead).
@@ -76,6 +77,22 @@ var _state: Dictionary = {}             # capture_state() of a screen being rebu
 var _camera_home: Dictionary = {}       # the experiment's opening view (kept across a rebuild): 처음으로 snaps back to it
 var _updating := false                  # a control/action is running: refresh once afterwards
 var _graph_revision := -2               # Experiment.graph_revision() of the series on the graph
+var _slingshot_hud: Label = null        # the big pull readout (Plan G3)
+var _slingshot_units: PackedStringArray = PackedStringArray(["°", "m/s"])
+var _slingshot_controls: PackedStringArray = PackedStringArray()   # the two controls a pull sets
+## The game's first round (Plan G4): the mission strip (도장), Dugi's prediction question and the
+## reason he tells once after the first throw.
+var _missions: MissionTracker = null
+var _judged_run := false              # this throw was judged (cleared when the lab is ready again)
+var _mission_strip: HBoxContainer = null
+var _stamp_labels: Array = []
+var _mission_text: Label = null
+var _asking := false                  # Dugi's question is open (his box held, the picture buttons)
+var _question := ""
+var _choices: HBoxContainer = null    # the two picture buttons while asking
+var _predict_pick: String = ""        # the picked choice ("farther" / "same")
+var _predict_ended: bool = false      # the first throw has ended (or there is no question)
+var _reason_pending := ""             # the prediction's reason, told at Dugi's next explanation
 
 
 ## `state` (optional): capture_state() of a previous screen of the same experiment (conditions
@@ -97,6 +114,8 @@ func capture_state() -> Dictionary:
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	if apply_launch_args and (Quality.cmdline_value("auto-drag") != "" or Quality.cmdline_value("auto-release") != ""):
+		ProgressStore.path = ProgressStore.BENCH_PATH   # a measurement's throws never earn the child's stamps
 	view = View3D.new()
 	add_child(view)
 	_build_view_overlays()
@@ -128,6 +147,7 @@ func _ready() -> void:
 		manipulator.demo_placed.connect(func() -> void:
 			if manipulator.demo_action != "":
 				_demo_release_left = DEMO_RELEASE_DELAY_S)
+	_missions = _make_missions()
 	view.rig.follow_source = experiment
 	view.rig.configure(definition.camera)
 	view.rig.mode_changed.connect(_on_mode_changed)
@@ -143,6 +163,8 @@ func _ready() -> void:
 		_apply_launch_args()
 		_camera_home = view.rig.get_state()   # a measurement's --camera is the view it opens with
 	_refresh()
+	_setup_slingshot()   # after the state: a restored launch point is the pull's origin
+	_setup_game()        # after the state: the stamp count and the question belong to the saved run
 	Bench.reset(definition.get("bench_id", definition.id))
 
 
@@ -194,7 +216,7 @@ func _process(delta: float) -> void:
 	if _refresh_left <= 0.0:
 		_refresh_left = 1.0 / UI_REFRESH_HZ
 		_poll()
-	if _tip.visible:
+	if _tip != null and _tip.visible:
 		_tip_left -= delta
 		if _tip_left <= 0.0:
 			_hide_tip()
@@ -218,6 +240,9 @@ func _process(delta: float) -> void:
 func _run_dialogue() -> void:
 	if dialogue == null or cast.dugi == null:
 		return
+	if _asking:
+		_run_question()
+		return
 	var dugi := cast.dugi
 	if dialogue.active:
 		if not dugi.speaking() or is_sidebar_open():
@@ -229,10 +254,27 @@ func _run_dialogue() -> void:
 	if dugi.speaking() and dugi.state == "raise" and not _dialogue_started and not is_sidebar_open() and _layout_dialogue():
 		_dialogue_started = true
 		_hide_tip()
-		dialogue.open()
+		# Dugi explains only after a throw has ended (cast explain_on): the first explanation tells the
+		# prediction's reason once, whether or not the stamp was judged yet.
+		dialogue.open(_reason_pending)
+		_reason_pending = ""
 		dialogue.visible = true
 	elif not dugi.speaking():
 		_dialogue_started = false
+
+
+## Dugi's question (Plan G4): his box holds the question with the picture buttons over it. It
+## yields to the sidebar (hidden while it is open) and comes back when it closes.
+func _run_question() -> void:
+	if not dialogue.active and not is_sidebar_open() and _layout_dialogue():
+		_hide_tip()
+		dialogue.open(_question)
+	var shown := dialogue.active and not is_sidebar_open() and _layout_dialogue()
+	dialogue.visible = shown
+	if _choices != null:
+		_choices.visible = shown
+		if shown:
+			_fit_choices()
 
 
 ## Closes an open dialogue now; Dugi lowers his arm.
@@ -259,7 +301,7 @@ func _layout_dialogue() -> bool:
 func overlay_rects() -> Array[Rect2]:
 	var out: Array[Rect2] = []
 	for c: Control in [_title_bar, _top_buttons, _key_row, _action_row, _tip]:
-		if c.visible:
+		if c != null and c.visible:
 			out.append(c.get_rect().grow(4.0))
 	return out
 
@@ -292,7 +334,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		back_requested.emit()
 
 
-## The screen's own "← 목록" button goes the same way as Android back / Esc: an open sidebar closes first.
+## The screen's own "← 지도" button goes the same way as Android back / Esc: an open sidebar closes first.
 func _on_back_pressed() -> void:
 	if not handle_back():
 		back_requested.emit()
@@ -304,6 +346,313 @@ func handle_back() -> bool:
 		return false
 	close_sidebar()
 	return true
+
+
+# --- slingshot (Plan G3) ------------------------------------------------------------------------
+
+## The slingshot (Angry Birds): the experiment offers its own `slingshot_setup()` (the object, the
+## surface the pull snaps on, the launch point, the two controls a pull sets). Pressing the ball
+## and pulling it back shows the big readout and the arrow of the (angle, speed) the release will
+## throw (the reversed pull); letting go after a real pull commits them as the controls (the
+## sliders in "자세히" follow) and throws with the "release" action, the same run as setting the
+## controls and pressing "공 놓기". A tap or a cancel throws nothing and changes nothing. After a
+## run the next press resets it first (처음으로's reset): the next shot is ready.
+func _setup_slingshot() -> void:
+	if manipulator == null or not experiment.has_method("slingshot_setup"):
+		return
+	var spec: Dictionary = experiment.slingshot_setup()
+	if spec.is_empty():
+		return
+	_slingshot_controls = PackedStringArray(spec.controls)
+	manipulator.set_slingshot(str(spec.object), spec.surface, spec.launch, func() -> Vector2:
+		return Vector2(experiment.control_value(_slingshot_controls[0]), experiment.control_value(_slingshot_controls[1])))
+	manipulator.slingshot.connect(_on_slingshot)
+	_make_slingshot_hud()
+	_slingshot_units = PackedStringArray([str(spec.units.get("angle", "°")), str(spec.units.get("speed", "m/s"))])
+
+
+## The big readout shown while a pull is held (white with a dark shadow, over the 3D view):
+## "45° · 9.0 m/s".
+func _make_slingshot_hud() -> void:
+	if _slingshot_hud != null:
+		return
+	_slingshot_hud = Ui.label("", "HeadingLabel")   # one line (a wrapping label would have no width)
+	_slingshot_hud.name = "SlingshotReadout"
+	_slingshot_hud.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_slingshot_hud.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_slingshot_hud.add_theme_color_override("font_color", Color("ffffff"))
+	_slingshot_hud.add_theme_color_override("font_shadow_color", Color(0.0, 0.0, 0.0, 0.85))
+	_slingshot_hud.add_theme_constant_override("shadow_offset_x", 2)
+	_slingshot_hud.add_theme_constant_override("shadow_offset_y", 2)
+	_slingshot_hud.add_theme_font_size_override("font_size", 44)
+	view.add_child(_slingshot_hud)
+	_slingshot_hud.visible = false
+
+
+## The pull's readout text: "45° · 9.0 m/s" (the values the release throws, already on the grids).
+func slingshot_readout(value: Vector2) -> String:
+	return "%d%s · %s %s" % [int(roundf(value.x)), _slingshot_units[0], Ui.number(value.y, 1), _slingshot_units[1]]
+
+
+## The big pull readout centred under the key cards and the mission strip (clear of both).
+func _fit_slingshot_hud() -> void:
+	if _slingshot_hud == null:
+		return
+	_slingshot_hud.size = _slingshot_hud.get_combined_minimum_size()
+	var top := _key_row.position.y + _key_row.size.y
+	if _mission_strip != null:
+		top = maxf(top, maxf(_mission_strip.get_rect().end.y, _mission_text.get_rect().end.y))
+	_slingshot_hud.position = Vector2((view.size.x - _slingshot_hud.size.x) * 0.5, top + 16.0)
+
+
+## Manipulator.slingshot: "rearm" resets a finished run (the next shot), "pull" moves the readout
+## and the arrow, "release" commits the pull and throws, "cancel" puts everything back as it was.
+func _on_slingshot(state: String, value: Variant) -> void:
+	match state:
+		"rearm":
+			_updating = true
+			experiment.change_from_input(experiment.run_action.bind("reset"))
+			_updating = false
+			if cast != null:
+				cast.reset()
+			_refresh()
+		"pull":
+			if _asking:
+				_end_question()   # the child went for the ball: the question goes, unanswered
+			_slingshot_hud.text = slingshot_readout(value)
+			_slingshot_hud.visible = true
+			_fit_slingshot_hud()
+			experiment.set_slingshot_preview(value)
+		"cancel":
+			_slingshot_hud.visible = false
+			experiment.set_slingshot_preview(Vector2.INF)
+		"release":
+			_slingshot_hud.visible = false
+			experiment.set_slingshot_preview(Vector2.INF)
+			var v: Vector2 = value
+			_updating = true
+			experiment.change_from_input(func() -> void:
+				experiment.set_control(_slingshot_controls[0], v.x)
+				experiment.set_control(_slingshot_controls[1], v.y))
+			experiment.change_from_input(experiment.run_action.bind("release"))
+			_updating = false
+			if cast != null:
+				cast.user_changed()
+			_refresh()
+
+
+# --- game: the mission round (Plan G4) -----------------------------------------------------------
+
+## The mission tracker (Plan G1), when the experiment has missions; it starts from the saved stamps.
+func _make_missions() -> MissionTracker:
+	if MissionTracker.missions(definition).is_empty():
+		return null
+	var tracker := MissionTracker.new()
+	tracker.definition = definition
+	tracker.progress = _mission_progress
+	tracker.start()
+	return tracker
+
+
+## A throw is judged once, when it has ended (landed, out, fence) and the lab is settled (the
+## engine has finished the landing, not merely reached the formula landing within the slack):
+## the stamp from the formula value the panel shows (MissionTracker only reads). Nothing is
+## latched before that judgement; a lab back at "ready" waits for its next throw.
+func _missions_judge() -> void:
+	if _missions == null:
+		return
+	var status := experiment.status()
+	if status == "ready":
+		_judged_run = false
+		return
+	if _judged_run or status not in RUN_END or not experiment.settled():
+		return
+	_judged_run = true
+	_missions.on_run_ended(status, experiment, experiment.observations())
+	_predict_finish()
+
+
+## The experiment has missions: the stamp strip (도장) under the key cards, and Dugi's prediction
+## question (his dialogue box, two picture buttons) before the first throw while stages are left.
+## Nothing here moves a body or sets a control (physics stays the formulas').
+func _setup_game() -> void:
+	if _missions == null:
+		return
+	_make_mission_strip()
+	_show_stamps(_missions.stamps)
+	var predict := MissionTracker.predict(definition)
+	if predict.is_empty() or _missions.stage() < 0 or dialogue == null:
+		_predict_ended = true   # the round is done (or no Dugi to ask): no question
+		return
+	_reason_pending = str(predict.get("reason", ""))
+	_ask(str(predict.get("question", "")), predict.get("choices", []))
+
+
+## The stamp strip: one 도장 per stage (filled by the saved count) and the current stage's text.
+func _make_mission_strip() -> void:
+	_mission_strip = Ui.hbox(8)
+	_mission_strip.name = "MissionStrip"
+	_mission_strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	view.add_child(_mission_strip)
+	for i in MissionTracker.missions(definition).get("stages", []).size():
+		var stamp := Ui.label("○", "KeyValueLabel")   # no wrap: a wrapping label has no width in the row
+		stamp.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_mission_strip.add_child(stamp)
+		_stamp_labels.append(stamp)
+	_mission_text = Ui.label("", "KeyValueLabel", true)
+	_mission_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_mission_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	view.add_child(_mission_text)
+	_fit_mission_strip()
+
+
+func _fit_mission_strip() -> void:
+	if _mission_strip == null:
+		return
+	var m := OVERLAY_MARGIN
+	var key_bottom := _key_row.position.y + maxf(_key_row.size.y, 80.0)
+	var y := key_bottom + 8.0
+	_mission_strip.size = _mission_strip.get_combined_minimum_size()
+	_mission_strip.position = Vector2(m, y)
+	if _mission_text != null:
+		var max_w := view.size.x - m * 2.0 - _mission_strip.size.x - 8.0
+		_mission_text.custom_minimum_size.x = maxf(120.0, max_w)
+		_mission_text.size = Vector2(_mission_text.custom_minimum_size.x, 0.0)
+		_mission_text.size.y = _mission_text.get_minimum_size().y
+		_mission_text.position = Vector2(m + _mission_strip.size.x + 8.0, y)
+
+
+func _show_stamps(count: int) -> void:
+	var stages: Array = MissionTracker.missions(definition).get("stages", [])
+	for i in _stamp_labels.size():
+		var stamp := _stamp_labels[i] as Label
+		stamp.text = "●" if i < count else "○"
+		stamp.add_theme_color_override("font_color",
+			Color("4d8f3f") if i < count else Color("c9b892"))
+	if _mission_text == null:
+		return
+	if count >= stages.size():
+		_mission_text.text = "모두 완료! (깃발이 섬에 섰어요)"
+	else:
+		_mission_text.text = str(stages[count].get("text", ""))
+
+
+## Dugi asks (Plan G4): his dialogue box with the question (portrait and name tag, held open until
+## an answer) and the two picture buttons above it. Only the buttons take touches; the 3D view
+## under them works as before (a pull on the ball ends the question unanswered).
+func _ask(question: String, choices: Array) -> void:
+	_asking = true
+	dialogue.hold = true
+	_choices = Ui.hbox(16)
+	_choices.name = "PredictChoices"
+	_choices.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	view.add_child(_choices)
+	for choice in choices:
+		_choices.add_child(_choice_button(choice))
+	_question = question
+	_choices.visible = false   # _run_dialogue lays the box out, then shows both
+
+
+## A big picture button: a drawn throw (PICTURES) over its label.
+func _choice_button(choice: Dictionary) -> Button:
+	var button := Ui.button("", "", 0)
+	button.name = "Choice_%s" % str(choice.get("id", ""))
+	button.custom_minimum_size = CHOICE_SIZE
+	var stack := Ui.vbox(4)
+	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stack.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 10)
+	button.add_child(stack)
+	var picture := Control.new()
+	picture.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	picture.custom_minimum_size = Vector2(CHOICE_SIZE.x - 20.0, CHOICE_SIZE.y - 70.0)
+	picture.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	var kind := str(choice.get("picture", ""))
+	picture.draw.connect(func() -> void: _draw_choice_picture(picture, kind))
+	stack.add_child(picture)
+	var caption := Ui.label(str(choice.get("label", "")), "HeadingLabel")
+	caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	stack.add_child(caption)
+	button.pressed.connect(_predict_pick_choice.bind(str(choice.get("id", ""))))
+	return button
+
+
+## The choice's picture: two throws from the same hand, a soft one (thin, pale) and a strong one
+## (thick). "long_arc": the strong one lands farther; otherwise ("same_arc") both land together.
+static func _draw_choice_picture(canvas: Control, kind: String) -> void:
+	var r := Rect2(Vector2.ZERO, canvas.size).grow(-6.0)
+	var ground := r.end.y
+	canvas.draw_line(Vector2(r.position.x, ground), Vector2(r.end.x, ground), Color("8a6a46"), 3.0)
+	var soft := 0.45
+	var far := kind == "long_arc"
+	_draw_arc(canvas, r, 0.95 if far else soft, 0.9 if far else 0.5, Color("e2683c"), 6.0)
+	_draw_arc(canvas, r, soft, 0.5, Color("c9b892"), 3.0)   # on top: both show when they land together
+	canvas.draw_circle(Vector2(r.position.x + 8.0, ground - 8.0), 7.0, Color("e2683c"))
+
+
+## A throw drawn as a parabola from the left end over `reach` of the width, `rise` of the height.
+static func _draw_arc(canvas: Control, r: Rect2, reach: float, rise: float, color: Color, width: float) -> void:
+	var points := PackedVector2Array()
+	for i in 17:
+		var k := i / 16.0
+		points.append(Vector2(r.position.x + 8.0 + k * (r.size.x - 8.0) * reach, r.end.y - 8.0 - 4.0 * k * (1.0 - k) * r.size.y * rise))
+	canvas.draw_polyline(points, color, width, true)
+
+
+## The picture buttons over the dialogue box, at its right end (the ball and the cat stand on
+## the left: they stay in sight while Dugi asks).
+func _fit_choices() -> void:
+	if _choices == null:
+		return
+	_choices.size = _choices.get_combined_minimum_size()
+	var box: Rect2 = dialogue.rects()[0]
+	var left := maxf(box.position.x + DialogueBox.PORTRAIT_SIZE, box.end.x - _choices.size.x)
+	_choices.position = Vector2(left, box.position.y - DialogueBox.NAME_LIFT - _choices.size.y - 12.0)
+
+
+## A picture is tapped: the pick is kept (the strip shows it until the run ends) and the question
+## goes at once (nothing of it stays to catch the next touch).
+func _predict_pick_choice(choice_id: String) -> void:
+	if not _asking:
+		return
+	_predict_pick = choice_id
+	var picked := ""
+	for choice in MissionTracker.predict(definition).get("choices", []):
+		if str(choice.get("id", "")) == choice_id:
+			picked = str(choice.get("label", ""))
+	_end_question()
+	if _mission_text != null and picked != "":
+		_mission_text.text = "예측: " + picked
+
+
+## The question ends (an answer or a pull): the box closes and the buttons go.
+func _end_question() -> void:
+	if not _asking:
+		return
+	_asking = false
+	dialogue.hold = false
+	dialogue.close(true)
+	if _choices != null:
+		_choices.queue_free()
+		_choices = null
+
+
+## The first throw has ended (judged): the question is over and the strip shows the stage again.
+## Dugi tells the reason the next time he explains (once: _reason_pending).
+func _predict_finish() -> void:
+	if _predict_ended:
+		return
+	_predict_ended = true
+	_end_question()
+	_show_stamps(_missions.stamps)
+
+
+## A stamp was saved (MissionTracker, more than was stored): the strip fills it in (the next
+## stage's text appears) and, on the last one, the puppy celebrates.
+func _mission_progress(_id: String, stamps: int) -> void:
+	_show_stamps(stamps)
+	if cast != null and cast.puppy != null and MissionTracker.missions(definition).get("stages", []).size() == stamps:
+		cast.puppy.celebrate()
 
 
 # --- layout ---------------------------------------------------------------------------------
@@ -397,7 +746,7 @@ func _build_view_overlays() -> void:
 	view.add_child(_title_bar)
 	var title_row := Ui.hbox(4)
 	_title_bar.add_child(title_row)
-	var back := Ui.button("← 목록", "FlatButton", 56)
+	var back := Ui.button("← 지도", "FlatButton", 56)
 	back.pressed.connect(_on_back_pressed)
 	title_row.add_child(back)
 	_back_button = back
@@ -413,10 +762,9 @@ func _build_view_overlays() -> void:
 	_top_buttons = Ui.hbox(8)
 	_top_buttons.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	view.add_child(_top_buttons)
-	var settings := Ui.button("설정", "", 56)
-	settings.pressed.connect(settings_requested.emit)
-	_top_buttons.add_child(settings)
-	_sidebar_button = Ui.button("설명·조건", "PrimaryButton", 56)
+	# Settings live on the island map (Plan G2). The game's labs keep their sliders behind "자세히".
+	var game := not MissionTracker.missions(definition).is_empty()
+	_sidebar_button = Ui.button("자세히" if game else "설명·조건", "PrimaryButton", 56)
 	_sidebar_button.pressed.connect(open_sidebar.bind(true))
 	_top_buttons.add_child(_sidebar_button)
 
@@ -497,17 +845,25 @@ func _fit_overlays() -> void:
 	_key_row.position = Vector2(m, m + maxf(_title_bar.size.y, _top_buttons.size.y) + 8.0)
 	_action_row.size = _action_row.get_combined_minimum_size()
 	_action_row.position = Vector2(width - _action_row.size.x - m, view.size.y - _action_row.size.y - m)
+	if _mission_strip != null:
+		_fit_mission_strip()
+	if _asking and dialogue != null and dialogue.active:
+		dialogue.visible = _layout_dialogue()
+		_fit_choices()
+	if _slingshot_hud != null and _slingshot_hud.visible:
+		_fit_slingshot_hud()
 	if dialogue != null and dialogue.active:
 		dialogue.visible = _layout_dialogue()   # follows the view at once (a resize)
 	# Beside the actions when there is room, otherwise above them (a narrow view with many actions:
 	# orbit's three buttons beside the open sidebar on a tablet).
 	var beside := width - _action_row.size.x - m * 3.0
 	var tip_width := minf(TIP_MAX_WIDTH, beside if beside >= TIP_MIN_WIDTH else width - m * 2.0)
-	# An autowrap label's minimum height depends on its width: set the width first.
-	_tip.size = Vector2(tip_width, 0.0)
-	_tip.size.y = _tip.get_minimum_size().y
-	var bottom := view.size.y - m if beside >= TIP_MIN_WIDTH else _action_row.position.y - 8.0
-	_tip.position = Vector2(m, bottom - _tip.size.y)
+	if _tip != null:
+		# An autowrap label's minimum height depends on its width: set the width first.
+		_tip.size = Vector2(tip_width, 0.0)
+		_tip.size.y = _tip.get_minimum_size().y
+		var bottom := view.size.y - m if beside >= TIP_MIN_WIDTH else _action_row.position.y - 8.0
+		_tip.position = Vector2(m, bottom - _tip.size.y)
 
 
 func _scroll_to(section: String) -> void:
@@ -682,6 +1038,7 @@ func _drop_held_object() -> void:
 ## inside a manipulator callback (placed / cancelled) by its `changed`.
 func _on_state_changed() -> void:
 	if not _updating and not (manipulator != null and manipulator.notifying):
+		_missions_judge()   # the end state (landed, out, fence) judges the mission stamp
 		_refresh()
 
 
@@ -817,9 +1174,26 @@ func _poll() -> void:
 	if experiment == null or not experiment.is_inside_tree():
 		return
 	_update_readouts(false)
+	_missions_judge()   # a run can end between state_changed events (the engine's settled report)
 
 
 ## The displayed text of an observation value (panel tiles and key cards show the same text).
+## A mission's answer before the throw has ended (missions.hidden_until_end): "?" and the unit.
+static func hidden_observation(observation: Dictionary) -> String:
+	var unit: String = observation.get("unit", "")
+	if unit == "":
+		return "?"
+	return "?" + unit if unit == "°" else "? " + unit
+
+
+## The observation ids a mission round hides now: its hidden_until_end ones while the throw has
+## not ended (ready, being pulled, flying); none once it landed (or went out / hit the fence).
+func _hidden_answers() -> Array:
+	if _missions == null or experiment.status() in RUN_END:
+		return []
+	return MissionTracker.missions(definition).get("hidden_until_end", [])
+
+
 static func format_observation(observation: Dictionary, value: Variant) -> String:
 	if value is float or value is int:
 		var text := Ui.number(value, int(observation.get("digits", 2)))
@@ -834,8 +1208,11 @@ static func format_observation(observation: Dictionary, value: Variant) -> Strin
 
 func _update_readouts(force_graph: bool) -> void:
 	var values := experiment.observations()
+	var hidden := _hidden_answers()
 	for observation in definition.observations:
 		var text := format_observation(observation, values.get(observation.id))
+		if hidden.has(observation.id):
+			text = hidden_observation(observation)
 		var label: Label = _observation_labels[observation.id]
 		if label.text != text:
 			label.text = text
@@ -857,7 +1234,7 @@ func _on_mode_changed(mode: String) -> void:
 ## counts as seen (the timer ran out or the first gesture closed it): a screen rebuilt before that
 ## (a condition change redraws it from the saved state) shows the hint again.
 func _hide_tip() -> void:
-	if not _tip.visible or _tip_tween != null:
+	if _tip == null or not _tip.visible or _tip_tween != null:
 		return
 	_tips_shown[definition.id] = true
 	if not is_inside_tree():

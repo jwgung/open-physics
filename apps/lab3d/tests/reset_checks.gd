@@ -56,7 +56,7 @@ func run() -> void:
 			expect.call(report.is_empty(), "BodyResync: the stale report of a body moving at the change (one step of its motion on, as on SM-P200) is put back; a body other code moved, or set moving slowly from rest, is left alone", "; ".join(report))
 			for cancel in [false, true]:
 				var moved := await _manipulation_case(definition, cancel)
-				expect.call(moved.is_empty(), "the landed ball %s (touch, frames without a step): from that frame on it stays there" % ("picked up, dragged and put back (cancelled touch)" if cancel else "picked up and put down on the launch line"), "; ".join(moved))
+				expect.call(moved.is_empty(), "the landed ball pressed (the slingshot's next shot: the run is reset, the ball back at its launch point), pulled and %s (touch, frames without a step): from that frame on it stays there" % ("cancelled: nothing thrown" if cancel else "let go: the cat throws"), "; ".join(moved))
 
 
 ## BodyResync with the report a device gives (SM-P200, 2026-10-24): the input change runs before the
@@ -218,10 +218,10 @@ func _rerelease_case(definition: Dictionary, ending: String) -> Array:
 	return problems
 
 
-## The ball lands; a finger picks it up (it jumps onto the launch line under the finger), drags it
-## along the line and lets go (put down there) or the touch is cancelled (put back: picking it up
-## stopped the run, so back at the launch point).
-## From that frame on, for CHECK_FRAMES frames, the ball stays at that pose.
+## The ball lands; a finger presses it (the slingshot, Plan G3: the run is reset and the ball waits
+## at its launch point for the next shot), pulls it back and lets go (the cat throws: the ball
+## stays in its paw through the wind-up) or the touch is cancelled (nothing is thrown).
+## From that frame on, for CHECK_FRAMES frames, the ball stays at the launch point.
 func _manipulation_case(definition: Dictionary, cancel: bool) -> Array:
 	var problems := []
 	var root_size := tree.root.size
@@ -242,22 +242,21 @@ func _manipulation_case(definition: Dictionary, cancel: bool) -> Array:
 		drag.position = from.lerp(to, i / 6.0)
 		view._gui_input(drag)
 		await tree.process_frame
-	if screen.manipulator.mode != "drag":
-		problems.append("the ball was not picked up")
-	var dragged: Vector3 = lab.ball.global_position
+	if screen.manipulator.mode != "slingshot":
+		problems.append("the ball's press did not start a pull (mode %s)" % screen.manipulator.mode)
+	if lab.released:
+		problems.append("the press did not reset the landed run")
 	_view_touch(view, to, false, cancel)
-	# Put down: on the launch line (the new launch point). Put back: the run stopped at the pick-up,
-	# so where it is put back is the launch point too, not where the finger left it.
 	var expected: Transform3D = lab.ball.global_transform
 	if expected.origin.distance_to(lab.ball_center()) > POSE_TOL:
-		problems.append("%s at %s, launch point %s" % ["put back" if cancel else "put down", expected.origin, lab.ball_center()])
-	if cancel and expected.origin.distance_to(dragged) < 0.1:
-		problems.append("put back where the finger left it (%s)" % dragged)
+		problems.append("%s at %s, launch point %s" % ["cancelled" if cancel else "let go", expected.origin, lab.ball_center()])
+	if cancel == lab.projectile_props().throwing():
+		problems.append("cancelled, yet the cat throws" if cancel else "let go, yet no throw")
 	for f in CHECK_FRAMES + 1:
 		if not problems.is_empty():
 			break
 		if lab.ball.global_transform.origin.distance_to(expected.origin) > POSE_TOL:
-			problems.append("frame %d: ball at %s, %s at %s" % [f, lab.ball.global_position, "put back" if cancel else "put down", expected.origin])
+			problems.append("frame %d: ball at %s, %s at %s" % [f, lab.ball.global_position, "cancelled" if cancel else "let go", expected.origin])
 		await tree.process_frame
 	await _close(screen, root_size)
 	return problems

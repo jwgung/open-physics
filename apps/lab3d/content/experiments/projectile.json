@@ -32,7 +32,7 @@
     },
     {
       "id": "angle", "type": "slider", "label": "던지는 각도", "unit": "°",
-      "min": 0.0, "max": 90.0, "step": 15.0, "default": 45.0, "digits": 0
+      "min": 0.0, "max": 90.0, "step": 5.0, "default": 45.0, "digits": 0
     },
     {
       "id": "speed", "type": "slider", "label": "던지는 빠르기 v₀", "unit": " m/s",
@@ -44,6 +44,23 @@
     { "id": "reset", "label": "처음으로" }
   ],
   "key_observations": ["range", "flight_time", "landing"],
+  "predict": {
+    "question": "공을 더 세게 던지면 더 멀리 갈까?",
+    "choices": [
+      { "id": "farther", "label": "더 멀리", "picture": "long_arc" },
+      { "id": "same", "label": "똑같이", "picture": "same_arc" }
+    ],
+    "reason": "같은 각도로 더 세게 던지면 빠르기 v₀가 커져요. 공이 앞으로 더 빨리 가고, 위로 던지면 더 오래 떠 있어서 거리 R이 늘어나요. 그래서 더 멀리 가요. 높이 없이 던질 때는 R = v₀·v₀·sin(2θ) ÷ g 예요."
+  },
+  "missions": {
+    "observe": "range",
+    "hidden_until_end": ["range", "flight_time", "apex"],
+    "stages": [
+      { "threshold": 3.0, "text": "3 m보다 멀리 보내기!" },
+      { "threshold": 5.0, "text": "5 m보다 멀리 보내기!" },
+      { "threshold": 7.0, "text": "7 m보다 멀리 보내기!" }
+    ]
+  },
   "cast": {
     "dugi": { "at": [7.25, -1.0], "explain_on": ["landed", "fence"], "delay_s": 0.6 },
     "puppy": { "at": [-2.0, -6.25] }
@@ -76,6 +93,7 @@
       { "id": "ball", "surface": "launch", "snap": 0.5, "height": { "max": 3.0, "step": 0.25 } },
       { "id": "arrow", "surface": "arrow", "snap": 0.0, "height": false }
     ],
-    "demo_action": "release"
+    "demo_action": "release",
+    "slingshot": { "object": "ball", "angle_step": 5.0 }
   }
 }

@@ -819,20 +819,31 @@ func check_projectile_manipulation() -> void:
 	_touch(screen, 0, _at(screen, back), false)
 	expect.call(blocked and lab.angle_deg == 60.0 and lab.knob.global_position.is_equal_approx(knob_before),
 		"projectile: a direction outside 0..90 deg is shown as blocked and the knob goes back", "")
-	# The ball moves along its launch line (0.5 m grid) and its height handle raises the launch.
-	var ball: RigidBody3D = lab.ball
-	var line_goal := Vector3(-4.1, ball.global_position.y, 0.0)
-	_swipe(screen, _at(screen, ball.global_position), _at(screen, line_goal))
-	_touch(screen, 0, _at(screen, line_goal), false)
-	var on_line: bool = is_equal_approx(lab.start.x, -4.0) and is_equal_approx(lab.start.y, 0.5)
+	# The ball is the slingshot's (Plan G3): pressing it pulls, so it no longer slides along the launch
+	# line. A tap on it (no pull) shows its height handle; the handle's real drag raises the launch
+	# 1 m (the rule's 0.25 m grid). The blocked 120 deg attempt above still holds finger 0 (a blocked
+	# release cancels the move but does not lift it), so these touches use finger 1.
+	var ball_at := _at(screen, lab.ball_center())
+	_touch(screen, 1, ball_at, true)
+	_touch(screen, 1, ball_at, false)
+	await tree.process_frame
+	var tapped: bool = m.selected_id == "ball" and m._knob.visible and lab.angle_deg == 60.0 and not lab.released
 	var knob_at := _at(screen, m._knob.global_position)
 	var up := _at(screen, m._knob.global_position + Vector3(0, 1.0, 0))
-	_swipe(screen, knob_at, up, 6)
-	_touch(screen, 0, up, false)
+	_touch(screen, 1, knob_at, true)
+	for i in range(1, 7):
+		var event := InputEventScreenDrag.new()
+		event.index = 1
+		event.position = knob_at.lerp(up, float(i) / 6)
+		screen.view._gui_input(event)
+		await tree.process_frame
+	_touch(screen, 1, up, false)   # the release commits the height
+	await tree.process_frame
 	var tip_now := ArrowSurface.tip(60.0, 6.0)
 	var arrow_follows: bool = lab.knob.global_position.is_equal_approx(lab.ball_center() + Vector3(tip_now.x, -tip_now.y, 0.0))
-	expect.call(on_line and absf(lab.start.y - 1.5) < 0.13 and is_equal_approx(fmod(lab.start.y, 0.25), 0.0) and arrow_follows,
-		"projectile: the ball moves on its launch line and its handle sets the launch height; the arrow follows", "start %s" % str(lab.start))
+	expect.call(tapped and is_equal_approx(lab.start.x, lab.START_X) and is_equal_approx(lab.start.y, 1.5) and arrow_follows,
+		"projectile: a tap on the ball shows its height handle (a press pulls the slingshot); the handle's drag sets the launch height on its 0.25 m grid; the arrow follows",
+		"tapped %s, start %s" % [str(tapped), str(lab.start)])
 	var shown: Dictionary = lab.observations()
 	var vy := 6.0 * sin(deg_to_rad(60.0))
 	expect.call(float(shown.flight_time) == PhysicsLaws.landing_time(vy, -9.81, lab.start.y) and float(shown.launch_height) == lab.start.y,

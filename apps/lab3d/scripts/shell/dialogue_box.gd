@@ -6,10 +6,12 @@
 ## art_src/characters/dugi_portrait.py), the name tag "두기두기" sits on the top edge beside it,
 ## and a blinking ▼ shows when the page is fully shown.
 ##
-## The words are the lab's observe text exactly, only split into pages of at most LINES lines at
-## the spaces (joined() is the text again). Each page types out at
+## The words are the lab's observe text exactly (or, for one open, other words of Dugi's: the
+## mission's question or the prediction's reason — Plan G4), only split into pages of at most
+## LINES lines at the spaces (joined() is the text again). Each page types out at
 ## CHARS_PER_S; a tap shows the whole page, the next tap turns the page, and after the last page
-## it closes. Untouched, a full page turns after READ_S + READ_PER_CHAR_S per character. UI only:
+## it closes. Untouched, a full page turns after READ_S + READ_PER_CHAR_S per character; a box that
+## holds (`hold`: a question waiting for its answer) stays on its last page instead. UI only:
 ## no full-screen layer; it takes taps only on the box and the bust (_has_point), the rest of its
 ## rect passes them to the 3D view.
 class_name DialogueBox
@@ -37,6 +39,10 @@ const PORTRAITS := {
 }
 
 var text := ""
+## The box's own words (the lab's observe text): every open without other words shows these.
+var words := ""
+## A question is waiting for its answer: the last page stays (no read timer, a tap does not close).
+var hold := false
 var box: PanelContainer
 var name_tag: PanelContainer
 var name_label: Label
@@ -53,9 +59,10 @@ var _clock := 0.0
 var _text_width := 0.0
 
 
-func _init(words: String) -> void:
+func _init(own_words: String) -> void:
 	name = "DialogueBox"
-	text = words
+	words = own_words
+	text = own_words
 	visible = false
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	box = Ui.panel("DialogueBox")
@@ -187,11 +194,29 @@ func rects() -> Array[Rect2]:
 
 # --- acting -----------------------------------------------------------------------------------
 
-## Opens at the first page (laid out by the caller first).
-func open() -> void:
+## Replaces the box's own words (the words of every later open without other words).
+func set_words(new_words: String) -> void:
+	words = new_words
+	_set_text(new_words)
+
+
+## Opens at the first page (laid out by the caller first). `once` (optional): other words for this
+## open only (the prediction's question or reason, Plan G4); the next open shows the box's own
+## words again.
+func open(once := "") -> void:
+	_set_text(once if once != "" else words)
 	active = true
 	page = 0
 	_show_page(true)
+
+
+func _set_text(new_text: String) -> void:
+	if new_text == text and not _pages.is_empty():
+		return
+	text = new_text
+	_pages = paginate(text, label.get_theme_font("font"), label.get_theme_font_size("font_size"),
+		_text_width if _text_width > 0.0 else MIN_TEXT_WIDTH)
+	page = 0
 
 
 ## Closes (instant: no `closed` signal, the caller is closing it).
@@ -219,7 +244,7 @@ func advance() -> void:
 	elif page < _pages.size() - 1:
 		page += 1
 		_show_page(true)
-	else:
+	elif not hold:
 		close()
 	_refresh()
 
@@ -260,7 +285,7 @@ func step(delta: float) -> void:
 	_clock += delta
 	if not typed():
 		_shown += CHARS_PER_S * delta
-	else:
+	elif not hold or page < _pages.size() - 1:
 		_read_left -= delta
 		if _read_left <= 0.0:
 			advance()

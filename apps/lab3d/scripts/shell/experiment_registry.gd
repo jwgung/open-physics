@@ -181,6 +181,45 @@ static func validate(definition: Dictionary) -> PackedStringArray:
 		problems.append("graph.series missing")
 	problems.append_array(_validate_manipulation(definition.get("manipulation"), definition.actions))
 	problems.append_array(_validate_cast(definition.get("cast")))
+	problems.append_array(_validate_missions(definition.get("missions"), definition.observations))
+	return problems
+
+
+## `missions` (Plan G1, optional): the easy stage thresholds —
+## {"observe": <an observation id>, "stages": [{"threshold": <number > 0>, "text": <non-empty>}, ...],
+##  "hidden_until_end"?: [<observation id>, ...]}.
+## The child clears stage n when the lab lands with the formula value of `observe` farther than
+## threshold n (MissionTracker: it reads, it never changes the run). The hidden_until_end values
+## (the formula's answer) read "?" until the throw has ended, so the round is not given away.
+static func _validate_missions(missions: Variant, observations: Array) -> PackedStringArray:
+	var problems := PackedStringArray()
+	if missions == null:
+		return problems
+	if not missions is Dictionary:
+		problems.append("missions must be an object")
+		return problems
+	var observe: Variant = missions.get("observe")
+	var ids := {}
+	for observation in observations:
+		if observation.get("id") is String:
+			ids[observation.id] = true
+	if not (observe is String and ids.has(observe)):
+		problems.append("missions.observe must be one of the observation ids")
+	var hidden: Variant = missions.get("hidden_until_end", [])
+	if not (hidden is Array and hidden.all(func(id: Variant) -> bool: return id is String and ids.has(id))):
+		problems.append("missions.hidden_until_end must list observation ids")
+	var stages: Variant = missions.get("stages")
+	if not (stages is Array and stages.size() > 0 and stages.size() <= ProgressStore.MAX_STAMPS):
+		problems.append("missions.stages must list %d or fewer non-empty stages" % ProgressStore.MAX_STAMPS)
+		return problems
+	for i in stages.size():
+		var stage: Variant = stages[i]
+		var threshold: Variant = stage.get("threshold") if stage is Dictionary else null
+		var text: Variant = stage.get("text") if stage is Dictionary else null
+		if not (stage is Dictionary and (threshold is int or threshold is float) and threshold > 0.0):
+			problems.append("missions.stages[%d].threshold must be a number > 0" % i)
+		elif not (text is String and text != ""):
+			problems.append("missions.stages[%d].text must be a text" % i)
 	return problems
 
 
@@ -262,6 +301,14 @@ static func _validate_manipulation(manipulation: Variant, actions: Array = []) -
 	var demo: Variant = manipulation.get("demo_action", "")
 	if not demo is String or (demo != "" and not actions.any(func(a: Dictionary) -> bool: return a.get("id") == demo)):
 		problems.append("manipulation.demo_action must be the id of one of the actions")
+	# The slingshot (Plan G3): the pull's object (one of the manipulable ids) and its angle step.
+	var slingshot: Variant = manipulation.get("slingshot")
+	if slingshot is Dictionary:
+		if not slingshot.get("object") is String or not ids.has(slingshot.object):
+			problems.append("manipulation.slingshot.object must be one of the manipulation objects")
+		var angle_step: Variant = slingshot.get("angle_step", 15.0)
+		if not (angle_step is float or angle_step is int) or angle_step <= 0.0:
+			problems.append("manipulation.slingshot.angle_step must be a number > 0")
 	return problems
 
 

@@ -50,6 +50,7 @@ var cat_grip := true
 var _ball: RigidBody3D
 var _launch_dir := Vector3.RIGHT   # direction of the arrow (the throw)
 var _crates := 1                   # crates in the stand mesh now
+var _path_count := 0               # dots set by set_path (show_dots shows at most these)
 ## The last formula dot drawn (where the preview path ends: the landing or a fence; tests).
 var path_end := Vector3.INF
 
@@ -225,10 +226,18 @@ func set_path(points: PackedVector3Array, landing: Variant) -> void:
 	for i in count:
 		multimesh.set_instance_transform(i, Transform3D(Basis(), points[i]))
 	multimesh.visible_instance_count = count
+	_path_count = count
 	path_end = points[count - 1] if count > 0 else Vector3.INF
 	ring.visible = landing != null
 	if landing != null:
 		ring.position = landing
+
+
+## Shows the first `count` dots of the path (the slingshot game's trail grows with the flight).
+func show_dots(count: int) -> void:
+	var shown := mini(count, _path_count)
+	if path.multimesh.visible_instance_count != shown:
+		path.multimesh.visible_instance_count = shown
 
 
 ## Release: the ball stretches, the arrow hides; a ball let go without the cat's throw (tests, a

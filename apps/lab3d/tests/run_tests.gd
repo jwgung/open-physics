@@ -48,6 +48,10 @@
 ## 16. island cast (Task 4h, tests/island_cast_checks.gd): the Dugi / Puppy models' mesh contract,
 ##    the explain cycle (rest -> point -> rest, the stick hidden at rest), the status trigger, placement
 ##    and layout in every experiment, physics and panels unchanged with the cast.
+## 17. game G1 (tests/mission_checks.gd): the missions / predict blocks of the content, the
+##    MissionTracker (a landed run judged by the formula value, a short throw changes nothing),
+##    the ProgressStore (user://progress.cfg, a corrupt file starts over) and the physics
+##    invariant: the trajectory and the displayed values are the same with or without the mission.
 ## Times are engine fixed steps (60 Hz), independent of rendering FPS.
 extends SceneTree
 
@@ -72,6 +76,11 @@ func _initialize() -> void:
 
 
 func _run() -> void:
+	# Every screen with missions saves stamps: the run uses its own progress file, never the
+	# child's (user://progress.cfg is checked unchanged at the end).
+	var real_progress := _file_state(ProgressStore.PATH)
+	ProgressStore.path = ProgressStore.TEST_PATH
+	DirAccess.remove_absolute(ProgressStore.path)
 	_vectors = JSON.parse_string(FileAccess.get_file_as_string(VECTORS_PATH))
 	print("== parity: GDScript PhysicsLaws vs TS core vectors ==")
 	_check_parity()
@@ -188,14 +197,43 @@ func _run() -> void:
 	_expect(cast_checks != null and cast_checks.can_instantiate(), "island cast checks compile", "")
 	if cast_checks != null and cast_checks.can_instantiate():
 		await cast_checks.new(self, _expect).run()
+	print("== game G1: missions and predict blocks, MissionTracker, ProgressStore, physics unchanged ==")
+	var mission: GDScript = load("res://tests/mission_checks.gd")
+	_expect(mission != null and mission.can_instantiate(), "mission checks compile", "")
+	if mission != null and mission.can_instantiate():
+		await mission.new(self, _expect).run()
+	print("== game G2: the island home (map, tap -> hop -> experiment, stamps, buttons) ==")
+	var home: GDScript = load("res://tests/island_home_checks.gd")
+	_expect(home != null and home.can_instantiate(), "island home checks compile", "")
+	if home != null and home.can_instantiate():
+		await home.new(self, _expect).run()
+	print("== game G3: the slingshot (pull = angle / speed, big readout, no path, formula stamp) ==")
+	var slingshot: GDScript = load("res://tests/slingshot_checks.gd")
+	_expect(slingshot != null and slingshot.can_instantiate(), "slingshot checks compile", "")
+	if slingshot != null and slingshot.can_instantiate():
+		await slingshot.new(self, _expect).run()
+	print("== game G4: the mission round (strip, prediction question, reason, stamps, done) ==")
+	var round: GDScript = load("res://tests/game_round_checks.gd")
+	_expect(round != null and round.can_instantiate(), "game round checks compile", "")
+	if round != null and round.can_instantiate():
+		await round.new(self, _expect).run()
 	print("== key cards and front camera, every experiment (Task 2d) ==")
 	await _check_key_cards()
 	await _check_gesture_tip()
 	await _check_tip_rebuild()
 	await _check_back_button()
 	await _check_small_window_title()
+	DirAccess.remove_absolute(ProgressStore.path)
+	_expect(_file_state(ProgressStore.PATH) == real_progress, "the tests never touch the real progress file (user://progress.cfg)", "")
 	print("RESULT: %s (%d failure(s))" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)
+
+
+## [exists, modified time, text] of a file (the real progress file before and after the run).
+func _file_state(path: String) -> Array:
+	if not FileAccess.file_exists(path):
+		return [false]
+	return [true, FileAccess.get_modified_time(path), FileAccess.get_file_as_string(path)]
 
 
 func _expect(ok: bool, label: String, detail: String) -> void:
@@ -1338,7 +1376,7 @@ func _check_tip_rebuild() -> void:
 	host.queue_free()
 
 
-## The screen's "← 목록" button goes the way of Android back: an open sidebar closes first, the
+## The screen's "← 지도" button goes the way of Android back: an open sidebar closes first, the
 ## screen is left only when it is closed.
 func _check_back_button() -> void:
 	var host := Control.new()

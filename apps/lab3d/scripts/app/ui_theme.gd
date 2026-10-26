@@ -108,6 +108,8 @@ static func build() -> Theme:
 	_panel_variation(theme, "ViewOverlay", _box(Color(1, 1, 1, 0.9), Color.TRANSPARENT, 16, 6, 6))
 	_panel_variation(theme, "DialogueBox", _box(Color(DIALOGUE_PAPER, 0.93), DIALOGUE_LINE, 18, 6, 4, Color.TRANSPARENT, 3))
 	_panel_variation(theme, "DialogueNameTag", _box(DIALOGUE_LINE, Color.TRANSPARENT, 12, 16, 4))
+	# The mission strip's background (Plan G2): the dialogue's cream paper, softer, a rounded pill.
+	_panel_variation(theme, "MissionPill", _box(Color(DIALOGUE_PAPER, 0.88), Color.TRANSPARENT, 20, 14, 4))
 	_panel_variation(theme, "KeyCard", _box(Color(1, 1, 1, 0.9), Color.TRANSPARENT, 14, 12, 8, Color.TRANSPARENT, 1, CARD_LIP, LINE))
 
 	# Buttons: white with a grey-blue lip; pressed = the lip shrinks (the button sinks).

@@ -54,6 +54,12 @@ func check_round() -> void:
 	var strip_ok: bool = screen._stamp_labels.all(func(l: Label) -> bool: return l.size.x > 8.0) \
 		and screen._mission_strip.get_rect().end.x <= screen._mission_text.position.x
 	expect.call(strip_ok, "round: the stamps sit side by side, clear of the stage text", str(screen._mission_strip.get_rect()))
+	# The strip sits on its soft paper pill (readable over trees and sky), drawn under the stamps and the text.
+	var pill: PanelContainer = screen._mission_pill
+	var pill_ok: bool = pill != null and pill.visible and pill.get_rect().encloses(screen._mission_strip.get_rect()) \
+		and pill.get_rect().encloses(screen._mission_text.get_rect()) and pill.get_index() < screen._mission_strip.get_index() \
+		and pill.get_rect().end.x <= screen.view.size.x and pill.get_theme_stylebox("panel").bg_color.a >= 0.8
+	expect.call(pill_ok, "round: the stamps and the stage text sit on a soft paper pill under them", str(pill.get_rect() if pill else null))
 	var ball_seen: bool = not screen._choices.get_rect().grow(8.0).has_point(screen.view_point(lab.ball_center())) \
 		and not screen._choices.get_rect().intersects(screen.dialogue.rects()[0])
 	expect.call(ball_seen, "round: the picture buttons leave the ball in sight and sit above Dugi's box", str(screen._choices.get_rect()))

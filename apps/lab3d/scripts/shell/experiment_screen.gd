@@ -84,6 +84,7 @@ var _slingshot_controls: PackedStringArray = PackedStringArray()   # the two con
 var _missions: MissionTracker = null
 var _judged_run := false              # this attempt earned its stamp (cleared by the next attempt)
 var _mission_strip: HBoxContainer = null
+var _mission_pill: PanelContainer = null   # the strip's soft paper background (readable over the scene)
 var _stamp_labels: Array = []
 var _mission_text: Label = null
 var _series_hidden := false           # the graph's hidden_series_until_end lines were left out last time
@@ -402,8 +403,8 @@ func _fit_slingshot_hud() -> void:
 		return
 	_slingshot_hud.size = _slingshot_hud.get_combined_minimum_size()
 	var top := _key_row.position.y + _key_row.size.y
-	if _mission_strip != null:
-		top = maxf(top, maxf(_mission_strip.get_rect().end.y, _mission_text.get_rect().end.y))
+	if _mission_pill != null:
+		top = maxf(top, _mission_pill.get_rect().end.y)
 	_slingshot_hud.position = Vector2((view.size.x - _slingshot_hud.size.x) * 0.5, top + 16.0)
 
 
@@ -503,8 +504,13 @@ func _setup_game() -> void:
 	_ask(str(predict.get("question", "")), predict.get("choices", []))
 
 
-## The stamp strip: one 도장 per stage (filled by the saved count) and the current stage's text.
+## The stamp strip: one 도장 per stage (filled by the saved count) and the current stage's text,
+## on a soft paper pill (UiTheme "MissionPill") so the words stay readable over trees and sky.
 func _make_mission_strip() -> void:
+	_mission_pill = Ui.panel("MissionPill")
+	_mission_pill.name = "MissionPill"
+	_mission_pill.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	view.add_child(_mission_pill)
 	_mission_strip = Ui.hbox(8)
 	_mission_strip.name = "MissionStrip"
 	_mission_strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -521,20 +527,32 @@ func _make_mission_strip() -> void:
 	_fit_mission_strip()
 
 
+## The stamps and the text side by side under the key cards; the pill behind both fits the text's
+## own width (a short stage text gets a short pill), at most the view's width.
 func _fit_mission_strip() -> void:
 	if _mission_strip == null:
 		return
 	var m := OVERLAY_MARGIN
+	var pad := _mission_pill.get_theme_stylebox("panel").get_minimum_size() * 0.5 if _mission_pill != null else Vector2.ZERO
 	var key_bottom := _key_row.position.y + maxf(_key_row.size.y, 80.0)
-	var y := key_bottom + 8.0
+	var x := m + pad.x
+	var y := key_bottom + 8.0 + pad.y
 	_mission_strip.size = _mission_strip.get_combined_minimum_size()
-	_mission_strip.position = Vector2(m, y)
-	if _mission_text != null:
-		var max_w := view.size.x - m * 2.0 - _mission_strip.size.x - 8.0
-		_mission_text.custom_minimum_size.x = maxf(120.0, max_w)
-		_mission_text.size = Vector2(_mission_text.custom_minimum_size.x, 0.0)
-		_mission_text.size.y = _mission_text.get_minimum_size().y
-		_mission_text.position = Vector2(m + _mission_strip.size.x + 8.0, y)
+	_mission_strip.position = Vector2(x, y)
+	if _mission_text == null:
+		return
+	var max_w := maxf(120.0, view.size.x - m * 2.0 - pad.x * 2.0 - _mission_strip.size.x - 8.0)
+	_mission_text.custom_minimum_size.x = 0.0
+	var line := _mission_text.get_theme_font("font").get_string_size(_mission_text.text, HORIZONTAL_ALIGNMENT_LEFT, -1,
+		_mission_text.get_theme_font_size("font_size")).x
+	_mission_text.custom_minimum_size.x = minf(max_w, ceilf(line) + 2.0)
+	_mission_text.size = Vector2(_mission_text.custom_minimum_size.x, 0.0)
+	_mission_text.size.y = _mission_text.get_minimum_size().y
+	_mission_text.position = Vector2(x + _mission_strip.size.x + 8.0, y)
+	if _mission_pill != null:
+		var inner := Rect2(_mission_strip.position, _mission_strip.size).merge(_mission_text.get_rect())
+		_mission_pill.position = inner.position - pad
+		_mission_pill.size = inner.size + pad * 2.0
 
 
 func _show_stamps(count: int) -> void:
@@ -550,6 +568,7 @@ func _show_stamps(count: int) -> void:
 		_mission_text.text = "모두 완료! (깃발이 섬에 섰어요)"
 	else:
 		_mission_text.text = str(stages[count].get("text", ""))
+	_fit_mission_strip()
 
 
 ## Dugi asks (Plan G4): his dialogue box with the question (portrait and name tag, held open until

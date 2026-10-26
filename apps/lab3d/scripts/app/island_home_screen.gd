@@ -5,7 +5,7 @@
 ## accessibility). The stamps are read once when the map opens (refresh_progress), never per frame.
 ##
 ## The home is a Control that owns a View3D (top camera, ArtKit's island) and the bread cat
-## (CatActor) who hops between spots. Spot names and stamps are 2D labels projected onto the map
+## (CatActor) who hops between spots. Spot names (and the "미션" badge) are 2D labels projected onto the map
 ## (the key-card / dialogue pattern: the 3D view under, UI on top). It never touches an
 ## experiment's physics: the map is its own little world. App.gd builds it the way it built the
 ## ListScreen (same signals).
@@ -20,7 +20,7 @@ var definitions: Array[Dictionary] = []
 var view: View3D
 var cat: CatActor
 var _island_center := Vector3.ZERO
-var _spots: Array[Dictionary] = []   # [id, definition, at, zone, marker, label, stamp_label]
+var _spots: Array[Dictionary] = []   # {id, definition, at, zone, marker}
 var _flags: Dictionary = {}          # spot id -> flag root (visible at 3 stamps)
 var _walking := false
 var _walk_from := Vector3.ZERO

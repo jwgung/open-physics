@@ -27,6 +27,7 @@ const SUCCESS_STATUS := "landed"
 var definition: Dictionary
 ## The cleared stages so far (0..stages.size()); the current stage is stamps (one stamp per stage).
 var stamps := 0
+var _judged := 0   # the count last saved or handed over (start(): the stored one)
 ## (id: String, stamps: int) when a stage is cleared; the screen reacts (the stamp animation).
 var progress: Callable
 
@@ -42,14 +43,6 @@ static func missions(definition: Dictionary) -> Dictionary:
 static func predict(definition: Dictionary) -> Dictionary:
 	var predict: Variant = definition.get("predict")
 	return predict if predict is Dictionary else {}
-
-
-## The stage texts of `definition` (a list when it has missions, [] otherwise).
-static func stage_texts(definition: Dictionary) -> PackedStringArray:
-	var out := PackedStringArray()
-	for stage in missions(definition).get("stages", []):
-		out.append(str(stage.get("text", "")))
-	return out
 
 
 ## The stored stamp count of `definition`'s spot (0 when it has no missions or none stored).
@@ -112,5 +105,3 @@ func on_run_ended(status: String, lab: Experiment, observations: Dictionary) -> 
 		if progress.is_valid():
 			progress.call(str(definition.get("id", "")), stamps)
 
-
-var _judged := 0   # the count last saved or handed over (start(): the stored one)

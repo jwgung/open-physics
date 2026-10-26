@@ -166,17 +166,13 @@ func check_progress_store() -> void:
 	DirAccess.remove_absolute(ProgressStore.path)
 	# A missing file is no progress.
 	expect.call(ProgressStore.load().is_empty(), "a missing file is no progress", "")
-	# Award, save, reload.
+	# Save, reload.
 	var progress := ProgressStore.load()
-	progress["projectile"] = ProgressStore.award(progress, "projectile", ProgressStore.stamps(progress, "projectile"))
-	progress["projectile"] = ProgressStore.award(progress, "projectile", ProgressStore.stamps(progress, "projectile"))
+	progress["projectile"] = 2
 	ProgressStore.save(progress)
 	var reloaded := ProgressStore.load()
 	expect.call(reloaded == {"projectile": 2} and ProgressStore.stamps(reloaded, "projectile") == 2 \
 		and ProgressStore.stamps(reloaded, "orbit") == 0, "stamps are saved and reloaded (2 for projectile, 0 for the rest)", str(reloaded))
-	# The cap is 3.
-	progress["projectile"] = ProgressStore.award(progress, "projectile", 3)
-	expect.call(progress["projectile"] == 3, "the stamp cap is 3", str(progress["projectile"]))
 	# A corrupt file (broken cfg) is no progress, not an error.
 	DirAccess.remove_absolute(ProgressStore.path)
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(ProgressStore.path).get_base_dir())

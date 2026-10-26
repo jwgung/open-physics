@@ -62,8 +62,3 @@ static func save(progress: Dictionary) -> void:
 ## The stamps of `id` (0 when it has none).
 static func stamps(progress: Dictionary, id: String) -> int:
 	return int(progress.get(id, 0))
-
-
-## `stamps + 1`, capped at MAX_STAMPS.
-static func award(progress: Dictionary, id: String, stamps: int) -> int:
-	return mini(stamps + 1, MAX_STAMPS)

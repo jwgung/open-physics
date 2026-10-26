@@ -86,7 +86,7 @@ const ROUNDS := {
 		["L = 2 m on the earth: 2.9 s", [["act", "release"]], 330, 0],
 		["L = 3.5 m on the earth: 3.9 s", [["ctl", "length", 3.5], ["act", "release"]], 400, 1],
 		["L = 3.5 m on the earth again: nothing", [["act", "release"]], 400, 1],
-		["the moon, L = 3.5 m: 9.6 s", [["ctl", "gravity", "moon"], ["act", "release"]], 1000, 2],
+		["the moon, L = 3.5 m: over 9 s", [["ctl", "gravity", "moon"], ["act", "release"]], 1000, 2],
 		["the moon, L = 3.5 m again: nothing", [["act", "release"]], 1000, 2],
 		["the moon, L = 1 m: 5 s", [["ctl", "length", 1.0], ["act", "release"]], 400, 3],
 	],

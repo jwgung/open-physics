@@ -208,7 +208,7 @@ func _process(delta: float) -> void:
 	if _refresh_left <= 0.0:
 		_refresh_left = 1.0 / UI_REFRESH_HZ
 		_poll()
-	if _tip.visible:
+	if _tip != null and _tip.visible:
 		_tip_left -= delta
 		if _tip_left <= 0.0:
 			_hide_tip()
@@ -277,7 +277,7 @@ func _layout_dialogue() -> bool:
 func overlay_rects() -> Array[Rect2]:
 	var out: Array[Rect2] = []
 	for c: Control in [_title_bar, _top_buttons, _key_row, _action_row, _tip]:
-		if c.visible:
+		if c != null and c.visible:
 			out.append(c.get_rect().grow(4.0))
 	return out
 
@@ -796,11 +796,12 @@ func _fit_overlays() -> void:
 	# orbit's three buttons beside the open sidebar on a tablet).
 	var beside := width - _action_row.size.x - m * 3.0
 	var tip_width := minf(TIP_MAX_WIDTH, beside if beside >= TIP_MIN_WIDTH else width - m * 2.0)
-	# An autowrap label's minimum height depends on its width: set the width first.
-	_tip.size = Vector2(tip_width, 0.0)
-	_tip.size.y = _tip.get_minimum_size().y
-	var bottom := view.size.y - m if beside >= TIP_MIN_WIDTH else _action_row.position.y - 8.0
-	_tip.position = Vector2(m, bottom - _tip.size.y)
+	if _tip != null:
+		# An autowrap label's minimum height depends on its width: set the width first.
+		_tip.size = Vector2(tip_width, 0.0)
+		_tip.size.y = _tip.get_minimum_size().y
+		var bottom := view.size.y - m if beside >= TIP_MIN_WIDTH else _action_row.position.y - 8.0
+		_tip.position = Vector2(m, bottom - _tip.size.y)
 
 
 func _scroll_to(section: String) -> void:
@@ -1152,7 +1153,7 @@ func _on_mode_changed(mode: String) -> void:
 ## counts as seen (the timer ran out or the first gesture closed it): a screen rebuilt before that
 ## (a condition change redraws it from the saved state) shows the hint again.
 func _hide_tip() -> void:
-	if not _tip.visible or _tip_tween != null:
+	if _tip == null or not _tip.visible or _tip_tween != null:
 		return
 	_tips_shown[definition.id] = true
 	if not is_inside_tree():

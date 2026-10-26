@@ -46,8 +46,9 @@ func check_content() -> void:
 		"predict: the one question, two pictures", str(predict.get("question")))
 	var ids := (predict.choices as Array).map(func(c: Dictionary) -> Variant: return c.id)
 	expect.call(ids == ["farther", "same"], "predict: the two pictures are 멀리 and 똑같이", str(ids))
-	expect.call(predict.reason.contains("v0") and predict.reason.contains("R"),
-		"predict: the reason is matched to the formula (R = v0²·sin2θ/g)", predict.reason)
+	expect.call(predict.reason.contains("v₀") and predict.reason.contains("R") and predict.reason.contains("같은 각도")
+		and predict.reason.contains("높이 없이"),
+		"predict: the reason says R grows with v₀ at the same angle, and gives R = v₀²·sin2θ/g only for a launch without height", predict.reason)
 	# The other experiments have no missions or predict yet (next Plan).
 	for other in ExperimentRegistry.load_all():
 		if other.id != "projectile":
@@ -96,7 +97,7 @@ func check_registry_validation() -> void:
 ## A landed run judged by the formula value: clears the stage, awards the stamp; a short throw,
 ## a run without a number and a not-yet-settled landing change nothing; all three stages -> done.
 func check_mission_tracker() -> void:
-	DirAccess.remove_absolute(ProgressStore.PATH)
+	DirAccess.remove_absolute(ProgressStore.path)
 	var definition := ExperimentRegistry.find("projectile").duplicate(true)
 	var awarded := []
 	var tracker := MissionTracker.new()
@@ -157,12 +158,12 @@ func check_mission_tracker() -> void:
 
 ## user://progress.cfg: 0..3 stamps per spot, saved and reloaded; a corrupt file starts over.
 func check_progress_store() -> void:
-	DirAccess.remove_absolute(ProgressStore.PATH)
-	var path := ProjectSettings.globalize_path(ProgressStore.PATH)
+	DirAccess.remove_absolute(ProgressStore.path)
+	var path := ProjectSettings.globalize_path(ProgressStore.path)
 	var backup := ""
-	if FileAccess.file_exists(ProgressStore.PATH):
-		backup = FileAccess.get_file_as_string(ProgressStore.PATH)
-	DirAccess.remove_absolute(ProgressStore.PATH)
+	if FileAccess.file_exists(ProgressStore.path):
+		backup = FileAccess.get_file_as_string(ProgressStore.path)
+	DirAccess.remove_absolute(ProgressStore.path)
 	# A missing file is no progress.
 	expect.call(ProgressStore.load().is_empty(), "a missing file is no progress", "")
 	# Award, save, reload.
@@ -177,15 +178,15 @@ func check_progress_store() -> void:
 	progress["projectile"] = ProgressStore.award(progress, "projectile", 3)
 	expect.call(progress["projectile"] == 3, "the stamp cap is 3", str(progress["projectile"]))
 	# A corrupt file (broken cfg) is no progress, not an error.
-	DirAccess.remove_absolute(ProgressStore.PATH)
-	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(ProgressStore.PATH).get_base_dir())
-	var file := FileAccess.open(ProgressStore.PATH, FileAccess.WRITE)
+	DirAccess.remove_absolute(ProgressStore.path)
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(ProgressStore.path).get_base_dir())
+	var file := FileAccess.open(ProgressStore.path, FileAccess.WRITE)
 	file.store_string("this is { not a config file ]\n")
 	file.close()
 	expect.call(ProgressStore.load().is_empty(), "a corrupt file reads back as no progress (start over)", "")
 	# A cfg with a section whose stamp is not a number or out of range is dropped. ConfigFile reads
 	# a "99" as the string "99" (a hand-written cfg): the numeric-string path of the loader.
-	file = FileAccess.open(ProgressStore.PATH, FileAccess.WRITE)
+	file = FileAccess.open(ProgressStore.path, FileAccess.WRITE)
 	file.store_string("[progress]\nprojectile=99\norbit=2\nbuoyancy=1\n")
 	file.close()
 	var loaded := ProgressStore.load()
@@ -194,9 +195,9 @@ func check_progress_store() -> void:
 	# The store is the app's own file: a save after a corrupt read replaces it.
 	ProgressStore.save({"projectile": 1})
 	expect.call(ProgressStore.load() == {"projectile": 1}, "a save after a corrupt read replaces the file", str(ProgressStore.load()))
-	DirAccess.remove_absolute(ProgressStore.PATH)
+	DirAccess.remove_absolute(ProgressStore.path)
 	if backup != "":
-		file = FileAccess.open(ProgressStore.PATH, FileAccess.WRITE)
+		file = FileAccess.open(ProgressStore.path, FileAccess.WRITE)
 		file.store_string(backup)
 		file.close()
 
@@ -204,82 +205,95 @@ func check_progress_store() -> void:
 # --- physics unchanged -----------------------------------------------------------------------------
 
 
-## With and without the mission tracker running on every status change, the projectile's engine
-## ball (every step) and the panel values are the same: the mission only reads.
-func _record(tracker: MissionTracker = null) -> Array:
+## One recorded throw of 40 deg, 8.5 m/s on the projectile screen (earth, 0.5 m): from the frame of
+## the throw on, every 5th physics step the status, the panel's values and the engine ball's
+## transform. `missions`: the screen with its mission round (the tracker judging, the strip, Dugi's
+## question) or a definition without the missions / predict blocks (no tracker at all).
+## `slingshot`: the throw is a real pull on the ball through the view's touch input, else the two
+## sliders and "공 놓기" (the same frame either way).
+func _record(missions: bool, slingshot: bool) -> Array:
+	var definition := ExperimentRegistry.find("projectile").duplicate(true)
+	if not missions:
+		definition.erase("missions")
+		definition.erase("predict")
 	var host := Control.new()
 	host.theme = load(UI_THEME).build()
 	host.size = TABLET
 	tree.root.add_child(host)
 	var screen: Control = load(EXPERIMENT_SCREEN).new()
-	screen.setup(ExperimentRegistry.find("projectile"))
+	screen.setup(definition)
 	host.add_child(screen)
 	await tree.process_frame
 	await tree.physics_frame
 	var lab: Experiment = screen.experiment
-	# The default throw (earth, 45 deg, 9 m/s, 0.5 m high) flies ~8.7 m: it clears the first stage.
+	var tracked: bool = screen._missions != null
 	var out := []
 	var statuses := []
 	var previous := lab.status()
 	for k in 600:
 		await tree.physics_frame
 		if k == 30:
-			lab.run_action("release")
+			if slingshot:
+				_pull(screen, lab, 40.0, 8.5)
+			else:
+				screen._set_control("angle", 40.0)
+				screen._set_control("speed", 8.5)
+				screen.experiment_action("release")
 		if lab.status() != previous:
 			statuses.append(lab.status())
-			if tracker != null:
-				tracker.on_run_ended(lab.status(), lab, lab.observations())
 		previous = lab.status()
-		if k % 5 == 0:
+		if k >= 30 and k % 5 == 0:
 			out.append([lab.status(), str(lab.observations()), lab.ball.global_transform])
-	# The ball's last pose, read while the tree is alive (it would be freed with the host below).
-	var last_ball: Transform3D = lab.ball.global_transform
 	var values: Dictionary = lab.observations()
 	host.queue_free()
 	await tree.process_frame
-	return [out, statuses, values, last_ball]
+	return [out, statuses, values, tracked]
+
+
+## A slingshot pull to (angle, speed) and the release, all in this frame (press, moves, release).
+func _pull(screen: Control, lab: Experiment, angle: float, speed: float) -> void:
+	var surface: PolarArrowSurface = screen.manipulator.slingshot_surface
+	var press: Vector2 = screen.view_point(lab.ball_center())
+	var launch := PolarArrowSurface.tip_point(angle, speed, 0.0, surface.arrow_scale)
+	var finger: Vector2 = screen.view_point(surface.pose(surface.to_plane(lab.ball_center()) - launch, 0.0).origin)
+	for step in [[press, true], [press.lerp(finger, 0.5), null], [finger, null], [finger, false]]:
+		var event: InputEvent
+		if step[1] == null:
+			event = InputEventScreenDrag.new()
+		else:
+			event = InputEventScreenTouch.new()
+			event.pressed = step[1]
+		event.position = step[0]
+		screen.view._gui_input(event)
+
+
+## The first row where two recordings differ (-1: none), and whether they have the same length.
+static func _first_difference(a: Array, b: Array) -> int:
+	for k in mini(a.size(), b.size()):
+		if a[k] != b[k]:
+			return k
+	return -1 if a.size() == b.size() else mini(a.size(), b.size())
 
 
 func check_physics_unchanged() -> void:
-	# Clean slate: the unit checks and the store checks wrote and removed the store's file (and
-	# the screen's own tracker, now wired into the lab's screen, judges the run below).
-	DirAccess.remove_absolute(ProgressStore.PATH)
-	# The run without the mission (the physics baseline).
-	var without: Array = await _record()
-	# The same run with the tracker judging every status change: one throw, one settled landing.
-	# The screen now runs its own tracker (Plan G3 wired the mission judge into the lab's screen):
-	# one throw ends one run, so it saves the first stamp on the landing. The run's tracker (the
-	# one judged here) is a second judge on the same run — it saves the next stamps. The physics
-	# invariant is the point of this check, and it is unaffected (the judges only read).
-	var with_mission: Array = await _record()
-	# Compare step by step: status, the panel values, the engine ball's transform.
-	var rows := mini(without[0].size(), with_mission[0].size())
-	var first := -1
-	var same := true
-	for k in rows:
-		var a: Array = without[0][k]
-		var b: Array = with_mission[0][k]
-		if a.size() != b.size():
-			same = false
-			break
-		for j in a.size():
-			if a[j] != b[j]:
-				same = false
-				first = k
-				break
-		if not same:
-			break
-	var values: Dictionary = with_mission[2]
-	expect.call(without[0].size() == with_mission[0].size() and same,
-		"projectile: the trajectory and the displayed values are the same at every step, with or without the mission",
-		"first difference at row %d of %d" % [first, rows])
-	expect.call(values.range is float and float(values.range) > 7.0,
-		"the default throw lands past 7 m (the farthest stage; formula range %s)" % str(values.range),
-		"range %s" % str(values.range))
-	# The screen's tracker judged each run's landing (one throw, one stage): the baseline run
-	# stored the first stamp, the with-mission run stored the second (one throw, one stage).
+	DirAccess.remove_absolute(ProgressStore.path)
+	var plain: Array = await _record(false, false)
+	var game: Array = await _record(true, false)
+	var pulled: Array = await _record(true, true)
+	expect.call(not plain[3] and game[3] and pulled[3], "physics check: the plain screen has no tracker, the game screens have one", "")
+	var with_round := _first_difference(plain[0], game[0])
+	expect.call(with_round == -1 and plain[0].size() > 100,
+		"projectile: with or without the mission round, the trajectory and the displayed values are the same at every step",
+		"first difference at row %d of %d" % [with_round, plain[0].size()])
+	var by_pull := _first_difference(game[0], pulled[0])
+	expect.call(by_pull == -1,
+		"projectile: a slingshot throw and the sliders + 공 놓기 at the same angle and speed fly the same, step by step",
+		"first difference at row %d of %d" % [by_pull, game[0].size()])
+	var values: Dictionary = pulled[2]
+	expect.call(values.range is float and float(values.range) > 7.0 and pulled[1].has("landed"),
+		"the 40° 8.5 m/s throw lands past 7 m (formula range %s)" % str(values.range), str(pulled[1]))
+	# Each game screen judged its own landing (one throw, one stage): two stamps; the plain one none.
 	expect.call(ProgressStore.load().get("projectile", 0) == 2,
-		"the runs' landings earned stamps through the screen's tracker (one throw, one stage each)",
+		"the game screens' landings earned one stamp each; the plain screen judged nothing",
 		"stored %s" % str(ProgressStore.load()))
-	expect.call(with_mission[1].has("landed"), "the run ends landed, when the tracker judges", str(with_mission[1]))
-	DirAccess.remove_absolute(ProgressStore.PATH)
+	DirAccess.remove_absolute(ProgressStore.path)

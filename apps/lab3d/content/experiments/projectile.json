@@ -32,7 +32,7 @@
     },
     {
       "id": "angle", "type": "slider", "label": "던지는 각도", "unit": "°",
-      "min": 0.0, "max": 90.0, "step": 15.0, "default": 45.0, "digits": 0
+      "min": 0.0, "max": 90.0, "step": 5.0, "default": 45.0, "digits": 0
     },
     {
       "id": "speed", "type": "slider", "label": "던지는 빠르기 v₀", "unit": " m/s",
@@ -47,10 +47,10 @@
   "predict": {
     "question": "공을 더 세게 던지면 더 멀리 갈까?",
     "choices": [
-      { "id": "farther", "label": "더 멀리" },
-      { "id": "same", "label": "똑같이" }
+      { "id": "farther", "label": "더 멀리", "picture": "long_arc" },
+      { "id": "same", "label": "똑같이", "picture": "same_arc" }
     ],
-    "reason": "세게 던지면 빠르기 v0가 커져요. 거리 공식 R = v0·v0·sin(2θ) ÷ g 에서 v0가 크면 R도 커져요. 그래서 더 멀리 갑니다."
+    "reason": "같은 각도로 더 세게 던지면 빠르기 v₀가 커져요. 공이 앞으로 더 빨리 가고, 위로 던지면 더 오래 떠 있어서 거리 R이 늘어나요. 그래서 더 멀리 가요. 높이 없이 던질 때는 R = v₀·v₀·sin(2θ) ÷ g 예요."
   },
   "missions": {
     "observe": "range",

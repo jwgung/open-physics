@@ -93,8 +93,15 @@ func text() -> String:
 	return str((missions(definition).get("stages", []) as Array)[s].get("text", ""))
 
 
+## Starts from the stamps already saved for this spot (a re-entered, finished place is not
+## cleared again: no stamp is handed over and nothing celebrates). The screen calls it once.
+func start() -> void:
+	stamps = stamps_of(definition)
+	_judged = stamps
+
+
 ## A run ended (the lab's status is its final state): the static judge, then the stamp is saved
-## (ProgressStore) and handed over through `progress` when it grew.
+## (ProgressStore) and handed over through `progress` when it grew past what was already saved.
 func on_run_ended(status: String, lab: Experiment, observations: Dictionary) -> void:
 	stamps = judge(definition, status, lab, observations)
 	if stamps > _judged:
@@ -106,4 +113,4 @@ func on_run_ended(status: String, lab: Experiment, observations: Dictionary) -> 
 			progress.call(str(definition.get("id", "")), stamps)
 
 
-var _judged := 0   # the last count handed over (a run's result is recorded once)
+var _judged := 0   # the count last saved or handed over (start(): the stored one)

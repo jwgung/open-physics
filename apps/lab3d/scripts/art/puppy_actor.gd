@@ -21,14 +21,26 @@ var shadow: MeshInstance3D
 var pole_axis := Vector3.UP
 var _cloth_rest := Transform3D()
 var _clock := 0.0
-## The celebration (Plan G4: the last stamp of a round): a faster, larger wave for CELEBRATE_S.
+## The celebration (Plan G4: the last stamp of a round): for CELEBRATE_S he hops (CELEBRATE_HOPS
+## hops of HOP_HEIGHT) and the banner waves CELEBRATE_RATE times as fast and a little wider.
 var _celebrate_left := 0.0
+var _rest_y := 0.0
 const CELEBRATE_S := 2.0
+const CELEBRATE_HOPS := 4
+const HOP_HEIGHT := 0.35
+const CELEBRATE_RATE := 4.0
+const CELEBRATE_SWING := 1.6
 
 
-## A bigger, faster flag wave for a moment (the puppy celebrates a cleared round).
+## He hops and waves the flag fast for a moment (the puppy celebrates a cleared round).
 func celebrate() -> void:
+	if _celebrate_left <= 0.0:
+		_rest_y = position.y
 	_celebrate_left = CELEBRATE_S
+
+
+func celebrating() -> bool:
+	return _celebrate_left > 0.0
 
 
 func _init() -> void:
@@ -81,11 +93,11 @@ func bounds() -> AABB:
 	return IslandCast.drawn_bounds(self, shadow)
 
 
-## The banner's turn about the pole now (rad; a celebration doubles the swing and speed).
+## The banner's turn about the pole now (rad; wider while he celebrates, and the clock runs faster).
 func wave_angle() -> float:
 	var w := TAU * WAVE_HZ * _clock
 	var angle := deg_to_rad(WAVE_DEG) * (sin(w) + FLUTTER * sin(w * 2.3 + 0.8)) / (1.0 + FLUTTER)
-	return angle * (2.0 if _celebrate_left > 0.0 else 1.0)
+	return angle * (CELEBRATE_SWING if celebrating() else 1.0)
 
 
 func _process(delta: float) -> void:
@@ -93,7 +105,9 @@ func _process(delta: float) -> void:
 
 
 func advance(delta: float) -> void:
-	_clock += delta
-	if _celebrate_left > 0.0:
-		_celebrate_left -= delta
+	_clock += delta * (CELEBRATE_RATE if celebrating() else 1.0)
+	if celebrating():
+		_celebrate_left = maxf(0.0, _celebrate_left - delta)
+		var k := 1.0 - _celebrate_left / CELEBRATE_S   # 0..1 over the celebration: whole hops, back down at the end
+		position.y = _rest_y + HOP_HEIGHT * absf(sin(k * PI * CELEBRATE_HOPS))
 	cloth.transform = Transform3D(Basis(pole_axis, wave_angle()) * _cloth_rest.basis, _cloth_rest.origin)

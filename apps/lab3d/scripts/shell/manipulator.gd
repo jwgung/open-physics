@@ -17,6 +17,11 @@
 ##   knob drags the height along the surface normal only (snapped to its step).
 ## - Put down: a valid target places the object there (Experiment.manipulation_placed); an invalid
 ##   one, a second finger, or a system cancel puts it back where it was picked up.
+## - Slingshot (Plan G3, set_slingshot): the launch object is not dragged; a press on it (or, after a
+##   run, near its launch point: the run is reset first) pulls it back, Angry Birds style. The launch
+##   is the reversed pull, snapped to the surface's angle / speed grids and clamped to its ranges;
+##   only a release after the finger left PULL_DEAD_ZONE throws. A tap selects it (its height
+##   handle); a cancel throws nothing.
 ## - The camera turns to show the surface while dragging if the view is too flat (CameraRig.begin_assist).
 ##   A close-up's camera move (CameraRig.is_framing, or its cut) leaves a held object where it is (_keep_held).
 ## Work per input event: at most one ray (pick) and one shape query (only when the grid target or
@@ -31,8 +36,10 @@ extends Node3D
 signal changed
 ## The auto-drag demo (start_demo) put its object down.
 signal demo_placed
-## A slingshot pull (Plan G3): (angle deg, speed m/s) while the finger holds (a preview), and
-## ("release", [angle, speed]) when it is let go (the experiment throws).
+## A slingshot pull (Plan G3): ("rearm", null) when a press starts the next shot after a run (the
+## screen resets the run first), ("pull", (angle deg, speed m/s)) while the finger holds, then
+## ("release", value) when a real pull is let go (the screen commits it and throws) or
+## ("cancel", value) when nothing is thrown (a tap, a second finger, a system cancel).
 signal slingshot(state: String, value: Variant)
 
 const PICK_RADIUS := 44.0        # UI units
@@ -50,6 +57,8 @@ const ON_SURFACE_TOL := 0.05     # m, how far off its surface an object still co
 const REGION_EPS := 0.001        # m, "inside the drag region" tolerance
 const MARKER_MARGIN := 0.06      # m, footprint ring beyond the object's extent on every side
 const MARKER_THICKNESS := 0.02   # m
+const PULL_DEAD_ZONE := 16.0     # UI units a slingshot press may move and still be a tap (no throw)
+const DEMO_PULLS := [Vector2(-110.0, 110.0), Vector2(-150.0, 120.0)]   # the demo's slingshot pulls (UI units)
 
 var view: View3D
 var experiment: Experiment
@@ -62,13 +71,17 @@ var demo_action := ""
 
 var mode := ""                   # "", "drag", "height", "slingshot"
 var active_id := ""
-## The slingshot (Plan G3): the object id whose pull sets the launch, the world point the pull is
-## measured from (the launch point), and the ArrowSurface that snaps the pull vector to (angle,
-## speed). Set by the experiment through set_slingshot().
+## The slingshot (Plan G3, Angry Birds): the object id whose pull sets the launch, the polar arrow
+## surface the pull snaps on (angle and speed grids and ranges), the launch point now (world) and
+## the controls' (angle, speed) now. Set by the screen through set_slingshot().
 var slingshot_id := ""
-var slingshot_from := Vector3.ZERO
-var slingshot_surface: ManipSurface = null
-var _slingshot_value := Vector2.ZERO    # the current snapped (angle, speed)
+var slingshot_surface: PolarArrowSurface = null
+var slingshot_launch := Callable()      # () -> Vector3
+var slingshot_current := Callable()     # () -> Vector2
+var _slingshot_value := Vector2.ZERO    # the (angle, speed) a release throws (clamped, on the grids)
+var _slingshot_press := Vector2.ZERO    # the press, view UI units
+var _slingshot_plane: Variant = null    # the press on the arrow plane (plane coordinates)
+var _slingshot_pulled := false          # the finger left the dead zone: a release throws
 var selected_id := ""
 var valid := true
 ## An experiment callback (placed / cancelled) is running: the experiment's own state_changed in
@@ -105,6 +118,7 @@ var _demo_flip := false
 var _demo_start := Vector2.ZERO  # plane point the demo picked its object up at
 var _demo_goal := Vector2.ZERO   # plane point the demo drags to (on the grid)
 var _demo_t := -1.0
+var _demo_pull: Array = []       # the demo's slingshot finger path [from, to] (UI units)
 
 
 func setup(target_view: View3D, target_experiment: Experiment) -> void:
@@ -143,12 +157,14 @@ static func parse_rules(definition: Dictionary) -> Dictionary:
 	return result
 
 
-## The experiment says the slingshot is on: pulling `id` (a pick near its launch point) measures the
-## pull from `from` on `surface` (an ArrowSurface, so the pull snaps to angle / speed). Plan G3.
-func set_slingshot(id: String, from: Vector3, surface: ManipSurface) -> void:
+## The slingshot is on (Plan G3): a press on `id` (or, after a run, near the launch point) starts
+## a pull measured on `surface`; `launch` gives the launch point and `current` the controls' (angle,
+## speed), the pull's value until the finger leaves the dead zone.
+func set_slingshot(id: String, surface: PolarArrowSurface, launch: Callable, current: Callable) -> void:
 	slingshot_id = id
-	slingshot_from = from
 	slingshot_surface = surface
+	slingshot_launch = launch
+	slingshot_current = current
 
 
 ## View3D.single_pointer handler (positions in the view's UI units).
@@ -169,8 +185,8 @@ func handle_pointer(kind: String, position: Vector2) -> void:
 func cancel(shake := false) -> void:
 	if mode == "":
 		return
-	if mode == "slingshot":   # the pull threw nothing: the ball never moved, only the freeze goes back
-		_release_slingshot()
+	if mode == "slingshot":   # a cancelled pull throws nothing and changes no control
+		_end_slingshot(false)
 		return
 	var id := active_id
 	var body := _body
@@ -202,33 +218,39 @@ func select(id: String) -> void:
 func _press(position: Vector2) -> void:
 	if mode != "":
 		cancel()
-	if selected_id != "" and _knob.visible and _screen_distance(_knob.global_position, position) <= HANDLE_RADIUS:
+	if selected_id != "" and _knob.visible and _screen_distance(_knob.global_position, position) <= HANDLE_RADIUS \
+			and not _nearer_slingshot(position):
 		_begin(selected_id, "height", position)
 		return
 	var id := _pick(position)
+	if id == "" and _near_launch(position):
+		id = slingshot_id   # after a run: the empty launch point starts the next shot too
 	if id == "":
 		select("")
 		return
-	# The slingshot (Plan G3): a pull that starts on the launch object sets the launch (the finger
-	# plays the arrow's knob: direction = angle, length = speed), not a drag of the object.
-	if _slingshot_current(id):
+	# The slingshot (Plan G3): a press on the launch object pulls it back (Angry Birds), it is not
+	# dragged; after a run the press starts the next shot (the run is reset first).
+	if id == slingshot_id and slingshot_surface != null:
 		_begin_slingshot(id, position)
 		return
 	_begin(id, "drag", position)
 
 
-## The slingshot is on for `id`: the run is ready (a landed or in-flight ball is a drag, not a
-## pull), and the ball still rests at its launch point (a moved ball is dragged back, not pulled).
-## A rebuilt screen re-registers the slingshot.
-func _slingshot_current(id: String) -> bool:
-	if id != slingshot_id or slingshot_surface == null:
+## The selected object is the slingshot's and the press is nearer to it than to its height knob
+## (the knob sits close beside the ball: a press on the ball pulls, one on the knob raises).
+func _nearer_slingshot(position: Vector2) -> bool:
+	if selected_id != slingshot_id or slingshot_surface == null:
 		return false
-	if experiment.status() != "ready":
+	var body := experiment.manipulation_body(selected_id)
+	return body != null and _screen_distance(body.global_position, position) < _screen_distance(_knob.global_position, position)
+
+
+## After a run (the ball flew off, landed or left the island): a press within PICK_RADIUS of the
+## launch point.
+func _near_launch(position: Vector2) -> bool:
+	if slingshot_id == "" or slingshot_surface == null or experiment.status() == "ready":
 		return false
-	var body := experiment.manipulation_body(id)
-	if body == null:
-		return false
-	return body.global_position.distance_to(slingshot_from) < 0.1
+	return _screen_distance(slingshot_launch.call(), position) <= PICK_RADIUS
 
 
 func _move(position: Vector2) -> void:
@@ -250,7 +272,7 @@ func _move(position: Vector2) -> void:
 			_update_target()
 			_update_handle()
 	elif mode == "slingshot":
-		_slingshot_to(position)
+		_pull_to(position)
 
 
 ## Places the dragged object under a finger at `position` (the finger point on the surface plus the
@@ -301,7 +323,7 @@ func _release() -> void:
 	if mode == "":
 		return
 	if mode == "slingshot":
-		_release_slingshot()
+		_end_slingshot(true)
 		return
 	if not valid:
 		cancel(true)
@@ -393,17 +415,18 @@ func _begin(id: String, kind: String, position: Vector2) -> void:
 
 # --- slingshot (Plan G3) ------------------------------------------------------------------------
 
-## A pull that starts on the launch object: like dragging the arrow's knob (the tip) with the
-## finger, only from the ball's own body - the pull vector (tip start -> finger) is the launch
-## vector (direction = angle, length = speed). The ball is not moved (the launch point is fixed);
-## the current (angle, speed) is reported so the preview can move with the pull.
+## A press on the launch object: the pull begins at the controls' (angle, speed). After a run the
+## screen first resets it ("rearm": the ball is back at its launch point, the next shot is ready).
+## The ball itself never moves; only its freeze is kept while the finger holds.
 func _begin_slingshot(id: String, position: Vector2) -> void:
+	if experiment.status() != "ready":
+		slingshot.emit("rearm", null)
+	select("")
 	active_id = id
 	mode = "slingshot"
 	var body := experiment.manipulation_body(id)
+	_body = body
 	if body != null:
-		_body = body
-		_start_xf = body.global_transform
 		_start_freeze = (body as RigidBody3D).freeze if body is RigidBody3D else false
 		experiment.change_from_input(func() -> void:
 			experiment.manipulation_started(id)
@@ -411,42 +434,68 @@ func _begin_slingshot(id: String, position: Vector2) -> void:
 				(body as RigidBody3D).freeze = true)
 	_finger = position
 	_finger_camera = view.rig.global_transform
-	_slingshot_value = Vector2.ZERO
-	slingshot.emit("pull", _current_slingshot())
+	_slingshot_press = position
+	var ray := _finger_ray(position)
+	_slingshot_plane = slingshot_surface.project_ray(ray[0], ray[1], 0.0)
+	_slingshot_pulled = false
+	_slingshot_value = slingshot_current.call()
+	slingshot.emit("pull", _slingshot_value)
 
 
-## A pull moves: the finger plays the arrow's knob - the tip goes to the finger's plane point, so
-## the snapped (angle, speed) is the surface's snap of that point (direction = angle, length =
-## speed), exactly what the preview shows for the same values.
-func _slingshot_to(position: Vector2) -> void:
+## The finger moved: inside the dead zone nothing changes (a tap stays a tap); beyond it the launch
+## is the pull reversed (Angry Birds: pull back and down, the ball flies up and forward).
+func _pull_to(position: Vector2) -> void:
+	if not _slingshot_pulled and position.distance_to(_slingshot_press) <= PULL_DEAD_ZONE:
+		return
 	var ray := _finger_ray(position)
 	var finger: Variant = slingshot_surface.project_ray(ray[0], ray[1], 0.0)
-	if finger == null:
+	if finger == null or _slingshot_plane == null:
 		return
-	_slingshot_value = slingshot_surface.snap_of(finger as Vector2)
-	slingshot.emit("pull", _current_slingshot())
+	_slingshot_pulled = true
+	_slingshot_value = pull_launch(slingshot_surface, finger - _slingshot_plane)
+	slingshot.emit("pull", _slingshot_value)
 
 
-func _release_slingshot() -> void:
-	var value := _current_slingshot()
-	slingshot.emit("release", value)
+## The (angle, speed) a pull `pull` (plane coordinates, press -> finger) throws: the reversed pull
+## as the arrow (its length past the arrow's offset is the speed), snapped to the surface's grids
+## and kept in its ranges (a direction outside them goes to the nearer end). What the readout,
+## the arrow and the controls show is this value.
+static func pull_launch(surface: PolarArrowSurface, pull: Vector2) -> Vector2:
+	var launch := -pull
+	var tip := launch.normalized() * (surface.arrow_offset + launch.length())
+	var q := surface.snap_of(tip)
+	return Vector2(clamp_direction(q.x, surface.angle_min, surface.angle_max), q.y)
+
+
+## `angle` (deg) kept in lo..hi; outside, the nearer end around the circle.
+static func clamp_direction(angle: float, lo: float, hi: float) -> float:
+	if angle >= lo and angle <= hi:
+		return angle
+	var to_lo := absf(wrapf(angle - lo, -180.0, 180.0))
+	var to_hi := absf(wrapf(angle - hi, -180.0, 180.0))
+	return lo if to_lo <= to_hi else hi
+
+
+## The pull ends. `release`: the finger was lifted; it throws only after a real pull (past the dead
+## zone). A tap shows the object's height handle instead; a cancel does neither. The ball never
+## moved: its freeze goes back and the experiment hears the pick-up ended.
+func _end_slingshot(release: bool) -> void:
+	var value := _slingshot_value
+	var thrown := release and _slingshot_pulled
 	var id := active_id
-	_finish()
-	# The object is not put back (it never moved): only the launch state was frozen at the
-	# pull's start, so restore it and tell the experiment the pull is over.
 	var body := _body
 	_body = null
+	_finish()
 	notifying = true
 	experiment.change_from_input(func() -> void:
 		if body is RigidBody3D:
 			(body as RigidBody3D).freeze = _start_freeze
 		experiment.manipulation_cancelled(id))
 	notifying = false
+	slingshot.emit("release" if thrown else "cancel", value)
+	if release and not thrown and rules.has(id) and rules[id].height_max > 0.0:
+		select(id)   # a tap on the ball: its launch height handle
 	changed.emit()
-
-
-func _current_slingshot() -> Vector2:
-	return _slingshot_value
 
 
 func _finish() -> void:
@@ -736,7 +785,8 @@ func start_demo(every: float) -> void:
 func _demo_tick(delta: float) -> void:
 	if _demo_t >= 0.0:
 		_demo_t = minf(_demo_t + delta / DEMO_DRAG_S, 1.0)
-		var finger := _demo_finger(_demo_start.lerp(_demo_goal, _demo_t))
+		var finger: Vector2 = _demo_pull[0].lerp(_demo_pull[1], _demo_t) if mode == "slingshot" \
+			else _demo_finger(_demo_start.lerp(_demo_goal, _demo_t))
 		handle_pointer("move", finger)
 		if _demo_t >= 1.0:
 			_demo_t = -1.0
@@ -756,10 +806,15 @@ func _demo_tick(delta: float) -> void:
 	_demo_flip = not _demo_flip
 	var goal := surface.nearest_inside(surface.region_min.lerp(surface.region_max, 1.0 if _demo_flip else DEMO_NEAR_FRACTION))
 	_demo_goal = goal
-	handle_pointer("press", view.rig.unproject_position(body.global_position) / _pixels_per_unit())
+	var at := view.rig.unproject_position(body.global_position) / _pixels_per_unit()
+	handle_pointer("press", at)
 	_demo_t = -1.0
 	if mode == "drag":
 		_demo_start = _held
+		_demo_t = 0.0
+	elif mode == "slingshot":
+		# The slingshot lab's demo pulls the ball back and lets go (a throw, the finger's own path).
+		_demo_pull = [at, at + DEMO_PULLS[1 if _demo_flip else 0]]
 		_demo_t = 0.0
 
 

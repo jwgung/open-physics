@@ -64,14 +64,11 @@ var _out_steps := 0                 # fixed steps counted after the ball was sto
 var _ball_visual: MeshInstance3D
 var _knob_visual: MeshInstance3D
 var _shown_start := Vector3.INF     # ball centre the arrow / knob were placed for
-var _landed_now := false            # the run just ended landed (a poll judges the mission stamp)
-
-
-## The run ended landed and has not been reset (the screen's mission judge reads this: the engine's
-## settled report can arrive after the lab's one-shot "landed" status).
-func landed_now() -> bool:
-	return _landed_now
 var _shown_knob := Vector3.INF      # knob position the arrow preview was made for
+## The slingshot game (Plan G3, set by slingshot_setup): no formula path or landing ring before a
+## throw; the dots are the last throw's trail, drawn up to the formula time as the ball flies and
+## kept until the next throw.
+var trail_only := false
 
 
 func _init() -> void:
@@ -132,7 +129,6 @@ func reset_run() -> void:
 	_ball_visual.visible = true
 	out_of_bounds = false
 	_out_steps = 0
-	_landed_now = false
 	_show_launch()
 	_mark_reset()
 
@@ -170,6 +166,9 @@ func release() -> void:
 	apply_field(ball)
 	(ball.corrector as UniformFieldCorrector).release(ball, launch_velocity())
 	_knob_visual.visible = false
+	if trail_only:   # the new throw's trail: the formula path from its launch, shown as it flies
+		projectile_props().set_path(formula_path(), null)
+		_show_trail()
 	_mark_released(PackedVector2Array([Vector2(0.0, launch_height())]))
 	close_up_cut.emit()   # normally already over: the camera is still from the release on
 
@@ -262,9 +261,10 @@ func status() -> String:
 
 ## The engine ball has landed: the corrector's own report (the first sample at or after the
 ## formula touch), not has_landed_by's clock slack (the status can say "landed" a few steps
-## before the bounce and roll are done; the mission's stamp waits for this).
+## before the engine has; the mission's stamp waits for this). A flight that left the island or
+## met the fence has ended too.
 func settled() -> bool:
-	return not released or corrector().landed_step >= 0 or out_of_bounds
+	return not released or corrector().landed_step >= 0 or out_of_bounds or hit_fence()
 
 
 ## The flight met the fence below its top (2026-10-23 user decision) and the clock has reached that
@@ -408,9 +408,11 @@ func _show_preview(bottom: Vector3, angle: float, launch_speed: float, place_kno
 		_knob_visual.visible = true
 	_shown_start = center
 	_shown_knob = knob.global_position
-	projectile_props().path.visible = true
 	projectile_props().set_arrow(center, angle, tip.length(), KNOB_SIZE * 0.5)
 	projectile_props().place_stand(bottom)
+	if trail_only:   # no preview: the last throw's trail stays as it is, no landing ring
+		projectile_props().ring.visible = false
+		return
 	var vx := vx_of(angle, launch_speed)
 	var vy := vy_of(angle, launch_speed)
 	var height := snapped_height(bottom.y)
@@ -432,11 +434,13 @@ func _show_preview(bottom: Vector3, angle: float, launch_speed: float, place_kno
 ## path to the direction and speed it would snap to (the same polar grid as on release).
 func _process(_delta: float) -> void:
 	if released or not ball.freeze:
+		if released and trail_only:
+			_show_trail()
 		if status() == "landed":
 			_update_status()   # the rest frame: report the landing once (status "landed")
 		return
-	# While the slingshot pull holds (Plan G3), the launch preview is gone (no path, no ring):
-	# only the arrow and the big on-screen numbers say where the throw is going.
+	# While the slingshot pull holds (Plan G3), the arrow shows the pull's (angle, speed); there is
+	# no path or ring (the big on-screen numbers say the rest).
 	if _slingshot_preview != Vector2.INF:
 		_show_pull(_slingshot_preview)
 		return
@@ -459,7 +463,7 @@ func set_slingshot_preview(value: Variant) -> void:
 	_slingshot_preview = value if value is Vector2 else Vector2.INF
 
 
-## The pull's arrow, no formula path or landing ring (the guide is off while pulling).
+## The pull's arrow (the (angle, speed) the release throws); the path stays the last trail.
 func _show_pull(value: Vector2) -> void:
 	var center := ball_center()
 	var tip := ArrowSurface.tip(value.x, value.y)
@@ -469,8 +473,17 @@ func _show_pull(value: Vector2) -> void:
 	_shown_knob = knob.global_position
 	projectile_props().set_arrow(center, value.x, tip.length(), KNOB_SIZE * 0.5)
 	projectile_props().place_stand(start)
-	projectile_props().path.visible = false
 	projectile_props().ring.visible = false
+
+
+## The trail of the throw in flight: the dots of its formula path up to the formula time shown
+## (all of them once it has landed or met the fence).
+func _show_trail() -> void:
+	var end := minf(minf(flight_time(), fence_time_for(ball_center().x, launch_vx(), launch_vy(), launch_height())), PATH_MAX_S)
+	var dots := ProjectileProps.PATH_DOTS
+	if end > 0.0:   # the dots sit at end * i / PATH_DOTS (_fill_path)
+		dots = clampi(floori(shown_time() / end * ProjectileProps.PATH_DOTS + 1e-6), 0, ProjectileProps.PATH_DOTS)
+	projectile_props().show_dots(dots)
 
 
 func _build_world() -> void:
@@ -496,21 +509,22 @@ func _build_world() -> void:
 
 # --- manipulation -----------------------------------------------------------------------------
 
-## The slingshot's (Plan G3) own setup: the pull's object (the ball), the launch point the pull is
-## measured from, and the ArrowSurface the pull's (angle, speed) snap on (the pull's angle step is
-## the definition's manipulation.slingshot.angle_step - 5 deg - unlike the 15 deg knob grid).
-## The screen reads this and wires Manipulator.set_slingshot; a pull commits "angle" / "speed" and
-## throws with the "release" action.
+## The slingshot's (Plan G3) own setup: the pull's object (the ball), the launch point now, the
+## ArrowSurface the pull's (angle, speed) snap on (the pull's angle step is the definition's
+## manipulation.slingshot.angle_step - 5 deg - unlike the 15 deg knob grid; the speed grid and
+## range are the speed slider's) and the controls a pull commits ("angle", "speed"; then the
+## "release" action throws). The lab turns its preview off (trail_only).
 func slingshot_setup() -> Dictionary:
 	var manipulation: Dictionary = definition.get("manipulation", {})
 	var spec: Dictionary = manipulation.get("slingshot", {})
 	if spec.is_empty() or not manipulation_body(str(spec.get("object", ""))):
 		return {}
-	var surface := manipulation_surface("arrow") as PolarArrowSurface
-	if surface == null:
-		return {}
+	var surface := ArrowSurface.new(ball_center(), KNOB_SIZE * 0.5)
 	surface.angle_step = float(spec.get("angle_step", ArrowSurface.ANGLE_STEP))
-	return {"object": "ball", "from": ball_center(), "surface": surface,
+	trail_only = true
+	projectile_props().show_dots(0)   # nothing thrown yet: no dots
+	_show_launch()
+	return {"object": "ball", "surface": surface, "launch": ball_center, "controls": ["angle", "speed"],
 		"units": {"angle": "°", "speed": "m/s"}}
 
 
@@ -557,8 +571,6 @@ func manipulation_cancelled(id: String) -> void:
 
 func _status_changed(previous: String, current: String) -> void:
 	projectile_props().status_changed(previous, current)
-	if current == "landed":
-		_landed_now = true
 
 
 func manipulation_placed(id: String, transform: Transform3D) -> void:

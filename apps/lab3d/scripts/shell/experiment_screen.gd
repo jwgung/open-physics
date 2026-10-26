@@ -482,34 +482,56 @@ func _setup_game() -> void:
 ## The stamp strip: "미션" + one 도장 per stage (filled by the saved count) + the current stage's
 ## text. Filled when a stage clears, the next stage's text appears.
 func _make_mission_strip() -> void:
-	_mission_strip = Ui.hbox(10)
+	_mission_strip = Ui.hbox(8)
 	_mission_strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	view.add_child(_mission_strip)
-	var caption := Ui.label("미션", "KeyLabel", true)
-	caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_mission_strip.add_child(caption)
 	for i in MissionTracker.missions(definition).get("stages", []).size():
-		var stamp := Ui.label("도장", "KeyValueLabel", true)
+		var stamp := Ui.label("○", "KeyValueLabel", true)
 		stamp.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		_mission_strip.add_child(stamp)
 		_stamp_labels.append(stamp)
 	_mission_text = Ui.label("", "KeyValueLabel", true)
 	_mission_text.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_mission_strip.add_child(_mission_text)
+	_mission_text.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	view.add_child(_mission_text)
 	_fit_mission_strip()
 
 
 func _fit_mission_strip() -> void:
 	if _mission_strip == null:
 		return
+	var m := OVERLAY_MARGIN
+	var key_bottom := _key_row.position.y + maxf(_key_row.size.y, 80.0)
+	var y := key_bottom + 8.0
 	_mission_strip.size = _mission_strip.get_combined_minimum_size()
-	_mission_strip.position = _key_row.position + Vector2(0.0, _key_row.size.y + 8.0)
+	_mission_strip.position = Vector2(m, y)
+	if _mission_text != null:
+		var max_w := view.size.x - m * 2.0 - _mission_strip.size.x - 8.0
+		_mission_text.custom_minimum_size.x = maxf(120.0, max_w)
+		_mission_text.size = Vector2(_mission_text.custom_minimum_size.x, 0.0)
+		_mission_text.size.y = _mission_text.get_minimum_size().y
+		_mission_text.position = Vector2(m + _mission_strip.size.x + 8.0, y)
+
+
+func _fit_predict() -> void:
+	if _predict_overlay == null:
+		return
+	var stack := _predict_overlay.get_node_or_null("PredictStack")
+	if stack == null:
+		return
+	var key_bottom := _key_row.position.y + maxf(_key_row.size.y, 80.0)
+	var top := key_bottom + 16.0
+	if _mission_strip != null:
+		top += maxf(_mission_strip.size.y, 40.0) + 8.0
+	stack.position = Vector2(40.0, top)
 
 
 func _show_stamps(count: int) -> void:
 	var stages: Array = MissionTracker.missions(definition).get("stages", [])
 	for i in _stamp_labels.size():
-		(_stamp_labels[i] as Label).add_theme_color_override("font_color",
+		var stamp := _stamp_labels[i] as Label
+		stamp.text = "●" if i < count else "○"
+		stamp.add_theme_color_override("font_color",
 			Color("4d8f3f") if i < count else Color("c9b892"))
 	if _mission_text == null:
 		return
@@ -531,7 +553,7 @@ func _show_predict(question: String) -> void:
 	view.add_child(_predict_overlay)
 	_predict_overlay.gui_input.connect(_on_predict_input)
 	var stack := Ui.vbox(10)
-	stack.position = Vector2(40.0, view.size.y * 0.3)
+	stack.name = "PredictStack"
 	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_predict_overlay.add_child(stack)
 	var ask := Ui.label(question, "HeadingLabel", true)
@@ -788,6 +810,7 @@ func _fit_overlays() -> void:
 	_action_row.position = Vector2(width - _action_row.size.x - m, view.size.y - _action_row.size.y - m)
 	if _mission_strip != null:
 		_fit_mission_strip()
+	_fit_predict()
 	if _slingshot_hud != null and _slingshot_hud.visible:
 		_fit_slingshot_hud()
 	if dialogue != null and dialogue.active:

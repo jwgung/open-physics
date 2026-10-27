@@ -1193,9 +1193,10 @@ func _check_layout(definition: Dictionary) -> void:
 		_expect(screen.view.size == size and not screen._sidebar.visible and not screen.is_sidebar_open(),
 			"%s landscape: the 3D view fills the screen, sidebar closed" % name, "view %s" % screen.view.size)
 		var texts := _button_texts(screen)
-		var view_chips := _button_texts(screen.view).filter(func(t: String) -> bool: return t in CameraRig.MODE_LABELS.values())
+		# No camera chips anywhere, the 자세히 sidebar included (its 시점 section went, 2026-10-27 user request).
+		var view_chips := _button_texts(screen).filter(func(t: String) -> bool: return t in CameraRig.MODE_LABELS.values())
 		_expect("정면으로" not in texts and view_chips.is_empty() and screen.view.rig.mode == "front",
-			"%s landscape: front camera, no 정면으로 button, no camera chips over the view" % name, "mode %s" % screen.view.rig.mode)
+			"%s landscape: front camera, no 정면으로 button, no camera chips (over the view or in the sidebar)" % name, "mode %s, chips %s" % [screen.view.rig.mode, str(view_chips)])
 		var overlays: Array[Control] = [screen._title_bar, screen._top_buttons, screen._key_row, screen._action_row]
 		var inside := overlays.all(func(c: Control) -> bool: return view_rect.encloses(c.get_rect()) and c.size.x > 0.0)
 		var apart := true

@@ -70,7 +70,6 @@ var _sidebar: PanelContainer
 var _sidebar_state := "closed"          # closed, opening, open, closing
 var _sidebar_tween: Tween
 var _scroll: ScrollContainer
-var _mode_buttons: Dictionary = {}
 var _observation_labels: Dictionary = {}
 var _control_widgets: Dictionary = {}   # id -> {"slider": HSlider, "value": Label} or {"buttons": {}, "note": Label}
 var _graph: GraphView
@@ -100,6 +99,8 @@ var _asking := false                  # Dugi's question is open (his box held, t
 var _question := ""
 var _choices: HBoxContainer = null    # the two picture buttons while asking
 var _choices_popped := false          # the buttons' pop-in has run
+var _dialogue_right := NAN              # the open box's right end so far (_layout_dialogue)
+var _dialogue_right_for := Vector2.ZERO  # the view size it was found for
 var _predict_pick: String = ""        # the picked choice ("farther" / "same")
 var _predict_ended: bool = false      # the first throw has ended (or there is no question)
 var _reason_pending := ""             # the prediction's reason, told at Dugi's next explanation
@@ -162,9 +163,7 @@ func _ready() -> void:
 	_missions = _make_missions()
 	view.rig.follow_source = experiment
 	view.rig.configure(definition.camera)
-	view.rig.mode_changed.connect(_on_mode_changed)
 	view.gesture_used.connect(_hide_tip)
-	_on_mode_changed(view.rig.mode)
 	resized.connect(_layout)
 	_layout()
 	_camera_home = view.rig.get_state()   # the definition's view (before a restored, user-turned one)
@@ -192,7 +191,7 @@ func _restore_state() -> void:
 			experiment.manipulation_placed(id, placements[id])
 		experiment.end_batch())
 	_updating = false
-	view.rig.set_state(_state.get("camera", {}))   # emits mode_changed; setup() refreshes once
+	view.rig.set_state(_state.get("camera", {}))
 	if _state.get("sidebar", false):
 		open_sidebar(false)
 
@@ -305,6 +304,13 @@ func _layout_dialogue() -> bool:
 	var who := dugi_rect()
 	if who.size.x > 0.0 and who.end.y > view.size.y - OVERLAY_MARGIN - DialogueBox.PORTRAIT_SIZE:
 		right = minf(right, who.position.x - OVERLAY_MARGIN)
+	# While the box is open its right end only moves left: Dugi's raised and lowered arm (his drawn
+	# bounds) made it grow and shrink every frame (2026-10-27 user report). A new box or a resized
+	# view starts over.
+	if dialogue.active and view.size == _dialogue_right_for and not is_nan(_dialogue_right):
+		right = minf(right, _dialogue_right)
+	_dialogue_right = right if dialogue.active else NAN
+	_dialogue_right_for = view.size
 	return dialogue.layout(view_rect, right, OVERLAY_MARGIN)
 
 
@@ -937,7 +943,6 @@ func _build_sidebar() -> void:
 	column.add_child(header)
 
 	_sections = {
-		"camera": _build_camera_modes(),
 		"conditions": _build_conditions(),
 		"observations": _build_observations(),
 		"graph": _build_graph(),
@@ -953,24 +958,6 @@ func _section(title: String) -> Array:
 	card.add_child(body)
 	body.add_child(Ui.label(title, "SectionLabel"))
 	return [card, body]
-
-
-## Camera mode chips (Task 2d: in the sidebar, not over the 3D view; the default view is front).
-func _build_camera_modes() -> Control:
-	var parts := _section("시점")
-	var chips := HFlowContainer.new()
-	chips.add_theme_constant_override("h_separation", 8)
-	chips.add_theme_constant_override("v_separation", 8)
-	var group := ButtonGroup.new()
-	for mode in CameraRig.MODES:
-		var chip := Ui.button(CameraRig.MODE_LABELS[mode], "ChipButton", 52)
-		chip.toggle_mode = true
-		chip.button_group = group
-		chip.pressed.connect(view.rig.set_mode.bind(mode))
-		chips.add_child(chip)
-		_mode_buttons[mode] = chip
-	parts[1].add_child(chips)
-	return parts[0]
 
 
 func _build_conditions() -> Control:
@@ -1309,11 +1296,6 @@ func _update_readouts(force_graph: bool) -> void:
 				if series.has(id):
 					series[id] = PackedVector2Array()
 		_graph.set_data(series)
-
-
-func _on_mode_changed(mode: String) -> void:
-	for id in _mode_buttons:
-		_mode_buttons[id].set_pressed_no_signal(id == mode)
 
 
 ## Fades the hint out on its own node (no screen-wide layer), then hides it. This is when the hint

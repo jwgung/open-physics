@@ -649,6 +649,28 @@ func check_dialogue() -> void:
 	expect.call(opened and partial and full and second and closed,
 		"dialogue (collision, %d pages): types out, a tap shows the page, the next turns it, past the last it closes and Dugi lowers his arm" % pages,
 		"opened %s, typing %s, full %s, page 2 %s, closed %s" % [opened, partial, full, second, closed])
+	# The box keeps its width while Dugi raises, points and lowers his arm: its right end may move
+	# left (to clear him) but never back (it grew and shrank every frame, 2026-10-27 user report).
+	for screen_size in [PHONE, TABLET]:
+		var wide := await _open("rotation", screen_size)
+		wide._end_question()
+		wide._reason_pending = ""
+		var wbox: DialogueBox = wide.dialogue
+		wbox.set_process(false)
+		wbox.words = wide.definition.observe
+		wide.cast.dugi.explain(wide.experiment.explain_point)
+		var widths := []
+		for k in 600:
+			await tree.process_frame
+			if wbox.active and wbox.visible:
+				widths.append(snappedf(wbox.rects()[0].size.x, 0.01))
+		var grown := 0.0   # every widening added up (the first frames' sub-pixel settling stays under 0.5)
+		for k in range(1, widths.size()):
+			grown += maxf(widths[k] - widths[k - 1], 0.0)
+		var grew := grown > 0.5
+		expect.call(widths.size() > 60 and not grew, "dialogue (rotation, %s): the box never widens again while open (Dugi's arm moving)" % ("phone" if screen_size == PHONE else "tablet"),
+			"%d frames, widened %.2f in all, widths %s .. %s" % [widths.size(), grown, str(widths.slice(0, 3)), str(widths.slice(-3))])
+		await _close(wide)
 	# Untouched: it reads itself through and closes; Dugi points all the while.
 	cast.dugi.explain(screen.experiment.explain_point)
 	for k in 3:

@@ -4,8 +4,11 @@
 ## (definition.manipulation + Experiment.manipulation_*), see apps/lab3d/README.md "조작".
 ##
 ## - Pick: one ray from the finger (only manipulable bodies count); when it misses, the object whose
-##   centre is within PICK_RADIUS UI units on screen (a 0.4 m box is ~36 units wide at the default
-##   distance, smaller than a child's fingertip).
+##   centre is within pick_radius() UI units on screen (a 0.4 m box is ~36 units wide at the default
+##   distance, smaller than a child's fingertip; the labs ask for a child's finger, manipulation.grab_radius,
+##   and never less than FINGER_MM on the glass). An object whose rule says `"drag": false` stays an
+##   object of the lab (its grid, a restored placement) but a finger never picks it up (2026-10-27: one
+##   drag per lab, the other handles moved to the picture buttons or "자세히").
 ## - Drag: the finger ray is projected on the surface (ManipSurface.project_ray) at the object's
 ##   centre height, keeping the offset between finger and object from the pick-up (an offset on
 ##   the surface, so a turning camera does not change it; the object follows the finger on screen
@@ -36,13 +39,19 @@ extends Node3D
 signal changed
 ## The auto-drag demo (start_demo) put its object down.
 signal demo_placed
+## The auto-drag demo found its object hidden by a run (a knob while the balls roll or the planet
+## flies): the screen starts the run over ("처음으로"), as picking the object up would have.
+signal demo_blocked
 ## A slingshot pull (Plan G3): ("rearm", null) when a press starts the next shot after a run (the
 ## screen resets the run first), ("pull", (angle deg, speed m/s)) while the finger holds, then
 ## ("release", value) when a real pull is let go (the screen commits it and throws) or
 ## ("cancel", value) when nothing is thrown (a tap, a second finger, a system cancel).
 signal slingshot(state: String, value: Variant)
 
-const PICK_RADIUS := 44.0        # UI units
+const PICK_RADIUS := 44.0        # UI units (manipulation.grab_radius overrides it)
+## A child's fingertip: the pick radius is never less than this on the glass (mm; screens whose units
+## are physically small, a phone, get more units).
+const FINGER_MM := 9.0
 const HANDLE_RADIUS := 52.0      # UI units around the height knob
 const SOFT_MARGIN := 0.6         # m
 const MARKER_LIFT := 0.012       # m above the surface (no z-fighting)
@@ -62,9 +71,11 @@ const DEMO_PULLS := [Vector2(-110.0, 110.0), Vector2(-150.0, 120.0)]   # the dem
 
 var view: View3D
 var experiment: Experiment
-## id -> {"surface": String, "snap": float, "height_max": float, "height_step": float}
-## (height_max 0 = no height handle).
+## id -> {"surface": String, "snap": float, "height_max": float, "height_step": float, "drag": bool}
+## (height_max 0 = no height handle; drag false = a finger never picks it up).
 var rules: Dictionary = {}
+## The definition's manipulation.grab_radius (UI units around an object's centre a press picks it).
+var grab_radius := PICK_RADIUS
 ## Action (id from the experiment's actions) the measurement demo runs after it put its object
 ## down, from manipulation.demo_action ("" = none).
 var demo_action := ""
@@ -125,6 +136,7 @@ func setup(target_view: View3D, target_experiment: Experiment) -> void:
 	view = target_view
 	experiment = target_experiment
 	rules = parse_rules(experiment.definition)
+	grab_radius = float(experiment.definition.get("manipulation", {}).get("grab_radius", PICK_RADIUS))
 	demo_action = str(experiment.definition.get("manipulation", {}).get("demo_action", ""))
 	_ray.collide_with_areas = false
 	_query.collide_with_areas = false
@@ -142,7 +154,7 @@ func setup(target_view: View3D, target_experiment: Experiment) -> void:
 
 
 ## The manipulation rules of an experiment definition (the one reading of the JSON: the experiment
-## takes its grid step from here too): id -> {"surface", "snap", "height_max", "height_step"}.
+## takes its grid step from here too): id -> {"surface", "snap", "height_max", "height_step", "drag"}.
 static func parse_rules(definition: Dictionary) -> Dictionary:
 	var result := {}
 	for object in definition.get("manipulation", {}).get("objects", []):
@@ -153,8 +165,24 @@ static func parse_rules(definition: Dictionary) -> Dictionary:
 			"snap": float(object.get("snap", 0.0)),
 			"height_max": float(height_rule.get("max", 0.0)),
 			"height_step": float(height_rule.get("step", 0.0)),
+			"drag": object.get("drag", true) != false,
 		}
 	return result
+
+
+## The objects a finger may pick up (rules with drag), in the definition's order.
+func draggable_ids() -> Array:
+	return rules.keys().filter(func(id: String) -> bool: return rules[id].drag)
+
+
+## UI units around an object's centre that pick it: the definition's grab radius, and at least
+## FINGER_MM on the glass (DisplayServer's dpi; an unknown dpi leaves the units).
+func pick_radius() -> float:
+	var dpi := float(DisplayServer.screen_get_dpi()) if DisplayServer.get_name() != "headless" else 0.0
+	var per_unit := _pixels_per_unit().y
+	if dpi <= 0.0 or per_unit <= 0.0:
+		return grab_radius
+	return maxf(grab_radius, FINGER_MM / 25.4 * dpi / per_unit)
 
 
 ## The slingshot is on (Plan G3): a press on `id` (or, after a run, near the launch point) starts
@@ -245,12 +273,12 @@ func _nearer_slingshot(position: Vector2) -> bool:
 	return body != null and _screen_distance(body.global_position, position) < _screen_distance(_knob.global_position, position)
 
 
-## After a run (the ball flew off, landed or left the island): a press within PICK_RADIUS of the
+## After a run (the ball flew off, landed or left the island): a press within pick_radius() of the
 ## launch point.
 func _near_launch(position: Vector2) -> bool:
 	if slingshot_id == "" or slingshot_surface == null or experiment.status() == "ready":
 		return false
-	return _screen_distance(slingshot_launch.call(), position) <= PICK_RADIUS
+	return _screen_distance(slingshot_launch.call(), position) <= pick_radius()
 
 
 func _move(position: Vector2) -> void:
@@ -568,8 +596,8 @@ func _pick(position: Vector2) -> String:
 	_ray.to = ray[0] + ray[1] * RAY_LENGTH
 	var hit := experiment.get_world_3d().direct_space_state.intersect_ray(_ray)
 	var best := ""
-	var best_distance := PICK_RADIUS
-	for id in rules:
+	var best_distance := pick_radius()
+	for id in draggable_ids():
 		var body := experiment.manipulation_body(id)
 		if body == null:
 			continue
@@ -798,8 +826,14 @@ func _demo_tick(delta: float) -> void:
 	if _demo_left > 0.0 or rules.is_empty():
 		return
 	_demo_left = _demo_every
-	var id: String = rules.keys()[0]
+	var draggable := draggable_ids()
+	if draggable.is_empty():
+		return
+	var id: String = draggable[0]
 	var body := experiment.manipulation_body(id)
+	if body == null:
+		demo_blocked.emit()
+		body = experiment.manipulation_body(id)
 	var surface := _surface_for(id)
 	if body == null or surface == null or view.rig.is_position_behind(body.global_position):
 		return

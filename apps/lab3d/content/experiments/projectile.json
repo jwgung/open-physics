@@ -37,6 +37,10 @@
     {
       "id": "speed", "type": "slider", "label": "던지는 빠르기 v₀", "unit": " m/s",
       "min": 1.0, "max": 9.0, "step": 0.5, "default": 9.0, "digits": 1
+    },
+    {
+      "id": "launch_height", "type": "slider", "label": "던지는 높이 (공 아래)", "unit": " m",
+      "min": 0.0, "max": 3.0, "step": 0.25, "default": 0.5, "digits": 2
     }
   ],
   "actions": [
@@ -101,9 +105,10 @@
     ]
   },
   "manipulation": {
+    "grab_radius": 72.0,
     "objects": [
-      { "id": "ball", "surface": "launch", "snap": 0.5, "height": { "max": 3.0, "step": 0.25 } },
-      { "id": "arrow", "surface": "arrow", "snap": 0.0, "height": false }
+      { "id": "ball", "surface": "launch", "snap": 0.5, "height": false },
+      { "id": "arrow", "surface": "arrow", "snap": 0.0, "height": false, "drag": false }
     ],
     "demo_action": "release",
     "slingshot": { "object": "ball", "angle_step": 5.0 }

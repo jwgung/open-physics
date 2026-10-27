@@ -29,6 +29,9 @@ const CHOICE_HOP_SPEED := 3.0    # rad/s of the hop's sine (a hop every ~1 s)
 ## The strip's words for a 7-year-old: all stages done, and the picked prediction before the run.
 const DONE_TEXT := "다 했어요! 섬에 깃발이 섰어요!"
 const PICK_PREFIX := "내 생각: "
+const PICK_SIZE := Vector2(132.0, 112.0)    # a condition picture button (UI units, at least)
+const PICK_GAP := 10.0                      # between the buttons of one condition
+const PICK_GROUP_GAP := 22.0                # between two conditions' buttons
 
 ## Set by App for the screen it opens from --experiment: then the launch args (--ctl-*, --camera,
 ## ...) apply to this screen only (a rebuilt screen with a saved state restores that state instead).
@@ -104,6 +107,13 @@ var _dialogue_right_for := Vector2.ZERO  # the view size it was found for
 var _predict_pick: String = ""        # the picked choice ("farther" / "same")
 var _predict_ended: bool = false      # the first throw has ended (or there is no question)
 var _reason_pending := ""             # the prediction's reason, told at Dugi's next explanation
+## The current stage's condition picture buttons (ConditionPicks, 2026-10-27): a row at the bottom
+## of the view, lifted over Dugi's box while he talks, hidden while he asks or when it has no room.
+var _picks_row: HBoxContainer = null
+var _picks: Array = []                # [{"control": id, "preset": kid.picks entry, "button": Button}]
+var _picks_stage := -2                # the stage the row was built for
+var _picks_for := Vector4(NAN, 0, 0, 0)   # view width, height, talking, asking the row was laid out for (_fit_picks)
+var _picks_box := Rect2()             # Dugi's box it was laid out over
 
 
 ## `state` (optional): capture_state() of a previous screen of the same experiment (conditions
@@ -160,6 +170,9 @@ func _ready() -> void:
 		manipulator.demo_placed.connect(func() -> void:
 			if manipulator.demo_action != "":
 				_demo_release_left = DEMO_RELEASE_DELAY_S)
+		manipulator.demo_blocked.connect(func() -> void:
+			if _action_buttons.has("reset"):
+				_run_measured_action("reset"))
 	_missions = _make_missions()
 	view.rig.follow_source = experiment
 	view.rig.configure(definition.camera)
@@ -249,6 +262,7 @@ func _process(delta: float) -> void:
 ## dialogue (the sidebar's 관찰 포인트 card has the same words): one open closes, and an explanation
 ## that starts then is pointing only. Dugi stopping (a user change, 처음으로) closes it at once.
 func _run_dialogue() -> void:
+	_fit_picks()   # follows the dialogue (opened, closed) and the question
 	if dialogue == null or cast.dugi == null:
 		return
 	if _asking:
@@ -318,7 +332,7 @@ func _layout_dialogue() -> bool:
 ## actions and the gesture tip while it shows.
 func overlay_rects() -> Array[Rect2]:
 	var out: Array[Rect2] = []
-	for c: Control in [_title_bar, _top_buttons, _key_row, _action_row, _tip]:
+	for c: Control in [_title_bar, _top_buttons, _key_row, _action_row, _tip, _picks_row]:
 		if c != null and c.visible:
 			out.append(c.get_rect().grow(4.0))
 	return out
@@ -585,6 +599,7 @@ func _show_stamps(count: int) -> void:
 	else:
 		_mission_text.text = str(stages[count].get("text", ""))
 	_fit_mission_strip()
+	_build_picks(count if count < stages.size() else -1)
 
 
 ## Dugi asks (Plan G4): his dialogue box with the question (portrait and name tag, held open until
@@ -671,6 +686,7 @@ func _end_question() -> void:
 	if _choices != null:
 		_choices.queue_free()
 		_choices = null
+	_fit_picks()
 
 
 ## The first throw has ended (judged): the question is over and the strip shows the stage again.
@@ -689,6 +705,122 @@ func _mission_progress(_id: String, stamps: int) -> void:
 	_show_stamps(stamps)
 	if cast != null and cast.puppy != null and MissionTracker.missions(definition).get("stages", []).size() == stamps:
 		cast.puppy.celebrate()
+
+
+# --- game: the condition picture buttons (2026-10-27) ------------------------------------------
+
+## The row of the stage's condition buttons (ConditionPicks.groups): built again when the stage
+## changes, empty (and hidden) for a stage without conditions or a finished round.
+func _build_picks(stage: int) -> void:
+	if stage == _picks_stage:
+		return
+	_picks_stage = stage
+	if _picks_row != null:
+		_picks_row.queue_free()
+		_picks_row = null
+	_picks.clear()
+	var groups := ConditionPicks.groups(definition, stage)
+	if groups.is_empty():
+		_fit_overlays()
+		return
+	_picks_row = Ui.hbox(int(PICK_GAP))
+	_picks_row.name = "ConditionPicks"
+	_picks_row.mouse_filter = Control.MOUSE_FILTER_IGNORE   # only the buttons take touches
+	view.add_child(_picks_row)
+	for g in groups.size():
+		if g > 0:
+			var gap := Control.new()
+			gap.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			gap.custom_minimum_size.x = PICK_GROUP_GAP - PICK_GAP * 2.0
+			_picks_row.add_child(gap)
+		for preset in groups[g].presets:
+			var button := _pick_button(groups[g].control, preset)
+			_picks_row.add_child(button)
+			_picks.append({"control": groups[g].control, "preset": preset, "button": button})
+	for pick in _picks:   # in the tree now: the words have their font, a long one widens its button
+		var button: Button = pick.button
+		button.custom_minimum_size.x = maxf(PICK_SIZE.x, (button.get_meta("caption") as Label).get_minimum_size().x + 24.0)
+	for id in groups.map(func(group: Dictionary) -> String: return group.control):
+		_sync_picks(id)
+	_picks_for = Vector4(NAN, 0, 0, 0)
+	_fit_overlays()
+
+
+## One picture button: its drawing (PickPictures) over a few words; a tap sets the control the way
+## the sidebar does (_set_control), so the row, the sidebar and the run all follow.
+func _pick_button(control_id: String, preset: Dictionary) -> Button:
+	var button := Ui.button("", "PickButton", 0)
+	button.name = "Pick_%s_%s" % [control_id, str(preset.value)]
+	button.toggle_mode = true
+	button.focus_mode = Control.FOCUS_NONE
+	button.custom_minimum_size = PICK_SIZE
+	var stack := Ui.vbox(2)
+	stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	stack.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 8)
+	button.add_child(stack)
+	var picture := Control.new()
+	picture.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	picture.custom_minimum_size = Vector2(PICK_SIZE.x - 16.0, PICK_SIZE.y - 52.0)
+	picture.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	var kind := str(preset.picture)
+	var amount := float(preset.get("size", 0.5))
+	var count := int(preset.get("count", 1))
+	picture.draw.connect(func() -> void: PickPictures.draw(picture, kind, amount, count))
+	stack.add_child(picture)
+	var caption := Ui.label(str(preset.label), "PickLabel")
+	caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	stack.add_child(caption)
+	button.set_meta("caption", caption)
+	button.pressed.connect(_set_control.bind(control_id, preset.value))
+	return button
+
+
+## The buttons of `id` show its current value (the chosen one yellow), after any change of it.
+func _sync_picks(id: String) -> void:
+	if _picks.is_empty():
+		return
+	var have: Variant = experiment.control_value(id)
+	for pick in _picks:
+		if pick.control == id:
+			(pick.button as Button).set_pressed_no_signal(ConditionPicks.selected(pick.preset, have))
+
+
+## The row's place: the bottom left of the view; over Dugi's box (beside his portrait) while it is
+## open; hidden while he asks (his picture buttons are the question's), or when it would reach the
+## action buttons (a narrow view beside the open sidebar: the same settings are in it).
+func _fit_picks() -> void:
+	if _picks_row == null:
+		return
+	var talking := dialogue != null and dialogue.active and dialogue.visible
+	# Every frame (it follows the dialogue): only scalars compared, nothing allocated until a change.
+	var key := Vector4(view.size.x, view.size.y, 1.0 if talking else 0.0, 1.0 if _asking else 0.0)
+	var box := Rect2(dialogue.position + dialogue.box.position, dialogue.box.size) if talking else Rect2()
+	if key == _picks_for and box == _picks_box:
+		return
+	_picks_for = key
+	_picks_box = box
+	var m := OVERLAY_MARGIN
+	_picks_row.size = _picks_row.get_combined_minimum_size()
+	var at := Vector2(m, view.size.y - m - _picks_row.size.y)
+	var right := _action_row.position.x - m
+	if talking:
+		var rects := dialogue.rects()
+		at = Vector2(rects[1].end.x + m, rects[0].position.y - DialogueBox.NAME_LIFT - m - _picks_row.size.y)
+		right = view.size.x - m
+	_picks_row.position = at
+	_picks_row.visible = not _asking and at.x + _picks_row.size.x <= right
+	_fit_tip()   # the tip stands over the row
+
+
+## The row is shown (tests: the buttons of the stage, their place).
+func picks_shown() -> bool:
+	return _picks_row != null and _picks_row.visible
+
+
+## The buttons now: [{"control", "preset", "button"}] (tests).
+func pick_buttons() -> Array:
+	return _picks
 
 
 # --- layout ---------------------------------------------------------------------------------
@@ -897,16 +1029,28 @@ func _fit_overlays() -> void:
 		_fit_slingshot_hud()
 	if dialogue != null and dialogue.active:
 		dialogue.visible = _layout_dialogue()   # follows the view at once (a resize)
-	# Beside the actions when there is room, otherwise above them (a narrow view with many actions:
-	# orbit's three buttons beside the open sidebar on a tablet).
+	_picks_for = Vector4(NAN, 0, 0, 0)
+	_fit_picks()
+	_fit_tip()
+
+
+## The gesture tip: beside the actions when there is room, otherwise above them (a narrow view with
+## many actions: orbit's three buttons beside the open sidebar on a tablet); over the picture buttons
+## while they show.
+func _fit_tip() -> void:
+	if _tip == null or _title_bar == null:
+		return
+	var m := OVERLAY_MARGIN
+	var width := view.size.x
 	var beside := width - _action_row.size.x - m * 3.0
 	var tip_width := minf(TIP_MAX_WIDTH, beside if beside >= TIP_MIN_WIDTH else width - m * 2.0)
-	if _tip != null:
-		# An autowrap label's minimum height depends on its width: set the width first.
-		_tip.size = Vector2(tip_width, 0.0)
-		_tip.size.y = _tip.get_minimum_size().y
-		var bottom := view.size.y - m if beside >= TIP_MIN_WIDTH else _action_row.position.y - 8.0
-		_tip.position = Vector2(m, bottom - _tip.size.y)
+	# An autowrap label's minimum height depends on its width: set the width first.
+	_tip.size = Vector2(tip_width, 0.0)
+	_tip.size.y = _tip.get_minimum_size().y
+	var bottom := view.size.y - m if beside >= TIP_MIN_WIDTH else _action_row.position.y - 8.0
+	if picks_shown():
+		bottom = minf(bottom, _picks_row.position.y - 8.0)   # the tip stands over the picture buttons
+	_tip.position = Vector2(m, bottom - _tip.size.y)
 
 
 func _scroll_to(section: String) -> void:
@@ -1094,6 +1238,7 @@ func _sync_control(id: String) -> void:
 					if option.has("mu_s"):
 						note = "μs = %.2f · μk = %.2f   %s" % [option.mu_s, option.mu_k, note]
 					widgets.note.text = note
+	_sync_picks(id)
 
 
 func _build_observations() -> Control:

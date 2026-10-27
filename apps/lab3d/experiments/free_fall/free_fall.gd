@@ -2,9 +2,11 @@
 ## (yellow 0.5 kg, violet "보라" 1 kg, red = the "mass" control, 3 kg by default, like the web's light /
 ## reference / heavy balls) are dropped together in the chosen field and land at the same time.
 ## Conditions: gravity (the web's buttons), the drop height of all three (slider) and the red ball's
-## mass. Each ball can be dragged sideways along the floor line under it and raised with its height
-## handle (web step 1: "세 공의 높이를 맞춰요"). A line, not the floor plane: a ball held 5 m up is
-## level with the camera, where a horizontal drag plane at its height would be seen edge-on.
+## mass. A finger drags any ball up or down (2026-10-27, one drag per lab: "drop_<ball>" objects on a
+## vertical line through the ball): letting go sets the drop height of all three, the "height"
+## control (the "자세히" slider), so the three still start level (web step 1: "세 공의 높이를 맞춰요").
+## The per-ball placements (manipulation_placed with a ball id: a restored state, tests) stay; a
+## finger no longer moves one ball sideways or raises one alone (definition: "drag": false).
 ## Motion: Jolt + UniformFieldCorrector (uniform_field_lab.gd). Displayed numbers: PhysicsLaws at the formula time (the landing at landing_time(0, -g, h0)); the engine is
 ## only the graph's "시뮬레이션" points and the measured landing times.
 extends UniformFieldLab
@@ -17,6 +19,7 @@ const BALLS := {
 }
 const ORDER := ["yellow", "purple", "red"]
 const LINE_X := 3.0              # the balls move along the floor line x = -3..3 m (z = 0)
+const DROP := "drop_"             # the finger's object of a ball: "drop_red" drags the red ball up and down
 const BOUNCE := 0.5               # the web's wood balls (restitution 0.5)
 
 var balls: Dictionary = {}        # id -> FormulaBody
@@ -246,20 +249,31 @@ func _build_world() -> void:
 # --- manipulation -----------------------------------------------------------------------------
 
 func manipulation_body(id: String) -> PhysicsBody3D:
-	return balls.get(id)
+	return balls.get(id.trim_prefix(DROP))
 
 
-## The floor line under the balls in front of the ruler (0.5 m grid, the balls' `snap` rule).
+## "line": the floor line under the balls in front of the ruler (0.5 m grid, the balls' `snap` rule).
+## "drop_<ball>": the vertical line of that ball's drop, plane x = the height of the ball's bottom over
+## the floor in the height slider's range (its 0.5 m step is the objects' `snap`). The frame stands
+## upright (x up, its normal towards the front camera) one radius behind the ball, so a ball lifted
+## by its radius off the frame is on its own drop line.
 func manipulation_surface(surface_id: String) -> ManipSurface:
-	if surface_id != "line":
+	var surface: ManipSurface
+	if surface_id == "line":
+		surface = ManipSurface.new(Transform3D.IDENTITY, Vector2(-LINE_X, 0.0), Vector2(LINE_X, 0.0))
+	elif surface_id.begins_with(DROP) and starts.has(surface_id.trim_prefix(DROP)):
+		var control := _find_control("height")
+		var x: float = starts[surface_id.trim_prefix(DROP)].x
+		var frame := Transform3D(Basis(Vector3.UP, Vector3.BACK, Vector3.RIGHT), Vector3(x, BALL_RADIUS, -BALL_RADIUS))
+		surface = ManipSurface.new(frame, Vector2(float(control.get("min", 0.5)), 0.0), Vector2(float(control.get("max", 8.0)), 0.0))
+	else:
 		return null
-	var surface := ManipSurface.new(Transform3D.IDENTITY, Vector2(-LINE_X, 0.0), Vector2(LINE_X, 0.0))
 	surface.exclude = [floor_body.get_rid()]
 	return surface
 
 
 func manipulation_juice(id: String) -> ArtJuice:
-	return fall_props().juices.get(id)
+	return fall_props().juices.get(id.trim_prefix(DROP))
 
 
 ## Picked up (also a falling or landed ball): the run stops and every ball waits at its start, so
@@ -268,6 +282,7 @@ func manipulation_juice(id: String) -> ArtJuice:
 func manipulation_started(id: String) -> void:
 	if released:
 		reset_run()
+	id = id.trim_prefix(DROP)
 	fall_props().juices[id].rearm()
 	fall_props().set_finger(id, starts)
 
@@ -280,8 +295,10 @@ func manipulation_cancelled(id: String) -> void:
 
 ## A ball's drop line is its own: no other ball straight above or below it (the two would collide
 ## in the air, which the per-ball formula does not describe). Neighbours on the 0.5 m grid (sides
-## touching) fall side by side and stay allowed.
+## touching) fall side by side and stay allowed. A drop line keeps its ball where it is.
 func placement_allowed(id: String, transform: Transform3D) -> bool:
+	if id.begins_with(DROP):
+		return true
 	for other in ORDER:
 		if other != id and absf(transform.origin.x - starts[other].x) < BALL_RADIUS * 2.0 - 0.001:
 			return false
@@ -289,6 +306,11 @@ func placement_allowed(id: String, transform: Transform3D) -> bool:
 
 
 func manipulation_placed(id: String, transform: Transform3D) -> void:
+	if id.begins_with(DROP):
+		# A ball let go on its drop line: all three start at that height (the "height" control).
+		fall_props().finger = ""
+		set_height(transform.origin.y - BALL_RADIUS)
+		return
 	_placed = true
 	starts[id] = transform.origin - Vector3.UP * BALL_RADIUS
 	starts[id].y = snapped_height(starts[id].y)

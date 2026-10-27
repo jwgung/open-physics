@@ -65,6 +65,17 @@
     "place": "물에 띄우기",
     "say": "물에 많이 잠길수록 물이 통을 더 세게 밀어 올려요.",
     "tip": "통을 위아래로 끌어 물에 넣어요.",
+    "picks": {
+      "mass": [
+        {"value": 45.0, "label": "45킬로그램", "picture": "weight", "size": 0.3},
+        {"value": 80.0, "label": "80킬로그램", "picture": "weight", "size": 0.7},
+        {"value": 95.0, "label": "95킬로그램", "picture": "weight", "size": 0.9}
+      ],
+      "volume": [
+        {"value": "big", "label": "큰 통", "picture": "drum_big"},
+        {"value": "small", "label": "작은 통", "picture": "drum_small"}
+      ]
+    },
     "cards": {"depth": "물에 잠긴 깊이", "floating_depth": "뜰 때 잠기는 깊이", "state": "통은?"},
     "states": {"놓기 전 · 통을 끌어 물에 넣어요": "통을 물에 넣어 봐요", "통을 옮기는 중": "옮기는 중", "떠 있어요 · 부력 = 무게": "둥둥 떠 있어요", "물속에 그대로 머물러요": "물속에 머물러요", "바닥에 가라앉았어요": "가라앉았어요"}
   },
@@ -84,6 +95,7 @@
     { "id": "speed", "label": "속력", "unit": "m/s", "digits": 2 }
   ],
   "manipulation": {
+    "grab_radius": 72.0,
     "objects": [
       { "id": "drum", "surface": "tank", "snap": 0.05, "height": false }
     ]

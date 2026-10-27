@@ -70,6 +70,13 @@
     "place": "상자 밀기",
     "say": "바닥이 상자를 붙잡고 버텨요. 그보다 세게 밀면 상자가 움직여요.",
     "tip": "빨간 손잡이를 옆으로 끌면 상자를 밀어요.",
+    "picks": {
+      "mass": [
+        {"value": "light", "label": "가벼운 상자", "picture": "box", "size": 0.0},
+        {"value": "normal", "label": "보통 상자", "picture": "box", "size": 0.5},
+        {"value": "heavy", "label": "무거운 상자", "picture": "box", "size": 1.0}
+      ]
+    },
     "cards": {"state": "상자는?", "speed": "상자 빠르기", "distance": "상자가 간 거리"},
     "states": {"버티는 중 · 마찰이 막고 있어요": "꼼짝 안 해요", "움직여요 · 주는 힘이 마찰을 이겼어요": "움직여요!", "미끄러지다 멈추는 중": "천천히 멈추는 중", "바닥 끝에 닿았어요": "끝까지 갔어요"}
   },
@@ -89,6 +96,7 @@
     { "id": "measured", "label": "간 거리 (시뮬레이션)", "unit": "m", "digits": 2 }
   ],
   "manipulation": {
+    "grab_radius": 72.0,
     "objects": [
       { "id": "handle", "surface": "pull", "snap": 0.05, "height": false }
     ],

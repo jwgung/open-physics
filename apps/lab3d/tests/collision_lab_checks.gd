@@ -404,17 +404,18 @@ func check_input_path() -> void:
 	var lab: Experiment = screen.experiment
 	var m: Manipulator = screen.manipulator
 	var ball: RigidBody3D = lab.ball_a
+	# Since 2026-10-27 the knobs are the lab's one drag: a ball is not slid along the rail any more.
 	var goal := Vector3(-2.1, ball.global_position.y, 0.0)
 	_swipe(screen, _at(screen, ball.global_position), _at(screen, goal))
-	var held: bool = m.mode == "drag" and m.active_id == "ball_a"
+	var held: bool = m.active_id == "ball_a"
 	_touch(screen, _at(screen, goal), false)
 	await tree.process_frame
 	var knob: StaticBody3D = lab.knob_a
-	var placed: bool = lab.start_a == -2.0 and is_equal_approx(ball.global_position.x, -2.0) and is_equal_approx(knob.global_position.x, -2.0 + 3.4 * lab.ARROW_SCALE)
-	expect.call(held and placed, "collision: dragging ball A puts it on its half of the rail on the 0.5 m grid; its knob follows",
-		"held %s, start %.3f, ball %.3f, knob %.3f" % [held, lab.start_a, ball.global_position.x, knob.global_position.x])
+	var start: float = lab.start_a
+	expect.call(not held and start == lab.START_A and is_equal_approx(ball.global_position.x, lab.START_A),
+		"collision: a ball is not dragged along the rail (the knob is the lab's drag)", "held %s, start %.3f" % [held, start])
 	# Knob to about 5.1 m/s: snaps to 5 m/s; the arrow previews the snapped value while held.
-	var knob_goal := Vector3(-2.0 + 5.1 * lab.ARROW_SCALE, knob.global_position.y, 0.0)
+	var knob_goal := Vector3(start + 5.1 * lab.ARROW_SCALE, knob.global_position.y, 0.0)
 	_swipe(screen, _at(screen, knob.global_position), _at(screen, knob_goal))
 	await tree.process_frame
 	await tree.process_frame
@@ -422,7 +423,7 @@ func check_input_path() -> void:
 	_touch(screen, _at(screen, knob_goal), false)
 	await tree.process_frame
 	var synced: bool = screen._control_widgets.velocity_a.slider.value == 5.0
-	expect.call(lab.velocity_a == 5.0 and synced and is_equal_approx(knob.global_position.x, -2.0 + 5.0 * lab.ARROW_SCALE)
+	expect.call(lab.velocity_a == 5.0 and synced and is_equal_approx(knob.global_position.x, start + 5.0 * lab.ARROW_SCALE)
 		and absf(preview_length - (5.0 * lab.ARROW_SCALE - lab.KNOB_SIZE * 0.5)) < 0.05,
 		"collision: dragging the arrow knob sets the velocity on the 0.5 m/s grid (preview while held, slider follows)", "v %.2f, arrow %.3f m" % [lab.velocity_a, preview_length])
 	var grid_ok: bool = lab.knob_velocity(5.1 * lab.ARROW_SCALE) == 5.0 and lab.knob_velocity(0.3 * lab.ARROW_SCALE) == 0.5 \
@@ -439,11 +440,11 @@ func check_input_path() -> void:
 	expect.call(model.collided and model.after[0] == want[0] and model.after[1] == want[2] and absf(model.momentum_of(model.after[0], model.after[1]) - model.momentum_of(model.before[0], model.before[1])) < 1e-12
 		and lab.driver.worst_position <= ENGINE_TOLERANCE,
 		"collision: the run after dragging collides by the formula (TS world outcome, momentum kept, engine on the formula)", "step %d" % model.first_step)
-	# Picking a ball up while it rolls stops the run (both back at their starts).
+	# A press on a rolling ball picks nothing up: the run goes on ("다시" starts over).
 	_swipe(screen, _at(screen, lab.ball_b.global_position), _at(screen, lab.ball_b.global_position + Vector3(0.02, 0, 0)), 2)
-	var stopped: bool = not lab.released
+	var rolling: bool = lab.released and m.mode == ""
 	_touch(screen, _at(screen, lab.ball_b.global_position), false)
-	expect.call(stopped and is_equal_approx(lab.ball_a.global_position.x, -2.0), "collision: picking a ball up stops the run and puts both back", "")
+	expect.call(rolling, "collision: a press on a rolling ball does not pick it up (the run goes on)", "")
 	await _close(screen)
 
 
@@ -452,7 +453,7 @@ func check_input_path() -> void:
 func check_demo() -> void:
 	var screen: Control = await _open()
 	var lab: Experiment = screen.experiment
-	screen.manipulator.start_demo(0.2)
+	screen.manipulator.start_demo(2.0)   # a run between two drags long enough to collide
 	var runs := 0
 	var hits := 0
 	var was := false
@@ -464,8 +465,8 @@ func check_demo() -> void:
 			hits += 1
 		was = lab.released
 	screen.manipulator.start_demo(0.0)
-	expect.call(runs >= 2 and hits > 0 and lab.start_a != lab.START_A,
-		"collision: the measurement demo (--auto-drag) drags ball A and starts runs that collide", "%d runs" % runs)
+	expect.call(runs >= 2 and hits > 0 and lab.velocity_a != 3.4,
+		"collision: the measurement demo (--auto-drag) drags ball A's knob and starts runs that collide", "%d runs, v %.1f" % [runs, lab.velocity_a])
 	await _close(screen)
 
 

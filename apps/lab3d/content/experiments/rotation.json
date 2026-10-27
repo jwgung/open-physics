@@ -66,6 +66,13 @@
     "place": "시소 들기",
     "say": "손잡이를 멀리 잡을수록 힘이 덜 들어요. 막대가 들리면 양쪽이 딱 맞아요.",
     "tip": "빨간 손잡이를 아래로 눌러 봐요.",
+    "picks": {
+      "effort": [
+        {"value": "near", "label": "가까이", "picture": "lever", "size": 0.0},
+        {"value": "mid", "label": "중간", "picture": "lever", "size": 0.5},
+        {"value": "far", "label": "멀리", "picture": "lever", "size": 1.0}
+      ]
+    },
     "cards": {"effort_arm": "손잡이까지 거리", "advantage": "몇 배 덜 힘들까", "state": "막대는?"},
     "states": {"힘점을 골라 빨간 손잡이를 아래로 눌러 보세요": "손잡이를 눌러 봐요", "손잡이를 아래로 눌러요": "손잡이를 눌러요", "누르는 중 · 아직 힘이 모자라요": "아직 힘이 모자라요", "들렸다! 힘이 충분해요": "들렸다!", "받침점·짐 위치를 옮기는 중": "옮기는 중"}
   },
@@ -87,10 +94,11 @@
     { "id": "net_torque", "label": "토크 합 F₂r₂ − F₁r₁ (들리면 0)", "unit": "N·m", "digits": 1 }
   ],
   "manipulation": {
+    "grab_radius": 72.0,
     "objects": [
       { "id": "handle", "surface": "press", "snap": 0.02, "height": false },
-      { "id": "load", "surface": "beam_top", "snap": 0.25, "height": false },
-      { "id": "fulcrum", "surface": "floor_line", "snap": 0.25, "height": false }
+      { "id": "load", "surface": "beam_top", "snap": 0.25, "height": false, "drag": false },
+      { "id": "fulcrum", "surface": "floor_line", "snap": 0.25, "height": false, "drag": false }
     ]
   },
   "graph": {

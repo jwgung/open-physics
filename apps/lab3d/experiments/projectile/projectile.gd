@@ -4,7 +4,10 @@
 ## arrow's snap) and speed (1..9 m/s; the web arrow is capped at 9.09 m/s). The arrow's yellow knob
 ## can be dragged in the vertical plane of the throw (web step 1, "보라색 화살표를 끌어 방향을
 ## 정해요"; ArrowSurface), and the ball moved along the launch line and raised with its height
-## handle (launch height 0..3 m; the web launches from 0.42 m, the default here is 0.5 m).
+## handle (launch height 0..3 m; the web launches from 0.42 m, the default here is 0.5 m). In the
+## game (2026-10-27, one drag per lab) the finger only pulls the slingshot: the launch height is the
+## "launch_height" control in "자세히" (the same start as the height handle made), the arrow knob
+## and the handle are not picked up (definition: "drag": false, "height": false).
 ## Motion: Jolt + UniformFieldCorrector. Displayed numbers: PhysicsLaws (flight time, range and apex
 ## to the floor level from landing_time / apex_rise; position and velocity at the formula time).
 ## The engine gives only the graph's "시뮬레이션" points and the measured landing distance.
@@ -85,6 +88,12 @@ func set_control(id: String, value: Variant) -> void:
 		"speed":
 			speed = clampf(float(value), ArrowSurface.SPEED_MIN, ArrowSurface.SPEED_MAX)
 			reset_run()
+		"launch_height":
+			var h := _clamp_to_control(id, float(value))
+			if is_nan(h):
+				return
+			start.y = snapped_height(h)   # the height handle's own rounding (manipulation_placed)
+			reset_run()
 		_:
 			super(id, value)
 
@@ -95,6 +104,8 @@ func control_value(id: String) -> Variant:
 			return angle_deg
 		"speed":
 			return speed
+		"launch_height":
+			return start.y
 	return super(id)
 
 

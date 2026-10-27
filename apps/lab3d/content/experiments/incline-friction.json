@@ -68,6 +68,13 @@
     "place": "미끄럼틀",
     "say": "많이 기울이면 상자가 미끄러져요. 더 기울일수록 더 빨라져요.",
     "tip": "상자를 끌어서 옮겨 봐요.",
+    "picks": {
+      "material": [
+        {"value": "steel", "label": "강철", "picture": "slide_steel"},
+        {"value": "wood", "label": "나무", "picture": "slide_wood"},
+        {"value": "rubber", "label": "고무", "picture": "slide_rubber"}
+      ]
+    },
     "cards": {"critical_angle": "미끄러지는 각도", "state": "상자는?", "distance": "미끄러진 거리"},
     "states": {"버티는 중 (정지)": "꼼짝 안 해요", "미끄러지는 중": "미끄러져요!", "빗면을 벗어남": "끝까지 내려갔어요"}
   },
@@ -85,6 +92,7 @@
     { "id": "run", "label": "출발점에서 빗면 끝까지", "unit": "m", "digits": 1 }
   ],
   "manipulation": {
+    "grab_radius": 72.0,
     "objects": [
       { "id": "box", "surface": "incline", "snap": 0.5, "height": false }
     ],

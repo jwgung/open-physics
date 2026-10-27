@@ -66,6 +66,14 @@
     "place": "별 돌기",
     "say": "별이 행성을 끌어당겨요. 빠르기에 따라 별을 돌기도 하고 떠나기도 해요.",
     "tip": "노란 손잡이를 끌어 쏠 방향을 정해요.",
+    "picks": {
+      "radius": [
+        {"value": 2.0, "label": "2미터", "picture": "orbit", "size": 0.0},
+        {"value": 3.0, "label": "3미터", "picture": "orbit", "size": 0.33},
+        {"value": 4.0, "label": "4미터", "picture": "orbit", "size": 0.67},
+        {"value": 5.0, "label": "5미터", "picture": "orbit", "size": 1.0}
+      ]
+    },
     "cards": {"state": "행성은?", "launch_speed": "쏘는 빠르기", "escape_speed": "떠나는 빠르기"},
     "states": {"발사 전": "쏘기 전", "별 둘레를 도는 중": "별을 빙글빙글 돌아요", "별에서 멀어지는 중": "별에서 멀어져요"}
   },
@@ -86,9 +94,10 @@
     { "id": "laps", "label": "별 둘레를 돈 바퀴 수", "unit": "바퀴", "digits": 2 }
   ],
   "manipulation": {
+    "grab_radius": 72.0,
     "objects": [
-      { "id": "planet", "surface": "radius_line", "snap": 0.5, "height": false },
-      { "id": "arrow", "surface": "arrow", "snap": 0.1, "height": false }
+      { "id": "arrow", "surface": "arrow", "snap": 0.1, "height": false },
+      { "id": "planet", "surface": "radius_line", "snap": 0.5, "height": false, "drag": false }
     ],
     "demo_action": "launch"
   },

@@ -74,7 +74,14 @@
     "title": "공을 높은 곳에서 떨어뜨려 보자!",
     "place": "공 떨어뜨리기",
     "say": "무거운 공도 가벼운 공도 같이 땅에 닿아요. 달에서는 더 천천히 떨어져요.",
-    "tip": "공을 끌어서 옮겨 봐요. 두 손가락으로 돌려 봐요.",
+    "tip": "공을 위로 끌어 올려 봐요. 두 손가락으로 돌려 봐요.",
+    "picks": {
+      "gravity": [
+        {"value": "earth", "label": "지구", "picture": "earth"},
+        {"value": "moon", "label": "달", "picture": "moon"},
+        {"value": "jupiter", "label": "목성", "picture": "jupiter"}
+      ]
+    },
     "cards": {"time": "놓은 뒤 시간", "fall_time": "땅까지 걸리는 시간", "speed": "빨간 공 빠르기"}
   },
   "cast": {
@@ -107,10 +114,14 @@
     ]
   },
   "manipulation": {
+    "grab_radius": 72.0,
     "objects": [
-      { "id": "red", "surface": "line", "snap": 0.5, "height": { "max": 8.0, "step": 0.5 } },
-      { "id": "purple", "surface": "line", "snap": 0.5, "height": { "max": 8.0, "step": 0.5 } },
-      { "id": "yellow", "surface": "line", "snap": 0.5, "height": { "max": 8.0, "step": 0.5 } }
+      { "id": "drop_red", "surface": "drop_red", "snap": 0.5, "height": false },
+      { "id": "drop_purple", "surface": "drop_purple", "snap": 0.5, "height": false },
+      { "id": "drop_yellow", "surface": "drop_yellow", "snap": 0.5, "height": false },
+      { "id": "red", "surface": "line", "snap": 0.5, "height": false, "drag": false },
+      { "id": "purple", "surface": "line", "snap": 0.5, "height": false, "drag": false },
+      { "id": "yellow", "surface": "line", "snap": 0.5, "height": false, "drag": false }
     ],
     "demo_action": "release"
   }

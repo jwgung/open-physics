@@ -362,32 +362,29 @@ func check_input_path() -> void:
 		and absf(float(shown.applied) - float(shown.required)) < 1e-12 and absf(float(shown.net_torque)) < 1e-9 and clock_runs and level and lab.clock_steps == still,
 		"rotation (fresh screen): pressing the handle 0.9 m down (225 N) lifts the beam at the required force and holds it there 13 s (graph window slides); the graph clock runs only while held; letting go puts it back level",
 		"cells %d, F %.2f N, held %s, lifted %s, clock %s, level %s (%s, %s, %s, %s), still %s, waiting %s" % [cells, shown.applied, held, lifted, clock_runs, level, lab.status(), lab.driver.engine_angle(), lab.model.cells, handle.global_position.distance_to(rest), lab.clock_steps == still, waiting.state])
-	# Drag the load right (0.25 m grid) and the fulcrum left; the fulcrum cannot pass the load + 0.5 m.
+	# Since 2026-10-27 the handle is the lab's one drag: the load and the fulcrum are not picked up
+	# (the grip point is the picture buttons' condition). Their places stay the lab's (a restored
+	# placement): the 0.25 m grid, the arms follow, the fulcrum never within 0.5 m of the load.
 	var load_body: RigidBody3D = lab.load_body
 	var picked := []
 	_swipe(screen, _at(screen, load_body.global_position), _at(screen, load_body.global_position + Vector3(1.07, 0.0, 0.0)))
 	picked.append(m.active_id)
 	_touch(screen, _at(screen, load_body.global_position), false)
 	await tree.process_frame
-	var load_moved: bool = lab.model.load_x == -1.5 and absf(float(lab.observations().load_arm) - 1.0) < 1e-12
-	# The stand is picked on its front face below the beam (where a finger sees it).
 	var stand: StaticBody3D = lab.stand
 	var grip := Vector3(0.0, -0.2, 0.3)
 	_swipe(screen, _at(screen, stand.global_position + grip), _at(screen, stand.global_position + grip + Vector3(-0.27, 0.0, 0.0)))
 	picked.append(m.active_id)
 	_touch(screen, _at(screen, stand.global_position + grip), false)
 	await tree.process_frame
+	var untouched: bool = lab.model.load_x == lab.DEFAULT_LOAD and lab.model.pivot_x == lab.DEFAULT_PIVOT and lab.placements().is_empty()
+	lab.manipulation_placed("load", Transform3D(Basis(), load_body.global_position + Vector3(1.07, 0.0, 0.0)))
+	var load_moved: bool = lab.model.load_x == -1.5 and absf(float(lab.observations().load_arm) - 1.0) < 1e-12
+	lab.manipulation_placed("fulcrum", Transform3D(Basis(), stand.global_position + Vector3(-0.27, 0.0, 0.0)))
 	var fulcrum_moved: bool = lab.model.pivot_x == -0.75 and absf(float(lab.observations().effort_arm) - 0.6 * 3.75) < 1e-12
-	# -1.25 m is inside the fulcrum's range but within 0.5 m of the load (-1.5 m): not allowed.
-	var too_close := stand.global_position + grip + Vector3(-0.5, 0.0, 0.0)
-	_swipe(screen, _at(screen, stand.global_position + grip), _at(screen, too_close))
-	picked.append(m.active_id)
-	var refused: bool = not m.valid and is_equal_approx(m.target.x, -1.25)
-	_touch(screen, _at(screen, too_close), false)
-	await tree.process_frame
-	var blocked: bool = refused and lab.model.pivot_x == -0.75 and stand.global_position.x == -0.75
-	expect.call(load_moved and fulcrum_moved and blocked and picked == ["load", "fulcrum", "fulcrum"] and lab.placements().size() == 2,
-		"rotation: dragging the load and the fulcrum moves them on the 0.25 m grid (the arms follow); the fulcrum cannot pass within 0.5 m of the load",
+	var blocked: bool = not lab.placement_allowed("fulcrum", Transform3D(Basis(), Vector3(-1.25, 0.0, 0.0)))
+	expect.call(picked == ["", ""] and untouched and load_moved and fulcrum_moved and blocked and lab.placements().size() == 2,
+		"rotation: a finger does not drag the load or the fulcrum; their places (a restored placement) keep the 0.25 m grid, the arms follow, the fulcrum stays 0.5 m from the load",
 		"load %.2f, fulcrum %.2f, picked %s" % [lab.model.load_x, lab.model.pivot_x, str(picked)])
 	await _close(screen)
 

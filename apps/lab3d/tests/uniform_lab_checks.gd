@@ -565,26 +565,25 @@ func check_free_fall_zero_g_on_floor() -> void:
 
 
 ## One ball per drop line: a ball cannot be put straight above or below another (they would collide
-## in the air); the next 0.5 m grid point (sides touching) is allowed.
+## in the air); the next 0.5 m grid point (sides touching) is allowed. The lab's rule for a placed
+## ball (a restored placement); since 2026-10-27 a finger no longer slides a ball sideways: a
+## sideways swipe on the yellow ball leaves it on its line.
 func check_free_fall_drop_lines() -> void:
 	var screen: Control = await _open(ExperimentRegistry.find("free-fall"))
 	var lab: Experiment = screen.experiment
 	var m: Manipulator = screen.manipulator
 	var yellow: RigidBody3D = lab.balls.yellow
-	var above_purple := Vector3(0.0, yellow.global_position.y, 0.0)
 	lab.manipulation_placed("purple", Transform3D(Basis(), Vector3(0.0, 2.0 + lab.BALL_RADIUS, 0.0)))
-	_swipe(screen, _at(screen, yellow.global_position), _at(screen, above_purple))
-	var blocked: bool = m.active_id == "yellow" and not m.valid
-	var beside := Vector3(-0.5, yellow.global_position.y, 0.0)
-	var event := InputEventScreenDrag.new()   # the same finger moves on (no new press)
-	event.index = 0
-	event.position = _at(screen, beside)
-	screen.view._gui_input(event)
-	var allowed: bool = m.active_id == "yellow" and m.valid
+	var y := yellow.global_position.y
+	var blocked: bool = not lab.placement_allowed("yellow", Transform3D(Basis(), Vector3(0.0, y, 0.0)))
+	var allowed: bool = lab.placement_allowed("yellow", Transform3D(Basis(), Vector3(-0.5, y, 0.0)))
+	var beside := Vector3(-0.5, y, 0.0)
+	_swipe(screen, _at(screen, yellow.global_position), _at(screen, beside))
 	_touch(screen, 0, _at(screen, beside), false)
-	expect.call(blocked and allowed and is_equal_approx(lab.starts.yellow.x, -0.5)
+	expect.call(blocked and allowed and is_equal_approx(lab.starts.yellow.x, -1.5) and m.selected_id == ""
 		and not lab.placement_allowed("red", Transform3D(Basis(), Vector3(0.0, 6.0, 0.0))),
-		"landing: a ball cannot be placed on another ball's drop line (above or below); beside it is allowed", "blocked %s, allowed %s, yellow x %.2f, selected %s" % [blocked, allowed, lab.starts.yellow.x, m.selected_id])
+		"landing: a ball cannot be placed on another ball's drop line (above or below); beside it is allowed; a finger does not slide a ball sideways",
+		"blocked %s, allowed %s, yellow x %.2f, selected %s" % [blocked, allowed, lab.starts.yellow.x, m.selected_id])
 	await _close(screen)
 
 
@@ -749,103 +748,72 @@ func check_arrow_surface() -> void:
 
 # --- manipulation through the input path -----------------------------------------------------------
 
+## The free-fall drag (2026-10-27, one drag per lab): a ball dragged up or down sets the drop height
+## of all three (the "height" control: the slider follows) on its 0.5 m grid; no height handle shows.
+## The run is the slider's: the three land together at the formula time of the new height.
 func check_free_fall_manipulation() -> void:
 	var screen: Control = await _open(ExperimentRegistry.find("free-fall"))
 	var lab: Experiment = screen.experiment
 	var m: Manipulator = screen.manipulator
 	var red: RigidBody3D = lab.balls.red
-	var goal := Vector3(2.4, red.global_position.y, 0.0)   # -> x 2.5 on the 0.5 m grid of the floor line, same height
+	var goal := red.global_position + Vector3(0.0, 1.9, 0.0)   # about 6.9 m -> 7 m on the 0.5 m grid
 	_swipe(screen, _at(screen, red.global_position), _at(screen, goal))
+	var held: bool = m.mode == "drag" and m.active_id == "drop_red"
 	_touch(screen, 0, _at(screen, goal), false)
-	var placed: bool = red.global_position.is_equal_approx(Vector3(2.5, 5.0 + lab.BALL_RADIUS, 0.0)) and red.freeze
-	expect.call(placed and m.selected_id == "red" and m._knob.visible, "free fall: a ball held 5 m up dragged along its floor line keeps its height, snaps to 0.5 m and shows its height handle", str(red.global_position))
-	# Height handle down by about 2 m: only the red ball's start changes.
-	var knob_at := _at(screen, m._knob.global_position)
-	var down := _at(screen, m._knob.global_position + Vector3(0, -2.0, 0))
-	_swipe(screen, knob_at, down, 6)
-	_touch(screen, 0, down, false)
-	var h: float = lab.starts.red.y
-	expect.call(absf(h - 3.0) < 0.26 and is_equal_approx(fmod(h, 0.5), 0.0) and lab.starts.purple.y == 5.0 and is_equal_approx(red.global_position.x, 2.5),
-		"free fall: the height handle sets one ball's drop height in 0.5 m steps", "red %.2f m, purple %.2f m" % [h, lab.starts.purple.y])
-	# Drop: the red ball lands first, at the TS landing time of its own height (±2 steps).
+	var synced: bool = screen._control_widgets.height.slider.value == 7.0
+	var level: bool = lab.ORDER.all(func(id: String) -> bool: return lab.starts[id].y == 7.0)
+	expect.call(held and lab.height == 7.0 and level and synced and is_equal_approx(red.global_position.x, 1.5) and m.selected_id == "" and not m._knob.visible,
+		"free fall: dragging a ball up sets the drop height of all three on the 0.5 m grid (the height slider follows, no height handle)",
+		"held %s, height %.2f, starts %s" % [held, lab.height, str(lab.starts)])
 	screen.experiment_action("release")
 	for i in 3 * STEP_HZ:
 		if lab.status() == "landed" and _engine_landed(lab):
 			break
 		await tree.physics_frame
-	var red_land: int = lab.corrector_of("red").landed_step
-	var purple_land: int = lab.corrector_of("purple").landed_step
-	var want := roundi(PhysicsLaws.landing_time(0.0, -9.81, h) * STEP_HZ)
-	expect.call(red_land > 0 and absi(red_land - want) <= 2 and purple_land > red_land and float(lab.observations().fall_time) == PhysicsLaws.landing_time(0.0, -9.81, h),
-		"free fall: after the handle the lower ball lands first at its own formula time", "red step %d (formula %d), purple %d" % [red_land, want, purple_land])
-	# Picking up a landed ball puts every ball back at its start (the picked one at its own height).
-	_swipe(screen, _at(screen, red.global_position), _at(screen, red.global_position + Vector3(0.05, 0, 0)), 2)
+	var want := roundi(PhysicsLaws.landing_time(0.0, -9.81, 7.0) * STEP_HZ)
+	var lands: Array = lab.ORDER.map(func(id: String) -> int: return lab.corrector_of(id).landed_step)
+	expect.call(lands.all(func(k: int) -> bool: return absi(k - want) <= 2) and lands.min() == lands.max()
+		and float(lab.observations().fall_time) == PhysicsLaws.landing_time(0.0, -9.81, 7.0),
+		"free fall: after the drag the three balls land together at the formula time of the new height", "steps %s (formula %d)" % [str(lands), want])
+	# Picking up a landed ball stops the run (every ball back at its start).
+	_swipe(screen, _at(screen, red.global_position), _at(screen, red.global_position + Vector3(0, 0.05, 0)), 2)
 	var reset_ok: bool = not lab.released and lab.balls.purple.global_position.is_equal_approx(lab.starts.purple + Vector3.UP * lab.BALL_RADIUS)
 	_touch(screen, 0, _at(screen, red.global_position), false)
-	expect.call(reset_ok and absf(red.global_position.y - (h + lab.BALL_RADIUS)) < 1e-5, "free fall: picking up a landed ball stops the run and lifts it from its start height", str(red.global_position))
-	# The height slider lines all three up again.
-	screen._set_control("height", 4.0)
-	expect.call(lab.starts.red.y == 4.0 and lab.starts.yellow.y == 4.0 and is_equal_approx(red.global_position.x, 2.5),
-		"free fall: the height condition lines the three balls up again (positions kept)", str(lab.starts))
+	expect.call(reset_ok and lab.height == 7.0, "free fall: picking up a landed ball stops the run (every ball back at its start)", str(red.global_position))
 	await _close(screen)
 
 
+## The projectile's only drag is the slingshot (2026-10-27): the arrow knob and the ball's height
+## handle are not picked up any more; the launch height is the "자세히" slider (launch_height), and
+## the panel's formula follows it like the handle did.
 func check_projectile_manipulation() -> void:
 	var screen: Control = await _open(ExperimentRegistry.find("projectile"))
 	var lab: Experiment = screen.experiment
 	var m: Manipulator = screen.manipulator
-	# Arrow knob from (45 deg, 9 m/s) to the tip of (60 deg, 6 m/s), a little off the grid.
 	var center: Vector3 = lab.ball_center()
 	var target := ArrowSurface.tip(58.0, 6.2)
 	var goal := center + Vector3(target.x, -target.y, 0.0)
 	_swipe(screen, _at(screen, lab.knob.global_position), _at(screen, goal))
-	var preview: Vector3 = lab.props.arrow.rotation
-	await tree.process_frame   # the arrow preview follows the held knob (process_frame comes before _process)
-	await tree.process_frame
-	var turned: float = rad_to_deg(lab.props.arrow.rotation.z)
+	var knob_held: bool = m.active_id == "arrow"
 	_touch(screen, 0, _at(screen, goal), false)
-	var synced: bool = screen._control_widgets.angle.slider.value == 60.0 and screen._control_widgets.speed.slider.value == 6.0
-	var tip := ArrowSurface.tip(60.0, 6.0)
-	expect.call(lab.angle_deg == 60.0 and lab.speed == 6.0 and synced and lab.knob.global_position.is_equal_approx(center + Vector3(tip.x, -tip.y, 0.0))
-		and is_equal_approx(preview.z, deg_to_rad(45.0)) and is_equal_approx(turned, 60.0),
-		"projectile: dragging the arrow knob sets direction and speed on the web arrow's grid (preview while held, sliders follow)",
-		"angle %.1f, speed %.1f, preview %.1f°" % [lab.angle_deg, lab.speed, turned])
-	# A direction behind the throw (120 deg) cannot be placed: the knob goes back.
-	var back_tip := ArrowSurface.tip(120.0, 5.0)
-	var back := center + Vector3(back_tip.x, -back_tip.y, 0.0)
-	var knob_before: Vector3 = lab.knob.global_position
-	_swipe(screen, _at(screen, lab.knob.global_position), _at(screen, back))
-	var blocked: bool = not m.valid
-	_touch(screen, 0, _at(screen, back), false)
-	expect.call(blocked and lab.angle_deg == 60.0 and lab.knob.global_position.is_equal_approx(knob_before),
-		"projectile: a direction outside 0..90 deg is shown as blocked and the knob goes back", "")
-	# The ball is the slingshot's (Plan G3): pressing it pulls, so it no longer slides along the launch
-	# line. A tap on it (no pull) shows its height handle; the handle's real drag raises the launch
-	# 1 m (the rule's 0.25 m grid). The blocked 120 deg attempt above still holds finger 0 (a blocked
-	# release cancels the move but does not lift it), so these touches use finger 1.
+	await tree.process_frame
+	expect.call(not knob_held and lab.angle_deg == 45.0 and lab.speed == 9.0,
+		"projectile: the arrow knob is not dragged (the slingshot sets direction and speed)", "held %s, angle %.1f, speed %.1f" % [knob_held, lab.angle_deg, lab.speed])
 	var ball_at := _at(screen, lab.ball_center())
 	_touch(screen, 1, ball_at, true)
 	_touch(screen, 1, ball_at, false)
 	await tree.process_frame
-	var tapped: bool = m.selected_id == "ball" and m._knob.visible and lab.angle_deg == 60.0 and not lab.released
-	var knob_at := _at(screen, m._knob.global_position)
-	var up := _at(screen, m._knob.global_position + Vector3(0, 1.0, 0))
-	_touch(screen, 1, knob_at, true)
-	for i in range(1, 7):
-		var event := InputEventScreenDrag.new()
-		event.index = 1
-		event.position = knob_at.lerp(up, float(i) / 6)
-		screen.view._gui_input(event)
-		await tree.process_frame
-	_touch(screen, 1, up, false)   # the release commits the height
-	await tree.process_frame
+	expect.call(m.selected_id == "" and not m._knob.visible and not lab.released and lab.start.y == lab.START_HEIGHT,
+		"projectile: a tap on the ball shows no height handle and throws nothing", "selected '%s'" % m.selected_id)
+	screen._set_control("angle", 60.0)
+	screen._set_control("speed", 6.0)
+	screen._set_control("launch_height", 1.5)
 	var tip_now := ArrowSurface.tip(60.0, 6.0)
 	var arrow_follows: bool = lab.knob.global_position.is_equal_approx(lab.ball_center() + Vector3(tip_now.x, -tip_now.y, 0.0))
-	expect.call(tapped and is_equal_approx(lab.start.x, lab.START_X) and is_equal_approx(lab.start.y, 1.5) and arrow_follows,
-		"projectile: a tap on the ball shows its height handle (a press pulls the slingshot); the handle's drag sets the launch height on its 0.25 m grid; the arrow follows",
-		"tapped %s, start %s" % [str(tapped), str(lab.start)])
 	var shown: Dictionary = lab.observations()
 	var vy := 6.0 * sin(deg_to_rad(60.0))
-	expect.call(float(shown.flight_time) == PhysicsLaws.landing_time(vy, -9.81, lab.start.y) and float(shown.launch_height) == lab.start.y,
-		"projectile: the panel's flight time follows the new launch (formula from the new height)", str(shown.flight_time))
+	expect.call(is_equal_approx(lab.start.x, lab.START_X) and lab.start.y == 1.5 and arrow_follows and screen._control_widgets.launch_height.slider.value == 1.5
+		and float(shown.flight_time) == PhysicsLaws.landing_time(vy, -9.81, lab.start.y) and float(shown.launch_height) == lab.start.y,
+		"projectile: the launch height slider (자세히) raises the launch; the arrow follows and the panel's flight time is the formula's from the new height",
+		"start %s, flight %s" % [str(lab.start), str(shown.flight_time)])
 	await _close(screen)

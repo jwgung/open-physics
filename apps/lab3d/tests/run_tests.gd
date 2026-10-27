@@ -60,6 +60,9 @@
 ##    below the horizon (no island rim), flat at y = 0 where the floors and the cast are, its zone's
 ##    ground and another zone's landmark in view, the projectile's bound at the shore, the map's
 ##    coast, one opaque mesh.
+## 20. easy controls (tests/easy_controls_checks.gd, 2026-10-27): per lab the stage's condition picture
+##    buttons (exactly its conditions, a tap = the sidebar's change, clear of the other overlays on
+##    phone and tablet), one drag gesture per lab and its grab radius, the removed handles gone.
 ## Times are engine fixed steps (60 Hz), independent of rendering FPS.
 extends SceneTree
 
@@ -232,6 +235,11 @@ func _run() -> void:
 	_expect(labs != null and labs.can_instantiate(), "lab mission checks compile", "")
 	if labs != null and labs.can_instantiate():
 		await labs.new(self, _expect).run()
+	print("== easy controls: the condition picture buttons, one drag per lab, the grab radius ==")
+	var easy: GDScript = load("res://tests/easy_controls_checks.gd")
+	_expect(easy != null and easy.can_instantiate(), "easy controls checks compile", "")
+	if easy != null and easy.can_instantiate():
+		await easy.new(self, _expect).run()
 	print("== the labs' ground: a corner of the map's island, every experiment ==")
 	var lab_world: GDScript = load("res://tests/lab_world_checks.gd")
 	_expect(lab_world != null and lab_world.can_instantiate(), "lab world checks compile", "")

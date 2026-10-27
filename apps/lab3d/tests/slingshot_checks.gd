@@ -92,8 +92,9 @@ func check_pull_is_reversed_and_clamped() -> void:
 
 
 ## A tap, a wiggle inside the dead zone, a system cancel, a second finger and the screen dropping
-## the hold: nothing is thrown, no control changes. A tap shows the ball's launch height handle,
-## whose real drag sets the launch height.
+## the hold: nothing is thrown, no control changes. A tap shows no handle (2026-10-27: the slingshot
+## is the lab's one drag; the launch height is the "자세히" slider), and the raised ball is pulled
+## from its new launch point.
 func check_tap_and_cancel_throw_nothing() -> void:
 	var screen := await _lab()
 	var lab: Experiment = screen.experiment
@@ -124,24 +125,15 @@ func check_tap_and_cancel_throw_nothing() -> void:
 			problems.append("%s changed the controls to %.1f° %.1f m/s" % [how, lab.angle_deg, lab.speed])
 		if screen._slingshot_hud.visible:
 			problems.append("%s left the readout" % how)
-		if how == "tap" and not (m.selected_id == "ball" and m._knob.visible):
-			problems.append("a tap did not show the height handle")
+		if how == "tap" and (m.selected_id != "" or m._knob.visible):
+			problems.append("a tap showed a height handle")
 		m.select("")
 	expect.call(problems.is_empty(), "slingshot: a tap, a wiggle in the dead zone, a cancel, a second finger and a dropped hold throw nothing and change nothing", "; ".join(problems))
-	# The tap's height handle, dragged for real: the launch height in its 0.25 m steps.
-	_touch(screen, ball, true)
-	_touch(screen, ball, false)
-	await tree.process_frame
-	var knob: Vector2 = screen.view_point(m._knob.global_position)
-	var up: Vector2 = screen.view_point(m._knob.global_position + Vector3.UP * 1.0)
-	_touch(screen, knob, true)
-	for k in range(1, 7):
-		_drag(screen, knob.lerp(up, k / 6.0))
-		await tree.process_frame
-	_touch(screen, up, false)
+	# The launch height from "자세히" (the slider's 0.25 m steps).
+	screen._set_control("launch_height", 1.5)
 	await tree.process_frame
 	expect.call(is_equal_approx(lab.start.y, 1.5) and is_equal_approx(lab.start.x, lab.START_X) and not lab.released,
-		"slingshot: a tap on the ball shows its height handle; dragging it sets the launch height (0.25 m grid)", "start %s" % str(lab.start))
+		"slingshot: the launch height slider raises the ball (0.25 m grid)", "start %s" % str(lab.start))
 	# The next pull starts from the raised ball.
 	ball = screen.view_point(lab.ball_center())
 	_touch(screen, ball, true)

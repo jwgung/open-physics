@@ -66,6 +66,13 @@
     "place": "줄로 짐 들기",
     "say": "줄이 많을수록 힘이 덜 들어요. 대신 줄을 더 길게 당겨야 해요.",
     "tip": "빨간 손잡이를 아래로 당겨요.",
+    "picks": {
+      "strands": [
+        {"value": "one", "label": "1줄", "picture": "pulley", "count": 1},
+        {"value": "two", "label": "2줄", "picture": "pulley", "count": 2},
+        {"value": "four", "label": "4줄", "picture": "pulley", "count": 4}
+      ]
+    },
     "cards": {"strands": "짐을 잡은 줄", "pulled": "내가 당긴 줄 길이", "lift": "짐이 올라간 높이"}
   },
   "cast": {
@@ -85,6 +92,7 @@
     { "id": "work_out", "label": "짐이 얻은 위치 에너지 mg × d상승", "unit": "J", "digits": 1 }
   ],
   "manipulation": {
+    "grab_radius": 72.0,
     "objects": [
       { "id": "handle", "surface": "pull", "snap": 0.05, "height": false }
     ],

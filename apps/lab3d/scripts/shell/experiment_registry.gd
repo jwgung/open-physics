@@ -187,6 +187,7 @@ static func validate(definition: Dictionary) -> PackedStringArray:
 	problems.append_array(_validate_kid(definition.get("kid"), definition.observations.map(func(o: Dictionary) -> Variant: return o.get("id"))))
 	if definition.get("kid") is Dictionary:
 		problems.append_array(_validate_kid_cards(definition))
+		problems.append_array(ConditionPicks.validate(definition))
 	return problems
 
 
@@ -198,7 +199,8 @@ static func validate(definition: Dictionary) -> PackedStringArray:
 ##           "tip": <the short gesture hint>, "card": <the one key observation shown as a card>,
 ##           "cards": {<observation id>: <its key card's caption>},
 ##           "states": {<a status text of the lab>: <its key card words>},
-##           "minus": {<observation id>: <the word a negative value reads with: "눌려서", "왼쪽으로">}}
+##           "minus": {<observation id>: <the word a negative value reads with: "눌려서", "왼쪽으로">},
+##           "picks": {<control id>: [the mission's picture buttons, ConditionPicks]}}
 ## Every key is optional; a missing one falls back to the shared text (kid_text, card_label).
 ## The key cards over the 3D view show a number with one decimal and its unit in words (KID_UNITS:
 ## "1.3초", "초속 12.5미터"); a game lab's key observations have such a unit (a force, an energy, an
@@ -227,8 +229,10 @@ static func _validate_kid(kid: Variant, ids: Array) -> PackedStringArray:
 		elif key == "card":
 			if not kid.card in ids:
 				problems.append("kid.card must name an observation")
+		elif key == "picks":
+			pass   # ConditionPicks.validate (it needs the controls and the missions)
 		elif not KID_TEXTS.has(key):
-			problems.append("kid.%s unknown (title, place, say, tip, card, cards, states, minus)" % key)
+			problems.append("kid.%s unknown (title, place, say, tip, card, cards, states, minus, picks)" % key)
 		elif not (kid[key] is String and kid[key] != ""):
 			problems.append("kid.%s must be a text" % key)
 	return problems
@@ -485,6 +489,11 @@ static func _validate_manipulation(manipulation: Variant, actions: Array = []) -
 				problems.append("manipulation %s.height.max must be a multiple of step" % object.id)
 		elif height != false:
 			problems.append("manipulation %s.height must be false or {max, step}" % object.id)
+		if not object.get("drag", true) is bool:
+			problems.append("manipulation %s.drag must be true or false" % object.id)
+	var grab: Variant = manipulation.get("grab_radius", 1.0)   # (Manipulator.PICK_RADIUS when absent)
+	if not (grab is float or grab is int) or grab <= 0.0:
+		problems.append("manipulation.grab_radius must be a number > 0 (UI units)")
 	var demo: Variant = manipulation.get("demo_action", "")
 	if not demo is String or (demo != "" and not actions.any(func(a: Dictionary) -> bool: return a.get("id") == demo)):
 		problems.append("manipulation.demo_action must be the id of one of the actions")

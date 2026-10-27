@@ -73,6 +73,17 @@
     "place": "흔들 추",
     "say": "줄과 막대는 길이가 그대로예요. 그래서 공이 동그랗게 흔들려요.",
     "tip": "공을 옆으로 끌었다가 놓아요.",
+    "picks": {
+      "gravity": [
+        {"value": "earth", "label": "지구", "picture": "earth"},
+        {"value": "moon", "label": "달", "picture": "moon"}
+      ],
+      "length": [
+        {"value": 1.5, "label": "짧은 줄", "picture": "rope", "size": 0.2},
+        {"value": 2.5, "label": "긴 줄", "picture": "rope", "size": 0.65},
+        {"value": 3.0, "label": "아주 긴 줄", "picture": "rope", "size": 0.9}
+      ]
+    },
     "cards": {"rope_distance": "줄 길이", "rod_distance": "막대 길이", "small_period": "한 번 왔다 갔다"}
   },
   "cast": {
@@ -93,6 +104,7 @@
     { "id": "rod_tension", "label": "막대가 추를 당기는 힘 mg cosθ + mv²/L", "unit": "N", "digits": 2 }
   ],
   "manipulation": {
+    "grab_radius": 72.0,
     "objects": [
       { "id": "rope", "surface": "rope_arc", "snap": 5.0, "height": false },
       { "id": "rod", "surface": "rod_arc", "snap": 5.0, "height": false }

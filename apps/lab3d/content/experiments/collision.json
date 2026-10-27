@@ -86,6 +86,17 @@
     "place": "공 부딪히기",
     "say": "부딪히면 두 공이 서로 밀어요. 파란 공의 움직임이 주황 공으로 넘어가요.",
     "tip": "노란 손잡이를 끌어서 세기를 정해요.",
+    "picks": {
+      "mass_a": [
+        {"value": 1.0, "label": "1킬로그램", "picture": "ball_blue", "size": 0.2},
+        {"value": 3.0, "label": "3킬로그램", "picture": "ball_blue", "size": 0.8}
+      ],
+      "mass_b": [
+        {"value": 0.5, "label": "0.5킬로그램", "picture": "ball_orange", "size": 0.0},
+        {"value": 1.0, "label": "1킬로그램", "picture": "ball_orange", "size": 0.3},
+        {"value": 2.0, "label": "2킬로그램", "picture": "ball_orange", "size": 0.7}
+      ]
+    },
     "cards": {"before_a": "부딪히기 전 파란 공", "after_a": "부딪힌 뒤 파란 공", "after_b": "부딪힌 뒤 주황 공"},
     "minus": {"before_a": "왼쪽으로", "after_a": "왼쪽으로", "after_b": "왼쪽으로"}
   },
@@ -108,11 +119,12 @@
     { "id": "k_after", "label": "운동 에너지 합 · 충돌 뒤", "unit": "J", "digits": 2 }
   ],
   "manipulation": {
+    "grab_radius": 72.0,
     "objects": [
-      { "id": "ball_a", "surface": "lane_a", "snap": 0.5, "height": false },
-      { "id": "ball_b", "surface": "lane_b", "snap": 0.5, "height": false },
       { "id": "arrow_a", "surface": "arrow_a", "snap": 0.2, "height": false },
-      { "id": "arrow_b", "surface": "arrow_b", "snap": 0.2, "height": false }
+      { "id": "arrow_b", "surface": "arrow_b", "snap": 0.2, "height": false },
+      { "id": "ball_a", "surface": "lane_a", "snap": 0.5, "height": false, "drag": false },
+      { "id": "ball_b", "surface": "lane_b", "snap": 0.5, "height": false, "drag": false }
     ],
     "demo_action": "release"
   },

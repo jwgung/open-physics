@@ -63,6 +63,12 @@
     "place": "용수철",
     "say": "당긴 만큼 용수철이 공을 다시 당겨요. 그래서 공이 왔다 갔다 해요.",
     "tip": "공을 끌었다가 놓아 봐요!",
+    "picks": {
+      "mass": [
+        {"value": 1.0, "label": "가벼운 공", "picture": "ball_orange", "size": 0.2},
+        {"value": 3.0, "label": "무거운 공", "picture": "ball_orange", "size": 0.8}
+      ]
+    },
     "cards": {"extension": "얼마나 늘어났나", "speed": "빠르기"},
     "minus": {"extension": "눌려서"}
   },
@@ -84,6 +90,7 @@
     { "id": "period", "label": "실제 왕복 주기 T = 2π/ω_d (감쇠 없으면 T₀)", "unit": "s", "digits": 2 }
   ],
   "manipulation": {
+    "grab_radius": 72.0,
     "objects": [
       { "id": "ball", "surface": "rod", "snap": 0.1, "height": false }
     ]

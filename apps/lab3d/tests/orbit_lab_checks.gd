@@ -504,19 +504,20 @@ func check_input_path() -> void:
 			reference.step(1.0 / STEP_HZ)
 		worst = maxf(worst, Vector2(lab.planet.global_position.x - reference.x, lab.planet.global_position.z - reference.z).length())
 	expect.call(worst <= ENGINE_TOLERANCE and lab.model.radius() > 4.0, "orbit: the launch after dragging the knob follows the formula (leaving)", "|dx| %s m" % String.num_scientific(worst))
-	# The planet along its line: 0.5 m grid, 2-5 m; the knob follows; picking it up in flight stops the
-	# flight and puts it on the line under the finger.
+	# Since 2026-10-27 the knob is the lab's one drag: a press on the flying planet picks nothing up
+	# (the flight goes on), and the start radius is the picture buttons' and the slider's condition.
 	var planet: RigidBody3D = lab.planet
 	_swipe(screen, _at(screen, planet.global_position), _at(screen, Vector3(4.1, planet.global_position.y, 0.0)), 8)
-	var stopped: bool = not lab.released
-	var knob_back: bool = lab.props.knob_visual.visible and not lab.props.gravity_arrow.visible
+	var flying: bool = lab.released and m.mode == ""
 	_touch(screen, _at(screen, Vector3(4.1, planet.global_position.y, 0.0)), false)
+	screen._set_control("radius", 4.0)
 	await tree.process_frame
 	await tree.process_frame
-	expect.call(knob_back, "orbit: picking the planet up in flight shows the yellow launch knob again (waiting look)", "knob %s, gravity arrow %s" % [lab.props.knob_visual.visible, lab.props.gravity_arrow.visible])
-	expect.call(stopped and lab.start_radius == 4.0 and is_equal_approx(planet.global_position.x, 4.0) and screen._control_widgets.radius.slider.value == 4.0
+	var knob_back: bool = lab.props.knob_visual.visible and not lab.props.gravity_arrow.visible
+	expect.call(knob_back, "orbit: a new start radius during a flight shows the yellow launch knob again (waiting look)", "knob %s, gravity arrow %s" % [lab.props.knob_visual.visible, lab.props.gravity_arrow.visible])
+	expect.call(flying and not lab.released and lab.start_radius == 4.0 and is_equal_approx(planet.global_position.x, 4.0) and screen._control_widgets.radius.slider.value == 4.0
 		and is_equal_approx(knob.global_position.x, 4.0) and lab.radius_at(9.0) == 5.0 and lab.radius_at(0.0) == 2.0,
-		"orbit: dragging the planet sets the start radius on the 0.5 m grid (2-5 m); the knob follows; picking it up stops a flight", "r %.2f" % lab.start_radius)
+		"orbit: a press on the flying planet picks nothing up; the radius condition (2-5 m, 0.5 m grid) stops the flight and the knob follows", "r %.2f" % lab.start_radius)
 	await _close(screen)
 
 
@@ -528,13 +529,14 @@ func check_demo() -> void:
 	screen.manipulator.start_demo(1.0)   # longer than the 0.4 s launch delay after a placement
 	var launches := 0
 	var was := false
-	var radii := {}
+	var launches_seen := {}
 	for i in 8 * STEP_HZ:
 		await tree.physics_frame
 		if lab.released and not was:
 			launches += 1
-			radii[lab.start_radius] = true
+			launches_seen[Vector2(lab.speed, lab.direction)] = true
 		was = lab.released
 	screen.manipulator.start_demo(0.0)
-	expect.call(launches >= 2 and radii.size() >= 2, "orbit: the measurement demo (--auto-drag) moves the planet and launches it", "%d launches, radii %s" % [launches, str(radii.keys())])
+	expect.call(launches >= 2 and launches_seen.size() >= 2, "orbit: the measurement demo (--auto-drag) drags the launch knob and launches",
+		"%d launches, (speed, direction) %s" % [launches, str(launches_seen.keys())])
 	await _close(screen)

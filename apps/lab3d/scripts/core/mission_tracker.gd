@@ -129,19 +129,21 @@ static func judge(definition: Dictionary, stamps: int, status: String, lab: Expe
 ## an inclusive {"min", "max"} range).
 static func conditions_met(conditions: Dictionary, lab: Experiment) -> bool:
 	for id in conditions:
-		var want: Variant = conditions[id]
-		var have: Variant = lab.control_value(id)
-		if want is String:
-			if str(have) != want:
-				return false
-		elif not _number(have):
-			return false
-		elif want is Dictionary:
-			if float(have) < float(want.get("min", -INF)) - CONDITION_EPS or float(have) > float(want.get("max", INF)) + CONDITION_EPS:
-				return false
-		elif absf(float(have) - float(want)) > CONDITION_EPS:
+		if not condition_holds(conditions[id], lab.control_value(id)):
 			return false
 	return true
+
+
+## One condition `want` (an option id, a number, or an inclusive {"min", "max"} range) holds for the
+## control value `have` (the same rule for the stamp and the picture buttons, ConditionPicks).
+static func condition_holds(want: Variant, have: Variant) -> bool:
+	if want is String:
+		return str(have) == want
+	if not _number(have):
+		return false
+	if want is Dictionary:
+		return float(have) >= float(want.get("min", -INF)) - CONDITION_EPS and float(have) <= float(want.get("max", INF)) + CONDITION_EPS
+	return absf(float(have) - float(want)) <= CONDITION_EPS
 
 
 ## The run differs from the `cleared` one in at least one of the `ids` controls (a number by more

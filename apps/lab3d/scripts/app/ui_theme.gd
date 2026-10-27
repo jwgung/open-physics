@@ -161,6 +161,16 @@ static func build() -> Theme:
 	theme.set_stylebox("pressed", "ChoiceButton", choice_down)
 	theme.set_stylebox("hover_pressed", "ChoiceButton", choice_down)
 
+	# The mission's picture buttons (ConditionPicks, 2026-10-27): the same cream paper, outline and lip
+	# as Dugi's choices; the chosen setting turns yellow (the style's selection colour).
+	theme.set_type_variation("PickButton", "Button")
+	var pick_on := _box(SELECT, DIALOGUE_LINE, 16, 8, 6, Color.TRANSPARENT, CHOICE_LINE, CHOICE_LIP)
+	theme.set_stylebox("normal", "PickButton", _box(DIALOGUE_PAPER, DIALOGUE_LINE, 16, 8, 6, Color.TRANSPARENT, CHOICE_LINE, CHOICE_LIP))
+	theme.set_stylebox("hover", "PickButton", _box(Color("fffaf0"), DIALOGUE_LINE, 16, 8, 6, Color.TRANSPARENT, CHOICE_LINE, CHOICE_LIP))
+	theme.set_stylebox("pressed", "PickButton", pick_on)
+	theme.set_stylebox("hover_pressed", "PickButton", pick_on)
+	_label_variation(theme, "PickLabel", bold, 19, INK)
+
 	theme.set_type_variation("FlatButton", "Button")
 	theme.set_color("font_color", "FlatButton", ACCENT)
 	theme.set_color("font_pressed_color", "FlatButton", ACCENT_DARK)

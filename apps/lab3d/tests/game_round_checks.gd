@@ -61,9 +61,11 @@ func check_round() -> void:
 		and pill.get_rect().encloses(screen._mission_text.get_rect()) and pill.get_index() < screen._mission_strip.get_index() \
 		and pill.get_rect().end.x <= screen.view.size.x and pill.get_theme_stylebox("panel").bg_color.a >= 0.8
 	expect.call(pill_ok, "round: the stamps and the stage text sit on a soft paper pill under them", str(pill.get_rect() if pill else null))
-	var ball_seen: bool = not screen._choices.get_rect().grow(8.0).has_point(screen.view_point(lab.ball_center())) \
-		and not screen._choices.get_rect().intersects(screen.dialogue.rects()[0])
-	expect.call(ball_seen, "round: the picture buttons leave the ball in sight and sit above Dugi's box", str(screen._choices.get_rect()))
+	var row: Rect2 = screen._choices.get_rect()
+	var centred: bool = absf(row.get_center().x - screen.view.size.x * 0.5) < 1.0 \
+		and absf(row.get_center().y - screen.view.size.y * 0.5) <= screen.CHOICE_HOP + 1.0 \
+		and not row.intersects(screen.dialogue.rects()[0])
+	expect.call(centred, "round: the picture buttons sit in the middle of the view, above Dugi's box", str(row))
 	var pictured := buttons.all(func(b: Button) -> bool:
 		return b.size.x >= screen.CHOICE_SIZE.x - 1.0 and b.find_children("*", "Label", true, false).size() == 1 and b.get_child(0).get_child(0) is Control)
 	expect.call(pictured, "round: each choice is a big button with a picture and a label", "")
@@ -76,6 +78,13 @@ func check_round() -> void:
 	screen.view._gui_input(motion)
 	await tree.process_frame
 	expect.call(screen._asking and box.active, "round: the question stays until it is answered (timer, a tap on the box, mouse motion)", "")
+	# Behind the question the view is dimmed; the box and the buttons stand above the dim.
+	var shield: ColorRect = screen._question_shield
+	var dimmed: bool = shield != null and shield.color.a > 0.2 and shield.get_index() < screen.dialogue.get_index() \
+		and shield.get_index() < screen._choices.get_index() and shield.get_index() > screen._action_row.get_index() \
+		and shield.get_index() > screen._title_bar.get_index() and shield.get_rect().encloses(Rect2(Vector2.ZERO, screen.view.size))
+	expect.call(dimmed, "round: while Dugi asks the view behind is dimmed, his box and the buttons above the dim", "")
+	var dialogue_home: int = screen._dialogue_index
 	# Nothing behind the question takes a touch (2026-10-28): the ball, 다시, the main button,
 	# 자세히 and ← 지도 all lie under the shield; the question stays.
 	var behind: Array = [screen.view_point(lab.ball_center())]
@@ -100,6 +109,8 @@ func check_round() -> void:
 	expect.call(screen._predict_pick == "farther" and not screen._asking and not box.active and screen._choices == null
 		and screen._mission_text.text == ExperimentScreen.PICK_PREFIX + "더 멀리",
 		"round: a picked picture is kept and the question goes at once", screen._mission_text.text)
+	expect.call(screen.dialogue.get_index() == dialogue_home and screen._question_shield == null,
+		"round: after the pick the dim goes and the box is back in its place among the overlays", "%d %d" % [screen.dialogue.get_index(), dialogue_home])
 	await tree.process_frame
 	var ball: Vector2 = screen.view_point(lab.ball_center())
 	var touch := InputEventScreenTouch.new()

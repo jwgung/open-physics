@@ -24,6 +24,8 @@ const RESET_SHORT := "다시"
 const TIP_MIN_WIDTH := 240.0   # narrower than this beside the actions: the tip goes above them
 const DEMO_RELEASE_DELAY_S := 0.4   # --auto-drag: the auto-release waits this long after the demo put its object down
 const CHOICE_SIZE := Vector2(210.0, 170.0)    # a prediction picture button (UI units)
+const QUESTION_DIM := Color(0.08, 0.12, 0.2, 0.38)   # the scrim behind Dugi's question
+const QUESTION_DIM_FADE := 0.2
 const CHOICE_HOP := 7.0          # the picture buttons' hop while Dugi asks (UI units, upwards)
 const CHOICE_HOP_SPEED := 3.0    # rad/s of the hop's sine (a hop every ~1 s)
 ## The strip's words for a 7-year-old: all stages done, and the picked prediction before the run.
@@ -99,7 +101,8 @@ var _stamp_labels: Array = []
 var _mission_text: Label = null
 var _series_hidden := false           # the graph's hidden_series_until_end lines were left out last time
 var _asking := false                  # Dugi's question is open (his box held, the picture buttons)
-var _question_shield: Control           # while asking: catches every touch but the box and the buttons
+var _question_shield: ColorRect         # while asking: dims and catches everything but the box and the buttons
+var _dialogue_index := -1               # the box's place among the overlays before the question lifted it
 var _question := ""
 var _choices: HBoxContainer = null    # the two picture buttons while asking
 var _choices_popped := false          # the buttons' pop-in has run
@@ -606,16 +609,20 @@ func _show_stamps(count: int) -> void:
 ## Dugi asks (Plan G4): his dialogue box with the question (portrait and name tag, held open until
 ## an answer) and the two picture buttons above it. Nothing behind them takes a touch until the
 ## child picks (2026-10-28 user request): a full-view shield over every other overlay and the 3D
-## view; a tap on the box still reaches it (the whole page at once).
+## view dims them (it fades in), and the box is lifted above it.
 func _ask(question: String, choices: Array) -> void:
 	_asking = true
 	dialogue.hold = true
-	_question_shield = Control.new()
+	_question_shield = ColorRect.new()
 	_question_shield.name = "QuestionShield"
+	_question_shield.color = QUESTION_DIM
 	_question_shield.mouse_filter = Control.MOUSE_FILTER_STOP
 	_question_shield.set_anchors_preset(Control.PRESET_FULL_RECT)
-	_question_shield.gui_input.connect(_on_shield_input)
+	_question_shield.modulate.a = 0.0
 	view.add_child(_question_shield)
+	create_tween().tween_property(_question_shield, "modulate:a", 1.0, QUESTION_DIM_FADE)
+	_dialogue_index = dialogue.get_index()
+	view.move_child(dialogue, -1)
 	_choices = Ui.hbox(16)
 	_choices.name = "PredictChoices"
 	_choices.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -650,17 +657,18 @@ func _choice_button(choice: Dictionary) -> Button:
 	return button
 
 
-## The picture buttons over the dialogue box, at its right end (the ball and the cat stand on
-## the left: they stay in sight while Dugi asks).
+## The picture buttons in the middle of the dimmed view (2026-10-28 user request: easier to see),
+## kept above the dialogue box and its name tag.
 func _fit_choices() -> void:
 	if _choices == null:
 		return
 	_choices.size = _choices.get_combined_minimum_size()
 	var box: Rect2 = dialogue.rects()[0]
-	var left := maxf(box.position.x + DialogueBox.PORTRAIT_SIZE, box.end.x - _choices.size.x)
+	var lowest := box.position.y - DialogueBox.NAME_LIFT - _choices.size.y - 12.0 - CHOICE_HOP
+	var top := minf((view.size.y - _choices.size.y) * 0.5, lowest)
 	# A small hop (up only: the row never reaches the box) that says "tap one of us".
 	var hop := absf(sin(Time.get_ticks_msec() / 1000.0 * CHOICE_HOP_SPEED)) * CHOICE_HOP
-	_choices.position = Vector2(left, box.position.y - DialogueBox.NAME_LIFT - _choices.size.y - 12.0 - hop)
+	_choices.position = Vector2((view.size.x - _choices.size.x) * 0.5, top - hop)
 	if not _choices_popped and _choices.visible:
 		_choices_popped = true   # first shown: the row pops in from a little smaller
 		_choices.pivot_offset = _choices.size * 0.5
@@ -684,15 +692,6 @@ func _predict_pick_choice(choice_id: String) -> void:
 		_fit_mission_strip()
 
 
-## A touch on the shield: one on Dugi's box is the box's (it lies under the shield).
-func _on_shield_input(event: InputEvent) -> void:
-	var tap: bool = (event is InputEventScreenTouch and event.pressed) \
-		or (event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT)
-	if tap and dialogue != null and dialogue.active and dialogue._has_point(dialogue.get_global_transform().affine_inverse() * (_question_shield.get_global_transform() * event.position)):
-		dialogue.advance()
-	accept_event()
-
-
 ## The question ends (an answer, or the round's end): the box closes, the buttons and the shield go.
 func _end_question() -> void:
 	if not _asking:
@@ -707,6 +706,9 @@ func _end_question() -> void:
 		_question_shield.mouse_filter = Control.MOUSE_FILTER_IGNORE   # gone for a touch in this same frame
 		_question_shield.queue_free()
 		_question_shield = null
+	if _dialogue_index >= 0:
+		view.move_child(dialogue, _dialogue_index)   # back under the overlays it sat under
+		_dialogue_index = -1
 	_fit_picks()
 
 

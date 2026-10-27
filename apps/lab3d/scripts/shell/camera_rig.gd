@@ -148,9 +148,12 @@ func orbit(relative: Vector2) -> void:
 	end_focus()   # a gesture is the user's: a close-up gives the view back first
 	# The drawn view moves by the same delta as the goal, so a gesture during a mode transition
 	# neither jumps to the goal nor drops the rest of the transition.
-	var yaw := clampf(goal_yaw - relative.x * ORBIT_RAD_PER_UNIT, yaw_range.x, yaw_range.y)
+	# A full-circle yaw range turns round and round (wraps); a narrower one stops at its ends.
+	var raw_yaw := goal_yaw - relative.x * ORBIT_RAD_PER_UNIT
+	var full_circle := yaw_range.y - yaw_range.x >= TAU - 0.001
+	var yaw := wrapf(raw_yaw, yaw_range.x, yaw_range.x + TAU) if full_circle else clampf(raw_yaw, yaw_range.x, yaw_range.y)
 	var pitch := clampf(goal_pitch - relative.y * ORBIT_RAD_PER_UNIT, pitch_range.x, pitch_range.y)
-	cur_yaw += yaw - goal_yaw
+	cur_yaw += (raw_yaw if full_circle else yaw) - goal_yaw
 	cur_pitch += pitch - goal_pitch
 	_assist_saved = {}   # the user's own view wins: end_assist() must not turn it back
 	goal_yaw = yaw

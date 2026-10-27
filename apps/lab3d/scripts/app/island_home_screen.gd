@@ -33,7 +33,6 @@ var _walk_spot := -1
 var _down := [Vector2.INF, false]    # screen point of the press, cancelled (a drag)
 var _last := Vector2.INF             # the pointer's last point while it turns the map
 var _progress: Dictionary = {}       # ProgressStore.load(), read on open (refresh_progress)
-var _trio_yaw := 0.0                 # the yaw the row faces (eased towards the camera's)
 var _labels_for := Vector2.ZERO      # the view size the spot labels were placed for
 var _labels_camera := Transform3D()  # the camera they were placed for
 var _label_frames := 0               # frames the labels are placed again (their sizes settle)
@@ -78,11 +77,11 @@ const HOME := [0.5, 2.0]
 ## Dugi and Puppy wait on the square with the cat (2026-10-27 user requests: they were missing
 ## from the map; then "why an L shape, why facing different ways"): the three in one row across the
 ## view like a group photo, the cat in the middle, Dugi on its left, Puppy on its right, TRIO_GAP m
-## apart, all facing the camera. The map turns all the way round, so the row and the faces follow
-## the camera's yaw (eased, TRIO_EASE 1/s; only while it changes). The signpost stands outside the
-## row's reach (MapIsland: 1.3 m from HOME > TRIO_GAP + a body).
+## apart, all three facing the same way: the default camera (+z). They stand still when the map
+## turns ("don't turn their bodies with the camera"). The signpost stands outside the row's reach
+## (MapIsland: 1.3 m from HOME > TRIO_GAP + a body).
 const TRIO_GAP := 0.85
-const TRIO_EASE := 10.0
+const TRIO_YAW := 0.0   # rad about +y from +z: every actor's model faces +z at 0 (BreadCat, labs' cast)
 ## The dirt paths (x, z polylines, MapIsland smooths them): from the square to every spot.
 const PATHS := [
 	[[0.5, 2.0], [-1.4, 1.9], [-3.5, 1.5]],
@@ -127,8 +126,7 @@ func _ready() -> void:
 
 	view.rig.configure(_map_camera())
 	view.two_finger_pan = true   # one finger turns the map; two move it (and pinch zooms)
-	_trio_yaw = view.rig.goal_yaw
-	_place_trio(_trio_yaw)
+	_place_trio(TRIO_YAW)
 	refresh_progress()
 	_build_top_bar()
 	_layout()
@@ -230,11 +228,6 @@ func refresh_progress() -> void:
 func _process(delta: float) -> void:
 	if _walking:
 		_step_walk(delta)
-	if view != null and view.rig != null and absf(angle_difference(_trio_yaw, view.rig.cur_yaw)) > 1e-4:
-		_trio_yaw = lerp_angle(_trio_yaw, view.rig.cur_yaw, 1.0 - exp(-TRIO_EASE * delta))
-		if absf(angle_difference(_trio_yaw, view.rig.cur_yaw)) < 1e-3:
-			_trio_yaw = view.rig.cur_yaw
-		_place_trio(_trio_yaw)
 	if view != null and view.rig != null and (view.size != _labels_for or view.rig.global_transform != _labels_camera):
 		_labels_for = view.size
 		_labels_camera = view.rig.global_transform
@@ -250,14 +243,14 @@ func _process(delta: float) -> void:
 func _place_trio(yaw: float) -> void:
 	var home := Vector2(HOME[0], HOME[1])
 	var right := Vector2(cos(yaw), -sin(yaw))   # screen right, on the ground
-	var row := [[dugi, -1.0, 0.0], [cat, 0.0, PI], [puppy, 1.0, 0.0]]   # the cat's model faces -z
+	var row := [[dugi, -1.0], [cat, 0.0], [puppy, 1.0]]
 	for entry in row:
 		var actor: Node3D = entry[0]
 		if actor == null or (actor == cat and _walking):
 			continue
 		var at: Vector2 = home + right * TRIO_GAP * float(entry[1])
 		actor.position = Vector3(at.x, map.walk_height(at.x, at.y), at.y)
-		actor.rotation.y = yaw + float(entry[2])
+		actor.rotation.y = yaw
 
 
 ## Where the trio stands now: [Dugi, cat, Puppy] (tests).

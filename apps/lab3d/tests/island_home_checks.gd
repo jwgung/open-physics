@@ -216,23 +216,28 @@ func check_cast_on_map() -> void:
 				if Rect2(label.position, label.size).intersects(rect):
 					problems.append("%s under the %s name" % [str(at), id])
 		problems.append_array(_trio_problems(screen, "default"))
-		# Turn the map: the row and the faces follow the camera (eased, settled after a moment).
+		# Turn the map: the three stand still (no turning with the camera, 2026-10-27 user request).
+		var before: Array = screen.trio().map(func(a: Node3D) -> Transform3D: return a.transform)
 		screen.view.rig.set_state({"mode": screen.view.rig.mode, "yaw": deg_to_rad(110.0), "pitch": deg_to_rad(-40.0), "distance": 27.0})
 		for i in 90:
 			screen._process(1.0 / 60.0)
+		var after: Array = screen.trio().map(func(a: Node3D) -> Transform3D: return a.transform)
+		if not before.is_empty() and after != before:
+			problems.append("the trio moved or turned with the camera")
 		problems.append_array(_trio_problems(screen, "turned 110 deg"))
 		var wave: float = screen.puppy.wave_angle()
 		for i in 20:
 			await tree.process_frame
 		if is_equal_approx(wave, screen.puppy.wave_angle()):
 			problems.append("puppy's flag does not wave")
-		expect.call(problems.is_empty(), "map (%s): cat, Dugi and Puppy in a row facing the camera (default and turned), on the square, clear of stages and names" % setup[1],
+		expect.call(problems.is_empty(), "map (%s): cat, Dugi and Puppy in a row facing the same way (the default camera), still when the map turns, on the square, clear of stages and names" % setup[1],
 			"; ".join(problems))
 		await _free(screen)
 
 
 ## The trio's row: Dugi, cat, Puppy colinear (within 2 cm) and evenly spaced, the row across the
-## view (square to the camera's ground direction), all three facing the camera within 10 deg.
+## default view (along x), all three facing the same way: +z, towards the default camera (every
+## actor's model faces +z at rotation 0).
 func _trio_problems(screen: Control, view_name: String) -> Array:
 	var out := []
 	var actors: Array = screen.trio()
@@ -241,15 +246,11 @@ func _trio_problems(screen: Control, view_name: String) -> Array:
 	var off := absf(line.cross(p[1] - p[0]))
 	if off > 0.02 or absf(p[1].distance_to(p[0]) - p[1].distance_to(p[2])) > 0.02:
 		out.append("%s: not one even row (off %.3f m)" % [view_name, off])
-	var yaw: float = screen.view.rig.cur_yaw
-	var toward := Vector2(sin(yaw), cos(yaw))   # from the square towards the camera, on the ground
-	if absf(line.dot(toward)) > sin(deg_to_rad(10.0)):
-		out.append("%s: the row is not across the view" % view_name)
-	var fronts := [0.0, PI, 0.0]   # the cat's model faces -z, Dugi's and Puppy's +z
+	if absf(line.dot(Vector2(0.0, 1.0))) > sin(deg_to_rad(1.0)) or p[0].x > p[2].x:
+		out.append("%s: the row is not across the default view, Dugi left" % view_name)
 	for i in 3:
-		var facing: float = actors[i].rotation.y - fronts[i]
-		if absf(angle_difference(facing, yaw)) > deg_to_rad(10.0):
-			out.append("%s: %s faces %.0f deg off the camera" % [view_name, actors[i].name, rad_to_deg(angle_difference(facing, yaw))])
+		if absf(angle_difference(actors[i].rotation.y, 0.0)) > deg_to_rad(1.0):
+			out.append("%s: %s faces %.0f deg off +z" % [view_name, actors[i].name, rad_to_deg(actors[i].rotation.y)])
 	return out
 
 
@@ -266,6 +267,14 @@ func check_camera_limits() -> void:
 		problems.append("distance range %s" % str(rig.distance_range))
 	if not screen.view.two_finger_pan or not rig.pan_ground:
 		problems.append("two fingers do not move the map over the ground")
+	# Turning never hits a wall: a long drag one way keeps turning past +-180 deg (wraps).
+	var turned := 0.0
+	for i in 120:
+		var was := rig.goal_yaw
+		rig.orbit(Vector2(-20.0, 0.0))
+		turned += absf(angle_difference(was, rig.goal_yaw))
+	if turned < TAU * 1.5 or absf(angle_difference(rig.goal_yaw, rig.cur_yaw)) > PI:
+		problems.append("turning stops (turned %.0f deg of the drag)" % rad_to_deg(turned))
 	for i in 40:
 		rig.pan_by(Vector2(-300.0, 200.0))
 	if rig.pan.length() > rig.pan_radius + 1e-3 or absf(rig.pan.y) > 1e-4 or rig.pan_radius < 12.0:

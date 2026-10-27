@@ -1,4 +1,5 @@
-"""The app icon (빵고양이 과학섬): the bread cat's and Dugi's faces side by side, rendered in the
+"""The app icon (빵고양이 과학섬): the bread cat peeking out of its bag beside a big red yarn ball
+(user choice 2026-10-27, instead of the cat and Dugi), rendered in the
 dialogue portraits' storybook look (dugi_portrait.py: cel ramp, warm key sun, brown outline).
 
 Run (headless, Blender 4.5):
@@ -6,7 +7,7 @@ Run (headless, Blender 4.5):
         [--out apps/lab3d/assets/icon]
 
 Writes (PNG):
-  icon_fg_432.png    adaptive icon foreground, transparent; the faces inside the 288 px safe circle
+  icon_fg_432.png    adaptive icon foreground, transparent; the cat and the ball inside the 288 px safe circle
   icon_bg_432.png    adaptive icon background, the island sky with a sea band
   icon_mono_432.png  monochrome layer (themed icons): the foreground's alpha in white
   icon_192.png       legacy launcher icon, foreground over background in a rounded square
@@ -24,8 +25,10 @@ import numpy as np  # noqa: E402
 from mathutils import Vector  # noqa: E402
 
 import bread_cat as bc  # noqa: E402
-import dugi  # noqa: E402
 import dugi_portrait as dp  # noqa: E402
+
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "props"))
+import yarn_ball  # noqa: E402
 
 FG = 432
 RENDER = FG * 3   # rendered large, then box-filtered down (the legacy crops need more pixels)
@@ -33,12 +36,13 @@ SKY_TOP = "#9fd4f5"
 SKY_LOW = "#e3f4ff"
 SEA = "#4fb3d9"
 SAND = "#f6dfa4"
-CAM_POS = Vector((0.0, -6.0, 1.12))
-CAM_TGT = Vector((0.0, 0.0, 1.12))
-LENS = 100.0
-# Each face: root offset, scale, head turn (deg about z, towards the other face).
-CAT = {"at": Vector((-0.30, 0.0, 0.0)), "scale": 1.0, "turn": 12.0}
-DUGI = {"at": Vector((0.34, 0.10, 0.28)), "scale": 1.0, "turn": -12.0}
+CAM_POS = Vector((0.0, -6.0, 0.92))
+CAM_TGT = Vector((0.0, 0.0, 0.92))
+LENS = 94.0
+# The cat: root offset, scale, head turn (deg about z, towards the ball). The ball: centre, scale
+# (the app's 0.25 m ball made bigger so it reads at launcher size), colour (ArtPalette.RED).
+CAT = {"at": Vector((-0.20, 0.0, 0.0)), "scale": 1.0, "turn": -14.0}
+YARN = {"at": Vector((0.30, -0.35, 0.46)), "scale": 1.35, "color": "#ff3b3b"}
 
 
 def place(root, spec):
@@ -50,11 +54,11 @@ def render_fg(path):
     bc.clear_scene()
     cat, _ = bc.build()
     place(cat, CAT)
-    dugi.set_arm_variant("A")
-    place(dugi.build(True, "open", False)[0], DUGI)
-    heads = [o for o in bpy.data.objects if o.name.split(".")[0] == "Head"]
-    for h, spec in zip(sorted(heads, key=lambda o: o.matrix_world.translation.x), (CAT, DUGI)):
-        dp.rot_local(h, (0, 0, 1), spec["turn"])
+    dp.rot_local(bpy.data.objects["Head"], (0, 0, 1), CAT["turn"])
+    ball, _ = yarn_ball.build(dp.hexlin(YARN["color"]))
+    ball.location = YARN["at"]
+    ball.scale = (YARN["scale"],) * 3
+    ball.rotation_euler = (math.radians(20), math.radians(-30), math.radians(15))
     bpy.context.view_layer.update()
     scene = dp.setup_scene(RENDER)
     scene.render.image_settings.file_format = "PNG"

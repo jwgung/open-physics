@@ -19,6 +19,8 @@ signal settings_requested
 var definitions: Array[Dictionary] = []
 var view: View3D
 var cat: CatActor
+var dugi: DugiActor
+var puppy: PuppyActor
 var map: MapIsland
 var _spots: Array[Dictionary] = []   # {id, definition, at (stage top), top, radius, stand, zone, marker}
 var _flags: Dictionary = {}          # spot id -> flag root (visible at 3 stamps)
@@ -72,6 +74,12 @@ const ZONES := {
 }
 ## The cat's home square (x, z), where the paths meet and the cat waits when the map opens.
 const HOME := [0.5, 2.0]
+## Dugi and Puppy wait on the square with the cat (2026-10-27 user request: they were missing from
+## the map): [direction deg (atan2(z, x)), metres from HOME]. Dugi stands in front of the cat towards
+## the default camera, Puppy to its right with the flag, both in the gaps between the cat's hop lines
+## to the spots and the paths (tests/island_home_checks.gd).
+const DUGI_AT := [100.0, 1.0]
+const PUPPY_AT := [-14.0, 1.0]
 ## The dirt paths (x, z polylines, MapIsland smooths them): from the square to every spot.
 const PATHS := [
 	[[0.5, 2.0], [-1.4, 1.9], [-3.5, 1.5]],
@@ -96,7 +104,7 @@ func _ready() -> void:
 	var world := Node3D.new()
 	world.name = "IslandHome"
 	view.set_world(world)
-	view.viewport.add_child(ArtKit.make_environment())
+	view.viewport.add_child(MapIsland.make_environment())
 	map = MapIsland.new(ZONES, PATHS, Vector2(HOME[0], HOME[1]))
 	var spots := []
 	for zone in ZONES:
@@ -107,6 +115,13 @@ func _ready() -> void:
 	world.add_child(cat)
 	cat.position = Vector3(HOME[0], map.walk_height(HOME[0], HOME[1]), HOME[1])
 	cat.rotation.y = deg_to_rad(180.0)   # face the top camera ("up" on screen)
+	dugi = DugiActor.new()
+	puppy = PuppyActor.new()
+	for pair in [[dugi, DUGI_AT], [puppy, PUPPY_AT]]:
+		var actor: Node3D = pair[0]
+		var at := Vector2(HOME[0], HOME[1]) + Vector2.from_angle(deg_to_rad(pair[1][0])) * float(pair[1][1])
+		actor.position = Vector3(at.x, map.walk_height(at.x, at.y), at.y)
+		world.add_child(actor)   # the model's front is +z: they face the default camera, as in the labs
 
 	for zone in ZONES:
 		for spot in ZONES[zone].spots:

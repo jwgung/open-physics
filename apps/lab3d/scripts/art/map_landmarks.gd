@@ -107,7 +107,7 @@ static func _incline(b: ArtMeshBuilder, xf: Transform3D) -> float:
 	_wedge(b, xf, half, top, ArtPalette.YELLOW, ArtPalette.YELLOW_TOP)
 	var normal := Vector3(-sin(a), cos(a), 0.0)
 	var center := Vector3(0.0, top * 0.5, 0.0) + normal * 0.2
-	b.add_rounded_box(xf * Transform3D(Basis(Vector3.BACK, a), center), Vector3(0.38, 0.38, 0.38), 0.04, 1, ArtPalette.CRATE, ArtPalette.CRATE_TOP)
+	b.add_rounded_box(xf * Transform3D(Basis(Vector3.BACK, a), center), Vector3(0.38, 0.38, 0.38), 0.0, 0, ArtPalette.CRATE, ArtPalette.CRATE_TOP)
 	return 1.0
 
 
@@ -125,8 +125,8 @@ static func _friction(b: ArtMeshBuilder, xf: Transform3D) -> float:
 ## A coiled spring on a base with a purple block on top.
 static func _spring(b: ArtMeshBuilder, xf: Transform3D) -> float:
 	_box(b, xf, Vector3(0.0, 0.06, 0.0), Vector3(0.75, 0.12, 0.75), ArtPalette.BLUE_DARK, ArtPalette.BLUE)
-	var turns := 5
-	var steps := 9
+	var turns := 4
+	var steps := 7
 	var bottom := 0.14
 	var height := 0.8
 	var radius := 0.24
@@ -146,11 +146,11 @@ static func _seesaw(b: ArtMeshBuilder, xf: Transform3D) -> float:
 	b.add_cylinder(xf * Transform3D(Basis(Vector3.UP, PI * 0.25), Vector3.ZERO), 0.32, 0.05, 0.45, 4, ArtPalette.YELLOW)
 	var tilt := Basis(Vector3.BACK, deg_to_rad(-12.0))
 	var plank := Vector3(0.0, 0.5, 0.0)
-	b.add_rounded_box(xf * Transform3D(tilt, plank), Vector3(2.0, 0.1, 0.4), 0.03, 1, ArtPalette.RED, ArtPalette.RED_TOP)
+	b.add_rounded_box(xf * Transform3D(tilt, plank), Vector3(2.0, 0.1, 0.4), 0.0, 0, ArtPalette.RED, ArtPalette.RED_TOP)
 	var low := plank + tilt * Vector3(0.74, 0.2, 0.0)
-	b.add_rounded_box(xf * Transform3D(tilt, low), Vector3(0.32, 0.3, 0.32), 0.03, 1, ArtPalette.BLUE, ArtPalette.BLUE)
+	b.add_rounded_box(xf * Transform3D(tilt, low), Vector3(0.32, 0.3, 0.32), 0.0, 0, ArtPalette.BLUE, ArtPalette.BLUE)
 	var high := plank + tilt * Vector3(-0.78, 0.12, 0.0)
-	b.add_rounded_box(xf * Transform3D(tilt, high), Vector3(0.2, 0.14, 0.2), 0.03, 1, ArtPalette.YELLOW, ArtPalette.YELLOW_TOP)
+	b.add_rounded_box(xf * Transform3D(tilt, high), Vector3(0.2, 0.14, 0.2), 0.0, 0, ArtPalette.YELLOW, ArtPalette.YELLOW_TOP)
 	return 1.0
 
 
@@ -224,8 +224,9 @@ static func _star(b: ArtMeshBuilder, xf: Transform3D) -> float:
 
 # --- helpers ---------------------------------------------------------------------------------
 
+## A plain box: a bevel (108 triangles instead of 12) does not show at the map's distance.
 static func _box(b: ArtMeshBuilder, xf: Transform3D, at: Vector3, size: Vector3, color: Color, top: Variant = null) -> void:
-	b.add_rounded_box(xf * Transform3D(Basis(), at), size, 0.03, 1, color, top)
+	b.add_rounded_box(xf * Transform3D(Basis(), at), size, 0.0, 0, color, top)
 
 
 static func _ball(b: ArtMeshBuilder, xf: Transform3D, at: Vector3, radius: float, color: Color) -> void:

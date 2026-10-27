@@ -4,9 +4,10 @@
 ## (MapLandmarks) on a round stage, and trees, rocks, flowers and clouds placed clear of them.
 ## The labs keep ArtKit.build_island; nothing here is shared with them.
 ##
-## Draw calls: land (top, beach, overlays, trees, clouds), water (sea, surf, pond), landmarks, and
-## one blob-shadow mesh: 4 static meshes, the same lit material as every prop (no texture, no
-## light, no animation). The top is a polar grid over the coast whose vertices are jittered for the
+## Draw calls: one static opaque mesh (landmarks, water: shallows, surf, pond; land: top, beach,
+## overlays, trees with their baked blob shadows, clouds) in map_lit.gdshader (art_lit's light,
+## encoded per vertex), no texture, no light, no blending, no animation. The open sea is the clear
+## colour. Measured on SM-P200 at a 450 MHz GPU lock (2026-10-27), see map_lit.gdshader and _add_sea. The top is a polar grid over the coast whose vertices are jittered for the
 ## low-poly facets; height_at() reads that same mesh, so the paths, stages and the cat sit on it.
 class_name MapIsland
 extends RefCounted
@@ -27,8 +28,7 @@ const JITTER := 0.3                 # share of a grid cell the inner vertices mo
 const HILL_PLATEAU := 0.35          # share of a hill's radius that is its flat top
 const SEA_Y := -0.2
 const SHORE_F := 0.955              # coast fraction where the beach meets the sea (BEACH_Y at SEA_Y)
-const SHALLOW := 1.9                # m of light shallow water outside the coast
-const SEA_FAR := 320.0              # m: the sea's edge (beyond any view of the map camera)
+const SHALLOW := 1.3                # m of light shallow water outside the coast
 const PATH_WIDTH := 0.8
 const PATH_LIFT := 0.05             # m above the grass (no z-fight at 34 m)
 const OVERLAY_LIFT := 0.03          # yard sand, pond shore
@@ -197,24 +197,57 @@ static func _hash(i: int, j: int, salt: int) -> float:
 	return (v - floor(v)) * 2.0 - 1.0
 
 
+## The map's environment: ArtKit's, with the open sea as the clear colour (SEA as an upward
+## face of art_lit.gdshader shows it: lit plus the sky fill, so the shallow ring meets it cleanly).
+const SHADER := preload("res://scripts/art/map_lit.gdshader")
+static var _material: ShaderMaterial
+
+
+## The map's one solid material (map_lit.gdshader: ArtKit.lit_material's light, encoded per vertex).
+static func material() -> ShaderMaterial:
+	if _material == null:
+		_material = ShaderMaterial.new()
+		_material.shader = SHADER
+		_material.set_shader_parameter("sun_dir", ArtKit.SUN_DIR)
+		_material.set_shader_parameter("lit_color", ArtPalette.LIGHT)
+		_material.set_shader_parameter("shade_color", ArtPalette.SHADE)
+		_material.set_shader_parameter("threshold", ArtKit.LIGHT_THRESHOLD)
+		_material.set_shader_parameter("softness", ArtKit.LIGHT_SOFTNESS)
+		_material.set_shader_parameter("sky_fill", ArtKit.SKY_FILL)
+		# art_lit encodes where OUTPUT_IS_SRGB: the Compatibility renderer (Mobile converts itself).
+		_material.set_shader_parameter("encode_srgb", RenderingServer.get_current_rendering_method() == "gl_compatibility")
+	return _material
+
+
+static func make_environment() -> WorldEnvironment:
+	var world := ArtKit.make_environment()
+	world.environment.background_color = sea_color()
+	return world
+
+
+static func sea_color() -> Color:
+	var lin := ArtPalette.SEA.srgb_to_linear()
+	var k := 1.0 + ArtKit.SKY_FILL
+	return Color(lin.r * k, lin.g * k, lin.b * k).linear_to_srgb()
+
+
 static func _v2(at: Array) -> Vector2:
 	return Vector2(float(at[0]), float(at[1]))
 
 
 # --- building ---------------------------------------------------------------------------------
 
-## Builds the map under `world`: "Island" (land), "MapWater", "MapLandmarks", "IslandShadows".
+## Builds the map under `world` as ONE mesh, "Island": landmarks, water and land in one builder, in
+## the order they cover each other (what lies on the grass first, the grass and beach last), so
+## the covered ground fails the depth test instead of being shaded and drawn over (SM-P200 fill).
 ## `spots` are [id, Vector2 at, yaw deg]; returns spot_info: id -> {at (stage top), top (landmark
 ## height above at), stand (where the cat waits), flag (where the flag stands), radius, vertices}.
 func build(world: Node3D, spots: Array) -> Dictionary:
 	var land := ArtKit.builder()
-	var water := ArtKit.builder()
-	var marks := ArtKit.builder()
-	var shadows := ArtKit.shadow_builder()
-	_add_top(land)
-	_add_sea(water)
+	var water := land
+	var marks := land
 	for spot in spots:
-		_add_spot(marks, shadows, spot)
+		_add_spot(marks, spot)
 	for zone in zones:
 		var spec: Dictionary = zones[zone]
 		match spec.ground:
@@ -222,16 +255,17 @@ func build(world: Node3D, spots: Array) -> Dictionary:
 				_add_yard(land, spec)
 			"pond":
 				_add_pond(land, water, spec)
+	_add_sea(water)
 	_add_paths(land)
-	_add_plaza(land, shadows)
-	_add_decor(land, shadows)
+	_add_plaza(land)
+	_add_decor(land)
 	_add_clouds(land)
-	var pieces := [["Island", land, null], ["MapWater", water, null], ["MapLandmarks", marks, null],
-		["IslandShadows", shadows, ArtKit.shadow_material()]]
-	for piece in pieces:
-		var mi := ArtKit.instance(piece[1].commit(), piece[2])
-		mi.name = piece[0]
-		world.add_child(mi)
+	# The grass and beach last: drawn after the yard, paths, square and trees that lie on them, the
+	# covered grass fails the depth test before it is shaded (overdraw on SM-P200).
+	_add_top(land)
+	var mi := ArtKit.instance(land.commit(), material())
+	mi.name = "Island"
+	world.add_child(mi)
 	return spot_info
 
 
@@ -268,24 +302,22 @@ func _top_color(j: int, i: int, k: int, tri: Array, meadows: Array) -> Color:
 	return color.lightened(0.05 * (_hash(i, j, 3 + k) * 0.5 + 0.5))
 
 
-## The sea: the light shallow ring (a wavy outer edge), the open sea out to SEA_FAR darkening
-## towards the horizon, the white surf line along the shore and a few wave strokes.
+## The sea's geometry: only the light shallow ring (a wavy outer edge) hugging the coast, the white
+## surf line along the shore and a few wave strokes. The open sea is the view's clear colour
+## (make_environment): the map camera never looks above the horizon, so the background is always
+## sea, and a sea plane filling the screen cost the home a third of its frame on SM-P200
+## (2026-10-27: 13.5 -> 9.4 M GPU cycles a frame without it).
 func _add_sea(b: ArtMeshBuilder) -> void:
-	var inner := func(t: float) -> float: return 0.88 * coast_radius(t)
+	var inner := func(t: float) -> float: return (SHORE_F - 0.015) * coast_radius(t)   # just under the wet sand
 	var shallow := func(t: float) -> float: return coast_radius(t) + SHALLOW + 0.45 * sin(4.0 * t + 0.6)
-	var near := func(t: float) -> float: return coast_radius(t) + SHALLOW + 4.0
-	var mid := func(t: float) -> float: return 45.0
-	var far := func(t: float) -> float: return SEA_FAR
-	var rings := [[inner, ArtPalette.SEA_SHALLOW], [shallow, ArtPalette.SEA_SHALLOW], [shallow, ArtPalette.SEA],
-		[near, ArtPalette.SEA], [mid, ArtPalette.SEA.lerp(ArtPalette.SEA_DEEP, 0.6)], [far, ArtPalette.SEA_DEEP]]
-	for r in [[0, 1], [2, 3], [3, 4], [4, 5]]:
-		_ring_band(b, rings[r[0]], rings[r[1]], SEA_Y)
-	# Surf along the shoreline.
+	# Surf along the shoreline and the wave strokes first: the shallows under them are then
+	# rejected by depth instead of shaded twice.
 	var surf_in := func(t: float) -> float: return SHORE_F * coast_radius(t) - 0.1
 	var surf_out := func(t: float) -> float: return SHORE_F * coast_radius(t) + 0.3 + 0.08 * sin(9.0 * t)
 	_ring_band(b, [surf_in, ArtPalette.FOAM], [surf_out, ArtPalette.FOAM], SEA_Y + 0.02)
 	for w in WAVES:
 		_wave(b, deg_to_rad(w[0]), w[1], w[2])
+	_ring_band(b, [inner, ArtPalette.SEA_SHALLOW], [shallow, ArtPalette.SEA_SHALLOW], SEA_Y)
 
 
 ## A band between two rings [radius fn, colour] at height y (one quad per sector).
@@ -406,11 +438,11 @@ func _add_pond(land: ArtMeshBuilder, water: ArtMeshBuilder, spec: Dictionary) ->
 		edge.append(center + Vector2(cos(t), sin(t)) * (r - 0.05))
 		shore.append(center + Vector2(cos(t), sin(t)) * (r + 0.45))
 	_add_flat_ring(land, edge, shore, OVERLAY_LIFT, ArtPalette.SAND)
-	_add_flat(water, center, edge, 0.06, ArtPalette.POND)
 	var deep: Array = []
 	for p in edge:
 		deep.append(center + (p - center) * 0.55)
-	_add_flat(water, center, deep, 0.065, ArtPalette.WATER)
+	_add_flat(water, center, deep, 0.06, ArtPalette.WATER)   # a ring round the deep middle: no layer on another
+	_add_flat_ring(water, deep, edge, 0.06, ArtPalette.POND)
 	land.ao_min = 1.0
 	for pad in [[-0.9, 0.7, 0.32], [0.2, 1.1, 0.25], [0.95, -0.6, 0.28]]:
 		var at := center + Vector2(pad[0], pad[1])
@@ -496,7 +528,7 @@ static func _resample(points: PackedVector2Array, step: float) -> PackedVector2A
 
 
 ## The cat's home square where the paths meet, with a signpost.
-func _add_plaza(b: ArtMeshBuilder, shadows: ArtMeshBuilder) -> void:
+func _add_plaza(b: ArtMeshBuilder) -> void:
 	var inner: Array = []
 	var outer: Array = []
 	for s in 16:
@@ -513,12 +545,11 @@ func _add_plaza(b: ArtMeshBuilder, shadows: ArtMeshBuilder) -> void:
 	for board in [[0.95, 25.0, ArtPalette.CRATE_TOP], [0.7, -30.0, ArtPalette.CRATE], [0.45, 70.0, ArtPalette.CRATE_TOP]]:
 		var basis := Basis(Vector3.UP, deg_to_rad(board[1]))
 		b.add_rounded_box(Transform3D(basis, Vector3(post.x, y + board[0], post.y) + basis * Vector3(0.22, 0.0, 0.0)),
-			Vector3(0.5, 0.16, 0.05), 0.02, 1, board[2])
-	shadows.add_blob(Transform3D(Basis(), Vector3(post.x, y + 0.01, post.y)), 0.35, ArtKit.shadow_alpha())
+			Vector3(0.5, 0.16, 0.05), 0.0, 0, board[2])
 
 
 ## A spot: its round stage (levelled over the ground under it) and its landmark on top.
-func _add_spot(b: ArtMeshBuilder, shadows: ArtMeshBuilder, spot: Array) -> void:
+func _add_spot(b: ArtMeshBuilder, spot: Array) -> void:
 	var id: String = spot[0]
 	var at: Vector2 = spot[1]
 	var yaw := deg_to_rad(float(spot[2]))
@@ -550,12 +581,11 @@ func _add_spot(b: ArtMeshBuilder, shadows: ArtMeshBuilder, spot: Array) -> void:
 		"flag": Vector3(flag.x, y, flag.y),
 		"vertices": b.vertex_count() - before,
 	}
-	shadows.add_blob(Transform3D(Basis(), Vector3(at.x, y + 0.01, at.y)), maxf(radius, 0.6) * 0.8, ArtKit.shadow_alpha(0.8))
 
 
 ## Trees, rocks and flowers: each placed only where nothing else is (clear()); the flowers seeded
 ## in the meadow and over the rest of the grass.
-func _add_decor(b: ArtMeshBuilder, s: ArtMeshBuilder) -> void:
+func _add_decor(b: ArtMeshBuilder) -> void:
 	decorations.clear()
 	for t in TREES:
 		var x: float = t[0]
@@ -570,7 +600,7 @@ func _add_decor(b: ArtMeshBuilder, s: ArtMeshBuilder) -> void:
 		b.ao_min = 0.85
 		b.add_cylinder(_at(x, y + 0.7 * k, z, 15.0), 1.1 * k, 0.0, 1.5 * k, 7, ArtPalette.LEAF)
 		b.add_cylinder(_at(x, y + 1.5 * k, z, 40.0), 0.8 * k, 0.0, 1.2 * k, 7, ArtPalette.LEAF_LIGHT)
-		s.add_blob(_at(x, y + 0.012, z), 1.3 * k, ArtKit.shadow_alpha())
+		_ground_blob(b, Vector3(x, y, z), 1.3 * k)
 		decorations.append(["tree", x, z, 1.0 * k])
 	b.ao_min = 0.75
 	b.ao_height = 0.3
@@ -582,7 +612,7 @@ func _add_decor(b: ArtMeshBuilder, s: ArtMeshBuilder) -> void:
 			continue
 		var y := height_at(x, z)
 		b.add_sphere(Transform3D(Basis().scaled(Vector3(1.3, 0.75, 1.0)), Vector3(x, y + radius * 0.5, z)), radius, 4, 6, ArtPalette.ROCK)
-		s.add_blob(_at(x, y + 0.012, z), radius * 1.8, ArtKit.shadow_alpha())
+		_ground_blob(b, Vector3(x, y, z), radius * 1.8)
 		decorations.append(["rock", x, z, radius * 1.3])
 	var rng := RandomNumberGenerator.new()
 	rng.seed = FLOWER_SEED
@@ -608,10 +638,38 @@ func _add_decor(b: ArtMeshBuilder, s: ArtMeshBuilder) -> void:
 			placed += 1
 
 
+## A blob shadow on the grass without blending: ArtKit's blob (full SHADOW_ALPHA inside 35 % of the
+## radius, fading out) as an opaque gradient from the shadowed grass to the grass colour itself.
+## The ground under a tree or rock is known grass, so it looks the same, and the map has no
+## alpha-blended layer over the island (fill on SM-P200, 2026-10-27).
+func _ground_blob(b: ArtMeshBuilder, at: Vector3, radius: float) -> void:
+	var ground := ArtPalette.GRASS_TOP.lightened(0.025)
+	for zone in zones:
+		var spec: Dictionary = zones[zone]
+		if spec.ground == "meadow" and Vector2(at.x, at.z).distance_to(_v2(spec.at)) < float(spec.radius):
+			ground = ArtPalette.MEADOW.lightened(0.025)
+	var dark := ground.lerp(ArtPalette.SHADOW, ArtKit.shadow_alpha())
+	var c := at + Vector3(0.0, 0.012, 0.0)
+	var sides := 12
+	for i in sides:
+		var d0 := Vector3(cos(TAU * i / sides), 0.0, sin(TAU * i / sides))
+		var d1 := Vector3(cos(TAU * (i + 1) / sides), 0.0, sin(TAU * (i + 1) / sides))
+		var i0 := c + d0 * radius * 0.35
+		var i1 := c + d1 * radius * 0.35
+		var o0 := c + d0 * radius
+		var o1 := c + d1 * radius
+		o0.y = height_at(o0.x, o0.z) + 0.012
+		o1.y = height_at(o1.x, o1.z) + 0.012
+		b.add_triangle([c, i0, i1], [dark, dark, dark])
+		b.add_triangle([i0, o0, o1], [dark, ground, ground])
+		b.add_triangle([i0, o1, i1], [dark, ground, dark])
+
+
 func _flower(b: ArtMeshBuilder, p: Vector2, i: int) -> void:
 	var y := height_at(p.x, p.y)
-	b.add_cylinder(_at(p.x, y, p.y), 0.03, 0.03, 0.3, 4, ArtPalette.STEM, false)
-	b.add_sphere(_at(p.x, y + 0.34, p.y), 0.13, 3, 5, ArtPalette.FLOWERS[i % ArtPalette.FLOWERS.size()])
+	# Seen from 27 m a flower is a dot: a 3-sided stem and a diamond head (a tenth of the lab's).
+	b.add_cylinder(_at(p.x, y, p.y), 0.035, 0.035, 0.3, 3, ArtPalette.STEM, false)
+	b.add_sphere(_at(p.x, y + 0.34, p.y), 0.14, 2, 4, ArtPalette.FLOWERS[i % ArtPalette.FLOWERS.size()])
 	decorations.append(["flower", p.x, p.y, 0.2])
 
 
@@ -656,7 +714,7 @@ func _add_clouds(b: ArtMeshBuilder) -> void:
 	for c in CLOUDS:
 		var k: float = c[3]
 		for puff in [[0.0, 0.0, 1.0], [1.1, -0.2, 0.75], [-1.1, -0.25, 0.7], [0.4, 0.5, 0.65]]:
-			b.add_sphere(_at(c[0] + puff[0] * k, c[1] + puff[1] * k, c[2]), puff[2] * k, 4, 7, ArtPalette.CLOUD)
+			b.add_sphere(_at(c[0] + puff[0] * k, c[1] + puff[1] * k, c[2]), puff[2] * k, 3, 6, ArtPalette.CLOUD)
 
 
 static func _at(x: float, y: float, z: float, yaw_deg := 0.0) -> Transform3D:

@@ -20,6 +20,7 @@ func run() -> void:
 	await check_home_builds()
 	await check_map_layout()
 	await check_labels_and_taps()
+	await check_cast_on_map()
 	await check_sea_fills_view()
 	check_lab_island_unchanged()
 	await check_tap_opens_experiment()
@@ -29,8 +30,8 @@ func run() -> void:
 	await check_back_navigation()
 
 
-## The home renders: the map island in 4 static meshes (land, water, landmarks, shadows: the draw
-## budget of the map on SM-P200), the cat, the 5 zones and 11 spots, the top bar with the brand and
+## The home renders: the map island as one static opaque mesh (landmarks, water, land with its baked
+## blob shadows: the draw and fill budget of the map on SM-P200), the cat, the 5 zones and 11 spots, the top bar with the brand and
 ## the settings button (no list button, 2026-10-27).
 func check_home_builds() -> void:
 	var screen := await _home(PHONE)
@@ -45,8 +46,8 @@ func check_home_builds() -> void:
 		problems.append("no cat")
 	var statics: Array = world.get_children().filter(func(n: Node) -> bool: return n is MeshInstance3D).map(func(n: Node) -> String: return str(n.name))
 	statics.sort()
-	if statics != ["Island", "IslandShadows", "MapLandmarks", "MapWater"]:
-		problems.append("static map meshes %s (want land, water, landmarks, shadows)" % str(statics))
+	if statics != ["Island"]:
+		problems.append("static map meshes %s (want one: land, water, landmarks and baked shadows)" % str(statics))
 	var spots: int = world.get_children().filter(func(n: Node) -> bool: return n.name.begins_with("Spot_")).size()
 	if screen.ZONES.size() != 5:
 		problems.append("%d zones (want 5)" % screen.ZONES.size())
@@ -70,7 +71,7 @@ func check_home_builds() -> void:
 	var center_screen: Vector2 = screen._world_to_screen(Vector3(0.0, 0.0, 0.0))
 	if center_screen == Vector2.INF or not Rect2(Vector2.ZERO, screen.size).has_point(center_screen):
 		problems.append("island centre not on screen %s" % str(center_screen))
-	expect.call(problems.is_empty(), "island home builds: map in 4 meshes, cat, 5 zones, 11 spots, top bar, 3/4 camera", "; ".join(problems))
+	expect.call(problems.is_empty(), "island home builds: map in 1 mesh, cat, 5 zones, 11 spots, top bar, 3/4 camera", "; ".join(problems))
 	await _free(screen)
 
 
@@ -138,11 +139,11 @@ func check_map_layout() -> void:
 	expect.call(problems.is_empty(), "map layout: zones and stages on the grass, drum in the pond, 11 landmarks, paths and decor clear",
 		"; ".join(problems.slice(0, 8)))
 	# The ground the paths, stages and cat sit on is the drawn top: height_at() agrees with the
-	# land mesh's own triangles under a ray from above (hill slopes included).
+	# map mesh's own triangles under a ray from above (hill slopes included, clear of landmarks).
 	var land: MeshInstance3D = screen.find_child("Island", true, false)
 	var faces := land.mesh.get_faces()
 	var worst := 0.0
-	for p in [Vector2(6.6, 3.1), Vector2(5.0, 4.5), Vector2(8.4, -3.9), Vector2(7.4, -2.6), Vector2(-3.0, 3.0), Vector2(1.0, -1.0)]:
+	for p in [Vector2(7.8, 1.4), Vector2(5.0, 4.5), Vector2(9.6, -5.0), Vector2(7.4, -2.6), Vector2(-3.0, 3.0), Vector2(1.0, -1.0)]:   # hill slopes, off the stages
 		var hit := -INF
 		for t in range(0, faces.size(), 3):
 			var x: Variant = Geometry3D.ray_intersects_triangle(Vector3(p.x, 10.0, p.y), Vector3.DOWN, faces[t], faces[t + 1], faces[t + 2])
@@ -183,27 +184,75 @@ func check_labels_and_taps() -> void:
 		await _free(screen)
 
 
-## The sea fills the ground of the view at every camera the map allows (turned all round, -30..-85,
-## 16-34 m): each view's bottom corners and middle look down onto water inside SEA_FAR.
+## Dugi and Puppy are on the map (2026-10-27 user request): on the square beside the cat, on land,
+## clear of the paths, the stages and the cat's hop lines to the spots, not under any spot name at
+## the default camera (phone and tablet), and moving (their idle as in the labs).
+func check_cast_on_map() -> void:
+	for setup in [[PHONE, "phone"], [TABLET, "tablet"]]:
+		var screen := await _home(setup[0])
+		await tree.process_frame
+		await tree.process_frame
+		var map: MapIsland = screen.map
+		var problems := []
+		var home := Vector2(screen.HOME[0], screen.HOME[1])
+		for actor in [screen.dugi, screen.puppy]:
+			if actor == null or not actor.is_visible_in_tree():
+				problems.append("an actor is missing")
+				continue
+			var at := Vector2(actor.position.x, actor.position.z)
+			if at.distance_to(home) > MapIsland.PLAZA_RADIUS or map.water_at(at.x, at.y) or absf(actor.position.y - map.walk_height(at.x, at.y)) > 0.01:
+				problems.append("%s not standing on the square" % str(actor.position))
+			for q in map.path_points:
+				if q.distance_to(home) > MapIsland.PLAZA_RADIUS and at.distance_to(q) < MapIsland.PATH_WIDTH * 0.5 + 0.3:
+					problems.append("%s on a path" % str(at))
+					break
+			for spot in screen._spots:
+				var stage := Vector2(spot.at.x, spot.at.z)
+				if at.distance_to(stage) < float(spot.radius) + 0.6:
+					problems.append("%s on the %s stage" % [str(at), spot.id])
+				var stand := Vector2(spot.stand.x, spot.stand.z)
+				if at.distance_to(Geometry2D.get_closest_point_to_segment(at, home, stand)) < 0.35:
+					problems.append("%s in the cat's way to %s" % [str(at), spot.id])
+			# Its drawn box on screen against every spot name.
+			var box: AABB = actor.bounds()
+			var rect := Rect2(screen._world_to_screen(box.position), Vector2.ZERO)
+			for i in 8:
+				rect = rect.expand(screen._world_to_screen(box.get_endpoint(i)))
+			for id in screen._labels:
+				var label: Control = screen._labels[id]
+				if Rect2(label.position, label.size).intersects(rect):
+					problems.append("%s under the %s name" % [str(at), id])
+		var wave: float = screen.puppy.wave_angle()
+		for i in 20:
+			await tree.process_frame
+		if is_equal_approx(wave, screen.puppy.wave_angle()):
+			problems.append("puppy's flag does not wave")
+		expect.call(problems.is_empty(), "map (%s): Dugi and Puppy on the square, clear of paths, stages, hops and names" % setup[1], "; ".join(problems))
+		await _free(screen)
+
+
+## The sea fills the view at every camera the map allows (turned all round, -30..-85, 16-34 m,
+## phone and tablet): the open sea is the clear colour (MapIsland.make_environment, no sea plane:
+## SM-P200 fill cost), so no view may look above the horizon (its top corners look down), and the
+## shallow ring outside the coast must sit in that sea colour.
 func check_sea_fills_view() -> void:
-	var screen := await _home(TABLET)
-	var rig: Camera3D = screen.view.rig
 	var problems := []
-	for yaw_deg in [0.0, 90.0, 180.0, -135.0]:
-		for pitch_deg in [-30.0, -55.0, -85.0]:
-			for distance in [16.0, 34.0]:
-				rig.set_state({"mode": rig.mode, "yaw": deg_to_rad(yaw_deg), "pitch": deg_to_rad(pitch_deg), "distance": distance})
-				var vp: Vector2 = Vector2(screen.view.viewport.size)
-				for f in [Vector2(0.0, 1.0), Vector2(1.0, 1.0), Vector2(0.5, 0.5), Vector2(0.0, 0.5)]:
-					var o := rig.project_ray_origin(vp * f)
-					var n := rig.project_ray_normal(vp * f)
-					if n.y >= -1e-3:
-						continue   # sky above the horizon
-					var at := o + n * ((MapIsland.SEA_Y - o.y) / n.y)
-					if Vector2(at.x, at.z).length() > MapIsland.SEA_FAR * 0.9:
-						problems.append("yaw %d pitch %d %d m: %s sees past the sea" % [yaw_deg, pitch_deg, distance, str(f)])
-	expect.call(problems.is_empty(), "the sea fills the map's ground at every allowed camera", "; ".join(problems.slice(0, 4)))
-	await _free(screen)
+	for size in [PHONE, TABLET]:
+		var screen := await _home(size)
+		var rig: Camera3D = screen.view.rig
+		var environment: Environment = screen.view.viewport.find_children("*", "WorldEnvironment", true, false)[0].environment
+		if not environment.background_color.is_equal_approx(MapIsland.sea_color()):
+			problems.append("clear colour %s is not the sea" % str(environment.background_color))
+		for yaw_deg in [0.0, 90.0, 180.0, -135.0]:
+			for pitch_deg in [-30.0, -55.0, -85.0]:
+				for distance in [16.0, 34.0]:
+					rig.set_state({"mode": rig.mode, "yaw": deg_to_rad(yaw_deg), "pitch": deg_to_rad(pitch_deg), "distance": distance})
+					var vp: Vector2 = Vector2(screen.view.viewport.size)
+					for f in [Vector2(0.0, 0.0), Vector2(1.0, 0.0), Vector2(0.5, 0.0)]:
+						if rig.project_ray_normal(vp * f).y > -0.01:
+							problems.append("%s yaw %d pitch %d %d m: the top of the view sees the sky" % [str(size), yaw_deg, pitch_deg, distance])
+		await _free(screen)
+	expect.call(problems.is_empty(), "the sea (clear colour) fills the map's view at every allowed camera", "; ".join(problems.slice(0, 4)))
 
 
 ## The labs keep their own island (ArtKit.build_island): the map's island is separate, the lab

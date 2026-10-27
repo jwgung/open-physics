@@ -19,8 +19,7 @@ const CLOUD := Color("ffffff")
 const FLOWERS := [Color("ffd400"), PINK, WHITE, ORANGE]
 
 # The island map (home screen, MapIsland): sea, beach and the zones' ground
-const SEA := Color("2f95e4")          # open sea (darker than SKY so the horizon stays apart)
-const SEA_DEEP := Color("2479c9")     # far sea towards the horizon
+const SEA := Color("2f95e4")          # open sea (the map's clear colour, MapIsland.make_environment)
 const SEA_SHALLOW := Color("7ad9ec")  # the light shallow ring hugging the coast
 const FOAM := Color("f4fbff")         # surf line and wave strokes
 const SAND := Color("f3d88c")         # beach

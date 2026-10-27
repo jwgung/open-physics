@@ -64,9 +64,9 @@
     "hidden_until_end": ["fall_time"],
     "hidden_series_until_end": ["yellow", "purple", "red"],
     "stages": [
-      { "threshold": 10.0, "conditions": {"gravity": "earth"}, "text": "지구에서 공을 더 높이 올려 떨어뜨리기!" },
-      { "threshold": 5.0, "conditions": {"gravity": "moon"}, "text": "달에서 공을 맨 위에서 떨어뜨리기!" },
-      { "threshold": 15.0, "conditions": {"gravity": "jupiter"}, "text": "목성에서 공을 높이 올려 떨어뜨리기!" }
+      { "threshold": 10.0, "conditions": {"gravity": "earth"}, "text": "지구에서 공을 처음보다 더 높이 올려 떨어뜨리기!" },
+      { "threshold": 5.0, "conditions": {"gravity": "moon"}, "text": "달에서 공을 맨 위까지 올려 떨어뜨리기!" },
+      { "threshold": 15.0, "conditions": {"gravity": "jupiter"}, "text": "목성에서도 공을 높이 올려 떨어뜨리기!" }
     ]
   },
   "kid": {

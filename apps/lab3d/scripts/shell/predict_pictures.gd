@@ -7,7 +7,7 @@ class_name PredictPictures
 extends RefCounted
 
 const KINDS := ["long_arc", "same_arc", "fall_together", "fall_heavy_first", "light_flies", "both_stop",
-	"spring_longer", "spring_same", "rubber_floor", "steel_floor", "lever_far", "lever_same",
+	"spring_longer", "spring_same", "rubber_floor", "steel_floor", "push_harder", "push_same", "lever_far", "lever_same",
 	"orbit_leave", "orbit_stay", "drum_big", "drum_small", "swing_slow", "swing_same",
 	"pulley_many", "pulley_same", "slope_steep", "slope_same"]
 const STRONG := Color("e2683c")
@@ -31,6 +31,8 @@ static func draw(canvas: Control, kind: String) -> void:
 			_springs(canvas, r, kind == "spring_longer")
 		"rubber_floor", "steel_floor":
 			_floor(canvas, r, kind == "rubber_floor")
+		"push_harder", "push_same":
+			_push(canvas, r, kind == "push_harder")
 		"lever_far", "lever_same":
 			_lever(canvas, r, kind == "lever_far")
 		"orbit_leave", "orbit_stay":
@@ -145,6 +147,20 @@ static func _floor(canvas: Control, r: Rect2, rubber: bool) -> void:
 	var box := Rect2(r.position.x + r.size.x * 0.45, y - 40.0, 40.0, 40.0)
 	canvas.draw_rect(box, STRONG)
 	_arrow(canvas, Vector2(r.position.x + 10.0, y - 20.0), Vector2(box.position.x - 4.0, y - 20.0), GROUND, 4.0)
+
+
+## A light box (pale, small) and a heavy box (orange, big) on one floor, each with its push arrow:
+## the heavy one's is longer ("push_harder": it needs a harder push) or the same ("push_same").
+static func _push(canvas: Control, r: Rect2, harder: bool) -> void:
+	_ground(canvas, r)
+	var y := r.end.y - 6.0
+	var light := Rect2(r.position.x + r.size.x * 0.26, y - 22.0, 22.0, 22.0)
+	canvas.draw_rect(light, PALE)
+	_arrow(canvas, Vector2(light.position.x - 22.0, y - 11.0), Vector2(light.position.x - 3.0, y - 11.0), PALE, 4.0)
+	var heavy := Rect2(r.position.x + r.size.x * 0.68, y - 44.0, 44.0, 44.0)
+	canvas.draw_rect(heavy, STRONG)
+	var reach := 52.0 if harder else 19.0
+	_arrow(canvas, Vector2(heavy.position.x - 3.0 - reach, y - 22.0), Vector2(heavy.position.x - 3.0, y - 22.0), STRONG, 6.0 if harder else 4.0)
 
 
 ## A lever: the load on the left, the fulcrum, a hand arrow near it (pale) and one at the far end

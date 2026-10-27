@@ -75,9 +75,9 @@
     "observe": "after_b",
     "judge_on": ["collided", "rest"],
     "stages": [
-      { "threshold": 2.0, "conditions": {"mass_a": 1.0, "mass_b": 1.0}, "text": "1킬로그램 공 두 개를 부딪히기!" },
-      { "threshold": 4.0, "conditions": {"mass_a": {"min": 3.0}, "mass_b": {"min": 1.0}}, "text": "무거운 파란 공으로 주황 공 치기!" },
-      { "threshold": 5.0, "conditions": {"mass_b": 0.5}, "text": "제일 가벼운 주황 공을 쌩 날리기!" }
+      { "threshold": 2.0, "conditions": {"mass_a": 1.0, "mass_b": 1.0}, "text": "두 공을 1킬로그램으로 하고 세게 부딪히기!" },
+      { "threshold": 4.0, "conditions": {"mass_a": {"min": 3.0}, "mass_b": {"min": 1.0}}, "text": "파란 공을 3킬로그램으로 해서 세게 치기!" },
+      { "threshold": 5.0, "conditions": {"mass_b": 0.5}, "text": "주황 공을 0.5킬로그램으로 해서 쌩 날리기!" }
     ]
   },
   "kid": {

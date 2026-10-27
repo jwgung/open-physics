@@ -46,13 +46,13 @@
   ],
   "key_observations": ["state", "speed", "distance"],
   "predict": {
-    "question": "고무 바닥과 금속 바닥, 어디가 더 힘들까?",
+    "question": "무거운 상자는 더 세게 밀어야 할까?",
     "choices": [
-      { "id": "rubber", "label": "고무", "picture": "rubber_floor" },
-      { "id": "steel", "label": "금속", "picture": "steel_floor" }
+      { "id": "harder", "label": "더 세게", "picture": "push_harder" },
+      { "id": "same", "label": "똑같이", "picture": "push_same" }
     ],
-    "answer": "rubber",
-    "reason": "고무는 상자를 꽉 붙잡아요. 금속은 미끄러워요. 그래서 고무 바닥이 더 힘들어요."
+    "answer": "harder",
+    "reason": "무거운 상자일수록 바닥이 더 꽉 붙잡아요. 그래서 더 세게 밀어야 움직여요."
   },
   "missions": {
     "judge_on": ["sliding"],

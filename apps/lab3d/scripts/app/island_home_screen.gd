@@ -76,7 +76,7 @@ const ZONES := {
 const HOME := [0.5, 2.0]
 ## Dugi and Puppy wait on the square with the cat (2026-10-27 user requests: they were missing
 ## from the map; then "why an L shape, why facing different ways"): the three in one row across the
-## view like a group photo, the cat in the middle, Dugi on its left, Puppy on its right, TRIO_GAP m
+## view like a group photo, the cat in the middle, Puppy on its left, Dugi on its right, TRIO_GAP m
 ## apart, all three facing the same way: the default camera (+z). They stand still when the map
 ## turns ("don't turn their bodies with the camera"). The signpost stands outside the row's reach
 ## (MapIsland: 1.3 m from HOME > TRIO_GAP + a body).
@@ -238,12 +238,12 @@ func _process(delta: float) -> void:
 
 
 ## The trio's row on the square facing `yaw` (the camera's: yaw 0 looks along -z from +z): across
-## the view through HOME, Dugi on the left, the cat in the middle, Puppy on the right. The cat
+## the view through HOME, Puppy on the left, the cat in the middle, Dugi on the right. The cat
 ## keeps its own course while it hops to a spot.
 func _place_trio(yaw: float) -> void:
 	var home := Vector2(HOME[0], HOME[1])
 	var right := Vector2(cos(yaw), -sin(yaw))   # screen right, on the ground
-	var row := [[dugi, -1.0], [cat, 0.0], [puppy, 1.0]]
+	var row := [[puppy, -1.0], [cat, 0.0], [dugi, 1.0]]
 	for entry in row:
 		var actor: Node3D = entry[0]
 		if actor == null or (actor == cat and _walking):

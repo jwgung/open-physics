@@ -246,8 +246,8 @@ func _trio_problems(screen: Control, view_name: String) -> Array:
 	var off := absf(line.cross(p[1] - p[0]))
 	if off > 0.02 or absf(p[1].distance_to(p[0]) - p[1].distance_to(p[2])) > 0.02:
 		out.append("%s: not one even row (off %.3f m)" % [view_name, off])
-	if absf(line.dot(Vector2(0.0, 1.0))) > sin(deg_to_rad(1.0)) or p[0].x > p[2].x:
-		out.append("%s: the row is not across the default view, Dugi left" % view_name)
+	if absf(line.dot(Vector2(0.0, 1.0))) > sin(deg_to_rad(1.0)) or p[0].x < p[2].x:
+		out.append("%s: the row is not across the default view, Dugi right" % view_name)
 	for i in 3:
 		if absf(angle_difference(actors[i].rotation.y, 0.0)) > deg_to_rad(1.0):
 			out.append("%s: %s faces %.0f deg off +z" % [view_name, actors[i].name, rad_to_deg(actors[i].rotation.y)])

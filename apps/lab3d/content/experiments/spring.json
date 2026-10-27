@@ -38,7 +38,33 @@
     { "id": "release", "label": "놓기", "style": "primary" },
     { "id": "reset", "label": "처음으로" }
   ],
-  "key_observations": ["extension", "speed", "total"],
+  "key_observations": ["extension", "speed"],
+  "predict": {
+    "question": "무거운 공을 달면 용수철이 더 늘어날까?",
+    "choices": [
+      { "id": "longer", "label": "더 늘어나요", "picture": "spring_longer" },
+      { "id": "same", "label": "똑같아요", "picture": "spring_same" }
+    ],
+    "answer": "same",
+    "reason": "용수철은 내가 당긴 만큼만 늘어나요. 무거운 공도 똑같아요. 대신 더 천천히 흔들려요."
+  },
+  "missions": {
+    "observe": "pull",
+    "judge_on": ["moving", "rest"],
+    "stages": [
+      { "threshold": 1.5, "conditions": {"mass": {"min": 2.5}}, "text": "무거운 공을 1.5미터 넘게 당기기!" },
+      { "threshold": 2.0, "conditions": {"mass": {"max": 1.0}}, "text": "가벼운 공을 2미터 넘게 당기기!" },
+      { "threshold": 2.4, "conditions": {"mass": {"min": 2.5}}, "text": "무거운 공을 끝까지 당겼다 놓기!" }
+    ]
+  },
+  "kid": {
+    "title": "용수철을 당겼다 놓아 보자!",
+    "place": "용수철",
+    "say": "당긴 만큼 용수철이 공을 다시 당겨요. 그래서 공이 왔다 갔다 해요.",
+    "tip": "공을 끌었다가 놓아 봐요!",
+    "cards": {"extension": "얼마나 늘어났나", "speed": "빠르기"},
+    "minus": {"extension": "눌려서"}
+  },
   "cast": {
     "dugi": { "at": [2.5, 5.75], "explain_on": ["moving", "rest"], "delay_s": 1.5 },
     "puppy": { "at": [-9.0, -6.0] }
@@ -46,6 +72,7 @@
   "observations": [
     { "id": "state", "label": "상태" },
     { "id": "extension", "label": "늘어난 길이 x (+ 늘어남, − 눌림)", "unit": "m", "digits": 2 },
+    { "id": "pull", "label": "놓은 자리 x₀ (당겨 늘인 길이)", "unit": "m", "digits": 2 },
     { "id": "speed", "label": "속력", "unit": "m/s", "digits": 2 },
     { "id": "force", "label": "복원력 F = −kx (오른쪽 +)", "unit": "N", "digits": 2 },
     { "id": "acceleration", "label": "가속도 a = F/m", "unit": "m/s²", "digits": 2 },

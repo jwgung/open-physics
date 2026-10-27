@@ -145,6 +145,16 @@ func set_guide(radius: float) -> void:
 	guide.position = Vector3(0.0, _plane_y, 0.0)
 
 
+## No guide and no path (a game round before the launch: the prediction would give the answer).
+func hide_prediction() -> void:
+	if guide != null:
+		guide.multimesh.visible_instance_count = 0
+		_guide_radius = -1.0
+	if path != null:
+		path.multimesh.visible_instance_count = 0
+		dots.clear()
+
+
 ## The predicted path (plane points [x0, z0, x1, z1, ...] of OrbitChallenge) as at most PATH_DOTS
 ## evenly picked dots in the outcome's colour.
 func set_path(points: PackedFloat64Array, outcome: String) -> void:

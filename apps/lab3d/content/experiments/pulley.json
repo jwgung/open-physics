@@ -38,7 +38,35 @@
   "actions": [
     { "id": "reset", "label": "처음으로", "style": "primary" }
   ],
-  "key_observations": ["strands", "required", "lift"],
+  "key_observations": ["strands", "pulled", "lift"],
+  "predict": {
+    "question": "줄이 많으면 힘이 덜 들까?",
+    "choices": [
+      { "id": "less", "label": "덜 들어요", "picture": "pulley_many" },
+      { "id": "same", "label": "똑같아요", "picture": "pulley_same" }
+    ],
+    "answer": "less",
+    "reason": "줄 여러 개가 짐을 나눠 들어요. 그래서 힘이 덜 들어요. 대신 줄을 더 많이 당겨야 해요."
+  },
+  "missions": {
+    "observe": "required",
+    "compare": "less",
+    "judge_on": ["held", "top"],
+    "hidden_until_end": ["required", "applied"],
+    "hidden_series_until_end": ["required"],
+    "stages": [
+      { "threshold": 200.0, "conditions": {"strands": "one", "mass": 20.0}, "text": "줄 1개로 무거운 짐 올리기!" },
+      { "threshold": 100.0, "conditions": {"strands": "two", "mass": 20.0}, "text": "줄을 2개로 해서 짐 올리기!" },
+      { "threshold": 50.0, "conditions": {"strands": "four", "mass": 20.0}, "text": "줄을 4개로 해서 가볍게 들기!" }
+    ]
+  },
+  "kid": {
+    "title": "줄이 많으면 짐이 가벼워질까?",
+    "place": "줄로 짐 들기",
+    "say": "줄이 많을수록 힘이 덜 들어요. 대신 줄을 더 길게 당겨야 해요.",
+    "tip": "빨간 손잡이를 아래로 당겨요.",
+    "cards": {"strands": "짐을 잡은 줄", "pulled": "내가 당긴 줄 길이", "lift": "짐이 올라간 높이"}
+  },
   "cast": {
     "dugi": { "at": [3.5, 4.0], "explain_on": ["held", "top"], "delay_s": 0.6 },
     "puppy": { "at": [6.5, -7.5] }

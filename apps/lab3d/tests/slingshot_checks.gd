@@ -64,8 +64,8 @@ func check_pull_is_reversed_and_clamped() -> void:
 		and not hud_rect.intersects(screen._mission_text.get_rect()) and not hud_rect.intersects(screen._mission_strip.get_rect()),
 		"slingshot: the readout is one line, clear of the key cards and the mission strip", str(hud_rect))
 	var hud_text: String = screen._slingshot_hud.text
-	expect.call(hud_text.contains("%d°" % int(value.x)) and hud_text.contains(Ui.number(value.y, 1)),
-		"slingshot: the big readout shows the angle and the speed", hud_text)
+	expect.call(hud_text.contains("%d도" % int(value.x)) and hud_text.contains("초속") and not hud_text.contains("m/s") and hud_text.contains(Ui.number(value.y, 1)),
+		"slingshot: the big readout shows the angle and the speed in words (45도 · 초속 9.0미터)", hud_text)
 	# Pulls that point outside 0..90 deg: the nearer end, shown as thrown.
 	_drag(screen, ball + Vector2(80.0, 60.0))   # pull down-right: launch up-left (beyond 90)
 	var steep: Vector2 = events[events.size() - 1][1]
@@ -213,12 +213,13 @@ func check_trail_and_next_shot() -> void:
 	await _free(screen)
 
 
-## A pull that lands the ball past 3 m earns one stamp (the formula range; one throw, one stage).
+## Any pull that lands the ball past 3 m (the first stage has no condition) earns one stamp
+## (the formula range; one throw, one stage).
 func check_mission_stamp_from_formula() -> void:
 	DirAccess.remove_absolute(ProgressStore.path)
 	var screen := await _lab()
 	var lab: Experiment = screen.experiment
-	await _throw(screen, lab, Vector2(-90.0, 70.0))
+	await _throw(screen, lab, Vector2(-55.0, 43.0))
 	for i in 60:
 		await tree.physics_frame
 		if lab.released:
@@ -226,8 +227,9 @@ func check_mission_stamp_from_formula() -> void:
 	var thrown_range: float = lab.flight_range()
 	await _run_to_end(lab)
 	var stamps := ProgressStore.stamps(ProgressStore.load(), "projectile")
-	expect.call(is_finite(thrown_range) and thrown_range > 3.0 and stamps == 1,
-		"slingshot: a throw past 3 m (formula range) earns one stamp", "range %s stamps %d" % [str(thrown_range), stamps])
+	expect.call(is_finite(thrown_range) and thrown_range > 3.0 and lab.speed <= 6.0 and stamps == 1,
+		"slingshot: a gentle throw (up to 6 m/s) past 3 m (formula range) earns one stamp",
+		"range %s, %.1f m/s, stamps %d" % [str(thrown_range), lab.speed, stamps])
 	DirAccess.remove_absolute(ProgressStore.path)
 	await _free(screen)
 

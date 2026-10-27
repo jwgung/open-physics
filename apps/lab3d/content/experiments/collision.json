@@ -61,7 +61,33 @@
     { "id": "release", "label": "출발", "style": "primary" },
     { "id": "reset", "label": "처음으로" }
   ],
-  "key_observations": ["after_a", "after_b", "p_after"],
+  "key_observations": ["before_a", "after_a", "after_b"],
+  "predict": {
+    "question": "무거운 공이 가벼운 공을 치면?",
+    "choices": [
+      { "id": "light_fast", "label": "가벼운 공이 쌩", "picture": "light_flies" },
+      { "id": "both_stop", "label": "둘 다 멈춰요", "picture": "both_stop" }
+    ],
+    "answer": "light_fast",
+    "reason": "무거운 공은 힘차게 움직여요. 가벼운 공이 그 움직임을 받으면 쌩 날아가요."
+  },
+  "missions": {
+    "observe": "after_b",
+    "judge_on": ["collided", "rest"],
+    "stages": [
+      { "threshold": 2.0, "conditions": {"mass_a": 1.0, "mass_b": 1.0}, "text": "1킬로그램 공 두 개를 부딪히기!" },
+      { "threshold": 4.0, "conditions": {"mass_a": {"min": 3.0}, "mass_b": {"min": 1.0}}, "text": "무거운 파란 공으로 주황 공 치기!" },
+      { "threshold": 5.0, "conditions": {"mass_b": 0.5}, "text": "제일 가벼운 주황 공을 쌩 날리기!" }
+    ]
+  },
+  "kid": {
+    "title": "공끼리 부딪히면 어떻게 될까?",
+    "place": "공 부딪히기",
+    "say": "부딪히면 두 공이 서로 밀어요. 파란 공의 움직임이 주황 공으로 넘어가요.",
+    "tip": "노란 손잡이를 끌어서 세기를 정해요.",
+    "cards": {"before_a": "부딪히기 전 파란 공", "after_a": "부딪힌 뒤 파란 공", "after_b": "부딪힌 뒤 주황 공"},
+    "minus": {"before_a": "왼쪽으로", "after_a": "왼쪽으로", "after_b": "왼쪽으로"}
+  },
   "cast": {
     "dugi": { "at": [8.5, 0.5], "explain_on": ["collided", "rest"], "delay_s": 0.6 },
     "puppy": { "at": [-2.0, -10.0] }

@@ -181,30 +181,133 @@ static func validate(definition: Dictionary) -> PackedStringArray:
 		problems.append("graph.series missing")
 	problems.append_array(_validate_manipulation(definition.get("manipulation"), definition.actions))
 	problems.append_array(_validate_cast(definition.get("cast")))
-	problems.append_array(_validate_missions(definition.get("missions"), definition.observations))
+	problems.append_array(_validate_missions(definition.get("missions"), definition.observations, definition.controls))
+	problems.append_array(_validate_series(definition.get("missions"), graph.get("series", [])))
+	problems.append_array(_validate_predict(definition.get("predict")))
+	problems.append_array(_validate_kid(definition.get("kid"), definition.observations.map(func(o: Dictionary) -> Variant: return o.get("id"))))
+	if definition.get("kid") is Dictionary:
+		problems.append_array(_validate_kid_cards(definition))
 	return problems
 
 
-## `missions` (Plan G1, optional): the easy stage thresholds —
-## {"observe": <an observation id>, "stages": [{"threshold": <number > 0>, "text": <non-empty>}, ...],
-##  "hidden_until_end"?: [<observation id>, ...]}.
-## The child clears stage n when the lab lands with the formula value of `observe` farther than
-## threshold n (MissionTracker: it reads, it never changes the run). The hidden_until_end values
-## (the formula's answer) read "?" until the throw has ended, so the round is not given away.
-static func _validate_missions(missions: Variant, observations: Array) -> PackedStringArray:
+## The game layer's words for a 7-year-old (`kid`, optional): short everyday sentences without the
+## formula's names. Content shared with the web (content/mechanics-labs.json) keeps its own texts;
+## the 3D experiment file puts the child-facing ones here and the screen shows them in place of the
+## shared ones (the "자세히" sidebar keeps the shared texts and the formula labels):
+##   "kid": {"title": <the title bar>, "place": <the map's spot name>, "say": <Dugi's dialogue>,
+##           "tip": <the short gesture hint>, "cards": {<observation id>: <its key card's caption>},
+##           "states": {<a status text of the lab>: <its key card words>},
+##           "minus": {<observation id>: <the word a negative value reads with: "눌려서", "왼쪽으로">}}
+## Every key is optional; a missing one falls back to the shared text (kid_text, card_label).
+## The key cards over the 3D view show a number with one decimal and its unit in words (KID_UNITS:
+## "1.3초", "초속 12.5미터"); a game lab's key observations have such a unit (a force, an energy, an
+## acceleration stays in "자세히"). States and minus words change the card's words only: the lab's
+## text and the value (the sidebar's, full precision) stay the formula's (ExperimentScreen.card_text).
+const KID_TEXTS := {"title": "title", "place": "title", "say": "observe", "tip": "tip_short"}
+const KID_MAPS := ["cards", "states", "minus"]
+## Observation unit -> [the words before the number, the words after it] on a key card.
+const KID_UNITS := {"": ["", ""], "m": ["", "미터"], "s": ["", "초"], "m/s": ["초속 ", "미터"],
+	"°": ["", "도"], "kg": ["", "킬로그램"], "바퀴": ["", "바퀴"], "줄": ["", "줄"], "배": ["", "배"]}
+
+
+static func _validate_kid(kid: Variant, ids: Array) -> PackedStringArray:
+	var problems := PackedStringArray()
+	if kid == null:
+		return problems
+	if not kid is Dictionary:
+		problems.append("kid must be an object")
+		return problems
+	for key in kid:
+		if key in KID_MAPS:
+			var map: Variant = kid[key]
+			var named: bool = key == "states" or (map is Dictionary and map.keys().all(func(id: Variant) -> bool: return id in ids))
+			if not (map is Dictionary and named and map.values().all(func(t: Variant) -> bool: return t is String and t != "")):
+				problems.append("kid.%s must name %s with a text each" % [key, "status texts" if key == "states" else "observations"])
+		elif not KID_TEXTS.has(key):
+			problems.append("kid.%s unknown (title, place, say, tip, cards, states, minus)" % key)
+		elif not (kid[key] is String and kid[key] != ""):
+			problems.append("kid.%s must be a text" % key)
+	return problems
+
+
+## A game lab's key cards (it has `kid`): every key observation's unit has its words (KID_UNITS).
+static func _validate_kid_cards(definition: Dictionary) -> PackedStringArray:
+	var problems := PackedStringArray()
+	for observation in definition.observations:
+		if observation.get("id") in definition.key_observations and not KID_UNITS.has(str(observation.get("unit", ""))):
+			problems.append("key_observations: %s (%s) has no kid unit words; keep it in the sidebar" % [observation.id, observation.unit])
+	return problems
+
+
+## The child-facing text `key` of the game layer (KID_TEXTS): the definition's kid text, or the
+## shared one it replaces (the tip falls back to the long tip, the place to the title).
+static func kid_text(definition: Dictionary, key: String) -> String:
+	var kid: Variant = definition.get("kid")
+	if kid is Dictionary and kid.get(key) is String and kid[key] != "":
+		return kid[key]
+	var shared := str(definition.get(KID_TEXTS.get(key, key), ""))
+	if key == "tip" and shared == "":
+		shared = str(definition.get("tip", ""))
+	return shared
+
+
+## The caption of a key observation's card over the 3D view: the kid wording, or the observation's
+## label (the sidebar always shows the label).
+static func card_label(definition: Dictionary, id: String) -> String:
+	var kid: Variant = definition.get("kid")
+	if kid is Dictionary and kid.get("cards") is Dictionary and kid.cards.get(id) is String:
+		return kid.cards[id]
+	for observation in definition.get("observations", []):
+		if observation.get("id") == id:
+			return str(observation.get("label", ""))
+	return ""
+
+
+## `missions.hidden_series_until_end` (optional): graph series ids drawn only once the run has its
+## result (the formula's answer as a line: the projectile's y(t), the friction limit).
+static func _validate_series(missions: Variant, series: Array) -> PackedStringArray:
+	var problems := PackedStringArray()
+	if not missions is Dictionary or not missions.has("hidden_series_until_end"):
+		return problems
+	var ids := series.map(func(s: Dictionary) -> Variant: return s.get("id"))
+	var hidden: Variant = missions.hidden_series_until_end
+	if not (hidden is Array and hidden.all(func(id: Variant) -> bool: return id is String and id in ids)):
+		problems.append("missions.hidden_series_until_end must list graph series ids")
+	return problems
+
+
+## `missions` (Plan G1, G2, optional): the stages and how a run is judged (MissionTracker's header) —
+## {"stages": [{"text": <non-empty>, "threshold"?: <number > 0>, "conditions"?: {...},
+##              "change"?: [<control id>, ...]}, ...],
+##  "observe"?: <an observation id>, "compare"?: "greater" | "less",
+##  "judge_on"?: [<status>, ...], "reveal_on"?: [<status>, ...],
+##  "hidden_until_end"?: [<observation id>, ...], "hidden_series_until_end"?: [<graph series id>, ...]}.
+## With `observe` every stage has its threshold; without it a stage is a state goal (no threshold).
+## A stage's `conditions` name the definition's controls: a choice wants one of its option ids, a
+## slider a number or a {"min"?, "max"?} range inside its min..max. The tracker only reads (it never
+## changes the run). The hidden_until_end values (the formula's answer) read "?" and the
+## hidden_series_until_end lines are not drawn until the run has its result, so the round is not
+## given away.
+static func _validate_missions(missions: Variant, observations: Array, controls: Array = []) -> PackedStringArray:
 	var problems := PackedStringArray()
 	if missions == null:
 		return problems
 	if not missions is Dictionary:
 		problems.append("missions must be an object")
 		return problems
-	var observe: Variant = missions.get("observe")
 	var ids := {}
 	for observation in observations:
 		if observation.get("id") is String:
 			ids[observation.id] = true
-	if not (observe is String and ids.has(observe)):
+	var observe: Variant = missions.get("observe")
+	if missions.has("observe") and not (observe is String and ids.has(observe)):
 		problems.append("missions.observe must be one of the observation ids")
+	if missions.get("compare", "greater") not in MissionTracker.COMPARES:
+		problems.append("missions.compare must be greater or less")
+	for key in ["judge_on", "reveal_on"]:
+		var statuses: Variant = missions.get(key, MissionTracker.DEFAULT_JUDGE_ON)
+		if not (statuses is Array and not statuses.is_empty() and statuses.all(func(v: Variant) -> bool: return v is String and v != "")):
+			problems.append("missions.%s must list statuses" % key)
 	var hidden: Variant = missions.get("hidden_until_end", [])
 	if not (hidden is Array and hidden.all(func(id: Variant) -> bool: return id is String and ids.has(id))):
 		problems.append("missions.hidden_until_end must list observation ids")
@@ -216,10 +319,78 @@ static func _validate_missions(missions: Variant, observations: Array) -> Packed
 		var stage: Variant = stages[i]
 		var threshold: Variant = stage.get("threshold") if stage is Dictionary else null
 		var text: Variant = stage.get("text") if stage is Dictionary else null
-		if not (stage is Dictionary and (threshold is int or threshold is float) and threshold > 0.0):
+		if not stage is Dictionary:
+			problems.append("missions.stages[%d] must be an object" % i)
+		elif missions.has("observe") and not ((threshold is int or threshold is float) and threshold > 0.0):
 			problems.append("missions.stages[%d].threshold must be a number > 0" % i)
+		elif not missions.has("observe") and stage.has("threshold"):
+			problems.append("missions.stages[%d].threshold needs missions.observe" % i)
 		elif not (text is String and text != ""):
 			problems.append("missions.stages[%d].text must be a text" % i)
+		else:
+			problems.append_array(_validate_conditions(stage.get("conditions", {}), controls, i))
+			var change: Variant = stage.get("change", [])
+			var control_ids := controls.map(func(c: Dictionary) -> Variant: return c.get("id"))
+			if not (change is Array and change.all(func(id: Variant) -> bool: return id in control_ids)):
+				problems.append("missions.stages[%d].change must list control ids" % i)
+	return problems
+
+
+## A stage's `conditions`: {control id: option id (choice) | number or {"min"?, "max"?} (slider)}.
+static func _validate_conditions(conditions: Variant, controls: Array, i: int) -> PackedStringArray:
+	var problems := PackedStringArray()
+	if not conditions is Dictionary:
+		problems.append("missions.stages[%d].conditions must be an object" % i)
+		return problems
+	for id in conditions:
+		var control: Dictionary = {}
+		for c in controls:
+			if c.get("id") == id:
+				control = c
+		var want: Variant = conditions[id]
+		if control.is_empty():
+			problems.append("missions.stages[%d].conditions: %s is not a control" % [i, str(id)])
+		elif control.get("type") == "choice":
+			if not (want is String and control.get("options", []).any(func(o: Dictionary) -> bool: return o.get("id") == want)):
+				problems.append("missions.stages[%d].conditions.%s must be an option id" % [i, id])
+		else:
+			var lo := float(control.get("min", -INF))
+			var hi := float(control.get("max", INF))
+			var bounds: Array = [want.get("min", lo), want.get("max", hi)] if want is Dictionary else [want, want]
+			if not (bounds.all(func(v: Variant) -> bool: return (v is int or v is float) and v >= lo and v <= hi) and bounds[0] <= bounds[1]):
+				problems.append("missions.stages[%d].conditions.%s must be a number or {min, max} inside the slider" % [i, id])
+	return problems
+
+
+## `predict` (Plan G4, optional): Dugi's question before the run —
+## {"question": <text>, "choices": [{"id", "label", "picture": <PredictPictures kind>} x 2],
+##  "answer": <a choice id>, "reason": <text>}.
+static func _validate_predict(predict: Variant) -> PackedStringArray:
+	var problems := PackedStringArray()
+	if predict == null:
+		return problems
+	if not predict is Dictionary:
+		problems.append("predict must be an object")
+		return problems
+	for key in ["question", "reason"]:
+		if not (predict.get(key) is String and predict.get(key) != ""):
+			problems.append("predict.%s must be a text" % key)
+	var choices: Variant = predict.get("choices")
+	var ids := []
+	if not (choices is Array and choices.size() == 2):
+		problems.append("predict.choices must list two choices")
+		return problems
+	for choice in choices:
+		if not (choice is Dictionary and choice.get("id") is String and choice.get("label") is String and choice.label != ""):
+			problems.append("predict choice needs id and label")
+			continue
+		if choice.get("picture") not in PredictPictures.KINDS:
+			problems.append("predict choice %s: picture must be one of PredictPictures.KINDS" % choice.id)
+		ids.append(choice.id)
+	if ids.size() == 2 and ids[0] == ids[1]:
+		problems.append("predict choices need distinct ids")
+	if predict.get("answer") not in ids:
+		problems.append("predict.answer must be one of the choice ids")
 	return problems
 
 

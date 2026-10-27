@@ -24,7 +24,8 @@ var dugi: DugiActor
 var puppy: PuppyActor
 var explain_on: Array = []
 var delay_s := DEFAULT_DELAY_S
-## The words of the dialogue: the lab's observe text, exactly.
+## The words of the dialogue: the lab's kid `say` text (ExperimentRegistry.kid_text; the shared
+## observe text when it has none), exactly.
 var text := ""
 ## Times Dugi started an explanation (tests).
 var explain_count := 0
@@ -41,7 +42,7 @@ static func create(definition: Dictionary, lab: Experiment) -> IslandCast:
 	var cast := IslandCast.new()
 	cast.name = "IslandCast"
 	cast.experiment = lab
-	cast.text = definition.get("observe", "")
+	cast.text = ExperimentRegistry.kid_text(definition, "say")
 	var eye := front_eye(definition.get("camera", {}))
 	if spec.has("dugi"):
 		var d: Dictionary = spec.dugi

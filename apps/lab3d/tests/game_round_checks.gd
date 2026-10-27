@@ -38,10 +38,11 @@ func check_round() -> void:
 	expect.call(screen._mission_strip != null and screen._mission_strip.visible and screen._stamp_labels.size() == stages.size()
 		and screen._mission_text.text == str(stages[0].text),
 		"round: the strip shows one stamp per stage and the first stage", screen._mission_text.text)
-	# The formula's answer is hidden before the throw (key card and sidebar both read "?").
+	# The formula's answer is hidden before the throw (key card and sidebar both read "?": the card
+	# in a child's words, the sidebar with its unit).
 	screen._update_readouts(false)
-	var range_hidden: bool = screen._key_labels["range"].text == "? m" and screen._observation_labels["range"].text == "? m" \
-		and screen._key_labels["flight_time"].text == "? s"
+	var range_hidden: bool = screen._key_labels["range"].text == "? 미터" and screen._observation_labels["range"].text == "? m" \
+		and screen._key_labels["flight_time"].text == "? 초"
 	expect.call(range_hidden, "round: before the throw the formula range and flight time read ?",
 		"%s, %s" % [screen._key_labels["range"].text, screen._key_labels["flight_time"].text])
 	# Dugi asks in his own box (portrait, name tag), the two picture buttons over it.
@@ -54,6 +55,12 @@ func check_round() -> void:
 	var strip_ok: bool = screen._stamp_labels.all(func(l: Label) -> bool: return l.size.x > 8.0) \
 		and screen._mission_strip.get_rect().end.x <= screen._mission_text.position.x
 	expect.call(strip_ok, "round: the stamps sit side by side, clear of the stage text", str(screen._mission_strip.get_rect()))
+	# The strip sits on its soft paper pill (readable over trees and sky), drawn under the stamps and the text.
+	var pill: PanelContainer = screen._mission_pill
+	var pill_ok: bool = pill != null and pill.visible and pill.get_rect().encloses(screen._mission_strip.get_rect()) \
+		and pill.get_rect().encloses(screen._mission_text.get_rect()) and pill.get_index() < screen._mission_strip.get_index() \
+		and pill.get_rect().end.x <= screen.view.size.x and pill.get_theme_stylebox("panel").bg_color.a >= 0.8
+	expect.call(pill_ok, "round: the stamps and the stage text sit on a soft paper pill under them", str(pill.get_rect() if pill else null))
 	var ball_seen: bool = not screen._choices.get_rect().grow(8.0).has_point(screen.view_point(lab.ball_center())) \
 		and not screen._choices.get_rect().intersects(screen.dialogue.rects()[0])
 	expect.call(ball_seen, "round: the picture buttons leave the ball in sight and sit above Dugi's box", str(screen._choices.get_rect()))
@@ -72,7 +79,7 @@ func check_round() -> void:
 	# The pick: the question goes at once, the strip shows the pick, the next touch reaches the ball.
 	(buttons[0] as Button).pressed.emit()
 	expect.call(screen._predict_pick == "farther" and not screen._asking and not box.active and screen._choices == null
-		and screen._mission_text.text == "예측: 더 멀리",
+		and screen._mission_text.text == ExperimentScreen.PICK_PREFIX + "더 멀리",
 		"round: a picked picture is kept and the question goes at once", screen._mission_text.text)
 	await tree.process_frame
 	var ball: Vector2 = screen.view_point(lab.ball_center())
@@ -90,9 +97,13 @@ func check_round() -> void:
 	await _throw(screen, lab, 45.0, 6.0)
 	await _run_to_end(lab)
 	screen._update_readouts(false)
-	var range_text := ExperimentScreen.format_observation(_observation(lab, "range"), lab.observations().get("range"))
-	expect.call(screen._key_labels["range"].text == range_text and range_text != "? m",
-		"round: once the ball landed the formula range shows", "%s / %s" % [screen._key_labels["range"].text, range_text])
+	var range_value: Variant = lab.observations().get("range")
+	var range_text := ExperimentScreen.format_observation(_observation(lab, "range"), range_value)
+	var range_card := "%s미터" % Ui.number(float(range_value), 1)
+	expect.call(screen._observation_labels["range"].text == range_text and range_text == "%s m" % Ui.number(float(range_value), 2)
+		and screen._key_labels["range"].text == range_card,
+		"round: once the ball landed the formula range shows (card: one decimal in words; sidebar: full precision)",
+		"%s / %s" % [screen._key_labels["range"].text, range_text])
 	expect.call(ProgressStore.stamps(ProgressStore.load(), "projectile") == 1 and screen._mission_text.text == str(stages[1].text),
 		"round: the first throw past 3 m earns the first stamp; the next stage shows",
 		"stamps %d, '%s'" % [ProgressStore.stamps(ProgressStore.load(), "projectile"), screen._mission_text.text])
@@ -104,10 +115,20 @@ func check_round() -> void:
 	expect.call(ProgressStore.stamps(ProgressStore.load(), "projectile") == 2, "round: the second throw (no 처음으로 between) earns the second stamp",
 		"stamps %d" % ProgressStore.stamps(ProgressStore.load(), "projectile"))
 	said = await _next_explanation(screen)
-	expect.call(said == lab.definition.observe, "round: later explanations are the lab's observe text again (the reason was told once)", said)
+	expect.call(said == ExperimentRegistry.kid_text(lab.definition, "say"), "round: later explanations are the lab's kid say text again (the reason was told once)", said)
 	expect.call(not screen.cast.puppy.celebrating(), "round: no celebration before the last stamp", "")
-	# Third throw (9 m/s: past 7 m): the last stamp, the done text, the puppy hops and waves.
+	# The third stage wants another angle: 45° again, even thrown harder past 7 m, earns nothing.
 	await _throw(screen, lab, 45.0, 9.0)
+	await _run_to_end(lab)
+	expect.call(ProgressStore.stamps(ProgressStore.load(), "projectile") == 2 and float(lab.observations().range) > 7.0,
+		"round: the second stage's angle again (45°, past 7 m) earns no third stamp",
+		"stamps %d, range %s" % [ProgressStore.stamps(ProgressStore.load(), "projectile"), str(lab.observations().range)])
+	# Third throw at another angle (40°, 9 m/s: past 7 m) after 처음으로: the last stamp, the done
+	# text, the puppy hops and waves.
+	screen.experiment_action("reset")
+	for i in 4:
+		await tree.process_frame
+	await _throw(screen, lab, 40.0, 9.0)
 	var rest_y: float = screen.cast.puppy.position.y
 	var hopped := false
 	for i in 900:
@@ -117,7 +138,7 @@ func check_round() -> void:
 			hopped = true
 		if hopped and ProgressStore.stamps(ProgressStore.load(), "projectile") == 3:
 			break
-	expect.call(ProgressStore.stamps(ProgressStore.load(), "projectile") == 3 and screen._mission_text.text.contains("모두 완료"),
+	expect.call(ProgressStore.stamps(ProgressStore.load(), "projectile") == 3 and screen._mission_text.text == ExperimentScreen.DONE_TEXT,
 		"round: the third throw past 7 m earns the last stamp; the done text shows", screen._mission_text.text)
 	expect.call(hopped and screen.cast.puppy.celebrating(), "round: on the last stamp the puppy hops and waves the flag fast", "hopped %s" % str(hopped))
 	await _free(screen)
@@ -126,7 +147,7 @@ func check_round() -> void:
 	var lab2: Experiment = again.experiment
 	var awarded := []
 	again._missions.progress = func(id: String, stamps: int) -> void: awarded.append(stamps)
-	expect.call(again._mission_text.text.contains("모두 완료") and not again._asking and again._choices == null,
+	expect.call(again._mission_text.text == ExperimentScreen.DONE_TEXT and not again._asking and again._choices == null,
 		"round: a reopened finished place keeps its stamps and asks nothing", again._mission_text.text)
 	await _throw(again, lab2, 45.0, 9.0)
 	await _run_to_end(lab2)
@@ -148,7 +169,8 @@ func check_late_settle() -> void:
 	var script := GDScript.new()
 	script.source_code = "extends Experiment\nvar now := \"landed\"\nvar done := false\n" \
 		+ "func status() -> String:\n\treturn now\nfunc settled() -> bool:\n\treturn done\n" \
-		+ "func observations() -> Dictionary:\n\treturn {\"range\": 4.2}\n"
+		+ "func observations() -> Dictionary:\n\treturn {\"range\": 4.2}\n" \
+		+ "func control_value(_id: String) -> Variant:\n\treturn 6.0\n"   # any throw past 3 m clears the first stage
 	script.reload()
 	var stand_in: Experiment = script.new()
 	tree.root.add_child(stand_in)

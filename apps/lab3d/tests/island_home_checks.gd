@@ -123,12 +123,12 @@ func check_walk_timing() -> void:
 	await _free(screen)
 
 
-## Spots with missions show a "미션" badge; at 3 stamps the flag stands. Progress (0/3) is
+## Spots with missions show a IslandHomeScreen.BADGE badge; at 3 stamps the flag stands. Progress (0/3) is
 ## shown only in the experiment screen, not on the map.
 func check_stamp_display() -> void:
 	DirAccess.remove_absolute(ProgressStore.path)
 	var screen := await _home(TABLET)
-	# A fresh map: the projectile spot (it has 3 stages) shows a "미션" badge next to its name.
+	# A fresh map: the projectile spot (it has 3 stages) shows a IslandHomeScreen.BADGE badge next to its name.
 	await tree.process_frame
 	await tree.process_frame
 	var label: Label = _label_text(screen, "projectile")
@@ -137,20 +137,21 @@ func check_stamp_display() -> void:
 	var has_badge: bool = false
 	if box != null:
 		for c: Node in box.find_children("*", "Label", true, false):
-			if (c as Label).text == "미션":
+			if (c as Label).text == IslandHomeScreen.BADGE:
 				has_badge = true
 	expect.call(label != null and label.text.contains("던지기") and has_badge,
-		"a mission spot shows its name and a 미션 badge", label.text if label else "")
-	# A non-mission spot (collision) has no badge.
-	var collision_label: Label = _label_text(screen, "collision")
-	var collision_box: Node = screen._labels.get("collision")
-	var collision_badge: bool = false
-	if collision_box != null:
-		for c: Node in collision_box.find_children("*", "Label", true, false):
-			if (c as Label).text == "미션":
-				collision_badge = true
-	expect.call(collision_label != null and collision_label.text.contains("충돌") and not collision_badge,
-		"a non-mission spot has no badge", collision_label.text if collision_label else "")
+		"a mission spot shows its name and a 도전 badge", label.text if label else "")
+	# Every spot has its missions now (Plan G2: the other 10 labs too): each shows the badge.
+	var unbadged := []
+	for spot in screen._spots:
+		var spot_box: Node = screen._labels.get(spot.id)
+		var badge := false
+		if spot_box != null:
+			for c: Node in spot_box.find_children("*", "Label", true, false):
+				badge = badge or (c as Label).text == IslandHomeScreen.BADGE
+		if not badge:
+			unbadged.append(spot.id)
+	expect.call(screen._spots.size() == 11 and unbadged.is_empty(), "all 11 spots have missions and show the 도전 badge", str(unbadged))
 	# The map reads the store when it opens, never per frame (SM-P200: 11 file reads a frame cost
 	# the home its 60 fps).
 	var reads := ProgressStore.load_count
@@ -159,18 +160,31 @@ func check_stamp_display() -> void:
 	expect.call(ProgressStore.load_count == reads, "the map reads no progress file per frame",
 		"%d reads in 30 frames" % (ProgressStore.load_count - reads))
 	await _free(screen)
-	# Award 3 stamps: the map opened again stands the flag.
+	# Award 3 stamps: the map opened again stands the flag (every spot, the projectile and the other 10).
+	var finished := {}
+	for spot in ExperimentRegistry.load_all():
+		finished[spot.id] = 3
 	ProgressStore.save({"projectile": 3})
 	screen = await _home(TABLET)
 	var flag: Node3D = screen._flags.get("projectile")
 	expect.call(flag != null and flag.visible, "a finished spot stands its flag", "flag visible %s" % str(flag.visible if flag else null))
+	await _free(screen)
+	ProgressStore.save(finished)
+	screen = await _home(TABLET)
+	var flagless := []
+	for id in finished:
+		var spot_flag: Node3D = screen._flags.get(id)
+		if spot_flag == null or not spot_flag.visible:
+			flagless.append(id)
+	expect.call(flagless.is_empty(), "every spot with 3 stamps stands its flag", str(flagless))
 	await _free(screen)
 	# An unfinished spot has no flag.
 	ProgressStore.save({"projectile": 1, "orbit": 2})
 	screen = await _home(TABLET)
 	var orbit_label: Label = _label_text(screen, "orbit")
 	var orbit_flag: Node3D = screen._flags.get("orbit")
-	expect.call(orbit_label != null and orbit_label.text.contains("궤도"), "a spot label shows the lab's short name (orbit = 궤도)", orbit_label.text if orbit_label else "")
+	expect.call(orbit_label != null and orbit_label.text.contains(ExperimentRegistry.kid_text(ExperimentRegistry.find("orbit"), "place")),
+		"a spot label shows the lab's kid place name (orbit = 별 돌기)", orbit_label.text if orbit_label else "")
 	expect.call(orbit_flag != null and not orbit_flag.visible, "an unfinished spot has no flag", "flag visible %s" % str(orbit_flag.visible if orbit_flag else null))
 	DirAccess.remove_absolute(ProgressStore.path)
 	await _free(screen)

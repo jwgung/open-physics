@@ -1,11 +1,11 @@
 ## The island home (Plan G2): the 3D island seen from above, with the 5 zones and their 11 spots.
 ## A tap on a spot makes the bread cat hop over, then the experiment opens. A spot with missions
-## wears a "미션" badge; when all its stamps (3) are collected a flag stands there. The list and
+## wears a "도전" badge (BADGE); when all its stamps (3) are collected a flag stands there. The list and
 ## settings buttons sit on the map (the list screen stays behind "목록" for teachers and
 ## accessibility). The stamps are read once when the map opens (refresh_progress), never per frame.
 ##
 ## The home is a Control that owns a View3D (top camera, ArtKit's island) and the bread cat
-## (CatActor) who hops between spots. Spot names (and the "미션" badge) are 2D labels projected onto the map
+## (CatActor) who hops between spots. Spot names (and the "도전" badge) are 2D labels projected onto the map
 ## (the key-card / dialogue pattern: the 3D view under, UI on top). It never touches an
 ## experiment's physics: the map is its own little world. App.gd builds it the way it built the
 ## ListScreen (same signals).
@@ -34,6 +34,8 @@ var _labels_for := Vector2.ZERO      # the view size the spot labels were placed
 var _labels_camera := Transform3D()  # the camera they were placed for
 var _label_frames := 0               # frames the labels are placed again (their sizes settle)
 
+## The badge of a spot with missions (a word a 7-year-old reads: a challenge waits there).
+const BADGE := "도전"
 const TAP_SLOP := 14.0               # UI units a press may move and still count as a tap
 const WALK_SPEED := 6.0              # m/s the cat hops
 const HOP_HEIGHT := 0.35             # m the cat rises on a hop
@@ -181,7 +183,7 @@ func _build_top_bar() -> void:
 	bar.add_child(row)
 	var brand := Ui.vbox(0)
 	brand.add_child(Ui.label("빵고양이 과학섬", "HeadingLabel"))
-	brand.add_child(Ui.label("장소를 고르고 실험을 시작해요", "EyebrowLabel"))
+	brand.add_child(Ui.label("가고 싶은 곳을 눌러 봐요", "EyebrowLabel"))
 	row.add_child(brand)
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -281,21 +283,15 @@ func _make_label(spot: Dictionary) -> Control:
 	box.add_child(row)
 	row.add_child(Ui.label(_spot_name(spot.definition), "HeadingLabel"))
 	if not MissionTracker.missions(spot.definition).get("stages", []).is_empty():
-		row.add_child(Ui.label("미션", "KeyLabel"))
+		row.add_child(Ui.label(BADGE, "KeyLabel"))
 	add_child(box)
 	return box
 
 
-## A short name for the spot (the labs' own titles are long questions; the map shows the lab's
-## name): the experiment's category-free short label.
+## A short name for the spot (the labs' own titles are long questions): the experiment's kid
+## `place` ("공 던지기", ExperimentRegistry.kid_text), else its title.
 func _spot_name(definition: Dictionary) -> String:
-	var names := {
-		"projectile": "던지기", "collision": "충돌", "free-fall": "자유 낙하",
-		"incline-friction": "빗면 마찰", "friction": "마찰 밀기", "spring": "용수철",
-		"rotation": "회전", "pulley": "도르래", "constraints": "구속", "buoyancy": "부력",
-		"orbit": "궤도",
-	}
-	return names.get(definition.id, definition.title)
+	return ExperimentRegistry.kid_text(definition, "place")
 
 
 func _on_pointer(kind: String, position: Vector2) -> void:

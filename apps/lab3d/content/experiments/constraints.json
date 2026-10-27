@@ -48,6 +48,32 @@
     { "id": "reset", "label": "처음으로" }
   ],
   "key_observations": ["rope_distance", "rod_distance", "small_period"],
+  "predict": {
+    "question": "줄이 길면 더 천천히 흔들릴까?",
+    "choices": [
+      { "id": "slower", "label": "천천히", "picture": "swing_slow" },
+      { "id": "same", "label": "똑같이", "picture": "swing_same" }
+    ],
+    "answer": "slower",
+    "reason": "줄이 길면 공이 더 먼 길을 돌아요. 그래서 한 번 왔다 갔다 하는 데 오래 걸려요."
+  },
+  "missions": {
+    "observe": "rope_period",
+    "judge_on": ["swinging"],
+    "hidden_until_end": ["small_period"],
+    "stages": [
+      { "threshold": 3.0, "conditions": {"gravity": "earth", "length": {"min": 2.25}}, "text": "줄을 길게 해서 천천히 흔들기!" },
+      { "threshold": 8.0, "conditions": {"gravity": "moon", "length": {"min": 2.75}}, "text": "달에서 긴 줄로 흔들기!" },
+      { "threshold": 4.0, "conditions": {"gravity": "moon", "length": {"max": 1.5}}, "text": "달에서 짧은 줄로 흔들기!" }
+    ]
+  },
+  "kid": {
+    "title": "줄에 매단 공을 흔들어 보자!",
+    "place": "흔들 추",
+    "say": "줄과 막대는 길이가 그대로예요. 그래서 공이 동그랗게 흔들려요.",
+    "tip": "공을 옆으로 끌었다가 놓아요.",
+    "cards": {"rope_distance": "줄 길이", "rod_distance": "막대 길이", "small_period": "한 번 왔다 갔다"}
+  },
   "cast": {
     "dugi": { "at": [3.5, 4.0], "explain_on": ["swinging", "weightless"], "delay_s": 1.5 },
     "puppy": { "at": [-7.5, -6.25] }

@@ -36,10 +36,38 @@
   ],
   "actions": [
     { "id": "launch", "label": "발사", "style": "primary" },
-    { "id": "circular", "label": "원 궤도 속력으로" },
+    { "id": "circular", "label": "동그랗게 돌게" },
     { "id": "reset", "label": "처음으로" }
   ],
   "key_observations": ["state", "launch_speed", "escape_speed"],
+  "predict": {
+    "question": "더 세게 쏘면 별을 떠날까?",
+    "choices": [
+      { "id": "leave", "label": "떠나요", "picture": "orbit_leave" },
+      { "id": "stay", "label": "계속 돌아요", "picture": "orbit_stay" }
+    ],
+    "answer": "leave",
+    "reason": "별은 행성을 끌어당겨요. 아주 빠르게 쏘면 별이 붙잡지 못해서 멀리 떠나요."
+  },
+  "missions": {
+    "observe": "laps",
+    "judge_on": ["orbiting"],
+    "reveal_on": ["orbiting", "leaving", "crash", "far"],
+    "hidden_until_end": ["predicted", "escape_speed"],
+    "stages": [
+      { "threshold": 0.5, "conditions": {"radius": 4.0}, "text": "별에서 4미터 떨어져 반 바퀴 돌기!" },
+      { "threshold": 1.0, "conditions": {"radius": 5.0}, "text": "별에서 5미터 떨어져 한 바퀴 돌기!" },
+      { "threshold": 2.0, "conditions": {"radius": 2.0}, "text": "별 가까이 2미터에서 두 바퀴 돌기!" }
+    ]
+  },
+  "kid": {
+    "title": "별 둘레를 빙글빙글 돌아 보자!",
+    "place": "별 돌기",
+    "say": "별이 행성을 끌어당겨요. 빠르기에 따라 별을 돌기도 하고 떠나기도 해요.",
+    "tip": "노란 손잡이를 끌어 쏠 방향을 정해요.",
+    "cards": {"state": "행성은?", "launch_speed": "쏘는 빠르기", "escape_speed": "떠나는 빠르기"},
+    "states": {"발사 전": "쏘기 전", "별 둘레를 도는 중": "별을 빙글빙글 돌아요", "별에서 멀어지는 중": "별에서 멀어져요"}
+  },
   "cast": {
     "dugi": { "at": [8.0, 4.75], "explain_on": ["orbiting", "leaving", "crash", "far"], "delay_s": 1.5 },
     "puppy": { "at": [5.0, -8.75] }
@@ -53,7 +81,8 @@
     { "id": "radius", "label": "지금 궤도 반지름 r", "unit": "m", "digits": 2 },
     { "id": "period", "label": "원 궤도 예상 주기 2π√(r³/GM)", "unit": "s", "digits": 2 },
     { "id": "speed", "label": "지금 속력", "unit": "m/s", "digits": 2 },
-    { "id": "lap", "label": "한 바퀴 걸린 시간", "unit": "s", "digits": 2 }
+    { "id": "lap", "label": "한 바퀴 걸린 시간", "unit": "s", "digits": 2 },
+    { "id": "laps", "label": "별 둘레를 돈 바퀴 수", "unit": "바퀴", "digits": 2 }
   ],
   "manipulation": {
     "objects": [

@@ -441,7 +441,7 @@ func check_first_launch_screen() -> void:
 		await _until(lab, k)
 		worst = maxf(worst, maxf(absf(lab.planet.global_position.x - float(s.x)), absf(lab.planet.global_position.z - float(s.z))))
 	var first_ok: bool = lab.driver.engine.size() > 1 and lab.driver.engine[1].z < 0.0
-	expect.call(waiting.predicted == "공전" and waiting.state == "발사 전 · 예상 길을 먼저 봐요" and absf(float(waiting.circular_speed) - 3.0) < 1e-12
+	expect.call(waiting.predicted == "공전" and waiting.state == "발사 전" and absf(float(waiting.circular_speed) - 3.0) < 1e-12
 		and absf(float(waiting.escape_speed) - sqrt(18.0)) < 1e-12 and worst <= ENGINE_TOLERANCE and first_ok and lab.status() == "orbiting",
 		"orbit (fresh screen): 발사 → the engine planet follows the TS circular orbit from the first step", "|dx| %s m" % String.num_scientific(worst))
 	await _until(lab, 360)
@@ -460,6 +460,22 @@ func check_input_path() -> void:
 	var lab: Experiment = screen.experiment
 	var m: Manipulator = screen.manipulator
 	var knob: StaticBody3D = lab.knob
+	# The game round (missions): no path and no guide before the launch, also while the knob is held.
+	var game_hidden: bool = not lab.answer_preview and lab.props.path.multimesh.visible_instance_count == 0 \
+		and lab.props.guide.multimesh.visible_instance_count == 0
+	var nudge := knob.global_position + Vector3(0.0, 0.0, -0.4)
+	_swipe(screen, _at(screen, knob.global_position), _at(screen, nudge), 6)
+	await tree.process_frame
+	game_hidden = game_hidden and m.mode == "drag" and lab.props.path.multimesh.visible_instance_count == 0
+	_touch(screen, _at(screen, nudge), false)
+	await tree.process_frame
+	lab.run_action("launch")
+	game_hidden = game_hidden and lab.props.path.multimesh.visible_instance_count > 1 and lab.props.guide.multimesh.visible_instance_count == OrbitProps.DASHES
+	expect.call(game_hidden, "orbit (game round): no predicted path or guide before the launch, not even while the knob is held; both appear at the launch",
+		"path %d, guide %d" % [lab.props.path.multimesh.visible_instance_count, lab.props.guide.multimesh.visible_instance_count])
+	screen.experiment_action("reset")
+	lab.answer_preview = true   # the lab's own preview (outside a game round) below
+	lab.reset_run()
 	# Knob to about 4.52 m/s at 92 deg: snaps to 4.5 m/s, 90 deg; the preview turns purple (escape) while held.
 	var a := deg_to_rad(92.0)
 	var length: float = OrbitArrowSurface.OFFSET + 4.52 * OrbitArrowSurface.SCALE

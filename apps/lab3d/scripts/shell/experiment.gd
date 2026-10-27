@@ -23,6 +23,10 @@ signal close_up_cut
 
 ## Parsed content JSON (see ExperimentRegistry). Read-only for the experiment.
 var definition: Dictionary = {}
+## False in a game round (the definition has missions; the screen sets it before the lab enters
+## the tree): the lab draws no answer preview before the run, such as the orbit's predicted path.
+## Visual only: no body, formula value or status depends on it.
+var answer_preview := true
 ## The project's engine gravity (m/s^2): labs whose formulas use g read it here, never a copy.
 var engine_g: float = ProjectSettings.get_setting("physics/3d/default_gravity", 9.81)
 ## status() as of the last _update_status().

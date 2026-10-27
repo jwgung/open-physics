@@ -389,6 +389,8 @@ func check_projectile_explains() -> void:
 	var screen := await _open("projectile", TABLET)
 	var lab: Experiment = screen.experiment
 	var cast: IslandCast = screen.cast
+	screen._end_question()        # the prediction round is not under test here (game_round_checks):
+	screen._reason_pending = ""   # no question, and no reason told first
 	screen.experiment_action("release")
 	var guard := 0
 	while not cast.dugi.speaking() and guard < 600:
@@ -404,9 +406,9 @@ func check_projectile_explains() -> void:
 	expect.call(cast.explain_count == 1 and status in ["landed", "fence"] and lab.explain_point().distance_to(landing) < 1e-4 and aim < POINT_TOL_DEG,
 		"cast (projectile): after the throw lands Dugi points at the formula landing point (the end of the formula path)",
 		"status %s, %d explanations, point %s vs %s, aim %.3f deg" % [status, cast.explain_count, lab.explain_point(), landing, aim])
-	expect.call(box.visible and box.active and box.joined() == screen.definition.observe and box.name_label.text == "두기두기"
+	expect.call(box.visible and box.active and box.joined() == ExperimentRegistry.kid_text(screen.definition, "say") and box.name_label.text == "두기두기"
 		and box.label.text == box.page_text(0),
-		"cast (projectile): the dialogue opens with the lab's observe text exactly (only split into pages)", box.label.text)
+		"cast (projectile): the dialogue opens with the lab's kid say text exactly (only split into pages)", box.label.text)
 	screen.experiment_action("reset")
 	await tree.process_frame
 	expect.call(cast.dugi.state == "rest" and not box.visible and not box.active and not cast.dugi.pointer.visible,
@@ -593,27 +595,31 @@ func check_dialogue() -> void:
 			if not screen._layout_dialogue():
 				split_problems.append("%s %s: no room" % [definition.id, size])
 			else:
-				var font := box.label.get_theme_font("font")
-				var fs := box.label.get_theme_font_size("font_size")
-				if box.joined() != definition.observe:
-					split_problems.append("%s: pages != observe" % definition.id)
-				for pg in box.pages():
-					if pg.lines.size() > DialogueBox.LINES:
-						split_problems.append("%s: %d lines" % [definition.id, pg.lines.size()])
-					for line in pg.lines:
-						if font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > box.label.size.x + 0.5:
-							split_problems.append("%s: line too wide" % definition.id)
-				if box.more.position.x < box.label.position.x + box.label.size.x or box.more.position.x + box.more.get_minimum_size().x > box.box.size.x:
-					split_problems.append("%s: the ▼ overlaps the words or leaves the box" % definition.id)
-				max_pages = maxi(max_pages, box.pages().size())
+				# A lab with a prediction opens with Dugi's question (Plan G4): its pages first, then
+				# the question goes and his kid say text and the prediction's reason are checked the same way.
+				var say := ExperimentRegistry.kid_text(definition, "say")
+				var texts: Array = [say]
+				if screen._asking:
+					texts.push_front(str(MissionTracker.predict(definition).question))
+					texts.append(str(MissionTracker.predict(definition).reason))
+				for text in texts:
+					if text != texts[0] or not screen._asking:
+						screen._end_question()
+						box.open(text)
+						screen._layout_dialogue()
+					split_problems.append_array(_page_problems(box, definition.id, text))
+					max_pages = maxi(max_pages, box.pages().size())
 			await _close(screen)
-	expect.call(split_problems.is_empty(), "dialogue: every observe text splits at its spaces into pages of at most %d lines that fit (phone, tablet), and joins back exactly" % DialogueBox.LINES,
+	expect.call(split_problems.is_empty(), "dialogue: every kid say text (and prediction question and reason) splits at its spaces into pages of at most %d lines that fit (phone, tablet), and joins back exactly" % DialogueBox.LINES,
 		"; ".join(split_problems) if not split_problems.is_empty() else "up to %d pages" % max_pages)
 
 	var screen := await _open("collision", TABLET)
+	screen._end_question()   # the prediction's question first goes (the round is not under test here)
+	screen._reason_pending = ""
 	var cast: IslandCast = screen.cast
 	var box: DialogueBox = screen.dialogue
 	box.set_process(false)
+	box.words = screen.definition.observe   # a long text (the shared one: two pages on a tablet) to turn pages
 	cast.dugi.explain(screen.experiment.explain_point)
 	for k in 3:
 		await tree.process_frame
@@ -673,6 +679,25 @@ func check_dialogue() -> void:
 		await tree.process_frame
 	expect.call(was and not box.active and not box.visible, "dialogue: opening the sidebar closes it (no dialogue beside the sidebar)", "")
 	await _close(screen)
+
+
+## The problems of `box`'s pages for `text`: joined back exactly, at most LINES lines a page, every
+## line within the label, the ▼ clear of the words.
+static func _page_problems(box: DialogueBox, id: String, text: String) -> Array:
+	var problems := []
+	var font := box.label.get_theme_font("font")
+	var fs := box.label.get_theme_font_size("font_size")
+	if box.joined() != text:
+		problems.append("%s: pages != %s" % [id, text.left(12)])
+	for pg in box.pages():
+		if pg.lines.size() > DialogueBox.LINES:
+			problems.append("%s: %d lines" % [id, pg.lines.size()])
+		for line in pg.lines:
+			if font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x > box.label.size.x + 0.5:
+				problems.append("%s: line too wide" % id)
+	if box.more.position.x < box.label.position.x + box.label.size.x or box.more.position.x + box.more.get_minimum_size().x > box.box.size.x:
+		problems.append("%s: the ▼ overlaps the words or leaves the box" % id)
+	return problems
 
 
 # --- 7. physics unchanged ---------------------------------------------------------------------

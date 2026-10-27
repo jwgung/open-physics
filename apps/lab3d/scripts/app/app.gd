@@ -1,5 +1,5 @@
-## App root: theme, screen navigation (island map -> experiment, the card list and settings from the
-## map; back always returns to the map, back on the map quits) and the fps overlay.
+## App root: theme, screen navigation (island map -> experiment, settings from the map; back always
+## returns to the map, back on the map quits) and the fps overlay.
 ## Landscape only (Task 2d): project.godot locks the screen to sensor landscape on Android and iOS.
 ## Launch args (command line or Android `opargs`, see Quality.all_args):
 ##   --experiment=<id>   open that experiment directly (measurements, screenshots)
@@ -69,29 +69,17 @@ func _go_back() -> void:
 			show_list()
 	elif _screen is SettingsScreen:
 		show_list()
-	elif _screen is ListScreen:
-		show_list()   # the card list opened from the map goes back to the map
 	else:
 		get_tree().quit()   # the map is the home
 
 
-## The home is the 3D island (Plan G2): tap a spot, the cat hops over, the experiment opens. The
-## old card list stays behind the map's "목록" button (teachers, accessibility).
+## The home is the 3D island (Plan G2): tap a spot, the cat hops over, the experiment opens.
 func show_list() -> void:
 	var screen := IslandHomeScreen.new()
 	screen.definitions = _definitions
 	screen.experiment_chosen.connect(show_experiment)
 	screen.settings_requested.connect(show_settings)
-	screen.list_requested.connect(_show_list_screen)
 	_swap(screen, "home")
-
-
-func _show_list_screen() -> void:
-	var screen := ListScreen.new()
-	screen.definitions = _definitions
-	screen.experiment_chosen.connect(show_experiment)
-	screen.settings_requested.connect(show_settings)
-	_swap(screen, "list")
 
 
 func show_experiment(definition: Dictionary, state := {}, launch_args := false) -> void:

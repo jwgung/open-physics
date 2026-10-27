@@ -1,6 +1,6 @@
-## Plan G2: the island home — the 3D island seen from above, the 5 zones and 11 spots, a tap that
-## hops the bread cat over and opens the experiment, the stamp / flag display, and the list and
-## settings buttons on the map (phone and tablet).
+## Plan G2: the island home — the 3D island seen from above, the 5 zones and 11 spots, a tap (on a
+## marker or its name label) that hops the bread cat over and opens the experiment, a drag that turns
+## the map, the flag display, and the settings button on the map (phone and tablet).
 extends RefCounted
 
 var tree: SceneTree
@@ -25,7 +25,7 @@ func run() -> void:
 
 
 ## The home renders: the island, the cat, the 5 zones' pads and 11 spot markers, the top bar with
-## the brand and the list / settings buttons.
+## the brand and the settings button (no list button, 2026-10-27).
 func check_home_builds() -> void:
 	var screen := await _home(PHONE)
 	var problems := []
@@ -47,16 +47,16 @@ func check_home_builds() -> void:
 		problems.append("no top bar")
 	var buttons: Array = screen.find_children("ListButton", "", true, false)
 	var settings: Array = screen.find_children("SettingsButton", "", true, false)
-	if buttons.size() != 1 or settings.size() != 1:
-		problems.append("list/settings buttons %d/%d (want 1/1)" % [buttons.size(), settings.size()])
-	# The camera looks straight down (top mode) and the island is on screen.
+	if buttons.size() != 0 or settings.size() != 1:
+		problems.append("list/settings buttons %d/%d (want 0/1)" % [buttons.size(), settings.size()])
+	# The camera looks down at 3/4 and the island is on screen.
 	var cam_mode: String = screen.view.rig.mode
-	if cam_mode != "top":
-		problems.append("camera mode %s (want top)" % cam_mode)
+	if cam_mode != "three_quarter":
+		problems.append("camera mode %s (want three_quarter)" % cam_mode)
 	var center_screen: Vector2 = screen._world_to_screen(Vector3(0.0, 0.0, 0.0))
 	if center_screen == Vector2.INF or not Rect2(Vector2.ZERO, screen.size).has_point(center_screen):
 		problems.append("island centre not on screen %s" % str(center_screen))
-	expect.call(problems.is_empty(), "island home builds: island, cat, 5 zones, 11 spots, top bar, top camera", "; ".join(problems))
+	expect.call(problems.is_empty(), "island home builds: island, cat, 5 zones, 11 spots, top bar, 3/4 camera", "; ".join(problems))
 	await _free(screen)
 
 
@@ -98,14 +98,30 @@ func check_tap_opens_experiment() -> void:
 		expect.call(chosen.is_empty() and not screen._walking, "a tap on empty grass opens nothing", "chosen %s" % str(chosen))
 	else:
 		expect.call(true, "empty-grass tap skipped (no clear empty point on this layout)", "")
-	# A drag (a move beyond the slop) is not a tap.
+	# A drag (a move beyond the slop) is not a tap: it turns the map.
 	chosen.clear()
 	var from: Vector2 = screen._world_to_screen(target.at + Vector3.UP * 1.0)
+	var yaw_before: float = screen.view.rig.goal_yaw
 	screen._on_pointer("press", from)
 	await tree.process_frame
+	screen._on_pointer("move", from + Vector2(40, 0))
 	screen._on_pointer("move", from + Vector2(80, 0))
 	screen._on_pointer("release", from + Vector2(80, 0))
 	expect.call(chosen.is_empty() and not screen._walking, "a drag over a spot does not open it", "chosen %s" % str(chosen))
+	expect.call(not is_equal_approx(screen.view.rig.goal_yaw, yaw_before), "a one-finger drag turns the map",
+		"yaw %.3f -> %.3f" % [yaw_before, screen.view.rig.goal_yaw])
+	await _free(screen)
+	# A tap on a spot's name label (the label takes no input itself) opens that spot.
+	screen = await _home(TABLET)
+	chosen.clear()
+	screen.experiment_chosen.connect(func(d: Dictionary) -> void: chosen.append(d.id))
+	await tree.process_frame
+	await tree.process_frame
+	var label: Control = screen._labels.get("orbit")
+	var on_label: Vector2 = label.position + label.size * 0.5 if label != null else Vector2.INF
+	expect.call(label != null and label.mouse_filter == Control.MOUSE_FILTER_IGNORE and screen._spot_at(on_label) >= 0
+			and screen._spots[screen._spot_at(on_label)].id == "orbit",
+		"a tap on a spot's name label picks that spot (the label passes the touch to the map)", str(on_label))
 	await _free(screen)
 
 
@@ -123,35 +139,19 @@ func check_walk_timing() -> void:
 	await _free(screen)
 
 
-## Spots with missions show a IslandHomeScreen.BADGE badge; at 3 stamps the flag stands. Progress (0/3) is
-## shown only in the experiment screen, not on the map.
+## A spot label is its name only (no "도전" badge, 2026-10-27); at 3 stamps the flag stands.
+## Progress (0/3) is shown only in the experiment screen, not on the map.
 func check_stamp_display() -> void:
 	DirAccess.remove_absolute(ProgressStore.path)
 	var screen := await _home(TABLET)
-	# A fresh map: the projectile spot (it has 3 stages) shows a IslandHomeScreen.BADGE badge next to its name.
+	# A fresh map: the projectile spot's label is its name, one label and nothing else.
 	await tree.process_frame
 	await tree.process_frame
 	var label: Label = _label_text(screen, "projectile")
-	expect.call(label != null, "the projectile spot has a label", str(screen._labels.keys()))
 	var box: Node = screen._labels.get("projectile")
-	var has_badge: bool = false
-	if box != null:
-		for c: Node in box.find_children("*", "Label", true, false):
-			if (c as Label).text == IslandHomeScreen.BADGE:
-				has_badge = true
-	expect.call(label != null and label.text.contains("던지기") and has_badge,
-		"a mission spot shows its name and a 도전 badge", label.text if label else "")
-	# Every spot has its missions now (Plan G2: the other 10 labs too): each shows the badge.
-	var unbadged := []
-	for spot in screen._spots:
-		var spot_box: Node = screen._labels.get(spot.id)
-		var badge := false
-		if spot_box != null:
-			for c: Node in spot_box.find_children("*", "Label", true, false):
-				badge = badge or (c as Label).text == IslandHomeScreen.BADGE
-		if not badge:
-			unbadged.append(spot.id)
-	expect.call(screen._spots.size() == 11 and unbadged.is_empty(), "all 11 spots have missions and show the 도전 badge", str(unbadged))
+	var labels: int = box.find_children("*", "Label", true, false).size() if box != null else 0
+	expect.call(label != null and label.text.contains("던지기") and labels == 1,
+		"a spot label shows only its name (no badge)", label.text if label else "")
 	# The map reads the store when it opens, never per frame (SM-P200: 11 file reads a frame cost
 	# the home its 60 fps).
 	var reads := ProgressStore.load_count
@@ -190,44 +190,36 @@ func check_stamp_display() -> void:
 	await _free(screen)
 
 
-## The list and settings buttons are on the map and reachable (phone and tablet); back leaves the
-## home (the app quits from the home, as from the old list).
+## The settings button is on the map and reachable (phone and tablet); there is no list button.
 func check_buttons_and_layout() -> void:
 	for setup in [[PHONE, "phone"], [TABLET, "tablet"]]:
 		var screen := await _home(setup[0])
 		await tree.process_frame
 		await tree.process_frame
 		var bar: PanelContainer = screen.find_child("TopBar", true, false)
-		var list_btn: Button = screen.find_child("ListButton", true, false)
 		var settings: Button = screen.find_child("SettingsButton", true, false)
 		var problems := []
-		if bar == null or list_btn == null or settings == null:
-			problems.append("top bar / list / settings missing")
+		if bar == null or settings == null:
+			problems.append("top bar / settings missing")
 		else:
-			var bar_rect := bar.get_global_rect()
-			var list_rect := list_btn.get_global_rect()
-			var settings_rect := settings.get_global_rect()
-			if not Rect2(Vector2.ZERO, screen.size).encloses(bar_rect):
+			if not Rect2(Vector2.ZERO, screen.size).encloses(bar.get_global_rect()):
 				problems.append("top bar off screen")
-			if not Rect2(Vector2.ZERO, screen.size).encloses(list_rect) or not Rect2(Vector2.ZERO, screen.size).encloses(settings_rect):
-				problems.append("a button off screen")
+			if not Rect2(Vector2.ZERO, screen.size).encloses(settings.get_global_rect()):
+				problems.append("the settings button off screen")
 		# The 3D view fills the screen under the bar.
 		if screen.view.size != setup[0]:
 			problems.append("view size %s (want full %s)" % [str(screen.view.size), str(setup[0])])
-		expect.call(problems.is_empty(), "island home (%s): top bar with list and settings on the map, the 3D view full" % setup[1], "; ".join(problems))
+		expect.call(problems.is_empty(), "island home (%s): top bar with settings on the map, the 3D view full" % setup[1], "; ".join(problems))
 		await _free(screen)
 
 
-## Android back (App._go_back): the card list opened from the map, an experiment and settings all go
-## back to the map; only back on the map quits (not called here: it would end the run).
+## Android back (App._go_back): an experiment and settings go back to the map; only back on the
+## map quits (not called here: it would end the run).
 func check_back_navigation() -> void:
 	var app: Control = load("res://scripts/app/app.gd").new()
 	tree.root.add_child(app)
 	await tree.process_frame
 	var trail := [app._screen.get_class() if not app._screen is IslandHomeScreen else "map"]
-	app._show_list_screen()
-	app._go_back()
-	trail.append("map" if app._screen is IslandHomeScreen else str(app._screen))
 	app.show_experiment(ExperimentRegistry.find("free-fall"))
 	await tree.process_frame
 	app._go_back()
@@ -235,8 +227,8 @@ func check_back_navigation() -> void:
 	app.show_settings()
 	app._go_back()
 	trail.append("map" if app._screen is IslandHomeScreen else str(app._screen))
-	expect.call(trail == ["map", "map", "map", "map"],
-		"back: the app opens on the map; back from the card list, an experiment and settings returns to the map", str(trail))
+	expect.call(trail == ["map", "map", "map"],
+		"back: the app opens on the map; back from an experiment and settings returns to the map", str(trail))
 	app.queue_free()
 	for i in 3:
 		await tree.process_frame

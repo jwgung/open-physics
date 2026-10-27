@@ -3,7 +3,8 @@
 ## outline runs along the bottom of the 3D view from the left margin up to the action buttons (or to
 ## Dugi on the view, whichever is nearer); a bust portrait of Dugi always stands on its left end and
 ## overlaps the top edge (assets/characters/portraits, rendered from the model by
-## art_src/characters/dugi_portrait.py), the name tag "두기두기" sits on the top edge beside it,
+## art_src/characters/dugi_portrait.py; one picture, the pointing bust, for the whole talk: a face
+## changing every page was too busy, 2026-10-27), the name tag "두기두기" sits on the top edge beside it,
 ## and a blinking ▼ shows when the page is fully shown.
 ##
 ## The words are the lab's observe text exactly (or, for one open, other words of Dugi's: the
@@ -32,11 +33,8 @@ const PORTRAIT_INSET := 6.0                 # from the box's left end
 const PORTRAIT_SHARE := 0.94                # of the portrait's width the words keep clear of (the stick)
 const MIN_TEXT_WIDTH := 300.0
 const MORE_ROOM := 30.0                     # right of the text: the ▼
-const PORTRAITS := {
-	"point": preload("res://assets/characters/portraits/dugi_point.webp"),
-	"talk": preload("res://assets/characters/portraits/dugi_talk.webp"),
-	"smile": preload("res://assets/characters/portraits/dugi_smile.webp"),
-}
+## The pointing bust holds the stick out to the right: towards the words and the scene.
+const PORTRAIT := preload("res://assets/characters/portraits/dugi_point.webp")
 
 var text := ""
 ## The box's own words (the lab's observe text): every open without other words shows these.
@@ -80,7 +78,7 @@ func _init(own_words: String) -> void:
 	portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	portrait.texture = PORTRAITS.point
+	portrait.texture = PORTRAIT
 	add_child(portrait)
 	name_tag = Ui.panel("DialogueNameTag")
 	name_tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -253,9 +251,6 @@ func _show_page(restart: bool) -> void:
 	if restart:
 		_shown = 0.0
 	_read_left = _read_time()
-	if not _pages.is_empty():
-		# The pointing bust holds the stick out to the right: towards the words and the scene.
-		portrait.texture = PORTRAITS.point if page == 0 else PORTRAITS.talk
 	_refresh()
 
 
@@ -268,9 +263,6 @@ func _refresh() -> void:
 		return
 	label.text = page_text(page)
 	label.visible_characters = int(_shown) if not typed() else -1
-	var last := page == _pages.size() - 1
-	if typed() and last:
-		portrait.texture = PORTRAITS.smile
 	more.visible = typed() and fmod(_clock * BLINK_HZ, 1.0) < 0.6
 
 

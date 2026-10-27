@@ -138,7 +138,7 @@ const JARGON := ["가속도", "탈출", "반지름", "질량", "구속", "주기
 func check_kid_words() -> void:
 	var found := []
 	for definition in ExperimentRegistry.load_all():
-		var texts := [ExperimentScreen.DONE_TEXT, ExperimentScreen.PICK_PREFIX, IslandHomeScreen.BADGE]
+		var texts := [ExperimentScreen.DONE_TEXT, ExperimentScreen.PICK_PREFIX]
 		for key in ExperimentRegistry.KID_TEXTS:
 			texts.append(ExperimentRegistry.kid_text(definition, key))
 		texts.append_array(definition.get("kid", {}).get("states", {}).values())

@@ -89,6 +89,10 @@ static func build() -> Theme:
 	# Key observation cards over the 3D view (Task 2d): small caption, the value as in the panel.
 	_label_variation(theme, "KeyLabel", bold, 16, SUBTLE)
 	_label_variation(theme, "KeyValueLabel", bold, 24, INK)
+	# The island map's spot names (Plan G2): small enough that the 11 labels leave the map visible.
+	_label_variation(theme, "SpotLabel", bold, 18, INK)
+	theme.set_type_variation("SpotPanel", "PanelContainer")
+	theme.set_stylebox("panel", "SpotPanel", _box(Color(1, 1, 1, 0.92), LINE, 12, 10, 4, Color.TRANSPARENT, 2, CARD_LIP))
 	# Dugi's dialogue box (Task 4h): cream paper, brown storybook outline, a brown name tag.
 	_label_variation(theme, "DialogueLabel", regular, SIZE_DIALOGUE, INK)
 	theme.set_constant("line_spacing", "DialogueLabel", 6)

@@ -1,11 +1,11 @@
 ## The island home (Plan G2): the 3D island seen from above, with the 5 zones and their 11 spots.
-## A tap on a spot makes the bread cat hop over, then the experiment opens. A spot with missions
-## wears a "도전" badge (BADGE); when all its stamps (3) are collected a flag stands there. The list and
-## settings buttons sit on the map (the list screen stays behind "목록" for teachers and
-## accessibility). The stamps are read once when the map opens (refresh_progress), never per frame.
+## A tap on a spot (its marker or its name label) makes the bread cat hop over, then the experiment
+## opens; when all its stamps (3) are collected a flag stands there. One finger dragged on the map
+## turns it like the 3D labs (two fingers turn and zoom, View3D). The settings button sits on the
+## map. The stamps are read once when the map opens (refresh_progress), never per frame.
 ##
 ## The home is a Control that owns a View3D (top camera, ArtKit's island) and the bread cat
-## (CatActor) who hops between spots. Spot names (and the "도전" badge) are 2D labels projected onto the map
+## (CatActor) who hops between spots. Spot names are 2D labels projected onto the map
 ## (the key-card / dialogue pattern: the 3D view under, UI on top). It never touches an
 ## experiment's physics: the map is its own little world. App.gd builds it the way it built the
 ## ListScreen (same signals).
@@ -14,7 +14,6 @@ extends Control
 
 signal experiment_chosen(definition: Dictionary)
 signal settings_requested
-signal list_requested   # the "목록" button: the old card list (teachers, accessibility)
 
 var definitions: Array[Dictionary] = []
 var view: View3D
@@ -29,13 +28,12 @@ var _walk_t := 0.0
 var _walk_total := 0.0
 var _walk_spot := -1
 var _down := [Vector2.INF, false]    # screen point of the press, cancelled (a drag)
+var _last := Vector2.INF             # the pointer's last point while it turns the map
 var _progress: Dictionary = {}       # ProgressStore.load(), read on open (refresh_progress)
 var _labels_for := Vector2.ZERO      # the view size the spot labels were placed for
 var _labels_camera := Transform3D()  # the camera they were placed for
 var _label_frames := 0               # frames the labels are placed again (their sizes settle)
 
-## The badge of a spot with missions (a word a 7-year-old reads: a challenge waits there).
-const BADGE := "도전"
 const TAP_SLOP := 14.0               # UI units a press may move and still count as a tap
 const WALK_SPEED := 6.0              # m/s the cat hops
 const HOP_HEIGHT := 0.35             # m the cat rises on a hop
@@ -102,22 +100,23 @@ func _ready() -> void:
 	resized.connect(_layout)
 
 
-## The map's camera definition (CameraRig.configure): straight down, wide, no panning.
+## The map's camera definition (CameraRig.configure): a 3/4 view from above that turns all the way
+## round and tilts between steep and low (one finger or two), zooms with a pinch, no panning.
 func _map_camera() -> Dictionary:
 	return {
 		"target": [0.0, 0.0, 0.0],
-		"distance": 26.0,
-		"distance_range": [18.0, 34.0],
-		"yaw_range_deg": [0.0, 0.0],
-		"pitch_range_deg": [-89.0, -89.0],
+		"distance": 27.0,
+		"distance_range": [16.0, 34.0],
+		"yaw_range_deg": [-180.0, 180.0],
+		"pitch_range_deg": [-85.0, -30.0],
 		"pan_radius": 0.0,
-		"default_mode": "top",
+		"default_mode": "three_quarter",
 		"views": {
-			"front": {"yaw_deg": 0.0, "pitch_deg": -89.0, "distance": 26.0, "target": [0.0, 0.0, 0.0]},
-			"three_quarter": {"yaw_deg": 0.0, "pitch_deg": -89.0},
-			"top": {"yaw_deg": 0.0, "pitch_deg": -89.0, "distance": 26.0},
-			"side": {"yaw_deg": 0.0, "pitch_deg": -89.0},
-			"follow": {"yaw_deg": 0.0, "pitch_deg": -89.0},
+			"front": {"yaw_deg": 0.0, "pitch_deg": -55.0},
+			"three_quarter": {"yaw_deg": 0.0, "pitch_deg": -55.0},
+			"top": {"yaw_deg": 0.0, "pitch_deg": -85.0},
+			"side": {"yaw_deg": 90.0, "pitch_deg": -40.0},
+			"follow": {"yaw_deg": 0.0, "pitch_deg": -55.0},
 		},
 	}
 
@@ -174,7 +173,7 @@ func _spot_marker(world: Node3D, definition: Dictionary, at: Vector3, spec: Dict
 	return root
 
 
-## The top bar: the brand and the list / settings buttons (the home's own chrome, over the map).
+## The top bar: the brand and the settings button (the home's own chrome, over the map).
 func _build_top_bar() -> void:
 	var bar := Ui.panel("TopBar")
 	bar.name = "TopBar"
@@ -188,11 +187,6 @@ func _build_top_bar() -> void:
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(spacer)
-	var list_btn := Ui.button("목록", "", 60)
-	list_btn.name = "ListButton"
-	list_btn.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	list_btn.pressed.connect(list_requested.emit)
-	row.add_child(list_btn)
 	var settings := Ui.button("설정", "", 60)
 	settings.name = "SettingsButton"
 	settings.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -243,8 +237,8 @@ func _step_walk(delta: float) -> void:
 		experiment_chosen.emit(spot.definition)
 
 
-## One 2D label per spot (its name, and the "미션" badge when it has missions), placed over its marker. Created lazily on the
-## first frame the view has a size.
+## One 2D label per spot (its name), placed over its marker. Created lazily on the first frame the
+## view has a size. The labels take no input: a tap on one reaches the map (_spot_at).
 var _labels: Dictionary = {}
 
 
@@ -277,14 +271,13 @@ func _refresh_flag(spot: Dictionary) -> void:
 func _make_label(spot: Dictionary) -> Control:
 	var box := PanelContainer.new()
 	box.name = "SpotLabel_%s" % spot.id
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 6)
-	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	box.add_child(row)
-	row.add_child(Ui.label(_spot_name(spot.definition), "HeadingLabel"))
-	if not MissionTracker.missions(spot.definition).get("stages", []).is_empty():
-		row.add_child(Ui.label(BADGE, "KeyLabel"))
+	box.theme_type_variation = "SpotPanel"
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var label := Ui.label(_spot_name(spot.definition), "SpotLabel")
+	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(label)
 	add_child(box)
+	move_child(box, view.get_index() + 1)   # under the top bar
 	return box
 
 
@@ -299,23 +292,34 @@ func _on_pointer(kind: String, position: Vector2) -> void:
 		"press":
 			_down[0] = position
 			_down[1] = false
+			_last = position
 		"move":
 			if _down[0] != Vector2.INF and position.distance_to(_down[0]) > TAP_SLOP:
-				_down[1] = true   # a drag, not a tap
+				_down[1] = true   # a drag, not a tap: it turns the map
+			if _down[1] and _last != Vector2.INF:
+				view.rig.orbit(position - _last)
+			_last = position
 		"release":
 			if _down[0] != Vector2.INF and not _down[1]:
 				_walk_to_spot(_spot_at(position))
 			_down[0] = Vector2.INF
 			_down[1] = false
+			_last = Vector2.INF
 		"cancel":
 			_down[0] = Vector2.INF
 			_down[1] = false
+			_last = Vector2.INF
 
 
-## The index of the spot under the screen point (the nearest within SPOT_RADIUS), or -1.
+## The index of the spot under the screen point: the spot whose name label holds it, else the
+## nearest marker within SPOT_RADIUS, or -1.
 func _spot_at(position: Vector2) -> int:
 	if view == null or view.rig == null:
 		return -1
+	for i in _spots.size():
+		var label: Control = _labels.get(_spots[i].id)
+		if label != null and label.visible and Rect2(label.position, label.size).has_point(position):
+			return i
 	var best := -1
 	var best_d := INF
 	for i in _spots.size():
@@ -342,7 +346,7 @@ func _screen_radius(at: Vector3) -> float:
 
 
 func _world_to_screen(world: Vector3) -> Vector2:
-	if view == null or view.rig == null:
+	if view == null or view.rig == null or not view.rig.is_inside_tree():   # the map being swapped out
 		return Vector2.INF
 	return view.rig.unproject_position(world) / (Vector2(view.viewport.size) / view.size)
 

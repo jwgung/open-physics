@@ -19,6 +19,8 @@ const KEY_CARD_WIDTH := 200.0
 const TIP_SECONDS := 4.0       # the short gesture hint stays this long (or until the first gesture), then fades
 const TIP_FADE_S := 0.3
 const TIP_MAX_WIDTH := 340.0
+## A game lab's reset button: a short word on a small button (the lab's own label stays in the JSON).
+const RESET_SHORT := "다시"
 const TIP_MIN_WIDTH := 240.0   # narrower than this beside the actions: the tip goes above them
 const DEMO_RELEASE_DELAY_S := 0.4   # --auto-drag: the auto-release waits this long after the demo put its object down
 const CHOICE_SIZE := Vector2(210.0, 170.0)    # a prediction picture button (UI units)
@@ -53,6 +55,7 @@ var _key_row: HBoxContainer
 var _key_labels: Dictionary = {}        # observation id -> value Label of its key card
 var _action_row: HBoxContainer
 var _action_buttons: Dictionary = {}    # action id -> Button
+var _extra_actions: Array[Button] = []  # a game lab's secondary actions, shown under the conditions in the sidebar
 var _tip: Label
 var _tip_left := TIP_SECONDS
 var _tip_tween: Tween
@@ -788,7 +791,7 @@ func _build_view_overlays() -> void:
 	_key_row = Ui.hbox(8)
 	_key_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	view.add_child(_key_row)
-	for id in definition.key_observations:
+	for id in ExperimentRegistry.shown_cards(definition):
 		var observation := _observation(id)
 		var card := Ui.panel("KeyCard")
 		card.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -809,12 +812,20 @@ func _build_view_overlays() -> void:
 	_action_row = Ui.hbox(10)
 	_action_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	view.add_child(_action_row)
+	# A game lab keeps few buttons (2026-10-27): its main action, and "reset" as a small "다시";
+	# other actions (the orbit's "동그랗게 돌게") sit under the conditions in "자세히".
 	for action in definition.actions:
-		var button := Ui.button(action.label, "PrimaryButton" if action.get("style") == "primary" else "", 64)
-		button.custom_minimum_size.x = 140
+		var small: bool = game and action.id == "reset"
+		var button := Ui.button(RESET_SHORT if small else action.label, "PrimaryButton" if action.get("style") == "primary" and not small else "", 64)
+		button.custom_minimum_size.x = 96 if small else 140
 		button.pressed.connect(experiment_action.bind(action.id))
-		_action_row.add_child(button)
 		_action_buttons[action.id] = button
+		if game and not small and action.get("style") != "primary":
+			_extra_actions.append(button)
+		else:
+			_action_row.add_child(button)
+	if game and _action_row.get_child_count() > 1:
+		_action_row.move_child(_action_buttons.reset, 0)   # the small one on the left, the main action at the right edge
 
 	_tip = Ui.label(ExperimentRegistry.kid_text(definition, "tip"), "HintLabel", true)
 	_tip.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -990,6 +1001,9 @@ func _build_conditions() -> Control:
 			var note := Ui.label("", "MutedLabel", true)
 			body.add_child(note)
 			_control_widgets[control.id] = {"buttons": buttons, "note": note}
+	for button in _extra_actions:   # built with the view's overlays (_build_view_overlays runs first)
+		button.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+		body.add_child(button)
 	return parts[0]
 
 

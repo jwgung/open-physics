@@ -195,7 +195,8 @@ static func validate(definition: Dictionary) -> PackedStringArray:
 ## the 3D experiment file puts the child-facing ones here and the screen shows them in place of the
 ## shared ones (the "자세히" sidebar keeps the shared texts and the formula labels):
 ##   "kid": {"title": <the title bar>, "place": <the map's spot name>, "say": <Dugi's dialogue>,
-##           "tip": <the short gesture hint>, "cards": {<observation id>: <its key card's caption>},
+##           "tip": <the short gesture hint>, "card": <the one key observation shown as a card>,
+##           "cards": {<observation id>: <its key card's caption>},
 ##           "states": {<a status text of the lab>: <its key card words>},
 ##           "minus": {<observation id>: <the word a negative value reads with: "눌려서", "왼쪽으로">}}
 ## Every key is optional; a missing one falls back to the shared text (kid_text, card_label).
@@ -223,8 +224,11 @@ static func _validate_kid(kid: Variant, ids: Array) -> PackedStringArray:
 			var named: bool = key == "states" or (map is Dictionary and map.keys().all(func(id: Variant) -> bool: return id in ids))
 			if not (map is Dictionary and named and map.values().all(func(t: Variant) -> bool: return t is String and t != "")):
 				problems.append("kid.%s must name %s with a text each" % [key, "status texts" if key == "states" else "observations"])
+		elif key == "card":
+			if not kid.card in ids:
+				problems.append("kid.card must name an observation")
 		elif not KID_TEXTS.has(key):
-			problems.append("kid.%s unknown (title, place, say, tip, cards, states, minus)" % key)
+			problems.append("kid.%s unknown (title, place, say, tip, card, cards, states, minus)" % key)
 		elif not (kid[key] is String and kid[key] != ""):
 			problems.append("kid.%s must be a text" % key)
 	return problems
@@ -236,6 +240,9 @@ static func _validate_kid_cards(definition: Dictionary) -> PackedStringArray:
 	for observation in definition.observations:
 		if observation.get("id") in definition.key_observations and not KID_UNITS.has(str(observation.get("unit", ""))):
 			problems.append("key_observations: %s (%s) has no kid unit words; keep it in the sidebar" % [observation.id, observation.unit])
+	var kid: Dictionary = definition.kid if definition.get("kid") is Dictionary else {}
+	if kid.has("card") and not kid.card in definition.key_observations:
+		problems.append("kid.card %s is not one of key_observations" % str(kid.card))
 	return problems
 
 
@@ -249,6 +256,15 @@ static func kid_text(definition: Dictionary, key: String) -> String:
 	if key == "tip" and shared == "":
 		shared = str(definition.get("tip", ""))
 	return shared
+
+
+## The key observations shown as cards over the 3D view: the game lab's one card (`kid.card`, one
+## number for a child; the rest stay in "자세히", 2026-10-27), else all of key_observations.
+static func shown_cards(definition: Dictionary) -> Array:
+	var kid: Variant = definition.get("kid")
+	if kid is Dictionary and kid.get("card") is String:
+		return [kid.card]
+	return definition.get("key_observations", [])
 
 
 ## The caption of a key observation's card over the 3D view: the kid wording, or the observation's

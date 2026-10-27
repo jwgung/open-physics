@@ -1202,10 +1202,18 @@ func _check_layout(definition: Dictionary) -> void:
 		for i in overlays.size():
 			for j in range(i + 1, overlays.size()):
 				apart = apart and not overlays[i].get_rect().intersects(overlays[j].get_rect())
-		var actions_ok: bool = definition.actions.all(func(a: Dictionary) -> bool: return screen._action_buttons[a.id].get_parent() == screen._action_row)
+		var actions_ok: bool = definition.actions.all(func(a: Dictionary) -> bool: return screen._action_buttons[a.id].get_parent() == screen._action_row \
+			or screen._extra_actions.has(screen._action_buttons[a.id]))
 		var compact: bool = screen._key_row.size.y <= 160.0 and screen._key_row.size.x <= size.x - 470.0 - 24.0
-		_expect(inside and apart and actions_ok and compact and screen._key_row.get_child_count() == definition.key_observations.size(),
-			"%s landscape: title, buttons, %d key cards and the actions sit inside the view without overlapping" % [name, definition.key_observations.size()],
+		var cards := ExperimentRegistry.shown_cards(definition)
+		# A game lab (2026-10-27): one card, the main action, reset as a small "다시", the rest in the sidebar.
+		var lean := true
+		if not MissionTracker.missions(definition).is_empty():
+			lean = cards.size() == 1 and screen._action_buttons.reset.text == screen.RESET_SHORT \
+				and screen._action_row.get_child_count() <= 2 \
+				and screen._extra_actions.all(func(b: Button) -> bool: return screen._sidebar.is_ancestor_of(b))
+		_expect(inside and apart and actions_ok and compact and lean and screen._key_row.get_child_count() == cards.size(),
+			"%s landscape: title, buttons, %d key card(s) and the actions sit inside the view without overlapping (a game lab: one card, at most 2 buttons, reset = 다시)" % [name, cards.size()],
 			"key row %s, actions %s" % [screen._key_row.get_rect(), screen._action_row.get_rect()])
 		var h_closed := _horizontal_fov(screen.view)
 		screen.open_sidebar()
@@ -1266,7 +1274,7 @@ func _check_key_cards() -> void:
 		var shown := PackedStringArray()
 		var values: Dictionary = screen.experiment.observations()
 		var hidden: Array = screen._hidden_answers(values)
-		for id in definition.key_observations:
+		for id in ExperimentRegistry.shown_cards(definition):
 			var observation: Dictionary = screen._observation(id)
 			var card: String = screen._key_labels[id].text
 			var panel: String = screen.hidden_observation(observation) if hidden.has(id) else screen.format_observation(observation, values.get(id))

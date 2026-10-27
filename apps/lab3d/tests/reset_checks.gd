@@ -163,6 +163,8 @@ func _open(definition: Dictionary) -> Control:
 		await tree.process_frame
 	await tree.physics_frame
 	await tree.process_frame
+	if screen._asking:
+		screen._end_question()   # the child answers Dugi first: his question takes every touch
 	return screen
 
 

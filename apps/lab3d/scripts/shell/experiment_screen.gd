@@ -99,6 +99,7 @@ var _stamp_labels: Array = []
 var _mission_text: Label = null
 var _series_hidden := false           # the graph's hidden_series_until_end lines were left out last time
 var _asking := false                  # Dugi's question is open (his box held, the picture buttons)
+var _question_shield: Control           # while asking: catches every touch but the box and the buttons
 var _question := ""
 var _choices: HBoxContainer = null    # the two picture buttons while asking
 var _choices_popped := false          # the buttons' pop-in has run
@@ -603,11 +604,18 @@ func _show_stamps(count: int) -> void:
 
 
 ## Dugi asks (Plan G4): his dialogue box with the question (portrait and name tag, held open until
-## an answer) and the two picture buttons above it. Only the buttons take touches; the 3D view
-## under them works as before (a pull on the ball ends the question unanswered).
+## an answer) and the two picture buttons above it. Nothing behind them takes a touch until the
+## child picks (2026-10-28 user request): a full-view shield over every other overlay and the 3D
+## view; a tap on the box still reaches it (the whole page at once).
 func _ask(question: String, choices: Array) -> void:
 	_asking = true
 	dialogue.hold = true
+	_question_shield = Control.new()
+	_question_shield.name = "QuestionShield"
+	_question_shield.mouse_filter = Control.MOUSE_FILTER_STOP
+	_question_shield.set_anchors_preset(Control.PRESET_FULL_RECT)
+	_question_shield.gui_input.connect(_on_shield_input)
+	view.add_child(_question_shield)
 	_choices = Ui.hbox(16)
 	_choices.name = "PredictChoices"
 	_choices.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -676,7 +684,16 @@ func _predict_pick_choice(choice_id: String) -> void:
 		_fit_mission_strip()
 
 
-## The question ends (an answer or a pull): the box closes and the buttons go.
+## A touch on the shield: one on Dugi's box is the box's (it lies under the shield).
+func _on_shield_input(event: InputEvent) -> void:
+	var tap: bool = (event is InputEventScreenTouch and event.pressed) \
+		or (event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT)
+	if tap and dialogue != null and dialogue.active and dialogue._has_point(dialogue.get_global_transform().affine_inverse() * (_question_shield.get_global_transform() * event.position)):
+		dialogue.advance()
+	accept_event()
+
+
+## The question ends (an answer, or the round's end): the box closes, the buttons and the shield go.
 func _end_question() -> void:
 	if not _asking:
 		return
@@ -686,6 +703,10 @@ func _end_question() -> void:
 	if _choices != null:
 		_choices.queue_free()
 		_choices = null
+	if _question_shield != null:
+		_question_shield.mouse_filter = Control.MOUSE_FILTER_IGNORE   # gone for a touch in this same frame
+		_question_shield.queue_free()
+		_question_shield = null
 	_fit_picks()
 
 

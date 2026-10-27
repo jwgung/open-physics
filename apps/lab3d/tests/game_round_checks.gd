@@ -76,6 +76,25 @@ func check_round() -> void:
 	screen.view._gui_input(motion)
 	await tree.process_frame
 	expect.call(screen._asking and box.active, "round: the question stays until it is answered (timer, a tap on the box, mouse motion)", "")
+	# Nothing behind the question takes a touch (2026-10-28): the ball, 다시, the main button,
+	# 자세히 and ← 지도 all lie under the shield; the question stays.
+	var behind: Array = [screen.view_point(lab.ball_center())]
+	for c: Control in [screen._back_button, screen._sidebar_button] + screen._action_row.get_children():
+		behind.append(c.get_global_rect().get_center())
+	var shielded := true
+	for at: Vector2 in behind:
+		var press := InputEventScreenTouch.new()
+		press.position = at
+		press.pressed = true
+		tree.root.push_input(press)
+		await tree.process_frame
+		shielded = shielded and m.mode != "slingshot"
+		var lift := InputEventScreenTouch.new()
+		lift.position = at
+		tree.root.push_input(lift)
+		await tree.process_frame
+	expect.call(shielded and screen._asking and box.active and not screen.is_sidebar_open() and screen.is_inside_tree() and screen._question_shield != null,
+		"round: while Dugi asks nothing behind takes a touch (ball, 다시, main button, 자세히, 지도)", str(behind))
 	# The pick: the question goes at once, the strip shows the pick, the next touch reaches the ball.
 	(buttons[0] as Button).pressed.emit()
 	expect.call(screen._predict_pick == "farther" and not screen._asking and not box.active and screen._choices == null

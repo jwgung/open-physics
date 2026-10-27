@@ -5,6 +5,7 @@ config_version=5
 
 config/name="Open Physics 3D"
 config/description="Open Physics 3D lab app (Phase 1): guided mechanics experiments on Godot 4 + Jolt"
+config/icon="res://assets/icon/icon.png"
 run/main_scene="res://scenes/main.tscn"
 run/delta_smoothing=false
 config/quit_on_go_back=false

@@ -262,4 +262,5 @@ def main():
         render(name, spec, os.path.abspath(out_dir), size)
 
 
-main()
+if __name__ == "__main__":
+    main()

@@ -55,6 +55,11 @@
 ## 18. game, the other 10 labs (tests/lab_mission_checks.gd): per lab a scripted round through the
 ##    screen (a missed stage earns nothing, each stage reachable in the control ranges, one stamp per
 ##    attempt, the hidden answers), the same steps with and without the round, every picture.
+## 19. the labs' ground (tests/lab_world_checks.gd, 2026-10-27: like a corner of the big island): every lab
+##    stands on its corner of the map's island (LabWorld): land, beach or sea under every view ray
+##    below the horizon (no island rim), flat at y = 0 where the floors and the cast are, its zone's
+##    ground and another zone's landmark in view, the projectile's bound at the shore, the map's
+##    coast, one opaque mesh.
 ## Times are engine fixed steps (60 Hz), independent of rendering FPS.
 extends SceneTree
 
@@ -227,6 +232,11 @@ func _run() -> void:
 	_expect(labs != null and labs.can_instantiate(), "lab mission checks compile", "")
 	if labs != null and labs.can_instantiate():
 		await labs.new(self, _expect).run()
+	print("== the labs' ground: a corner of the map's island, every experiment ==")
+	var lab_world: GDScript = load("res://tests/lab_world_checks.gd")
+	_expect(lab_world != null and lab_world.can_instantiate(), "lab world checks compile", "")
+	if lab_world != null and lab_world.can_instantiate():
+		await lab_world.new(self, _expect).run()
 	print("== key cards and front camera, every experiment (Task 2d) ==")
 	await _check_key_cards()
 	await _check_gesture_tip()

@@ -35,7 +35,9 @@ const FENCE_HEIGHT := 1.8
 const FENCE_WIDTH := 6.0
 const FENCE_LEFT_WIDTH := 4.4
 const FENCE_THICKNESS := 0.15
-## A ball leaving this box (beyond the island) is stopped and hidden: "섬 밖으로 날아감".
+## A ball leaving this box (beyond the island) is stopped and hidden: "섬 밖으로 날아감". The
+## island's shore is drawn at BOUNDS_X.y (ProjectileProps passes it to ArtKit.add_world: the flat
+## sand ends there and drops into the sea), so the ball is hidden as it leaves the land.
 const BOUNDS_X := Vector2(-14.0, 12.5)
 const BOUNDS_Y := Vector2(-3.0, 30.0)
 const PATH_MAX_S := 12.0            # the formula path is drawn up to the landing, at most this long

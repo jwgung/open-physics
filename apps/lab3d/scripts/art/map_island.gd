@@ -2,7 +2,8 @@
 ## irregular coastline with a sand beach in a sea that fills the view, the zones as ground (a
 ## meadow, hills, a sandy play yard, a pond), dirt paths between the spots, each spot's landmark
 ## (MapLandmarks) on a round stage, and trees, rocks, flowers and clouds placed clear of them.
-## The labs keep ArtKit.build_island; nothing here is shared with them.
+## The labs stand on a close-up corner of this same island (LabWorld: its coast, hills, zones,
+## landmarks and material, seen from the lab's spot).
 ##
 ## Draw calls: one static opaque mesh (landmarks, water: shallows, surf, pond; land: top, beach,
 ## overlays, trees with their baked blob shadows, clouds) in map_lit.gdshader (art_lit's light,
@@ -12,6 +13,48 @@
 class_name MapIsland
 extends RefCounted
 
+## The map's layout (the home, IslandHomeScreen, and the labs' worlds, LabWorld, read it).
+## The 5 zones and their 11 spots. Each spot is an experiment id, where it stands on the island
+## (x, z) and its landmark's turn (deg). The zones group the labs by what they need, each its own
+## ground (below): the meadow (throws and falls), the hill (friction: the ramp at its foot,
+## the push on its top), the sand yard (springs, rotation, pulley, constraints), the pond
+## (buoyancy: the drum in the water, its dock towards the square) and the lookout's headland hill (orbit). Screen up is -z at the default view.
+const ZONES := {
+	"들판": {"at": [-6.0, 3.6], "ground": "meadow", "radius": 3.6, "spots": [
+		["projectile", [-4.7, 6.2], 70.0],
+		["collision", [-3.5, 1.5], 0.0],
+		["free-fall", [-8.1, 3.3], 0.0],
+	]},
+	"언덕": {"at": [6.6, 3.1], "ground": "hill", "radius": 3.4, "height": 1.5, "spots": [
+		["incline-friction", [3.3, 6.2], -25.0],
+		["friction", [6.6, 3.0], 0.0],
+	]},
+	"놀이터": {"at": [0.3, -5.2], "ground": "yard", "size": [8.8, 4.9], "spots": [
+		["spring", [-1.3, -4.0], 0.0],
+		["rotation", [1.9, -4.0], 0.0],
+		["pulley", [3.2, -6.5], 0.0],
+		["constraints", [-2.8, -6.5], 0.0],
+	]},
+	"연못": {"at": [-7.5, -3.0], "ground": "pond", "radius": 2.0, "spots": [
+		["buoyancy", [-6.9, -2.4], -45.0],
+	]},
+	"전망대": {"at": [8.4, -3.9], "ground": "hill", "radius": 2.4, "height": 1.7, "spots": [
+		["orbit", [8.4, -3.9], 0.0],
+	]},
+}
+## The cat's home square (x, z), where the paths meet and the cat waits when the map opens.
+const HOME := [0.5, 2.0]
+## The dirt paths (x, z polylines, smoothed by _smooth): from the square to every spot.
+const PATHS := [
+	[[0.5, 2.0], [-1.4, 1.9], [-3.5, 1.5]],
+	[[-3.5, 1.5], [-5.8, 2.1], [-8.1, 3.3]],
+	[[-1.4, 1.9], [-2.9, 4.3], [-4.7, 6.2]],
+	[[0.5, 2.0], [1.9, 3.9], [3.3, 6.2]],
+	[[3.3, 6.2], [5.6, 5.6], [6.6, 3.0]],
+	[[0.5, 2.0], [0.4, -0.1], [0.3, -2.75]],
+	[[0.4, -0.1], [-3.0, -0.4], [-5.6, -1.1]],
+	[[0.4, -0.1], [4.0, -0.7], [6.6, -2.2], [8.4, -3.9]],
+]
 ## The coast: an ellipse (wide like the tablet screen) plus a few smooth harmonics, and the
 ## lookout's headland as one bump [angle deg (atan2(z, x)), metres, width deg].
 const RADIUS_X := 12.8
@@ -66,7 +109,7 @@ var decorations: Array = []
 var spot_info: Dictionary = {}
 
 
-## `zones` is IslandHomeScreen.ZONES (each zone's "ground" and size), `paths` its polylines of
+## `zones` is ZONES (each zone's "ground" and size), `paths` its polylines of
 ## [x, z] points, `home` the cat's square.
 func _init(zone_specs: Dictionary, path_specs: Array, home_at: Vector2) -> void:
 	zones = zone_specs
@@ -142,6 +185,12 @@ func water_at(x: float, z: float) -> bool:
 		if spec.ground == "pond" and Vector2(x, z).distance_to(_v2(spec.at)) < _pond_radius(spec, atan2(z - spec.at[1], x - spec.at[0])):
 			return true
 	return false
+
+
+## The hills' height at (x, z), fading out towards the beach like the top (the labs' far ground,
+## LabWorld, reads it).
+func hill_height(x: float, z: float) -> float:
+	return _hill_height(x, z) * (1.0 - smoothstep(0.76, grass_edge(), coast_fraction(x, z)))
 
 
 func _hill_height(x: float, z: float) -> float:

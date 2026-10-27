@@ -1,7 +1,7 @@
 ## Shared art kit of the grass island style (Phase 1 Task 2c, apps/lab3d/docs/art-direction.md):
-## the lit material, blob shadow material, mesh builders, the 3D environment and the floating
-## grass island every experiment stands on. Experiments build their own props with builder() and
-## put them under their physics bodies as plain MeshInstance3D nodes (visual only).
+## the lit material, blob shadow material, mesh builders, the 3D environment and the ground every
+## experiment stands on (its corner of the big island, LabWorld). Experiments build their own props
+## with builder() and put them under their physics bodies as plain MeshInstance3D nodes (visual only).
 ## No engine light and no realtime shadow on any tier: lighting is "baked" in art_lit.gdshader,
 ## contact comes from vertex AO and blob shadows (ArtMeshBuilder.add_blob / add_soft_rect).
 class_name ArtKit
@@ -22,14 +22,16 @@ const OUTLINE_PIXELS := 1.5
 ## sits in N.L (art_toon_tex.gdshader).
 const TOON_SHADE := Vector4(0.834, 0.774, 0.8, 1.0)
 const TOON_THRESHOLD := -0.03
-## The island top (build_island): a 14-sided prism of circumradius ISLAND_RADIUS around its centre.
+## The lab's own ground (build_island): what was the floating island's 14-sided top of circumradius
+## ISLAND_RADIUS around its centre is now the middle of a flat clearing (LabWorld.CLEAR, larger) in
+## the big island's land; the cast stands within it and the projectile's fences inside its apothem.
 const ISLAND_RADIUS := 11.0
 ## Island decoration, relative to the island centre: trees (x, z, size), rocks (x, z, radius),
 ## flowers (x, z). island_obstacles() turns them into footprints (characters stand clear of them).
 const TREES := [[-5.5, -4.0, 1.0], [7.0, -3.8, 1.2], [-8.1, 2.2, 0.8], [8.9, -0.4, 0.9], [2.5, -5.8, 1.1]]
 const ROCKS := [[4.7, 4.4, 0.45], [-4.5, 5.0, 0.35], [8.1, 3.2, 0.3]]
 const FLOWERS := [[-2.5, 3.8], [-1.9, 4.3], [3.3, 5.2], [6.5, 4.8], [-6.9, -0.8], [4.1, -2.8], [-0.1, -4.4]]
-const ISLAND_SIDES := 14
+const ISLAND_SIDES := 14   # the old top's sides (tests: the fences inside its apothem)
 const SUN_DIR := Vector3(-0.35, 0.85, 0.45)   # world direction towards the (baked) light
 const LIGHT_THRESHOLD := 0.55
 const LIGHT_SOFTNESS := 0.03
@@ -258,23 +260,23 @@ static func make_environment() -> WorldEnvironment:
 	return world
 
 
-static func _at(x: float, y: float, z: float, yaw_deg := 0.0) -> Transform3D:
-	return Transform3D(Basis(Vector3.UP, deg_to_rad(yaw_deg)), Vector3(x, y, z))
-
-
-## The usual stage of an experiment: sky environment plus the grass island around `center`, with
-## an optional blob shadow of radius `blob_radius` under a prop standing at `blob_at` (x, z used).
-static func add_world(parent: Node3D, center: Vector3, blob_at: Variant = null, blob_radius := 0.0) -> void:
+## The usual stage of an experiment: sky environment plus its corner of the island (LabWorld)
+## around `center`, with an optional blob shadow of radius `blob_radius` under a prop standing at
+## `blob_at` (x, z used). The lab is the experiment's definition id (its spot on the map);
+## `edge_x` puts the shore at a physics edge (the projectile's bounds).
+static func add_world(parent: Node3D, center: Vector3, blob_at: Variant = null, blob_radius := 0.0, edge_x := INF) -> void:
 	parent.add_child(make_environment())
+	var definition: Variant = parent.get("definition")
+	var id: String = definition.get("id", "") if definition is Dictionary else ""
 	if blob_at == null:
-		build_island(parent, center)
+		build_island(parent, center, Callable(), id, edge_x)
 		return
 	build_island(parent, center, func(s: ArtMeshBuilder) -> void:
-		s.add_blob(Transform3D(Basis(), Vector3(blob_at.x, 0.012, blob_at.z)), blob_radius, shadow_alpha(0.9)))
+		s.add_blob(Transform3D(Basis(), Vector3(blob_at.x, 0.012, blob_at.z)), blob_radius, shadow_alpha(0.9)), id, edge_x)
 
 
-## Footprints [x, z, radius] (world) of the island's trees (their blob shadow), rocks and flowers
-## around `center`.
+## Footprints [x, z, radius] (world) of the lab's own trees (their blob shadow), rocks and flowers
+## around `center` (LabWorld puts them there).
 static func island_obstacles(center: Vector3) -> Array:
 	var out := []
 	for t in TREES:
@@ -286,65 +288,10 @@ static func island_obstacles(center: Vector3) -> Array:
 	return out
 
 
-## Adds the floating grass island (top surface at y = 0) with trees, rocks, flowers and clouds
-## around `center` (x/z), as ONE prop mesh + ONE shadow mesh (2 draw calls). The decoration
-## leaves a strip of about 8 x 6 m around the centre free for the apparatus.
-## `extra_shadows` lets an experiment add its static blob shadows to the same shadow mesh.
-static func build_island(parent: Node3D, center := Vector3(-1.5, 0.0, -0.8), extra_shadows: Callable = Callable()) -> void:
-	var b := builder()
-	var s := shadow_builder()
-	var cx := center.x
-	var cz := center.z
-	b.ao_min = 0.95
-	b.ao_height = 0.3
-	b.add_cylinder(_at(cx, -0.5, cz), ISLAND_RADIUS, ISLAND_RADIUS, 0.5, ISLAND_SIDES, ArtPalette.GRASS, true, ArtPalette.GRASS_TOP)
-	b.ao_min = 0.7
-	b.ao_height = 4.0
-	b.add_cylinder(_at(cx, -4.2, cz), 4.0, 11.0, 3.7, 14, ArtPalette.SOIL, false)
-	b.add_cylinder(_at(cx, -6.5, cz), 1.2, 4.0, 2.3, 9, ArtPalette.SOIL_DEEP, false)
-	# Trees: trunk + two cones.
-	for t in TREES:
-		var x: float = cx + t[0]
-		var z: float = cz + t[1]
-		var k: float = t[2]
-		b.ao_min = 0.8
-		b.ao_height = 0.4 * k
-		b.add_cylinder(_at(x, 0.0, z), 0.2 * k, 0.16 * k, 0.8 * k, 6, ArtPalette.TRUNK)
-		b.ao_min = 0.85
-		b.add_cylinder(_at(x, 0.7 * k, z, 15.0), 1.1 * k, 0.0, 1.5 * k, 7, ArtPalette.LEAF)
-		b.add_cylinder(_at(x, 1.5 * k, z, 40.0), 0.8 * k, 0.0, 1.2 * k, 7, ArtPalette.LEAF_LIGHT)
-		s.add_blob(_at(x, 0.012, z), 1.3 * k, shadow_alpha())
-	# Rocks.
-	b.ao_min = 0.75
-	b.ao_height = 0.3
-	for r in ROCKS:
-		var x: float = cx + r[0]
-		var z: float = cz + r[1]
-		var radius: float = r[2]
-		var xf := Transform3D(Basis().scaled(Vector3(1.3, 0.75, 1.0)), Vector3(x, radius * 0.5, z))
-		b.add_sphere(xf, radius, 4, 6, ArtPalette.ROCK)
-		s.add_blob(_at(x, 0.012, z), radius * 1.8, shadow_alpha())
-	# Flowers.
-	var spots := FLOWERS
-	b.ao_min = 1.0
-	for i in spots.size():
-		var f: Array = spots[i]
-		var x: float = cx + f[0]
-		var z: float = cz + f[1]
-		b.add_cylinder(_at(x, 0.0, z), 0.03, 0.03, 0.3, 4, ArtPalette.STEM, false)
-		b.add_sphere(_at(x, 0.34, z), 0.13, 3, 5, ArtPalette.FLOWERS[i % ArtPalette.FLOWERS.size()])
-	# Clouds far behind the island, low enough to show in the front view and high enough to stay
-	# out of the top edge of a view looking down at the island.
-	for c in [[-8.5, 5.0, -17.2, 1.6], [4.5, 6.5, -19.2, 2.0], [13.5, 4.5, -15.2, 1.4]]:
-		var k: float = c[3]
-		for puff in [[0.0, 0.0, 1.0], [1.1, -0.2, 0.75], [-1.1, -0.25, 0.7], [0.4, 0.5, 0.65]]:
-			b.add_sphere(_at(cx + c[0] + puff[0] * k, c[1] + puff[1] * k, cz + c[2]), puff[2] * k, 4, 7, ArtPalette.CLOUD)
-	if extra_shadows.is_valid():
-		extra_shadows.call(s)
-	var island := instance(b.commit())
-	island.name = "Island"
-	island.set_meta("center", Vector3(cx, 0.0, cz))   # tests: where the cast may stand (island_obstacles)
-	parent.add_child(island)
-	var shadows := instance(s.commit(), shadow_material())
-	shadows.name = "IslandShadows"
-	parent.add_child(shadows)
+## Adds the lab's corner of the big island (LabWorld: flat ground of radius ISLAND_RADIUS + 1.5 at
+## y = 0 around `center` (x/z) with the lab's trees, rocks and flowers, the map's land, landmarks,
+## beach and sea beyond) as ONE mesh, "Island"; `extra_shadows` lets an experiment add its static
+## blob shadows (one alpha mesh, "IslandShadows"). The decoration leaves a strip of about 8 x 6 m
+## around the centre free for the apparatus. `id` is the lab (its spot and zone on the map).
+static func build_island(parent: Node3D, center := Vector3(-1.5, 0.0, -0.8), extra_shadows: Callable = Callable(), id := "", edge_x := INF) -> void:
+	LabWorld.new(id, center, edge_x).build(parent, extra_shadows)

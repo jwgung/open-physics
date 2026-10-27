@@ -23,7 +23,6 @@ func run() -> void:
 	await check_cast_on_map()
 	await check_camera_limits()
 	await check_sea_fills_view()
-	check_lab_island_unchanged()
 	await check_tap_opens_experiment()
 	await check_walk_timing()
 	await check_stamp_display()
@@ -343,27 +342,6 @@ func check_sea_fills_view() -> void:
 								problems.append("%s: ray %s above the backdrop" % [str([yaw_deg, pitch_deg, distance]), str(f)])
 		await _free(screen)
 	expect.call(problems.is_empty(), "the sea fills the ground and the sky backdrop the sky at every allowed camera", "; ".join(problems.slice(0, 4)))
-
-
-## The labs keep their own island (ArtKit.build_island): the map's island is separate, the lab
-## island's mesh is the one it was before the map changed (vertex count and vertex sum).
-func check_lab_island_unchanged() -> void:
-	var root := Node3D.new()
-	ArtKit.build_island(root)
-	var got := []
-	for name in ["Island", "IslandShadows"]:
-		var mi: MeshInstance3D = root.find_child(name, false, false)
-		var v: PackedVector3Array = mi.mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
-		var sum := Vector3.ZERO
-		for p in v:
-			sum += p
-		got.append([v.size(), sum])
-	root.free()
-	var want := [[3510, Vector3(1630.223, 8495.116, -28445.99)], [864, Vector3(118.8001, 10.36806, -604.7978)]]
-	var same := true
-	for i in 2:
-		same = same and got[i][0] == want[i][0] and (got[i][1] as Vector3).distance_to(want[i][1]) < 0.05
-	expect.call(same, "the labs' island is unchanged by the map's island", str(got))
 
 
 ## A tap on a spot hops the cat over and emits that experiment; a tap on empty grass does nothing.

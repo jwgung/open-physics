@@ -102,7 +102,8 @@ func ring_mesh() -> Mesh:
 
 
 func dress(experiment: Node3D, ball: RigidBody3D, ball_visual: MeshInstance3D, ball_size: float) -> void:
-	ArtKit.add_world(experiment, ISLAND_CENTER)
+	# The shore at the right bound: a ball still flying there leaves the island over the sea.
+	ArtKit.add_world(experiment, ISLAND_CENTER, null, 0.0, experiment.BOUNDS_X.y)
 	var ticks := ArtKit.instance(ticks_mesh())
 	ticks.name = "DistanceTicks"
 	experiment.add_child(ticks)

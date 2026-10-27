@@ -161,6 +161,19 @@ func add_triangle(points: Array, colors: Array, facing := Vector3.UP) -> void:
 	_raw_tri(points, n, colors)
 
 
+## add_triangle's front face towards `facing`, lit by `normal` instead of its own face: a backdrop
+## whose vertex colours must show as they are (LabWorld's horizon haze: a normal along the sun's
+## level direction is lit full with no sky fill).
+func add_triangle_lit(points: Array, colors: Array, facing: Vector3, normal: Vector3) -> void:
+	var face: Vector3 = (points[1] - points[0]).cross(points[2] - points[0])
+	if face.length() < 1e-10:
+		return
+	for i in ([0, 1, 2] if face.dot(facing) < 0.0 else [0, 2, 1]):
+		_verts.append(points[i])
+		_normals.append(normal)
+		_colors.append((colors[i] as Color).srgb_to_linear())
+
+
 ## Vertices appended so far (tests: how much one call added).
 func vertex_count() -> int:
 	return _verts.size()

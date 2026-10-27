@@ -45,36 +45,10 @@ const SPOT_RADIUS := 2.2             # m: how far a tap may be from a spot and s
 const LABEL_FULL_DISTANCE := 34.0    # m: a spot name nearer than this is full size
 const LABEL_MIN_SCALE := 0.7          # the smallest a far spot name gets
 
-## The 5 zones and their 11 spots. Each spot is an experiment id, where it stands on the island
-## (x, z) and its landmark's turn (deg). The zones group the labs by what they need, each its own
-## ground (MapIsland): the meadow (throws and falls), the hill (friction: the ramp at its foot,
-## the push on its top), the sand yard (springs, rotation, pulley, constraints), the pond
-## (buoyancy: the drum in the water, its dock towards the square) and the lookout's headland hill (orbit). Screen up is -z at the default view.
-const ZONES := {
-	"들판": {"at": [-6.0, 3.6], "ground": "meadow", "radius": 3.6, "spots": [
-		["projectile", [-4.7, 6.2], 70.0],
-		["collision", [-3.5, 1.5], 0.0],
-		["free-fall", [-8.1, 3.3], 0.0],
-	]},
-	"언덕": {"at": [6.6, 3.1], "ground": "hill", "radius": 3.4, "height": 1.5, "spots": [
-		["incline-friction", [3.3, 6.2], -25.0],
-		["friction", [6.6, 3.0], 0.0],
-	]},
-	"놀이터": {"at": [0.3, -5.2], "ground": "yard", "size": [8.8, 4.9], "spots": [
-		["spring", [-1.3, -4.0], 0.0],
-		["rotation", [1.9, -4.0], 0.0],
-		["pulley", [3.2, -6.5], 0.0],
-		["constraints", [-2.8, -6.5], 0.0],
-	]},
-	"연못": {"at": [-7.5, -3.0], "ground": "pond", "radius": 2.0, "spots": [
-		["buoyancy", [-6.9, -2.4], -45.0],
-	]},
-	"전망대": {"at": [8.4, -3.9], "ground": "hill", "radius": 2.4, "height": 1.7, "spots": [
-		["orbit", [8.4, -3.9], 0.0],
-	]},
-}
-## The cat's home square (x, z), where the paths meet and the cat waits when the map opens.
-const HOME := [0.5, 2.0]
+## The map's layout (MapIsland.ZONES, HOME, PATHS: the labs' worlds read it too, LabWorld).
+const ZONES := MapIsland.ZONES
+const HOME := MapIsland.HOME
+const PATHS := MapIsland.PATHS
 ## Dugi and Puppy wait on the square with the cat (2026-10-27 user requests: they were missing
 ## from the map; then "why an L shape, why facing different ways"): the three in one row across the
 ## view like a group photo, the cat in the middle, Puppy on its left, Dugi on its right, TRIO_GAP m
@@ -83,17 +57,6 @@ const HOME := [0.5, 2.0]
 ## (MapIsland: 1.3 m from HOME > TRIO_GAP + a body).
 const TRIO_GAP := 0.85
 const TRIO_YAW := 0.0   # rad about +y from +z: every actor's model faces +z at 0 (BreadCat, labs' cast)
-## The dirt paths (x, z polylines, MapIsland smooths them): from the square to every spot.
-const PATHS := [
-	[[0.5, 2.0], [-1.4, 1.9], [-3.5, 1.5]],
-	[[-3.5, 1.5], [-5.8, 2.1], [-8.1, 3.3]],
-	[[-1.4, 1.9], [-2.9, 4.3], [-4.7, 6.2]],
-	[[0.5, 2.0], [1.9, 3.9], [3.3, 6.2]],
-	[[3.3, 6.2], [5.6, 5.6], [6.6, 3.0]],
-	[[0.5, 2.0], [0.4, -0.1], [0.3, -2.75]],
-	[[0.4, -0.1], [-3.0, -0.4], [-5.6, -1.1]],
-	[[0.4, -0.1], [4.0, -0.7], [6.6, -2.2], [8.4, -3.9]],
-]
 
 
 func _ready() -> void:

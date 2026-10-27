@@ -58,8 +58,8 @@
     "hidden_series_until_end": ["formula"],
     "stages": [
       { "threshold": 1.0, "conditions": {"material": "steel"}, "text": "강철 미끄럼틀에서 상자 미끄러뜨리기!" },
-      { "threshold": 2.0, "conditions": {"material": "wood"}, "text": "나무 미끄럼틀을 더 기울여 쌩 내려가기!" },
-      { "threshold": 3.0, "conditions": {"material": "rubber"}, "text": "고무 미끄럼틀을 많이 기울여 쌩 내려가기!" }
+      { "threshold": 2.0, "conditions": {"material": "wood", "angle": {"min": 25, "max": 45}}, "text": "나무 미끄럼틀을 더 기울여 쌩 내려가기!" },
+      { "threshold": 3.0, "conditions": {"material": "rubber", "angle": {"min": 40, "max": 45}}, "text": "고무 미끄럼틀을 많이 기울여 쌩 내려가기!" }
     ]
   },
   "kid": {
@@ -73,6 +73,11 @@
         {"value": "steel", "label": "강철", "picture": "slide_steel"},
         {"value": "wood", "label": "나무", "picture": "slide_wood"},
         {"value": "rubber", "label": "고무", "picture": "slide_rubber"}
+      ],
+      "angle": [
+        {"value": 20, "label": "조금 기울기", "picture": "slope", "size": 0.44},
+        {"value": 30, "label": "더 기울기", "picture": "slope", "size": 0.67},
+        {"value": 40, "label": "많이 기울기", "picture": "slope", "size": 0.89}
       ]
     },
     "cards": {"critical_angle": "미끄러지는 각도", "state": "상자는?", "distance": "미끄러진 거리"},

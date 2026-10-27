@@ -2,14 +2,14 @@
 ## drawn with the canvas's 2D calls (no textures, nothing downloaded), in the storybook colours of
 ## the prediction pictures (PredictPictures) and the labs' own toy colours (ArtPalette): the earth,
 ## the moon and Jupiter, a light or a heavy box, a steel, wooden or rubber slide, a planet near or far
-## from its star, one, two or four ropes, the hand near or far on the lever, a small or a big ball,
+## from its star, a gentle or a steep slope, one, two or four ropes, the hand near or far on the lever, a small or a big ball,
 ## a big or a small drum, a weight, a short or a long string. `size` (0..1) and `count` say how much
 ## the drawing shows (kid.picks entries). The words under the picture say the same thing.
 class_name PickPictures
 extends RefCounted
 
 const KINDS := ["earth", "moon", "jupiter", "box", "slide_steel", "slide_wood", "slide_rubber", "orbit",
-	"pulley", "lever", "ball_blue", "ball_orange", "drum_big", "drum_small", "weight", "rope"]
+	"slope", "pulley", "lever", "ball_blue", "ball_orange", "drum_big", "drum_small", "weight", "rope"]
 const OUTLINE := Color("8a6a46")   # PredictPictures.GROUND: the brown of the storybook lines
 const STEEL := Color("9aa7b0")
 
@@ -47,6 +47,14 @@ static func draw(canvas: Control, kind: String, size := 0.5, count := 1) -> void
 			canvas.draw_line(Vector2(box.position.x, box.position.y + side * 0.3), Vector2(box.end.x, box.position.y + side * 0.3), Color("ffffff", 0.7), 2.0)
 		"slide_steel", "slide_wood", "slide_rubber":
 			_slide(canvas, r, kind)
+		"slope":   # size 1 = 45°, the angle slider's end
+			_ground(canvas, r)
+			var foot := Vector2(r.end.x - 4.0, r.end.y)
+			var run := r.size.x - 10.0
+			var top := foot + Vector2(-run, -minf(run * tan(size * PI / 4.0), r.size.y - 4.0))
+			canvas.draw_colored_polygon(PackedVector2Array([top, foot, Vector2(top.x, foot.y)]), ArtPalette.YELLOW)
+			canvas.draw_line(top, foot, OUTLINE, 2.0, true)
+			canvas.draw_line(top, Vector2(top.x, foot.y), OUTLINE, 2.0, true)
 		"orbit":
 			var star := Vector2(r.position.x + 16.0, c.y)
 			canvas.draw_circle(star, 11.0, ArtPalette.YELLOW)

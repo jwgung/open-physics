@@ -54,7 +54,7 @@ static func groups(definition: Dictionary, stage: int) -> Array:
 	var out := []
 	for control in definition.get("controls", []):
 		var id: String = control.id
-		if conditions.has(id) and not id in fixed and all.has(id):
+		if conditions.has(id) and not id in fixed and all.has(id) and not out.any(func(g: Dictionary) -> bool: return g.control == id):
 			out.append({"control": id, "want": conditions[id], "presets": all[id]})
 	var per := MAX_BUTTONS if out.size() <= 1 else floori(float(MAX_BUTTONS) / out.size())
 	for group in out:

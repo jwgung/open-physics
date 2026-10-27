@@ -42,7 +42,8 @@ const WALK_SPEED := 6.0              # m/s the cat hops
 const HOP_HEIGHT := 0.35             # m the cat rises on a hop
 const HOP_HZ := 4.0                  # hops per second while walking
 const SPOT_RADIUS := 2.2             # m: how far a tap may be from a spot and still hit it
-const LABEL_GAP := 4.0               # UI units kept between two spot names
+const LABEL_FULL_DISTANCE := 34.0    # m: a spot name nearer than this is full size
+const LABEL_MIN_SCALE := 0.7          # the smallest a far spot name gets
 
 ## The 5 zones and their 11 spots. Each spot is an experiment id, where it stands on the island
 ## (x, z) and its landmark's turn (deg). The zones group the labs by what they need, each its own
@@ -96,6 +97,9 @@ const PATHS := [
 
 
 func _ready() -> void:
+	# After the CameraRig's _process (priority 0): the names are placed for this frame's camera,
+	# not the last one (they trailed the map by a frame while it turned).
+	process_priority = 1
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	view = View3D.new()
 	view.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
@@ -281,6 +285,8 @@ var _labels: Dictionary = {}
 func _place_labels() -> void:
 	if view == null or view.rig == null or view.size.x < 1.0:
 		return
+	var eye: Vector3 = view.rig.global_position
+	var shown: Array = []   # [depth, label]
 	for i in _spots.size():
 		var spot: Dictionary = _spots[i]
 		if not _labels.has(spot.id):
@@ -288,46 +294,32 @@ func _place_labels() -> void:
 		var label: Control = _labels[spot.id]
 		var screen_point := label_point(spot)
 		label.visible = screen_point != Vector2.INF   # behind a close, low camera: hidden
-		if label.visible:
-			label.position = screen_point - Vector2(label.size.x * 0.5, label.size.y)
-	_spread_labels()
+		if not label.visible:
+			continue
+		label.position = screen_point - Vector2(label.size.x * 0.5, label.size.y)
+		# Pinned at its bottom centre; a far one shrinks a little, like the landmark under it.
+		var depth := eye.distance_to(spot.at)
+		label.pivot_offset = Vector2(label.size.x * 0.5, label.size.y)
+		label.scale = Vector2.ONE * clampf(LABEL_FULL_DISTANCE / maxf(depth, 0.01), LABEL_MIN_SCALE, 1.0)
+		shown.append([depth, label])
+	# Names that meet stay put: the nearer one is drawn over the farther (no jumping aside).
+	shown.sort_custom(func(a: Array, b: Array) -> bool: return a[0] > b[0])
+	var at := view.get_index() + 1
+	for entry in shown:
+		move_child(entry[1], at)
+		at += 1
 
 
-## Turned views can bring two spots' names onto each other: the one higher on screen (farther
-## away) moves up until they no longer touch (a few passes, 11 labels, only when the camera moved).
-func _spread_labels() -> void:
-	var boxes: Array = []
-	for id in _labels:
-		if _labels[id].visible:
-			boxes.append(_labels[id])
-	for pass_i in 3:
-		var moved := false
-		boxes.sort_custom(func(a: Control, b: Control) -> bool: return a.position.y > b.position.y)
-		for i in boxes.size():
-			for j in range(i + 1, boxes.size()):
-				var low: Control = boxes[i]
-				var high: Control = boxes[j]
-				var gap := Rect2(low.position, low.size).grow(LABEL_GAP * 0.5)
-				if gap.intersects(Rect2(high.position, high.size).grow(LABEL_GAP * 0.5)):
-					high.position.y = low.position.y - high.size.y - LABEL_GAP
-					moved = true
-		if not moved:
-			break
+## The rect a label covers on screen (its scale about its bottom centre).
+func _label_rect(label: Control) -> Rect2:
+	return Rect2(label.position + label.pivot_offset * (Vector2.ONE - label.scale), label.size * label.scale)
 
 
-## Where a spot's label sits on screen (its bottom centre): above the landmark, i.e. above its
-## top or, when the camera looks steeply down (the top lands on the landmark itself), above the
-## stage's far rim, whichever is higher on screen. INF when the map is not on screen.
+## Where a spot's label sits on screen (its bottom centre): just above the landmark's top, a fixed
+## point of the landmark, so the name rides with it at every camera angle. INF when the map is not
+## on screen.
 func label_point(spot: Dictionary) -> Vector2:
-	var top := _world_to_screen(spot.at + Vector3.UP * (float(spot.top) + 0.25))
-	if top == Vector2.INF:
-		return top
-	var away: Vector3 = -view.rig.global_transform.basis.z
-	away.y = 0.0
-	if away.length() < 1e-3:
-		return top
-	var rim := _world_to_screen(spot.at + away.normalized() * (maxf(float(spot.radius), 0.6) + 0.2))
-	return Vector2(top.x, minf(top.y, rim.y)) if rim != Vector2.INF else top
+	return _world_to_screen(spot.at + Vector3.UP * (float(spot.top) + 0.25))
 
 
 ## Where a tap on a spot's landmark is measured from: its middle.
@@ -396,10 +388,15 @@ func _on_pointer(kind: String, position: Vector2) -> void:
 func _spot_at(position: Vector2) -> int:
 	if view == null or view.rig == null:
 		return -1
-	for i in _spots.size():
+	var hit := -1
+	var hit_order := -1
+	for i in _spots.size():   # the topmost name (the nearest, drawn last) wins
 		var label: Control = _labels.get(_spots[i].id)
-		if label != null and label.visible and Rect2(label.position, label.size).has_point(position):
-			return i
+		if label != null and label.visible and _label_rect(label).has_point(position) and label.get_index() > hit_order:
+			hit = i
+			hit_order = label.get_index()
+	if hit >= 0:
+		return hit
 	var best := -1
 	var best_d := INF
 	for i in _spots.size():

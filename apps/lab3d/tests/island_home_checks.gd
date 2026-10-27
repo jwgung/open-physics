@@ -182,6 +182,17 @@ func check_labels_and_taps() -> void:
 			if screen._spot_at(tap) != i:
 				problems.append("a tap on the %s landmark picks %d" % [spot.id, screen._spot_at(tap)])
 		expect.call(problems.is_empty(), "map (%s): spot names apart over their landmarks, every landmark tappable" % setup[1], "; ".join(problems))
+		# Turning: every name is on its landmark in the same frame (placed after the camera moved).
+		var lag := []
+		for step in 5:
+			screen.view.rig.orbit(Vector2(-60.0, 0.0))
+			await tree.process_frame
+			for spot in screen._spots:
+				var label: Control = screen._labels[spot.id]
+				var point: Vector2 = screen.label_point(spot)
+				if label.visible and point != Vector2.INF and (label.position + Vector2(label.size.x * 0.5, label.size.y)).distance_to(point) > 0.5:
+					lag.append("%s off by %.1f" % [spot.id, (label.position + Vector2(label.size.x * 0.5, label.size.y)).distance_to(point)])
+		expect.call(lag.is_empty(), "map (%s): while the map turns each name rides on its landmark (no frame behind)" % setup[1], "; ".join(lag.slice(0, 5)))
 		await _free(screen)
 
 

@@ -33,6 +33,7 @@ var _walk_spot := -1
 var _down := [Vector2.INF, false]    # screen point of the press, cancelled (a drag)
 var _last := Vector2.INF             # the pointer's last point while it turns the map
 var _progress: Dictionary = {}       # ProgressStore.load(), read on open (refresh_progress)
+var _trio_yaw := 0.0                 # the yaw the row faces (eased towards the camera's)
 var _labels_for := Vector2.ZERO      # the view size the spot labels were placed for
 var _labels_camera := Transform3D()  # the camera they were placed for
 var _label_frames := 0               # frames the labels are placed again (their sizes settle)
@@ -74,12 +75,14 @@ const ZONES := {
 }
 ## The cat's home square (x, z), where the paths meet and the cat waits when the map opens.
 const HOME := [0.5, 2.0]
-## Dugi and Puppy wait on the square with the cat (2026-10-27 user request: they were missing from
-## the map): [direction deg (atan2(z, x)), metres from HOME]. Dugi stands in front of the cat towards
-## the default camera, Puppy to its right with the flag, both in the gaps between the cat's hop lines
-## to the spots and the paths (tests/island_home_checks.gd).
-const DUGI_AT := [100.0, 1.0]
-const PUPPY_AT := [-14.0, 1.0]
+## Dugi and Puppy wait on the square with the cat (2026-10-27 user requests: they were missing
+## from the map; then "why an L shape, why facing different ways"): the three in one row across the
+## view like a group photo, the cat in the middle, Dugi on its left, Puppy on its right, TRIO_GAP m
+## apart, all facing the camera. The map turns all the way round, so the row and the faces follow
+## the camera's yaw (eased, TRIO_EASE 1/s; only while it changes). The signpost stands outside the
+## row's reach (MapIsland: 1.3 m from HOME > TRIO_GAP + a body).
+const TRIO_GAP := 0.85
+const TRIO_EASE := 10.0
 ## The dirt paths (x, z polylines, MapIsland smooths them): from the square to every spot.
 const PATHS := [
 	[[0.5, 2.0], [-1.4, 1.9], [-3.5, 1.5]],
@@ -113,37 +116,45 @@ func _ready() -> void:
 	var built := map.build(world, spots)
 	cat = CatActor.new(BreadCat.new())
 	world.add_child(cat)
-	cat.position = Vector3(HOME[0], map.walk_height(HOME[0], HOME[1]), HOME[1])
-	cat.rotation.y = deg_to_rad(180.0)   # face the top camera ("up" on screen)
 	dugi = DugiActor.new()
 	puppy = PuppyActor.new()
-	for pair in [[dugi, DUGI_AT], [puppy, PUPPY_AT]]:
-		var actor: Node3D = pair[0]
-		var at := Vector2(HOME[0], HOME[1]) + Vector2.from_angle(deg_to_rad(pair[1][0])) * float(pair[1][1])
-		actor.position = Vector3(at.x, map.walk_height(at.x, at.y), at.y)
-		world.add_child(actor)   # the model's front is +z: they face the default camera, as in the labs
+	world.add_child(dugi)
+	world.add_child(puppy)
 
 	for zone in ZONES:
 		for spot in ZONES[zone].spots:
 			_add_spot(world, zone, spot[0], built[spot[0]])
 
 	view.rig.configure(_map_camera())
+	view.two_finger_pan = true   # one finger turns the map; two move it (and pinch zooms)
+	_trio_yaw = view.rig.goal_yaw
+	_place_trio(_trio_yaw)
 	refresh_progress()
 	_build_top_bar()
 	_layout()
 	resized.connect(_layout)
 
 
-## The map's camera definition (CameraRig.configure): a 3/4 view from above that turns all the way
-## round and tilts between steep and low (one finger or two), zooms with a pinch, no panning.
+## The map's camera definition (CameraRig.configure): a 3/4 view from above by default, then almost
+## free (2026-10-27 user decision "거의 제한 없이"): turns all the way round, tilts from straight
+## down to almost level (one finger), zooms 6-60 m (pinch) and moves over the ground (two fingers)
+## within PAN_RADIUS of the centre, so the island is never lost. The look-at point is TARGET_Y
+## above the grass so a close, low camera stays over the hills.
+const PITCH_RANGE := [-89.0, -8.0]
+const DISTANCE_RANGE := [6.0, 60.0]
+const PAN_RADIUS := 15.0
+const TARGET_Y := 0.5
+
+
 func _map_camera() -> Dictionary:
 	return {
-		"target": [0.0, 0.0, 0.0],
+		"target": [0.0, TARGET_Y, 0.0],
 		"distance": 27.0,
-		"distance_range": [16.0, 34.0],
+		"distance_range": DISTANCE_RANGE,
 		"yaw_range_deg": [-180.0, 180.0],
-		"pitch_range_deg": [-85.0, -30.0],
-		"pan_radius": 0.0,
+		"pitch_range_deg": PITCH_RANGE,
+		"pan_radius": PAN_RADIUS,
+		"pan_ground": true,
 		"default_mode": "three_quarter",
 		"views": {
 			"front": {"yaw_deg": 0.0, "pitch_deg": -55.0},
@@ -219,6 +230,11 @@ func refresh_progress() -> void:
 func _process(delta: float) -> void:
 	if _walking:
 		_step_walk(delta)
+	if view != null and view.rig != null and absf(angle_difference(_trio_yaw, view.rig.cur_yaw)) > 1e-4:
+		_trio_yaw = lerp_angle(_trio_yaw, view.rig.cur_yaw, 1.0 - exp(-TRIO_EASE * delta))
+		if absf(angle_difference(_trio_yaw, view.rig.cur_yaw)) < 1e-3:
+			_trio_yaw = view.rig.cur_yaw
+		_place_trio(_trio_yaw)
 	if view != null and view.rig != null and (view.size != _labels_for or view.rig.global_transform != _labels_camera):
 		_labels_for = view.size
 		_labels_camera = view.rig.global_transform
@@ -226,6 +242,27 @@ func _process(delta: float) -> void:
 	if _label_frames > 0:
 		_label_frames -= 1
 		_place_labels()
+
+
+## The trio's row on the square facing `yaw` (the camera's: yaw 0 looks along -z from +z): across
+## the view through HOME, Dugi on the left, the cat in the middle, Puppy on the right. The cat
+## keeps its own course while it hops to a spot.
+func _place_trio(yaw: float) -> void:
+	var home := Vector2(HOME[0], HOME[1])
+	var right := Vector2(cos(yaw), -sin(yaw))   # screen right, on the ground
+	var row := [[dugi, -1.0, 0.0], [cat, 0.0, PI], [puppy, 1.0, 0.0]]   # the cat's model faces -z
+	for entry in row:
+		var actor: Node3D = entry[0]
+		if actor == null or (actor == cat and _walking):
+			continue
+		var at: Vector2 = home + right * TRIO_GAP * float(entry[1])
+		actor.position = Vector3(at.x, map.walk_height(at.x, at.y), at.y)
+		actor.rotation.y = yaw + float(entry[2])
+
+
+## Where the trio stands now: [Dugi, cat, Puppy] (tests).
+func trio() -> Array:
+	return [dugi, cat, puppy]
 
 
 func _step_walk(delta: float) -> void:
@@ -257,8 +294,9 @@ func _place_labels() -> void:
 			_labels[spot.id] = _make_label(spot)
 		var label: Control = _labels[spot.id]
 		var screen_point := label_point(spot)
-		label.position = screen_point - Vector2(label.size.x * 0.5, label.size.y)
-		label.visible = screen_point != Vector2.INF
+		label.visible = screen_point != Vector2.INF   # behind a close, low camera: hidden
+		if label.visible:
+			label.position = screen_point - Vector2(label.size.x * 0.5, label.size.y)
 	_spread_labels()
 
 
@@ -394,8 +432,12 @@ func _screen_radius(point: Vector3) -> float:
 	return maxf(TAP_SLOP, SPOT_RADIUS * 0.5 * screen_per_m)
 
 
+## A world point on the view, or INF when the map is being swapped out or the point is behind the
+## camera (a low, close view: its label hides, a tap cannot pick it).
 func _world_to_screen(world: Vector3) -> Vector2:
 	if view == null or view.rig == null or not view.rig.is_inside_tree():   # the map being swapped out
+		return Vector2.INF
+	if view.rig.is_position_behind(world):
 		return Vector2.INF
 	return view.rig.unproject_position(world) / (Vector2(view.viewport.size) / view.size)
 

@@ -41,6 +41,9 @@ var distance_range := Vector2(3.0, 30.0)
 var yaw_range := Vector2(-PI, PI)
 var pitch_range := Vector2(deg_to_rad(-89.0), deg_to_rad(-2.0))
 var pan_radius := 5.0
+## Pan over the ground instead of in the screen plane (the island map: the look-at point slides
+## over the island, never up into the sky, whatever the pitch). Camera definition "pan_ground".
+var pan_ground := false
 var views: Dictionary = {}
 
 # goal_* is where the camera is heading; cur_* is what is drawn.
@@ -87,6 +90,7 @@ func configure(camera: Dictionary) -> void:
 	var p: Array = camera.get("pitch_range_deg", [-89.0, -2.0])
 	pitch_range = Vector2(deg_to_rad(p[0]), deg_to_rad(p[1]))
 	pan_radius = camera.get("pan_radius", 5.0)
+	pan_ground = camera.get("pan_ground", false)
 	views = camera.get("views", {})
 	set_mode(camera.get("default_mode", "front"), true)
 
@@ -175,6 +179,9 @@ func pan_by(relative: Vector2) -> void:
 	var basis_now := global_transform.basis
 	var right := basis_now.x
 	var up := basis_now.y
+	if pan_ground:   # screen right and screen up laid flat on the ground (pitch is never 0 here)
+		right = Vector3(right.x, 0.0, right.z).normalized()
+		up = Vector3(up.x, 0.0, up.z).normalized()
 	var step := PAN_PER_UNIT * cur_distance
 	var before := pan
 	pan += (-right * relative.x + up * relative.y) * step

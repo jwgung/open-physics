@@ -28,7 +28,7 @@ const JITTER := 0.3                 # share of a grid cell the inner vertices mo
 const HILL_PLATEAU := 0.35          # share of a hill's radius that is its flat top
 const SEA_Y := -0.2
 const SHORE_F := 0.955              # coast fraction where the beach meets the sea (BEACH_Y at SEA_Y)
-const SHALLOW := 1.3                # m of light shallow water outside the coast
+const SHALLOW := 1.0                # m of light shallow water outside the coast
 const PATH_WIDTH := 0.8
 const PATH_LIFT := 0.05             # m above the grass (no z-fight at 34 m)
 const OVERLAY_LIFT := 0.03          # yard sand, pond shore
@@ -41,6 +41,13 @@ const TREES := [
 	[1.4, 7.9, 0.85], [-1.6, 7.6, 0.9], [-7.6, 6.0, 0.75], [2.9, 1.3, 0.7], [-7.0, 0.8, 0.7],
 ]
 const ROCKS := [[10.6, -3.0, 0.4], [11.0, -1.4, 0.35], [-3.8, -1.8, 0.35], [-3.0, 7.2, 0.35], [5.6, 7.2, 0.4], [0.3, 5.6, 0.3]]
+## Far clouds [angle deg, distance, height, size] for low views (the map camera tilts to almost
+## level, 2026-10-27): beyond the island, in the sky band above the horizon.
+const FAR_CLOUDS := [[-100.0, 170.0, 28.0, 7.0], [-60.0, 210.0, 40.0, 9.0], [-20.0, 160.0, 24.0, 6.0],
+	[30.0, 190.0, 34.0, 8.0], [80.0, 175.0, 26.0, 7.0], [135.0, 200.0, 38.0, 9.0], [190.0, 165.0, 30.0, 7.0]]
+## The sky backdrop: a cylinder SKY_RADIUS m round the island whose foot is the horizon (the sea, the
+## clear colour, ends there), hazy towards it; and a haze band on the far sea.
+const SKY_RADIUS := 400.0
 const CLOUDS := [[-10.0, 5.5, -22.0, 1.7], [6.0, 6.5, -24.0, 2.0], [22.0, 5.0, -8.0, 1.5], [-23.0, 5.5, 4.0, 1.6], [12.0, 5.0, 21.0, 1.4]]
 const WAVES := [[200.0, 15.5, 2.4], [235.0, 18.0, 3.0], [280.0, 14.0, 2.0], [320.0, 17.5, 2.6], [10.0, 16.5, 2.4],
 	[55.0, 14.5, 2.2], [100.0, 15.0, 2.6], [145.0, 17.0, 2.2], [170.0, 21.0, 3.0], [300.0, 22.0, 3.0]]
@@ -219,6 +226,19 @@ static func material() -> ShaderMaterial:
 	return _material
 
 
+static var _sky_material: ShaderMaterial
+
+
+## The sky backdrop's material: map_lit with no light (white both sides, no fill), so its vertex
+## colours are what shows: the clear colour's sea and the sky meet exactly.
+static func sky_material() -> ShaderMaterial:
+	if _sky_material == null:
+		_sky_material = material().duplicate()
+		_sky_material.set_shader_parameter("shade_color", Color.WHITE)
+		_sky_material.set_shader_parameter("sky_fill", 0.0)
+	return _sky_material
+
+
 static func make_environment() -> WorldEnvironment:
 	var world := ArtKit.make_environment()
 	world.environment.background_color = sea_color()
@@ -266,6 +286,11 @@ func build(world: Node3D, spots: Array) -> Dictionary:
 	var mi := ArtKit.instance(land.commit(), material())
 	mi.name = "Island"
 	world.add_child(mi)
+	var sky := ArtKit.builder()
+	_add_sky(sky)
+	var backdrop := ArtKit.instance(sky.commit(), sky_material())
+	backdrop.name = "MapSky"
+	world.add_child(backdrop)
 	return spot_info
 
 
@@ -707,6 +732,35 @@ func clear(x: float, z: float, radius: float) -> bool:
 	return true
 
 
+## The sky for low views: the backdrop cylinder (haze at its foot, the horizon, fading into SKY)
+## and a haze band on the far sea from the clear colour to the horizon tint. Nothing of it is in
+## the default view (it starts about 4 degrees below level), so it costs only the low views.
+func _add_sky(b: ArtMeshBuilder) -> void:
+	var sea := sea_color()
+	var haze := ArtPalette.SKY.lerp(Color.WHITE, 0.45)
+	var bands := [[SEA_Y - 3.0, haze], [12.0, haze], [45.0, ArtPalette.SKY], [700.0, ArtPalette.SKY]]
+	var sides := 48
+	for i in sides:
+		var d0 := Vector3(cos(TAU * i / sides), 0.0, sin(TAU * i / sides))
+		var d1 := Vector3(cos(TAU * (i + 1) / sides), 0.0, sin(TAU * (i + 1) / sides))
+		var inward := -(d0 + d1).normalized()
+		for k in bands.size() - 1:
+			var y0: float = bands[k][0]
+			var y1: float = bands[k + 1][0]
+			var c0: Color = bands[k][1]
+			var c1: Color = bands[k + 1][1]
+			var p := [d0 * SKY_RADIUS + Vector3.UP * y0, d1 * SKY_RADIUS + Vector3.UP * y0, d1 * SKY_RADIUS + Vector3.UP * y1, d0 * SKY_RADIUS + Vector3.UP * y1]
+			b.add_triangle([p[0], p[1], p[2]], [c0, c0, c1], inward)
+			b.add_triangle([p[0], p[2], p[3]], [c0, c1, c1], inward)
+		var near := 150.0
+		var q := [d0 * near, d1 * near, d1 * SKY_RADIUS, d0 * SKY_RADIUS]
+		for v in q.size():
+			q[v].y = SEA_Y
+		var far := sea.lerp(haze, 0.6)
+		b.add_triangle([q[0], q[1], q[2]], [sea, sea, far])
+		b.add_triangle([q[0], q[2], q[3]], [sea, far, far])
+
+
 ## A few clouds far around the island (the low views see them; the top view does not).
 func _add_clouds(b: ArtMeshBuilder) -> void:
 	b.ao_min = 0.85
@@ -715,6 +769,12 @@ func _add_clouds(b: ArtMeshBuilder) -> void:
 		var k: float = c[3]
 		for puff in [[0.0, 0.0, 1.0], [1.1, -0.2, 0.75], [-1.1, -0.25, 0.7], [0.4, 0.5, 0.65]]:
 			b.add_sphere(_at(c[0] + puff[0] * k, c[1] + puff[1] * k, c[2]), puff[2] * k, 3, 6, ArtPalette.CLOUD)
+	for c in FAR_CLOUDS:
+		var at := Vector3(cos(deg_to_rad(c[0])), 0.0, sin(deg_to_rad(c[0]))) * float(c[1]) + Vector3.UP * float(c[2])
+		var k: float = c[3]
+		for puff in [[0.0, 0.0, 1.0], [1.2, -0.25, 0.7], [-1.2, -0.3, 0.75], [0.3, 0.45, 0.6]]:
+			var side := Vector3(-sin(deg_to_rad(c[0])), 0.0, cos(deg_to_rad(c[0])))   # spread across the view
+			b.add_sphere(Transform3D(Basis().scaled(Vector3(1.0, 0.6, 1.0)), at + side * puff[0] * k + Vector3.UP * puff[1] * k), puff[2] * k, 3, 6, ArtPalette.CLOUD)
 
 
 static func _at(x: float, y: float, z: float, yaw_deg := 0.0) -> Transform3D:

@@ -23,6 +23,9 @@ const GESTURE_SLOP := 14.0
 const TWIST_THRESHOLD_DEG := 8.0
 
 var rig: CameraRig
+## Two fingers moving together turn the view (the labs); true makes them move it instead (the
+## island map, where one finger already turns it).
+var two_finger_pan := false
 var viewport: SubViewport
 
 var _display: TextureRect
@@ -197,7 +200,10 @@ func _on_drag(event: InputEventScreenDrag) -> void:
 		gesture_used.emit()
 	match _gesture:
 		"orbit":
-			rig.orbit(mid_after - mid_before)
+			if two_finger_pan:
+				rig.pan_by(mid_after - mid_before)
+			else:
+				rig.orbit(mid_after - mid_before)
 		"pinch":
 			if span_before > 1.0 and span_after > 1.0:
 				rig.zoom(span_before / span_after)

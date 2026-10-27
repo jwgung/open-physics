@@ -31,6 +31,9 @@ const SIZE_DIALOGUE := 24
 ## Bottom "lip" of buttons and cards (units): the darker edge that makes them look pressable.
 const LIP := 5
 const CARD_LIP := 3
+## Dugi's picture choices (ChoiceButton): outline and lip (units).
+const CHOICE_LINE := 4
+const CHOICE_LIP := 9
 
 const FONT_REGULAR := "res://assets/fonts/NotoSansKR-Lab3dSubset-Regular.otf"
 const FONT_BOLD := "res://assets/fonts/NotoSansKR-Lab3dSubset-Bold.otf"
@@ -146,6 +149,17 @@ static func build() -> Theme:
 	theme.set_stylebox("pressed", "ChipButton", chip_on)
 	theme.set_stylebox("hover_pressed", "ChipButton", chip_on)
 	theme.set_stylebox("disabled", "ChipButton", _box(Color("f2f6fa"), Color("e1e9f2"), 12, 12, 8, Color.TRANSPARENT, 2, 4))
+
+	# Dugi's picture choices (the prediction): his box's cream paper and brown outline, a thick
+	# outline and a deep lip, so they stand out from the white clouds and read as "tap one".
+	theme.set_type_variation("ChoiceButton", "Button")
+	var choice_down := _box(DIALOGUE_PAPER.darkened(0.06), DIALOGUE_LINE, 18, 10, 10, Color.TRANSPARENT, CHOICE_LINE, CHOICE_LINE)
+	choice_down.content_margin_top += CHOICE_LIP - CHOICE_LINE
+	choice_down.expand_margin_top = -(CHOICE_LIP - CHOICE_LINE)
+	theme.set_stylebox("normal", "ChoiceButton", _box(DIALOGUE_PAPER, DIALOGUE_LINE, 18, 10, 10, Color.TRANSPARENT, CHOICE_LINE, CHOICE_LIP))
+	theme.set_stylebox("hover", "ChoiceButton", _box(Color("fffaf0"), DIALOGUE_LINE, 18, 10, 10, Color.TRANSPARENT, CHOICE_LINE, CHOICE_LIP))
+	theme.set_stylebox("pressed", "ChoiceButton", choice_down)
+	theme.set_stylebox("hover_pressed", "ChoiceButton", choice_down)
 
 	theme.set_type_variation("FlatButton", "Button")
 	theme.set_color("font_color", "FlatButton", ACCENT)

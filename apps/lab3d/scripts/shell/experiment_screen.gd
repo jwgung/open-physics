@@ -24,6 +24,8 @@ const RESET_SHORT := "다시"
 const TIP_MIN_WIDTH := 240.0   # narrower than this beside the actions: the tip goes above them
 const DEMO_RELEASE_DELAY_S := 0.4   # --auto-drag: the auto-release waits this long after the demo put its object down
 const CHOICE_SIZE := Vector2(210.0, 170.0)    # a prediction picture button (UI units)
+const CHOICE_HOP := 7.0          # the picture buttons' hop while Dugi asks (UI units, upwards)
+const CHOICE_HOP_SPEED := 3.0    # rad/s of the hop's sine (a hop every ~1 s)
 ## The strip's words for a 7-year-old: all stages done, and the picked prediction before the run.
 const DONE_TEXT := "다 했어요! 섬에 깃발이 섰어요!"
 const PICK_PREFIX := "내 생각: "
@@ -97,6 +99,7 @@ var _series_hidden := false           # the graph's hidden_series_until_end line
 var _asking := false                  # Dugi's question is open (his box held, the picture buttons)
 var _question := ""
 var _choices: HBoxContainer = null    # the two picture buttons while asking
+var _choices_popped := false          # the buttons' pop-in has run
 var _predict_pick: String = ""        # the picked choice ("farther" / "same")
 var _predict_ended: bool = false      # the first throw has ended (or there is no question)
 var _reason_pending := ""             # the prediction's reason, told at Dugi's next explanation
@@ -596,7 +599,7 @@ func _ask(question: String, choices: Array) -> void:
 
 ## A big picture button: its drawing (PredictPictures) over its label.
 func _choice_button(choice: Dictionary) -> Button:
-	var button := Ui.button("", "", 0)
+	var button := Ui.button("", "ChoiceButton", 0)
 	button.name = "Choice_%s" % str(choice.get("id", ""))
 	button.custom_minimum_size = CHOICE_SIZE
 	var stack := Ui.vbox(4)
@@ -626,7 +629,14 @@ func _fit_choices() -> void:
 	_choices.size = _choices.get_combined_minimum_size()
 	var box: Rect2 = dialogue.rects()[0]
 	var left := maxf(box.position.x + DialogueBox.PORTRAIT_SIZE, box.end.x - _choices.size.x)
-	_choices.position = Vector2(left, box.position.y - DialogueBox.NAME_LIFT - _choices.size.y - 12.0)
+	# A small hop (up only: the row never reaches the box) that says "tap one of us".
+	var hop := absf(sin(Time.get_ticks_msec() / 1000.0 * CHOICE_HOP_SPEED)) * CHOICE_HOP
+	_choices.position = Vector2(left, box.position.y - DialogueBox.NAME_LIFT - _choices.size.y - 12.0 - hop)
+	if not _choices_popped and _choices.visible:
+		_choices_popped = true   # first shown: the row pops in from a little smaller
+		_choices.pivot_offset = _choices.size * 0.5
+		_choices.scale = Vector2.ONE * 0.8
+		create_tween().tween_property(_choices, "scale", Vector2.ONE, 0.35).set_trans(Tween.TRANS_BACK).set_ease(Tween.EASE_OUT)
 
 
 ## A picture is tapped: the pick is kept (the strip shows it until the run ends) and the question

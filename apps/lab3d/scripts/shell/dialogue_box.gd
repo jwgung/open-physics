@@ -263,7 +263,9 @@ func _refresh() -> void:
 		return
 	label.text = page_text(page)
 	label.visible_characters = int(_shown) if not typed() else -1
-	more.visible = typed() and fmod(_clock * BLINK_HZ, 1.0) < 0.6
+	# A held question's last page waits for an answer, not a tap: no ▼ there.
+	var waits := hold and page == _pages.size() - 1
+	more.visible = typed() and not waits and fmod(_clock * BLINK_HZ, 1.0) < 0.6
 
 
 func _process(delta: float) -> void:

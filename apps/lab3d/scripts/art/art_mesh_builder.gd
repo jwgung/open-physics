@@ -148,6 +148,24 @@ func add_blob(xf: Transform3D, radius: float, alpha: float) -> void:
 	add_soft_rect(xf, Vector2(radius * 0.35, radius * 0.35), radius * 0.65, alpha)
 
 
+## One world-space triangle with a colour per corner (sRGB), no vertex AO, lit by its own face
+## normal turned towards `facing`: ground and water built point by point (MapIsland, the map's
+## terrain and sea), where a shape primitive does not fit.
+func add_triangle(points: Array, colors: Array, facing := Vector3.UP) -> void:
+	var face: Vector3 = (points[1] - points[0]).cross(points[2] - points[0])
+	if face.length() < 1e-10:
+		return
+	var n := face.normalized()
+	if n.dot(facing) < 0.0:
+		n = -n
+	_raw_tri(points, n, colors)
+
+
+## Vertices appended so far (tests: how much one call added).
+func vertex_count() -> int:
+	return _verts.size()
+
+
 
 # --- internals ---------------------------------------------------------------------------------
 

@@ -1,10 +1,11 @@
 ## The island home (Plan G2): the 3D island seen from above, with the 5 zones and their 11 spots.
-## A tap on a spot (its marker or its name label) makes the bread cat hop over, then the experiment
+## A tap on a spot (its landmark or its name label) makes the bread cat hop over, then the experiment
 ## opens; when all its stamps (3) are collected a flag stands there. One finger dragged on the map
 ## turns it like the 3D labs (two fingers turn and zoom, View3D). The settings button sits on the
 ## map. The stamps are read once when the map opens (refresh_progress), never per frame.
 ##
-## The home is a Control that owns a View3D (top camera, ArtKit's island) and the bread cat
+## The home is a Control that owns a View3D (top camera, the map's own island: MapIsland, with
+## sea, zone ground, paths and one landmark per spot, MapLandmarks) and the bread cat
 ## (CatActor) who hops between spots. Spot names are 2D labels projected onto the map
 ## (the key-card / dialogue pattern: the 3D view under, UI on top). It never touches an
 ## experiment's physics: the map is its own little world. App.gd builds it the way it built the
@@ -18,8 +19,8 @@ signal settings_requested
 var definitions: Array[Dictionary] = []
 var view: View3D
 var cat: CatActor
-var _island_center := Vector3.ZERO
-var _spots: Array[Dictionary] = []   # {id, definition, at, zone, marker}
+var map: MapIsland
+var _spots: Array[Dictionary] = []   # {id, definition, at (stage top), top, radius, stand, zone, marker}
 var _flags: Dictionary = {}          # spot id -> flag root (visible at 3 stamps)
 var _walking := false
 var _walk_from := Vector3.ZERO
@@ -39,34 +40,49 @@ const WALK_SPEED := 6.0              # m/s the cat hops
 const HOP_HEIGHT := 0.35             # m the cat rises on a hop
 const HOP_HZ := 4.0                  # hops per second while walking
 const SPOT_RADIUS := 2.2             # m: how far a tap may be from a spot and still hit it
+const LABEL_GAP := 4.0               # UI units kept between two spot names
 
-## The 5 zones and their 11 spots. Each spot is an experiment id and where it stands on the island
-## (x, z). The zones group the labs by what they need: the field (throws and falls), the slope
-## (friction), the playground (springs, rotation, pulley, constraints), the pond (buoyancy) and the
-## lookout (orbit).
+## The 5 zones and their 11 spots. Each spot is an experiment id, where it stands on the island
+## (x, z) and its landmark's turn (deg). The zones group the labs by what they need, each its own
+## ground (MapIsland): the meadow (throws and falls), the hill (friction: the ramp at its foot,
+## the push on its top), the sand yard (springs, rotation, pulley, constraints), the pond
+## (buoyancy: the drum in the water, its dock towards the square) and the lookout's headland hill (orbit). Screen up is -z at the default view.
 const ZONES := {
-	"들판": {"at": [-5.5, 3.5], "color": "5fd04a", "spots": [
-		["projectile", [-8.0, 1.5]],
-		["collision", [-4.0, 0.0]],
-		["free-fall", [-6.5, 5.5]],
+	"들판": {"at": [-6.0, 3.6], "ground": "meadow", "radius": 3.6, "spots": [
+		["projectile", [-4.7, 6.2], 70.0],
+		["collision", [-3.5, 1.5], 0.0],
+		["free-fall", [-8.1, 3.3], 0.0],
 	]},
-	"언덕": {"at": [6.0, 4.5], "color": "c98a4b", "spots": [
-		["incline-friction", [4.5, 3.0]],
-		["friction", [8.0, 6.0]],
+	"언덕": {"at": [6.6, 3.1], "ground": "hill", "radius": 3.4, "height": 1.5, "spots": [
+		["incline-friction", [3.3, 6.2], -25.0],
+		["friction", [6.6, 3.0], 0.0],
 	]},
-	"놀이터": {"at": [0.5, -5.5], "color": "ffd84a", "spots": [
-		["spring", [-2.0, -4.0]],
-		["rotation", [3.0, -4.0]],
-		["pulley", [1.0, -8.0]],
-		["constraints", [-4.0, -8.0]],
+	"놀이터": {"at": [0.3, -5.2], "ground": "yard", "size": [8.8, 4.9], "spots": [
+		["spring", [-1.3, -4.0], 0.0],
+		["rotation", [1.9, -4.0], 0.0],
+		["pulley", [3.2, -6.5], 0.0],
+		["constraints", [-2.8, -6.5], 0.0],
 	]},
-	"연못": {"at": [-9.0, -3.5], "color": "8fd3ff", "spots": [
-		["buoyancy", [-9.0, -4.0]],
+	"연못": {"at": [-7.5, -3.0], "ground": "pond", "radius": 2.0, "spots": [
+		["buoyancy", [-6.9, -2.4], -45.0],
 	]},
-	"전망대": {"at": [9.0, -3.5], "color": "9479ff", "spots": [
-		["orbit", [9.5, -3.0]],
+	"전망대": {"at": [8.4, -3.9], "ground": "hill", "radius": 2.4, "height": 1.7, "spots": [
+		["orbit", [8.4, -3.9], 0.0],
 	]},
 }
+## The cat's home square (x, z), where the paths meet and the cat waits when the map opens.
+const HOME := [0.5, 2.0]
+## The dirt paths (x, z polylines, MapIsland smooths them): from the square to every spot.
+const PATHS := [
+	[[0.5, 2.0], [-1.4, 1.9], [-3.5, 1.5]],
+	[[-3.5, 1.5], [-5.8, 2.1], [-8.1, 3.3]],
+	[[-1.4, 1.9], [-2.9, 4.3], [-4.7, 6.2]],
+	[[0.5, 2.0], [1.9, 3.9], [3.3, 6.2]],
+	[[3.3, 6.2], [5.6, 5.6], [6.6, 3.0]],
+	[[0.5, 2.0], [0.4, -0.1], [0.3, -2.75]],
+	[[0.4, -0.1], [-3.0, -0.4], [-5.6, -1.1]],
+	[[0.4, -0.1], [4.0, -0.7], [6.6, -2.2], [8.4, -3.9]],
+]
 
 
 func _ready() -> void:
@@ -76,22 +92,25 @@ func _ready() -> void:
 	add_child(view)
 	view.single_pointer.connect(_on_pointer)
 
-	# The island's own world: environment + island (ArtKit's) + the cat + the spot markers.
+	# The map's own world: environment + the map island (land, sea, landmarks) + the cat + the spots.
 	var world := Node3D.new()
 	world.name = "IslandHome"
 	view.set_world(world)
 	view.viewport.add_child(ArtKit.make_environment())
-	var island_root := Node3D.new()
-	world.add_child(island_root)
-	_island_center = Vector3(0.0, 0.0, 0.0)
-	ArtKit.build_island(island_root, _island_center)
+	map = MapIsland.new(ZONES, PATHS, Vector2(HOME[0], HOME[1]))
+	var spots := []
+	for zone in ZONES:
+		for spot in ZONES[zone].spots:
+			spots.append([spot[0], Vector2(spot[1][0], spot[1][1]), spot[2]])
+	var built := map.build(world, spots)
 	cat = CatActor.new(BreadCat.new())
 	world.add_child(cat)
-	cat.position = Vector3(_island_center.x, 0.0, _island_center.z + 7.0)
+	cat.position = Vector3(HOME[0], map.walk_height(HOME[0], HOME[1]), HOME[1])
 	cat.rotation.y = deg_to_rad(180.0)   # face the top camera ("up" on screen)
 
 	for zone in ZONES:
-		_build_zone(zone, world)
+		for spot in ZONES[zone].spots:
+			_add_spot(world, zone, spot[0], built[spot[0]])
 
 	view.rig.configure(_map_camera())
 	refresh_progress()
@@ -121,56 +140,27 @@ func _map_camera() -> Dictionary:
 	}
 
 
-func _build_zone(zone: String, world: Node3D) -> void:
-	var spec: Dictionary = ZONES[zone]
-	_zone_pad(world, zone, spec)
-	for spot in spec.spots:
-		var id: String = spot[0]
-		var at: Vector3 = Vector3(float(spot[1][0]), 0.0, float(spot[1][1]))
-		var definition := ExperimentRegistry.find(id)
-		var marker := _spot_marker(world, definition, at, spec)
-		_spots.append({"id": id, "definition": definition, "at": at, "zone": zone, "marker": marker})
-
-
-## A flat coloured disc under a zone's spots (the zone's territory on the grass).
-func _zone_pad(world: Node3D, zone: String, spec: Dictionary) -> void:
-	var b := ArtKit.builder()
-	var at: Vector3 = Vector3(float(spec.at[0]), 0.03, float(spec.at[1]))
-	b.add_cylinder(_at(at, 0.0), 3.4, 3.4, 0.05, 20, _zone_color(spec))
-	var mi := ArtKit.instance(b.commit())
-	mi.name = "ZonePad_%s" % zone
-	world.add_child(mi)
-
-
-func _zone_color(spec: Dictionary) -> Color:
-	return Color(spec.color)
-
-
-func _at(pos: Vector3, y: float) -> Transform3D:
-	return Transform3D(Basis(), Vector3(pos.x, y, pos.z))
-
-
-## A spot's marker: a coloured post on the grass, and a flag that stands when the spot has all its
-## stamps (3). The post's world position is what a tap measures against.
-func _spot_marker(world: Node3D, definition: Dictionary, at: Vector3, spec: Dictionary) -> Node3D:
+## A spot: its node at the landmark's stage (the landmark itself is in the map's one landmark
+## mesh, MapLandmarks) and the flag on the stage's edge that stands at all its stamps (3). The
+## landmark's middle is what a tap measures against; the cat hops to `stand`, beside it.
+func _add_spot(world: Node3D, zone: String, id: String, info: Dictionary) -> void:
+	var definition := ExperimentRegistry.find(id)
 	var root := Node3D.new()
-	root.name = "Spot_%s" % definition.id
-	root.position = at
+	root.name = "Spot_%s" % id
+	root.position = info.at
 	world.add_child(root)
-	var b := ArtKit.builder()
-	b.add_cylinder(_at(Vector3.ZERO, 0.0), 0.14, 0.14, 1.2, 8, _zone_color(spec))
-	b.add_sphere(_at(Vector3(0.0, 1.25, 0.0), 0.0), 0.16, 5, 6, ArtPalette.WHITE)
-	root.add_child(ArtKit.instance(b.commit()))
 	var flag := Node3D.new()
 	flag.name = "Flag"
 	flag.visible = false
+	flag.position = info.flag - info.at
 	var fb := ArtKit.builder()
-	fb.add_cylinder(_at(Vector3.ZERO, 0.0), 0.05, 0.05, 2.0, 6, ArtPalette.TRUNK)
-	fb.add_cylinder(_at(Vector3(0.06, 0.9, 0.0), 0.0), 0.02, 0.4, 0.6, 4, ArtPalette.RED)
+	fb.add_cylinder(Transform3D.IDENTITY, 0.05, 0.05, 2.2, 6, ArtPalette.TRUNK)
+	fb.add_cylinder(Transform3D(Basis(), Vector3(0.06, 1.0, 0.0)), 0.02, 0.5, 0.75, 4, ArtPalette.RED)
 	flag.add_child(ArtKit.instance(fb.commit()))
 	root.add_child(flag)
-	_flags[definition.id] = flag
-	return root
+	_flags[id] = flag
+	_spots.append({"id": id, "definition": definition, "at": info.at, "top": info.top, "radius": info.radius,
+		"stand": info.stand, "zone": zone, "marker": root})
 
 
 ## The top bar: the brand and the settings button (the home's own chrome, over the map).
@@ -228,17 +218,18 @@ func _step_walk(delta: float) -> void:
 	var k := clampf(_walk_t / _walk_total, 0.0, 1.0)
 	var eased := k * k * (3.0 - 2.0 * k)
 	var pos := _walk_from.lerp(_walk_to, eased)
-	pos.y = HOP_HEIGHT * absf(sin(_walk_t * PI * HOP_HZ))
+	pos.y = map.walk_height(pos.x, pos.z) + HOP_HEIGHT * absf(sin(_walk_t * PI * HOP_HZ))   # up the hills
 	cat.position = pos
 	if k >= 1.0:
 		_walking = false
-		cat.position = Vector3(_walk_to.x, 0.0, _walk_to.z)
+		cat.position = _walk_to
 		var spot: Dictionary = _spots[_walk_spot]
 		experiment_chosen.emit(spot.definition)
 
 
-## One 2D label per spot (its name), placed over its marker. Created lazily on the first frame the
-## view has a size. The labels take no input: a tap on one reaches the map (_spot_at).
+## One 2D label per spot (its name), its bottom edge just above its landmark (the landmark stays
+## visible under it). Created lazily on the first frame the view has a size. The labels take no
+## input: a tap on one reaches the map (_spot_at).
 var _labels: Dictionary = {}
 
 
@@ -250,9 +241,52 @@ func _place_labels() -> void:
 		if not _labels.has(spot.id):
 			_labels[spot.id] = _make_label(spot)
 		var label: Control = _labels[spot.id]
-		var screen_point := _world_to_screen(spot.at + Vector3.UP * 1.4)
-		label.position = screen_point - label.size * 0.5
+		var screen_point := label_point(spot)
+		label.position = screen_point - Vector2(label.size.x * 0.5, label.size.y)
 		label.visible = screen_point != Vector2.INF
+	_spread_labels()
+
+
+## Turned views can bring two spots' names onto each other: the one higher on screen (farther
+## away) moves up until they no longer touch (a few passes, 11 labels, only when the camera moved).
+func _spread_labels() -> void:
+	var boxes: Array = []
+	for id in _labels:
+		if _labels[id].visible:
+			boxes.append(_labels[id])
+	for pass_i in 3:
+		var moved := false
+		boxes.sort_custom(func(a: Control, b: Control) -> bool: return a.position.y > b.position.y)
+		for i in boxes.size():
+			for j in range(i + 1, boxes.size()):
+				var low: Control = boxes[i]
+				var high: Control = boxes[j]
+				var gap := Rect2(low.position, low.size).grow(LABEL_GAP * 0.5)
+				if gap.intersects(Rect2(high.position, high.size).grow(LABEL_GAP * 0.5)):
+					high.position.y = low.position.y - high.size.y - LABEL_GAP
+					moved = true
+		if not moved:
+			break
+
+
+## Where a spot's label sits on screen (its bottom centre): above the landmark, i.e. above its
+## top or, when the camera looks steeply down (the top lands on the landmark itself), above the
+## stage's far rim, whichever is higher on screen. INF when the map is not on screen.
+func label_point(spot: Dictionary) -> Vector2:
+	var top := _world_to_screen(spot.at + Vector3.UP * (float(spot.top) + 0.25))
+	if top == Vector2.INF:
+		return top
+	var away: Vector3 = -view.rig.global_transform.basis.z
+	away.y = 0.0
+	if away.length() < 1e-3:
+		return top
+	var rim := _world_to_screen(spot.at + away.normalized() * (maxf(float(spot.radius), 0.6) + 0.2))
+	return Vector2(top.x, minf(top.y, rim.y)) if rim != Vector2.INF else top
+
+
+## Where a tap on a spot's landmark is measured from: its middle.
+func tap_point(spot: Dictionary) -> Vector3:
+	return spot.at + Vector3.UP * (float(spot.top) * 0.5)
 
 
 ## Stands the spot's flag when it has all its stamps (3), otherwise lowers it.
@@ -312,7 +346,7 @@ func _on_pointer(kind: String, position: Vector2) -> void:
 
 
 ## The index of the spot under the screen point: the spot whose name label holds it, else the
-## nearest marker within SPOT_RADIUS, or -1.
+## nearest landmark within SPOT_RADIUS, or -1.
 func _spot_at(position: Vector2) -> int:
 	if view == null or view.rig == null:
 		return -1
@@ -323,23 +357,23 @@ func _spot_at(position: Vector2) -> int:
 	var best := -1
 	var best_d := INF
 	for i in _spots.size():
-		var screen_point: Vector2 = _world_to_screen(_spots[i].at + Vector3.UP * 1.0)
+		var screen_point: Vector2 = _world_to_screen(tap_point(_spots[i]))
 		if screen_point == Vector2.INF:
 			continue
 		var d := screen_point.distance_to(position)
-		if d <= _screen_radius(_spots[i].at) and d < best_d:
+		if d <= _screen_radius(tap_point(_spots[i])) and d < best_d:
 			best_d = d
 			best = i
 	return best
 
 
 ## A spot's tap radius, in screen units: its world radius projected at its distance (a minimum of
-## TAP_SLOP so a marker is always tappable).
-func _screen_radius(at: Vector3) -> float:
+## TAP_SLOP so a landmark is always tappable).
+func _screen_radius(point: Vector3) -> float:
 	if view == null or view.rig == null:
 		return TAP_SLOP
 	var eye: Vector3 = view.rig.global_position
-	var dist: float = eye.distance_to(at + Vector3.UP * 1.0)
+	var dist: float = eye.distance_to(point)
 	var world_h := 2.0 * dist * tan(deg_to_rad(view.rig.fov) * 0.5)
 	var screen_per_m := view.size.y / world_h
 	return maxf(TAP_SLOP, SPOT_RADIUS * 0.5 * screen_per_m)
@@ -351,12 +385,12 @@ func _world_to_screen(world: Vector3) -> Vector2:
 	return view.rig.unproject_position(world) / (Vector2(view.viewport.size) / view.size)
 
 
-## Starts the cat's hop to the spot; opens the experiment when it arrives.
+## Starts the cat's hop to the spot (beside its landmark); opens the experiment when it arrives.
 func _walk_to_spot(index: int) -> void:
 	if index < 0 or _walking:
 		return
 	_walk_from = cat.position
-	_walk_to = _spots[index].at
+	_walk_to = _spots[index].stand
 	_walk_spot = index
 	_walk_total = maxf(0.25, _walk_from.distance_to(_walk_to) / WALK_SPEED)
 	_walk_t = 0.0

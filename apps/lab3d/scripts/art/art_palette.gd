@@ -18,6 +18,19 @@ const ROCK := Color("aab3c4")
 const CLOUD := Color("ffffff")
 const FLOWERS := [Color("ffd400"), PINK, WHITE, ORANGE]
 
+# The island map (home screen, MapIsland): sea, beach and the zones' ground
+const SEA := Color("2f95e4")          # open sea (darker than SKY so the horizon stays apart)
+const SEA_DEEP := Color("2479c9")     # far sea towards the horizon
+const SEA_SHALLOW := Color("7ad9ec")  # the light shallow ring hugging the coast
+const FOAM := Color("f4fbff")         # surf line and wave strokes
+const SAND := Color("f3d88c")         # beach
+const YARD_SAND := Color("f6c768")    # the playground's sand yard
+const PATH := Color("dfb070")         # dirt paths between the spots
+const MEADOW := Color("7ad957")       # the meadow's lighter grass
+const POND := Color("4cb5f2")         # the pond's water
+const PLAZA := Color("eedfb8")        # the cat's home square
+const PLATE := Color("fbf4e2")        # the round stage under a spot's landmark
+
 # Apparatus primaries (one colour per part; the lighter variant is its top face)
 const YELLOW := Color("ffc61a")
 const YELLOW_TOP := Color("ffd84a")

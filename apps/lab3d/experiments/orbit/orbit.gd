@@ -133,7 +133,12 @@ func reset_run() -> void:
 func _notify_released() -> void:
 	if not answer_preview:
 		_show_prediction(start_radius, prediction)
-	props.launched()
+	var v := launch_velocity(direction, speed)
+	props.launched(Vector3(v[0], 0.0, v[1]))
+
+
+func _status_changed(previous: String, current: String) -> void:
+	props.status_changed(previous, current)
 
 
 ## The dashed circular-orbit guide at `radius` and the predicted path of `analysis`.
@@ -166,6 +171,7 @@ func _process(_delta: float) -> void:
 	if planet == null:
 		return
 	if released and holding == "":
+		props.update_cat(model.first_lap_time)
 		var at := planet.global_position
 		props.show_velocity(at, model.vx, model.vz, _arrow_length(model.speed()) if model.outcome == "" else 0.0)
 		if model.outcome == "":
@@ -181,6 +187,7 @@ func _process(_delta: float) -> void:
 ## the predicted path).
 func _show_waiting() -> void:
 	var at := planet.global_position
+	props.place_cat(at, holding != "planet")
 	var chosen := _chosen
 	chosen[0] = direction
 	chosen[1] = speed

@@ -11,6 +11,12 @@
 ##   reaches the mark (K + U kept), with damping it sinks below it,
 ## - the red restoring force arrow F = -kx above the ball (0.15 m per N),
 ## - reactions: release = stretch; reset = pop; the ball comes to rest = wobble.
+## - the bread cat (CatActor wearing the BreadCat look, 2026-10-27) behind the rod on the ball's
+##   right, both paws on the ball: while the finger drags the ball (and while it waits at its pull)
+##   the cat pulls it along, leaning back with the stretch (forward when it pushes the spring in);
+##   letting go ("놓기" or the finger) it lets go and steps back off the ball's way; it cheers when
+##   the ball has come back once (a period) and when a damped ball comes to rest. Only meshes: the
+##   ball moves as the formula model says.
 class_name SpringProps
 extends RefCounted
 
@@ -26,6 +32,11 @@ const BAR_WIDTH := 0.5
 const BAR_MAX := 2.2             # m: the release energy's height
 const FORCE_SCALE := 0.15        # m of arrow per N
 const ARROW_LIFT := 0.35         # m above the ball top
+## The cat's reach to the ball (shoulders -> the ball's surface: from behind, right) and where it
+## steps back to after letting go (z, behind the rod: the paws at rest clear the ball).
+const CAT_DIR := Vector3(-0.55, 0.2, 0.81)
+const CAT_RETREAT_Z := -0.95
+const CAT_PUSH_EFFORT := 0.15    # pushing the spring in it leans forward only this much (its head off the ball)
 
 var juice: ArtJuice
 var coil: MeshInstance3D
@@ -36,6 +47,8 @@ var force_arrow: VelocityArrow
 var _coil_base := 1.0            # coil length the mesh was built for
 var _coil_from := 0.0            # x of the post face
 var _radius := 0.35
+var cat: CatActor
+var _came_back := false
 
 
 ## The static rig: post at `anchor_x`, rod at `rod_y` to the stand at `end_x`, the board with ticks
@@ -128,6 +141,18 @@ func dress(experiment: Node3D, ball: RigidBody3D, radius: float, anchor_x: float
 	force_arrow = VelocityArrow.new(ArtPalette.RED, ArtPalette.RED_TOP)
 	force_arrow.name = "ForceArrow"
 	experiment.add_child(force_arrow)
+	cat = CatActor.new(BreadCat.new())
+	cat.look_target = ball
+	experiment.add_child(cat)
+
+
+## The ball at `at` waits or is dragged (`extension` m of `extension_max`): the cat pulls it (or
+## pushes it in), its lean following the stretch.
+func update_cat(at: Vector3, extension: float, extension_max: float) -> void:
+	if cat == null:
+		return
+	var d := CAT_DIR.normalized()
+	cat.pull(at - d * _radius, d, 0.0, clampf(extension / extension_max, -CAT_PUSH_EFFORT, 1.0), _radius)
 
 
 func _bar(experiment: Node3D, bar_name: String, color: Color, top: Color) -> MeshInstance3D:
@@ -173,9 +198,21 @@ func show_force(at: Vector3, force: float) -> void:
 		force_arrow.point(Vector3(at.x, at.y + _radius + ARROW_LIFT, at.z), 0.0 if force > 0.0 else 180.0, l)
 
 
-func released() -> void:
+## Let go from `extension` (m): the cat lets go (its paws follow the ball towards the rest length)
+## and steps back.
+func released(extension := 0.0) -> void:
 	if juice != null:
 		juice.stretch()
+	if cat != null:
+		cat.let_go(Vector3(-signf(extension), 0.0, 0.0), Vector3(cat.position.x, 0.0, CAT_RETREAT_Z))
+		_came_back = false
+
+
+## The run's time and period (s): the cat cheers once the ball has come back (one period).
+func update_run(time: float, period: float) -> void:
+	if cat != null and not _came_back and period > 0.0 and time >= period:
+		_came_back = true
+		cat.cheer()
 
 
 func reset() -> void:
@@ -186,3 +223,5 @@ func reset() -> void:
 func status_changed(_previous: String, current: String) -> void:
 	if current == "rest" and juice != null:
 		juice.wobble()
+		if cat != null:
+			cat.cheer()

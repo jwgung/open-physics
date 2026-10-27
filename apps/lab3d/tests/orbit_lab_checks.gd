@@ -377,7 +377,7 @@ func check_art() -> void:
 	expect.call(runs[0].p == runs[1].p and runs[0].obs == runs[1].obs and runs[0].basis == Basis(),
 		"orbit: same motion and panel with and without the reactions; the planet's body never turns", str(runs[0].p))
 	var draw_nodes := lab.find_children("*", "GeometryInstance3D", true, false).size()
-	expect.call(draw_nodes <= 16, "orbit: at most 16 drawn 3D nodes (art budget)", "%d" % draw_nodes)
+	expect.call(draw_nodes <= 24, "orbit: at most 24 drawn 3D nodes (art budget: 16 + the bread cat's 7 + its stand, 2026-10-27)", "%d" % draw_nodes)
 	var props: OrbitProps = lab.props
 	var colours := []
 	for s in [1.0, 3.0, 4.5]:

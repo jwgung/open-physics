@@ -11,6 +11,13 @@
 ## - arrows: the red force on the beam at the effort point (down) and the orange weight of the load,
 ##   FORCE_SCALE m per N (at most ARROW_MAX m),
 ## - reactions: lifted = the load stretches; back down = a small squash; reset = pop.
+## - the bread cat (CatActor wearing the BreadCat look, 2026-10-27) on a stack of bread crates behind
+##   the beam just right of the effort point (left of it near the beam's end; clear of the handle and
+##   its rod): both paws on the
+##   beam's top there, pressing it down with the finger (the bag squashes a little with the force's
+##   share of the required force; as the effort side goes down it leans after it, at most
+##   CAT_LEAN_MAX, and its arms reach the rest); a nod when the load lifts. Only meshes: the beam
+##   turns as the lever model says.
 class_name RotationProps
 extends RefCounted
 
@@ -18,6 +25,15 @@ const BEAM_COLOR := ArtPalette.YELLOW
 const FORCE_SCALE := 0.006        # m of arrow per N
 const ARROW_MAX := 2.4
 const ROD_RADIUS := 0.04
+## The cat: its base right of the effort point (CAT_RIGHT along the beam) and behind the beam
+## (CAT_Z), its paws' z on the beam top and their distance either side of that point, its
+## shoulders' height above the level beam's top, its lean limit (deg).
+const CAT_RIGHT := 0.55
+const CAT_Z := -0.84
+const CAT_PAW_Z := -0.25
+const CAT_PAW_HALF := 0.15
+const CAT_ABOVE := 0.08
+const CAT_LEAN_MAX := 20.0
 
 var juice: ArtJuice
 var markers: MeshInstance3D
@@ -25,6 +41,8 @@ var rod: MeshInstance3D
 var force_arrow: VelocityArrow
 var weight_arrow: VelocityArrow
 var _marker_key := Vector4(INF, INF, INF, INF)   # the three points and the chosen one
+var cat: CatActor
+var cat_stand: CatCrates
 
 
 ## Base board and the rest block under the beam's left end (top at `rest_top`).
@@ -129,6 +147,29 @@ func dress(experiment: Node3D, parts: Dictionary, sizes: Dictionary) -> void:
 	weight_arrow = VelocityArrow.new(ArtPalette.ORANGE, ArtPalette.ORANGE_TOP)
 	weight_arrow.name = "WeightArrow"
 	experiment.add_child(weight_arrow)
+	cat = CatActor.new(BreadCat.new())
+	cat_stand = CatCrates.new(cat.look.footprint)
+	experiment.add_child(cat_stand)
+	experiment.add_child(cat)
+
+
+## The cat's paws on the beam body `beam` (`thick` m; its centre is x = 0 of the level beam) of
+## `model` at the effort point, pressing with `effort` 0..1 (the force's share of the required
+## force); its crates under it. The paws follow the posed beam itself.
+func update_cat(model: LeverLabModel, beam: Node3D, thick: float, effort: float) -> void:
+	if cat == null:
+		return
+	# Right of the effort point, or left of it when the beam ends too soon (the far point).
+	var ex := model.effort_x() + CAT_RIGHT
+	if ex + CAT_PAW_HALF > model.beam_half - 0.05:
+		ex = model.effort_x() - CAT_RIGHT
+	var top := thick * 0.5
+	var targets: Array[Vector3] = []
+	for along in [ex - CAT_PAW_HALF, ex + CAT_PAW_HALF]:
+		targets.append(beam.global_transform * Vector3(along, top, CAT_PAW_Z))
+	var shoulder_y: float = cat.look.shoulders[0].y
+	cat.grab(Vector3(ex, model.pivot_y + top + CAT_ABOVE - shoulder_y, CAT_Z), 0.0, targets, effort, CAT_LEAN_MAX)
+	cat_stand.fit(cat, 0.0)
 
 
 ## The effort pegs for beam-local points `points` (rebuilt only when they or the choice changed).
@@ -155,6 +196,8 @@ func show_forces(grip_bottom: Vector3, effort: Vector3, force: float, load_centr
 func lifted() -> void:
 	if juice != null:
 		juice.stretch()
+	if cat != null:
+		cat.cheer(false)
 
 
 func lowered() -> void:

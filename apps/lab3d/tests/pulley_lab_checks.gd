@@ -274,7 +274,7 @@ func check_art() -> void:
 	lab.props.juice.process_mode = Node.PROCESS_MODE_INHERIT
 	expect.call(absf(runs[0].y - runs[1].y) < 1e-6 and runs[0].obs == runs[1].obs, "pulley: same lift and panel with and without the reactions", "%.4f m" % runs[0].y)
 	var draw_nodes := lab.find_children("*", "GeometryInstance3D", true, false).size()
-	expect.call(draw_nodes <= 16, "pulley: at most 16 drawn 3D nodes (art budget)", "%d" % draw_nodes)
+	expect.call(draw_nodes <= 23, "pulley: at most 23 drawn 3D nodes (art budget: 16 + the bread cat's 7, 2026-10-27)", "%d" % draw_nodes)
 	var worst := 0.0
 	for n in [1, 2, 4]:
 		lab.set_control("strands", _strands_id(n))

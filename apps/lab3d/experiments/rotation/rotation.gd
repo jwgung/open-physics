@@ -162,6 +162,7 @@ func _show() -> void:
 	var effort := Vector3(model.beam_x(model.effort_x(), BEAM_THICK * 0.5), model.beam_y(model.effort_x(), BEAM_THICK * 0.5), 0.0)
 	props.show_forces(handle.global_position - Vector3(0.0, HANDLE_SIZE.y * 0.5, 0.0), effort, model.applied(),
 		load_body.global_position, LOAD_SIZE * 0.5, model.weight())
+	props.update_cat(model, beam, BEAM_THICK, clampf(model.applied() / model.required(), 0.0, 1.0) if model.required() > 0.0 else 0.0)
 
 
 ## The three effort points on the beam (beam-local x = world x of the level beam), the chosen one red.

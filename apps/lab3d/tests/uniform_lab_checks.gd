@@ -289,7 +289,7 @@ func check_free_fall_art() -> void:
 	expect.call(deformed > 0.05 and runs[0].samples == runs[1].samples and runs[0].obs == runs[1].obs and runs[0].graph == runs[1].graph,
 		"free fall: same motion, panel and graph with and without the ball reactions (which do deform the meshes)", "max |scale - 1| %.3f" % deformed)
 	var draw_nodes := lab.find_children("*", "GeometryInstance3D", true, false).size()
-	expect.call(draw_nodes <= 16, "free fall: at most 16 drawn 3D nodes (art budget)", "%d" % draw_nodes)
+	expect.call(draw_nodes <= 24, "free fall: at most 24 drawn 3D nodes (art budget: 16 + the bread cat's 7 + its stand, 2026-10-27)", "%d" % draw_nodes)
 	await _free(lab)
 
 

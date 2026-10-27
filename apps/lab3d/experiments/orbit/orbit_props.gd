@@ -10,6 +10,12 @@
 ## - the purple velocity arrow (to the yellow knob while waiting, the planet's velocity in flight) and
 ##   the red gravity arrow towards the star in flight (0.15 m per m/s^2),
 ## - reactions: launch = stretch; crash = bump towards the star; reset = pop.
+## - the bread cat (CatActor wearing the BreadCat look, 2026-10-27) on a bread crate under the waiting
+##   planet, holding it up over its shoulder (its arm stretches up: the whole cat stays under the
+##   orbit plane, so no flight passes through it); "발사" flings it (the arm follows through along
+##   the launch velocity); a finger holding the planet: it stands by. It cheers after
+##   the first lap, a crash or a flight off the stage. Only meshes: the planet flies as the formula
+##   model says.
 class_name OrbitProps
 extends RefCounted
 
@@ -19,6 +25,10 @@ const DOT_RADIUS := 0.06
 const GRAVITY_SCALE := 0.15      # m of arrow per m/s^2
 const GRAVITY_MAX := 2.5
 const DASHES := 48
+## Shoulder -> held planet: up over the left shoulder, a little out and in front.
+const CAT_DIR := Vector3(0.3, 0.9, 0.3)
+## m the cat's top stays under the planet's lowest point in the orbit plane (with its hop; a cheer's nod lifts the ears).
+const CAT_CLEAR := 0.08
 
 var juice: ArtJuice
 var guide: MultiMeshInstance3D
@@ -26,6 +36,12 @@ var path: MultiMeshInstance3D
 var velocity_arrow: VelocityArrow
 var gravity_arrow: VelocityArrow
 var knob_visual: Node3D
+var cat: CatActor
+var cat_stand: CatCrates
+var _cat_ceiling := 0.0
+var _planet_radius := 0.3
+var _lapped := false
+var _cat_at := Vector3.INF         # the planet centre the cat was placed for
 ## World positions of the shown path dots (the MultiMesh keeps them on the rendering server).
 var dots := PackedVector3Array()
 var _dots := {}                  # outcome -> dot mesh in its colour
@@ -132,6 +148,33 @@ func dress(experiment: Node3D, planet: RigidBody3D, planet_radius: float, knob: 
 	gravity_arrow.visible = false
 	experiment.add_child(gravity_arrow)
 	knob_visual = knob.get_node("Visual")
+	_planet_radius = planet_radius
+	cat = CatActor.new(BreadCat.new())
+	cat.look_target = planet
+	cat_stand = CatCrates.new(cat.look.footprint)
+	experiment.add_child(cat_stand)
+	experiment.add_child(cat)
+	cat.advance(0.0)
+	# The highest base that keeps the cat (its top above its base, and a hop) under the orbit plane.
+	var top := cat.bounds().end.y - cat.global_position.y
+	_cat_ceiling = star_y - planet_radius - CAT_CLEAR - CatActor.CHEER_HOP - top
+
+
+## The cat holds the waiting planet centred at `at` (`grip` false: a finger holds it, it stands by);
+## its crate under it.
+func place_cat(at: Vector3, grip: bool) -> void:
+	if cat == null or (at == _cat_at and cat.mode == ("hold" if grip else "free")):
+		return
+	_cat_at = at
+	cat.hold(at, _planet_radius, 0.0, grip, CAT_DIR, _cat_ceiling)
+	cat_stand.fit(cat, 0.0)
+
+
+## In flight: the first lap's time (s, < 0 until then): the cat cheers once it is done.
+func update_cat(first_lap: float) -> void:
+	if cat != null and first_lap >= 0.0 and not _lapped:
+		_lapped = true
+		cat.cheer(false)   # a hop, the paws down: the cat stays under the orbit plane
 
 
 ## The dashed circular-orbit guide at `radius` (moved only when the radius changes).
@@ -191,9 +234,13 @@ func hide_gravity() -> void:
 		gravity_arrow.visible = false
 
 
-func launched() -> void:
+## The launch along the plane velocity `velocity`: the cat flings the planet off its paw.
+func launched(velocity := Vector3.ZERO) -> void:
 	knob_visual.visible = false
 	juice.stretch()
+	if cat != null:
+		cat.let_go(velocity)
+		_lapped = false
 
 
 ## Picked up (in flight or waiting): the waiting look again, the yellow knob back and no gravity arrow.
@@ -216,3 +263,9 @@ func reset() -> void:
 func crashed(towards_star: Vector3) -> void:
 	if juice != null:
 		juice.bump(towards_star, 0.8)
+
+
+## The flight's result (crash, far): the cat cheers.
+func status_changed(_previous: String, current: String) -> void:
+	if cat != null and current in ["crash", "far"]:
+		cat.cheer(false)

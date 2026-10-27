@@ -125,6 +125,7 @@ func reset_box() -> void:
 	var local := Transform3D(Basis(), Vector3(start_x, BOX * 0.5, 0.0))
 	box.global_transform = _pivot.global_transform * local
 	_stop_run()
+	props.place_cat(_pivot.global_transform, start_x, BOX, angle_deg, true)
 	_update_status()
 
 
@@ -147,6 +148,7 @@ func release() -> void:
 	released = true
 	box.freeze = false
 	box.sleeping = false
+	props.cat_let_go(_pivot.global_transform.basis * Vector3.LEFT)
 	_update_status()
 
 
@@ -337,6 +339,7 @@ func manipulation_juice(_id: String) -> ArtJuice:
 ## Picked up (also while sliding or lying on the floor): the run stops and the box waits, frozen.
 func manipulation_started(_id: String) -> void:
 	_stop_run()
+	props.place_cat(_pivot.global_transform, start_x, BOX, angle_deg, false)
 	props.juice.rearm()   # the next landing reacts again (squash, dust, impact)
 	_update_status(true)  # no "placed" pop: the hand reaction comes from the manipulator
 

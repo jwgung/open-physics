@@ -4,16 +4,31 @@
 ## - a yellow drop pad under each waiting ball that flips down and hides on release (the "놓기"
 ##   reaction) and comes back with a pop when the balls are put back,
 ## - the island, the ruler's blob shadow and each ball's ArtJuice (squash, dust, shadow; dust kept
-##   to 10 grains per ball so three landings at once stay under the 32-grain budget).
+##   to 10 grains per ball so three landings at once stay under the 32-grain budget),
+## - the bread cat (CatActor wearing the BreadCat look, 2026-10-27) behind and left of the leftmost
+##   ball, holding it on its pad with its left paw, on a stack of bread crates as tall as the ball is
+##   high (CatCrates); "공 놓기" lets go (the arm follows down), it cheers when all balls landed. A
+##   finger holding that ball: the cat only stands by. Only meshes: the balls wait and fall as the
+##   formula says.
 class_name FreeFallProps
 extends PadProps
 
 const RULER_AT := Vector3(-3.6, 0.0, -1.4)
+const CRATE_MAX := 20             # a ball up to 8 m: crates no taller than about 0.4 m
+## Shoulder -> held ball: out to the left and in front (the cat stands behind the ball's pad).
+const CAT_HOLD_DIR := Vector3(0.36, 0.24, 0.9)
 const RULER_HEIGHT := 8.5
 const PAD_SIZE := Vector3(0.56, 0.06, 0.56)
 
 var juices: Dictionary = {}    # ball id -> ArtJuice
 var pads: Dictionary = {}      # ball id -> MeshInstance3D (the pad hinge node is the instance itself)
+var cat: CatActor
+var cat_stand: CatCrates
+## The ball the cat holds (the leftmost one) and the ball a finger holds ("" = none).
+var cat_ball := ""
+var finger := ""
+var _ball_nodes: Dictionary = {}   # ball id -> body
+var _radius := 0.25
 
 
 ## The ruler: a pole on a round foot, ticks on its front face (one static mesh).
@@ -63,6 +78,33 @@ func dress(experiment: Node3D, balls: Dictionary, ball_size: float) -> void:
 		juice.round_body = true   # a ball (it may turn, Task 4f)
 		juice.setup(ball, balls[id][1], ball_size, 0.0, ball.collision_mask)   # the shadow lands where the ball can
 		juices[id] = juice
+		_ball_nodes[id] = ball
+	_radius = ball_size * 0.5
+	cat = CatActor.new(BreadCat.new())
+	cat_stand = CatCrates.new(cat.look.footprint, CRATE_MAX)
+	experiment.add_child(cat_stand)
+	experiment.add_child(cat)
+
+
+## The cat holds the leftmost waiting ball (centres = `starts` + the radius; id -> bottom point) on
+## its pad, or stands by while a finger holds that ball; its crates fit under it.
+func place_cat(starts: Dictionary) -> void:
+	if cat == null:
+		return
+	var left := ""
+	for id in starts:
+		if left == "" or starts[id].x < starts[left].x:
+			left = id
+	cat_ball = left
+	cat.look_target = _ball_nodes.get(left)
+	cat.hold(starts[left] + Vector3.UP * _radius, _radius, 0.0, finger != left, CAT_HOLD_DIR)
+	cat_stand.fit(cat, 0.0)
+
+
+## A finger picked up (`id`) or put down ("") a ball: the cat stands by while it holds the cat's ball.
+func set_finger(id: String, starts: Dictionary) -> void:
+	finger = id
+	place_cat(starts)
 
 
 ## Puts the pad of a waiting ball under it (`bottom` = the ball's lowest point); no pad on the floor.
@@ -84,6 +126,8 @@ func released() -> void:
 			flip_pad(id, pad, "rotation:x", PI * 0.5)
 	for juice: ArtJuice in juices.values():
 		juice.stretch()
+	if cat != null:
+		cat.let_go(Vector3.DOWN)
 
 
 ## The balls were put back (reset, condition change): they pop in again.
@@ -91,3 +135,9 @@ func reset() -> void:
 	for juice: ArtJuice in juices.values():
 		juice.pop()
 
+
+
+## All balls landed: the cat cheers.
+func status_changed(_previous: String, status: String) -> void:
+	if cat != null and status == "landed":
+		cat.cheer()

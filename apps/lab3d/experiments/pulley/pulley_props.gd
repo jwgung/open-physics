@@ -11,6 +11,11 @@
 ##   with the length),
 ## - arrows: the orange weight of the load and the red pull of the hand (down), FORCE_SCALE m per N,
 ## - reactions: lifting off = stretch; set down (reset) = pop.
+## - the bread cat (CatActor wearing the BreadCat look, 2026-10-27) under the grip, behind the pull
+##   strand: while the finger pulls the grip the cat holds it with both paws and pulls it down with
+##   it (it jumps up to the grip and hangs from it while the grip is above its reach, stands and
+##   leans back once it is low); letting go it drops back to its spot, cheering when the stroke
+##   lifted the load. Only meshes: the rope, the grip and the load are the formula model's.
 class_name PulleyProps
 extends RefCounted
 
@@ -20,6 +25,12 @@ const ROPE_RADIUS := 0.03
 const FORCE_SCALE := 0.006
 const ARROW_MAX := 2.4
 const BLOCK_DEPTH := 0.3
+## The cat's reach to the grip's back face (shoulders -> grip: from below and behind), how hard it
+## leans back pulling, and its spot under the grip (x offset, z) when it does not hold it.
+const CAT_DIR := Vector3(0.0, 0.45, 0.89)
+const CAT_EFFORT := 0.6
+const CAT_SPOT_Z := -0.45
+const CAT_SPOT_X := -0.15       # m beside the grip (clear of the gantry's post)
 
 var juice: ArtJuice
 var fixed_block: MeshInstance3D
@@ -29,6 +40,7 @@ var pull_link: MeshInstance3D              # guide wheel -> grip
 var pile: MeshInstance3D
 var weight_arrow: VelocityArrow
 var pull_arrow: VelocityArrow
+var cat: CatActor
 var _n := -1
 var _guide := Vector3.ZERO
 var _load_x := 0.0
@@ -151,6 +163,31 @@ func dress(experiment: Node3D, load_body: RigidBody3D, handle: StaticBody3D, siz
 	pull_arrow = VelocityArrow.new(ArtPalette.RED, ArtPalette.RED_TOP)
 	pull_arrow.name = "PullArrow"
 	experiment.add_child(pull_arrow)
+	cat = CatActor.new(BreadCat.new())
+	cat.look_target = handle
+	cat.position = cat_spot(handle.global_position)
+	experiment.add_child(cat)
+
+
+## The cat's spot on the floor under the grip at `grip` (when it does not hold it).
+static func cat_spot(grip: Vector3) -> Vector3:
+	return Vector3(grip.x + CAT_SPOT_X, 0.0, CAT_SPOT_Z)
+
+
+## The finger holds the grip (centre `grip`, `size`): the cat's paws on its back face, pulling.
+func update_cat(grip: Vector3, size: Vector3) -> void:
+	if cat != null:
+		cat.pull(grip - Vector3(0.0, 0.0, size.z * 0.5), CAT_DIR.normalized(), 0.0, CAT_EFFORT)
+
+
+## The finger let the grip go: the cat lets go and drops back to its spot (a cheer when the load is
+## off the ground).
+func cat_let_go(grip_rest: Vector3, lifted: bool) -> void:
+	if cat == null:
+		return
+	cat.let_go(Vector3.UP, cat_spot(grip_rest))
+	if lifted:
+		cat.cheer()
 
 
 ## The blocks for n strands (n / 2 moving wheels, max(1, n / 2) fixed ones), rebuilt when n changed.

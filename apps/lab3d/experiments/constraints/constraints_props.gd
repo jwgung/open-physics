@@ -9,6 +9,12 @@
 ## - the bobs (yarn balls, Task 4g): string bob blue (the web's), rod bob orange (the web's is green, a background colour
 ##   here: art-direction.md section 2), with an ArtJuice each (shadow, pop, stretch; no landing),
 ## - reactions: release = stretch; reset = pop.
+## - the bread cat (CatActor wearing the BreadCat look, 2026-10-27) holding the string bob where it
+##   waits, in the paw on the far side from the anchor's vertical (it stands out beyond the bob and
+##   behind its swing plane: the swing goes the other way and never comes back past the release
+##   point), on a stack of bread crates as tall as the bob is high; "놓기" (or putting the bob down)
+##   lets go and the arm follows the swing; a finger holding the bob: the cat stands by. It cheers
+##   when the first swing has come back (the period is measured). Only meshes.
 class_name ConstraintsProps
 extends RefCounted
 
@@ -18,12 +24,21 @@ const ROD_RADIUS := 0.065
 const DOT_SIZE := 0.07
 const DOT_STEP_DEG := 5.0
 const POST_BACK := 1.1           # m behind the swing plane
+## Shoulder -> held bob for a bob right of its anchor (mirrored in x on the left): from beyond it and
+## behind its swing plane.
+const CAT_DIR := Vector3(-0.4, 0.3, 0.87)
 
 var juices: Array[ArtJuice] = []
 var links: Array[MeshInstance3D] = []   # [string, rod]
 var paths: Array[MeshInstance3D] = []
 var _anchors: Array[Vector3] = []
 var _path_length := -1.0
+var cat: CatActor
+var cat_stand: CatCrates
+var _bob: RigidBody3D
+var _bob_at := Vector3.ZERO
+var _radius := 0.33
+var _cheered := false
 
 
 ## The stands for the anchors (pin at each anchor, post behind it), the board under both.
@@ -114,6 +129,40 @@ func dress(experiment: Node3D, bobs: Array[RigidBody3D], anchors: Array[Vector3]
 		experiment.add_child(juice)
 		juice.setup(bobs[i], visual, radius * 2.0)
 		juices.append(juice)
+	_bob = bobs[0]
+	_radius = radius
+	cat = CatActor.new(BreadCat.new())
+	cat.look_target = _bob
+	cat_stand = CatCrates.new(cat.look.footprint)
+	experiment.add_child(cat_stand)
+	experiment.add_child(cat)
+
+
+## The cat holds the string bob waiting at `at` (`grip` false: stands by there), on its crates.
+func place_cat(at: Vector3, grip := true) -> void:
+	if cat == null:
+		return
+	_bob_at = at
+	var side := -1.0 if at.x < _anchors[0].x - 1e-6 else 1.0
+	cat.hold(at, _radius, 0.0, grip, Vector3(CAT_DIR.x * side, CAT_DIR.y, CAT_DIR.z))
+	cat_stand.fit(cat, 0.0)
+
+
+## The bob's swing starts from `at`: the cat holding it there lets go along the swing (towards the
+## bottom).
+func _let_go_cat(at: Vector3) -> void:
+	place_cat(at, true)
+	var d := at - _anchors[0]
+	var tangent := Vector3(-d.y, d.x, 0.0) * (1.0 if d.x < 0.0 else -1.0)   # the circle's direction down
+	cat.let_go(tangent)
+	_cheered = false
+
+
+## The string's period now (s, 0 = not measured yet): the cat cheers once the first swing came back.
+func update_cat(period: float) -> void:
+	if cat != null and period > 0.0 and not _cheered:
+		_cheered = true
+		cat.cheer()
 
 
 ## The paths for the bobs' length (rebuilt only when it changed).
@@ -131,9 +180,12 @@ func stretch_link(i: int, at: Vector3) -> void:
 	ArtKit.stretch_link(links[i], _anchors[i], at)
 
 
-func released() -> void:
+## The swing starts with the string bob at `bob_at` (its start).
+func released(bob_at := Vector3.INF) -> void:
 	for juice in juices:
 		juice.stretch()
+	if cat != null:
+		_let_go_cat(bob_at if is_finite(bob_at.x) else _bob_at)
 
 
 func reset() -> void:

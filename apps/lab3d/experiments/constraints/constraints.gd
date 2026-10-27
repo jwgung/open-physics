@@ -120,6 +120,7 @@ func reset_run() -> void:
 		return
 	_clear_run()
 	props.reset()
+	props.place_cat(models[0].position())
 	props.show_paths(length, MAX_DEG)
 	_show()
 	_update_status(true)
@@ -143,6 +144,8 @@ func _process(_delta: float) -> void:
 		# The held bob's model follows the finger (at rest at the bob's angle): the panel shows it.
 		_load_one(held, angle_at(held, bobs[held].global_position))
 	_show()
+	if released:
+		props.update_cat(models[0].period)
 
 
 ## The string and the rod from their anchors to the bobs where they are now.
@@ -168,6 +171,10 @@ func status() -> String:
 
 func _status_changed(previous: String, current: String) -> void:
 	props.status_changed(previous, current)
+
+
+func _notify_released() -> void:
+	props.released(models[0].position())
 
 
 func observations() -> Dictionary:
@@ -268,6 +275,7 @@ func manipulation_started(id: String) -> void:
 			(driver as BodyModelGroupDriver).members[i].reset()
 	_graph.clear()
 	_graph_revision += 1
+	props.place_cat(models[0].position(), held != 0)   # a finger holds the string bob: the cat stands by
 
 
 ## Put down = let go: both bobs are released from rest at their angles (a restored placement only

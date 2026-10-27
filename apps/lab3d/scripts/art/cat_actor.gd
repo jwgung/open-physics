@@ -1,24 +1,35 @@
 ## A character that acts what the student does, in step with the formula model (Phase 1 Task 4g,
-## art-direction.md section 11): it throws the projectile lab's ball and pushes the friction lab's
-## box. "물리는 모델, 고양이는 연기": it never touches the physics (no body, no collision object, no
-## layer); the labs' motion and panel values are the same with or without it
+## art-direction.md section 11): it throws the projectile lab's ball, pushes the friction lab's box
+## and has a hand in every other lab (holds and lets go, pulls, presses; 2026-10-27). "물리는 모델,
+## 고양이는 연기": it never touches the physics (no body, no collision object, no layer); the labs'
+## motion and panel values are the same with or without it
 ## (tests/bread_cat_checks.gd). What it looks like is a CatLook (meshes + the points of its body the
 ## acting uses: shoulders, reach, neck, ...), so the look can be replaced without touching the sync.
 ##
 ## The animation is code (no AnimationPlayer, no Tween): _process advances the clock and poses the
 ## rig from the mode the lab set:
 ##   hold(center, r, floor)  the left paw holds a ball of radius r centred at `center` (along the
-##                           look's hold_dir from the shoulder); the actor is placed so its arm
-##                           reaches it, raised off `floor` when the ball is high (the lab draws a
-##                           stand of stand_height)
+##                           look's hold_dir from the shoulder, or a given direction: the right paw
+##                           when it points to -x); the actor is placed so its arm reaches it,
+##                           raised off `floor` when the ball is high (the lab draws a stand of
+##                           stand_height) and kept under a `ceiling` (the arm stretches up)
 ##   throw(dir, on_release)  windup (the ball up and back over the head) and an overhand swing that
 ##                           reaches the hold pose moving along `dir`, fastest at the release; the ball (`carried`) follows the paw; on the frame the swing
 ##                           is back at the hold pose (the ball's launch point) on_release runs, then
 ##                           the arm follows through and rests
-##   let_go(dir)             the ball was let go without a throw (the arm follows through)
+##   let_go(dir, retreat)    what the paws held was let go without a throw: the arms follow through
+##                           along `dir` and settle, the lean and turn ease back, the actor steps to
+##                           `retreat` (if given) and drops to its floor (a hanging pull)
 ##   push(face_x, ...)       both paws on the plane x = face_x (the box face), the actor behind it (-x),
 ##                           leaning with the effort
-##   cheer(arms)             a small hop (and paws up) when something lands or stops
+##   grab(root, yaw, pts)    both paws on two points from where the actor stands (on a stand the lab
+##                           draws): it leans forward or back until its shoulders reach them (the arms
+##                           stretch the rest); `effort` squashes the bread bag a little (pressing)
+##   pull(grip, dir, ...)    both paws on a grip (a rope end, a ball) reached along `dir`: the actor
+##                           stands where its paws reach it, on its floor or hanging from it when the
+##                           grip is high (it jumps up to it), leaning back with the effort
+##   cheer(arms)             a small hop (and paws up) when something lands or stops; with the paws
+##                           busy (grab, pull, push) only a nod
 ## The look's hand nodes (under each arm, at the paw centre) show where the paws hold and touch.
 class_name CatActor
 extends Node3D
@@ -52,6 +63,18 @@ const BLINK_S := 0.13
 const HEAD_YAW_MAX := 1.0           # rad the head turns towards what it looks at
 const PUSH_HEAD_YAW := -1.05        # rad: a pushing actor (facing +x) looks towards the camera (+z)
 const PUSH_LEAN_DEG := 8.0          # a pushing actor leans towards the box this much at rest
+## Grab: the most it leans forward / back to reach its points (searched in GRAB_STEP_DEG steps).
+const GRAB_LEAN_FWD_DEG := 60.0
+const GRAB_LEAN_BACK_DEG := 25.0
+const GRAB_STEP_DEG := 2.0
+const GRAB_SQUASH := 0.12           # the bag's height shrinks this share at full effort (pressing)
+## Pull: lean back at full effort; each paw this far beside the grip (m).
+const PULL_LEAN_DEG := 20.0
+const PULL_SPREAD := 0.07
+const JUMP_SPEED := 6.0             # m/s the actor rises to a grip above its reach
+const JUMP_STRETCH_MAX := 1.4       # arm stretch while it rises (the paws reach for the grip)
+const FALL_G := 9.81                # m/s^2: let go while hanging, it drops to its floor
+const RETREAT_HOP := 0.18           # m: the hop of a step to a retreat point
 
 var look: CatLook
 var rig: Node3D
@@ -75,10 +98,11 @@ var push_face: Callable
 ## Pushing: the paws stay this far (m, along z) from the middle of the face at most.
 var push_half_width := 0.2
 
-var mode := "free"                  # free / hold / throw / follow / push
+var mode := "free"                  # free / hold / throw / follow / push / grab / pull
 ## Height of the base above the floor hold() was given (the lab draws a stand that tall).
 var stand_height := 0.0
 var _clock := 0.0
+var _dt := 0.0                      # the last advance() step (s)
 var _next_blink := 1.7
 var _blink := -1.0                  # time into a blink, < 0: none
 var _cheer := -1.0                  # time into a cheer, < 0: none
@@ -88,6 +112,8 @@ var _head_yaw := 0.0
 var _held := Vector3.ZERO           # ball centre held (the launch point)
 var _held_radius := 0.0
 var _floor_y := 0.0
+var _hold_arm := ARM_HOLD           # the paw that holds (the right one for a ball at -x)
+var _hold_stretch := 1.0            # its stretch (> 1 only under a ceiling)
 var _u := Vector3.FORWARD           # unit shoulder -> held ball centre
 var _dir := Vector3.RIGHT           # throw direction
 var _swing := Vector3.UP            # unit follow-through direction (across _u)
@@ -95,7 +121,6 @@ var _t := 0.0                       # time into the throw / follow-through
 var _on_release := Callable()
 var _arm_dirs: Array[Vector3] = [Vector3.DOWN, Vector3.DOWN]
 var _stretch: Array[float] = [1.0, 1.0]   # arm length / its rest length
-var _follow_from := Vector3.DOWN    # arm direction at the end of the follow-through swing
 var _windup := Vector3.ZERO         # windup point of the throw (world)
 var _curve_points := PackedVector3Array()   # the swing curve sampled from the windup point (world)
 var _curve_length := PackedFloat32Array()   # arc length to each sample
@@ -105,6 +130,32 @@ var _hand_y := 0.5
 var _effort := 0.0                  # -1 (pulling hard) .. 1 (pushing hard)
 var _travel := 0.0
 var _speed := 0.0
+# grab / pull
+var _targets: Array[Vector3] = [Vector3.ZERO, Vector3.ZERO]   # where the right / left paw touches
+var _yaw := 0.0                     # rad the rig faces (about +y, from +z)
+var _lean := 0.0                    # rad the rig leans now (+ forward)
+var _squash := 1.0                  # the bag's height share now
+var _grip := Vector3.ZERO
+var _pull_dir := Vector3.FORWARD    # shoulders -> grip
+var _rising := false                # a pull rises to a high grip (the paws do not reach it yet)
+var _grab_fwd := deg_to_rad(GRAB_LEAN_FWD_DEG)
+var _pull_ball := 0.0               # radius of a ball the pull's paws are on (0: a grip)
+var _grab_key := []                 # the input the lean was last solved for (solved again only on a change)
+## Cheers so far (tests).
+var cheers := 0
+# follow-through after a release (let_go, the throw's release)
+var _rel_arms: Array[bool] = [false, false]
+var _rel_from: Array[Vector3] = [Vector3.DOWN, Vector3.DOWN]
+var _rel_swing: Array[Vector3] = [Vector3.UP, Vector3.UP]
+var _rel_end: Array[Vector3] = [Vector3.DOWN, Vector3.DOWN]   # arm directions at the swing's end
+var _rel_stretch: Array[float] = [1.0, 1.0]
+var _rel_yaw := 0.0
+var _rel_lean := 0.0
+var _rel_squash := 1.0
+var _rel_pos := Vector3.ZERO
+var _retreat := Vector3.INF
+var _fall_v := 0.0
+var _falls := false
 
 
 func _init(cat_look: CatLook) -> void:
@@ -158,11 +209,36 @@ func hand_point(i: int) -> Vector3:
 ## Where the centre of a ball in the holding paw is now (the hand is the grip point: the ball's centre
 ## is held `reach` + radius from the shoulder, its surface at the paw's front).
 func held_point() -> Vector3:
-	return shoulder(ARM_HOLD) + arm_dir(ARM_HOLD) * (look.reach + _held_radius) * _stretch[ARM_HOLD]
+	return shoulder(_hold_arm) + arm_dir(_hold_arm) * (look.reach + _held_radius) * _stretch[_hold_arm]
+
+
+## The paw that holds a ball (hold, throw).
+func hold_arm() -> int:
+	return _hold_arm
 
 
 func throwing() -> bool:
 	return mode == "throw"
+
+
+## The paws are on something (a held ball, a face, grabbed points, a grip).
+func attached() -> bool:
+	return mode in ["hold", "throw", "push", "grab", "pull"]
+
+
+## A pull still rises to its grip (the paws reach it once it is up).
+func rising() -> bool:
+	return mode == "pull" and _rising
+
+
+## The rig's lean now (rad, + forward): grab and pull solve it each frame.
+func lean() -> float:
+	return _lean
+
+
+## Arm `i`'s length / its rest length now.
+func stretch(i: int) -> float:
+	return _stretch[i]
 
 
 ## World AABB of the actor's drawn meshes (not its shadow; the actor is in the tree): what a
@@ -180,38 +256,70 @@ func bounds() -> AABB:
 	return box
 
 
+## The turn (rad about +y, from +z) of an actor at `from` that faces `to` (level).
+static func facing(from: Vector3, to: Vector3) -> float:
+	return atan2(to.x - from.x, to.z - from.z)
+
+
+## The points where an actor standing at `root` and facing a ball (centre `center`, radius
+## `radius`) puts its paws on it: on the ball's side towards the actor, `spread` rad to either side
+## of the level line to it and `lift` m above the centre's height; [right paw, left paw].
+static func ball_grip(center: Vector3, radius: float, root: Vector3, spread: float, lift := 0.0) -> Array[Vector3]:
+	var n := Vector3(root.x - center.x, 0.0, root.z - center.z).normalized()
+	var y := clampf(lift / radius, -0.95, 0.95)
+	var flat := sqrt(1.0 - y * y)
+	# The actor faces -n: its left paw (+x in its own space) is towards -n turned +90 deg = n turned
+	# -90 deg about +y.
+	var right := n.rotated(Vector3.UP, spread) * flat + Vector3.UP * y
+	var left := n.rotated(Vector3.UP, -spread) * flat + Vector3.UP * y
+	return [center + right * radius, center + left * radius] as Array[Vector3]
+
+
 # --- modes ----------------------------------------------------------------------------------------
 
-## Holds a ball of radius `radius` centred at `center` in the left paw (gripping) or only stands
-## where it would (grip false: a finger holds the ball). Placed so the paw reaches it: the shoulder
-## is reach + radius from the centre along the look's hold_dir, raised off `floor_y` when the ball is
-## high, on the floor when it is low (then the arm points down to it). A throw in progress stops.
-func hold(center: Vector3, radius: float, floor_y: float, grip := true) -> void:
+## Holds a ball of radius `radius` centred at `center` in a paw (gripping) or only stands where it
+## would (grip false: a finger holds the ball). Placed so the paw reaches it: the shoulder is
+## reach + radius from the centre along `dir` (rig space, the actor facing +z; default the look's
+## hold_dir: the left paw, the ball out to +x; a `dir` to -x holds it in the right paw), raised off
+## `floor_y` when the ball is high, on the floor when it is low (then the arm points down to it), and
+## no higher than `ceiling` (then the arm stretches up to the ball). A throw in progress stops.
+func hold(center: Vector3, radius: float, floor_y: float, grip := true, dir := Vector3.ZERO, ceiling := INF) -> void:
 	_on_release = Callable()
 	_held = center
 	_held_radius = radius
 	_floor_y = floor_y
 	_cheer = -1.0
+	var u := (look.hold_dir if dir == Vector3.ZERO else dir).normalized()
+	_hold_arm = ARM_R if u.x < 0.0 else ARM_L
 	var reach := look.reach + radius
-	var sh: Vector3 = look.shoulders[ARM_HOLD]
-	var u := look.hold_dir.normalized()
+	var sh: Vector3 = look.shoulders[_hold_arm]
 	var s := center - u * reach
 	var root := s - sh
+	_hold_stretch = 1.0
 	if root.y < floor_y:
 		root.y = floor_y
 		s.y = floor_y + sh.y
-		var flat := Vector2(look.hold_dir.x, look.hold_dir.z).normalized()
+		var flat := Vector2(u.x, u.z).normalized()
 		var across := sqrt(maxf(reach * reach - (center.y - s.y) * (center.y - s.y), 0.0))
 		s.x = center.x - flat.x * across
 		s.z = center.z - flat.y * across
 		root = s - sh
+	elif root.y > ceiling:
+		root.y = ceiling
+		s = root + sh
+		_hold_stretch = s.distance_to(center) / reach
 	stand_height = root.y - floor_y
 	position = root
 	rig.transform = Transform3D.IDENTITY
+	_yaw = 0.0
+	_lean = 0.0
+	_squash = 1.0
 	_u = (center - s).normalized()
 	mode = "hold" if grip else "free"
-	_arm_dirs[ARM_HOLD] = _u if grip else _rest_dir(ARM_HOLD)
-	_arm_dirs[ARM_R] = _rest_dir(ARM_R)
+	if not grip:
+		_hold_stretch = 1.0
+	_arm_dirs[_hold_arm] = _u if grip else _rest_dir(_hold_arm)
+	_arm_dirs[1 - _hold_arm] = _rest_dir(1 - _hold_arm)
 	_pose()
 
 
@@ -232,12 +340,20 @@ func throw(dir: Vector3, on_release: Callable) -> void:
 	mode = "throw"
 
 
-## The ball left without a throw (a direct release): the arm follows through along `dir`.
-func let_go(dir: Vector3) -> void:
-	if mode == "hold":
-		_set_swing(dir)
-		_t = 0.0
-		mode = "follow"
+## What the paws held was let go without a throw (a direct release): the holding arms follow through
+## along `dir` and settle to rest while the lean, turn and squash ease back; the actor steps to
+## `retreat` (a world point on its floor; INF: it stays) and, hanging from a grip, drops to its floor.
+func let_go(dir: Vector3, retreat := Vector3.INF) -> void:
+	var held: Array[bool] = [false, false]
+	match mode:
+		"hold":
+			held[_hold_arm] = true
+		"grab", "pull", "push":
+			held = [true, true]
+		_:
+			return
+	_dir = dir.normalized() if dir.length_squared() > 1e-12 else Vector3.ZERO
+	_begin_follow(held, retreat)
 
 
 ## Both paws on the plane x = `face_x` at height `hand_y` (the face of the box being pushed, box to
@@ -255,10 +371,46 @@ func push(face_x: float, hand_y: float, effort: float, travel: float, speed: flo
 	position = Vector3(position.x, floor_y, z)
 
 
-## A small happy hop (and both paws up, `arms_up`, unless the paws are busy).
+## Both paws on the world points `targets` ([right paw, left paw]) from where the actor stands
+## (`root`: its base, on a stand the lab draws; facing `yaw` rad about +y from +z): the rig leans
+## forward or back (the least that does it, within GRAB_LEAN_FWD_DEG / GRAB_LEAN_BACK_DEG) until the
+## shoulders are `reach` from the points, the arms stretch the rest, so the paws' fronts are on the
+## points exactly. `effort` 0..1 squashes the bag (pressing hard); `lean_max` (deg) limits the lean
+## forward (a head that must stay clear of something in front). Only stores the input (poses in
+## _process, like push).
+func grab(root: Vector3, yaw: float, targets: Array[Vector3], effort := 0.0, lean_max := GRAB_LEAN_FWD_DEG) -> void:
+	position = root
+	_grab_fwd = deg_to_rad(lean_max)
+	_yaw = yaw
+	_targets[0] = targets[0]
+	_targets[1] = targets[1]
+	_effort = clampf(effort, 0.0, 1.0)
+	mode = "grab"
+
+
+## Both paws on `grip` (PULL_SPREAD to either side), reached along the world direction `dir`
+## (shoulders -> grip; the actor faces along it): the actor stands where its shoulders are `reach`
+## from the grip, on `floor_y` (its arms point up or down to the grip when that is lower) or above
+## it, hanging, when the grip is higher than its paws reach from the floor (it rises at JUMP_SPEED,
+## its paws reaching up). `effort` -1..1 leans it back (pulling) or forward (pushing). A `ball`
+## radius > 0 puts the paws on that ball (centre `grip` + `dir` * radius) beside the grip. Poses in
+## _process.
+func pull(grip: Vector3, dir: Vector3, floor_y: float, effort := 0.0, ball := 0.0) -> void:
+	_pull_ball = ball
+	if mode != "pull":
+		_rising = false
+	_grip = grip
+	_pull_dir = dir.normalized() if dir.length_squared() > 1e-12 else Vector3.FORWARD
+	_floor_y = floor_y
+	_effort = clampf(effort, -1.0, 1.0)
+	mode = "pull"
+
+
+## A small happy hop (and both paws up, `arms_up`, unless the paws are busy: then only a nod).
 func cheer(arms_up := true) -> void:
 	_cheer = 0.0
 	_cheer_arms = arms_up
+	cheers += 1
 
 
 # --- animation ------------------------------------------------------------------------------------
@@ -269,6 +421,7 @@ func _process(delta: float) -> void:
 
 ## Moves the clock on by `delta` s and poses (tests call it with exact steps).
 func advance(delta: float) -> void:
+	_dt = delta
 	_clock += delta
 	if _blink >= 0.0:
 		_blink += delta
@@ -287,23 +440,24 @@ func advance(delta: float) -> void:
 			_t += delta
 			if _t >= WINDUP_S + SWING_S:
 				# The release frame: the arm exactly at the hold pose, the ball at the launch point.
-				_arm_dirs[ARM_HOLD] = _u
-				_stretch[ARM_HOLD] = 1.0
+				_arm_dirs[_hold_arm] = _u
+				_stretch[_hold_arm] = 1.0
 				_pose()
 				if carried.is_valid():
 					carried.call(held_point())
 				var release := _on_release
 				_on_release = Callable()
-				_t = 0.0
-				mode = "follow"
+				var held: Array[bool] = [false, false]
+				held[_hold_arm] = true
+				_begin_follow(held, Vector3.INF)
 				if release.is_valid():
 					release.call()
 				threw.emit()
 				return
 			var p := _throw_point(_t)
-			var to := p - shoulder(ARM_HOLD)
-			_arm_dirs[ARM_HOLD] = to.normalized()
-			_stretch[ARM_HOLD] = to.length() / (look.reach + _held_radius)
+			var to := p - shoulder(_hold_arm)
+			_arm_dirs[_hold_arm] = to.normalized()
+			_stretch[_hold_arm] = to.length() / (look.reach + _held_radius)
 			_pose()
 			if carried.is_valid():
 				carried.call(held_point())
@@ -314,14 +468,68 @@ func advance(delta: float) -> void:
 			if _t < FOLLOW_S:
 				var k := _t / FOLLOW_S
 				var angle := follow * (1.0 - (1.0 - k) * (1.0 - k))
-				_arm_dirs[ARM_HOLD] = (_u * cos(angle) + _swing * sin(angle)).normalized()
-				_follow_from = _arm_dirs[ARM_HOLD]
+				for i in 2:
+					if _rel_arms[i]:
+						_arm_dirs[i] = (_rel_from[i] * cos(angle) + _rel_swing[i] * sin(angle)).normalized()
+						_rel_end[i] = _arm_dirs[i]
+						_stretch[i] = lerpf(_rel_stretch[i], 1.0, k)
 			else:
 				var k := clampf((_t - FOLLOW_S) / SETTLE_S, 0.0, 1.0)
-				_arm_dirs[ARM_HOLD] = _follow_from.slerp(_rest_dir_world(ARM_HOLD), k * k * (3.0 - 2.0 * k))
+				for i in 2:
+					if _rel_arms[i]:
+						_arm_dirs[i] = _rel_end[i].slerp(_rest_dir_world(i), k * k * (3.0 - 2.0 * k))
+						_stretch[i] = 1.0
 				if k >= 1.0:
 					mode = "free"
+			_settle_body()
 	_pose()
+
+
+## The rig after a release: the lean, turn and squash ease back over the follow-through and settle,
+## the root steps to the retreat point, and a hanging actor falls to its floor.
+func _settle_body() -> void:
+	var k := clampf(_t / (FOLLOW_S + SETTLE_S), 0.0, 1.0)
+	k = k * k * (3.0 - 2.0 * k)
+	_yaw = lerp_angle(_rel_yaw, 0.0, k)
+	_lean = lerpf(_rel_lean, 0.0, k)
+	_squash = lerpf(_rel_squash, 1.0, k)
+	var at := position
+	if is_finite(_retreat.x):
+		at = _rel_pos.lerp(_retreat, k)
+		at.y += RETREAT_HOP * sin(PI * k) * minf(1.0, _rel_pos.distance_to(_retreat) / 0.3)
+	if _falls and at.y > _floor_y:
+		_fall_v += FALL_G * _dt
+		at.y = maxf(_floor_y, at.y - _fall_v * _dt)
+	position = at
+	if mode == "free":
+		_yaw = 0.0
+		_lean = 0.0
+		_squash = 1.0
+
+
+## Starts the follow-through of the arms `held` from where they point now (each swings along the
+## release direction _dir, across itself) and the body's settling from its pose now towards
+## `retreat` (INF: it stays); only a pull (hanging from its grip) falls to its floor.
+func _begin_follow(held: Array[bool], retreat: Vector3) -> void:
+	_falls = mode == "pull"
+	_retreat = retreat
+	for i in 2:
+		_rel_arms[i] = held[i]
+		_rel_from[i] = _arm_dirs[i]
+		_rel_stretch[i] = _stretch[i]
+		if i == _hold_arm and mode in ["hold", "throw"]:
+			_set_swing(_dir)
+			_rel_swing[i] = _swing
+		else:
+			var across := _dir - _arm_dirs[i] * _dir.dot(_arm_dirs[i])
+			_rel_swing[i] = across.normalized() if across.length_squared() > 1e-8 else _arm_dirs[i]
+	_rel_yaw = _yaw
+	_rel_lean = _lean
+	_rel_squash = _squash
+	_rel_pos = position
+	_fall_v = 0.0
+	_t = 0.0
+	mode = "follow"
 
 
 ## Where the held ball's centre is `t` s into the throw. Windup (WINDUP_S): from the launch point up
@@ -339,6 +547,11 @@ func _throw_point(t: float) -> Vector3:
 	return _curve_at(_curve_length[-1] * k * k)
 
 
+## Out from the body on the holding paw's side (world).
+func _out() -> Vector3:
+	return (rig_transform().basis * (Vector3.RIGHT if _hold_arm == ARM_L else Vector3.LEFT)).normalized()
+
+
 ## The windup point: WINDUP_BACK back against the throw from the launch point, up to WINDUP_UP above
 ## that, WINDUP_DEPTH behind and WINDUP_OUT out (back and up beside the head for a level throw, back
 ## and down for a steep one; the arm stretches).
@@ -347,8 +560,7 @@ func _windup_point() -> Vector3:
 	# Up as much as the throw is level (cos of its elevation): a steep throw winds back under the
 	# release, so its swing comes up along it without a loop.
 	var level := sqrt(maxf(1.0 - _dir.y * _dir.y, 0.0))
-	var out := (rig_transform().basis * Vector3.RIGHT).normalized()
-	return _held - _dir * WINDUP_BACK + Vector3.UP * WINDUP_UP * level - back * WINDUP_DEPTH + out * WINDUP_OUT
+	return _held - _dir * WINDUP_BACK + Vector3.UP * WINDUP_UP * level - back * WINDUP_DEPTH + _out() * WINDUP_OUT
 
 
 ## The swing path: a cubic from the windup point (bowed out away from the body) that runs into a
@@ -357,7 +569,7 @@ func _windup_point() -> Vector3:
 ## part); sampled by arc length (_curve_points / _curve_length) so the swing can run at a chosen
 ## speed. (With the big head, a low throw's straight part passes close beside the cheek.)
 func _build_swing() -> void:
-	var out := (rig_transform().basis * Vector3.RIGHT).normalized()
+	var out := _out()
 	var p := _held
 	var a := p - _dir * SWING_STRAIGHT
 	a.y = maxf(a.y, _floor_y + _held_radius + 0.05)   # a throw from the floor does not swing through it
@@ -409,6 +621,16 @@ func _rest_dir_world(i: int) -> Vector3:
 	return (rig_transform().basis * _rest_dir(i)).normalized()
 
 
+## The rig's basis for a turn `yaw`, a lean `lean` (+ forward) and a bag height share `squash` (the
+## bag keeps its volume: it widens as it squashes).
+static func _body_basis(yaw: float, lean: float, squash: float) -> Basis:
+	var b := Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, lean)
+	if squash != 1.0:
+		var wide := 1.0 / sqrt(squash)
+		b = b * Basis.from_scale(Vector3(wide, squash, wide))
+	return b
+
+
 ## Writes the rig, head, eyes, tail and arms from the current mode, clock and reactions.
 func _pose() -> void:
 	var cheer_k := sin(PI * _cheer / CHEER_S) if _cheer >= 0.0 else 0.0
@@ -424,18 +646,31 @@ func _pose() -> void:
 	var sway := 0.0
 	if mode == "free":
 		sway = 0.035 * sin(_clock * 1.1)   # idle: the bag rocks a little
-	# The rig is still while a ball is held or thrown (the shoulder must not move under the ball).
-	if mode == "hold" or mode == "throw":
+	# The rig is still while a ball is held or thrown (the shoulder must not move under the ball), and
+	# while the paws are on grabbed points or a grip (a cheer is a nod).
+	if mode in ["hold", "throw", "grab", "pull"]:
 		hop = 0.0
-	rig.transform = Transform3D(Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, lean) * Basis(Vector3.BACK, sway), Vector3(0.0, hop, 0.0))
+	match mode:
+		"grab":
+			_solve_grab()
+			squint = _effort
+		"pull":
+			_solve_pull()
+			squint = absf(_effort)
+		"follow":
+			rig.transform = Transform3D(_body_basis(_yaw, _lean, _squash), Vector3(0.0, hop, 0.0))
+		_:
+			rig.transform = Transform3D(Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, lean) * Basis(Vector3.BACK, sway), Vector3(0.0, hop, 0.0))
+	var rig_yaw := yaw if mode == "push" else (_yaw if mode in ["grab", "pull", "follow"] else 0.0)
 	if head != null:
-		# Idle tilt, turned towards the camera while pushing or towards look_target.
-		var want_yaw := PUSH_HEAD_YAW if mode == "push" else 0.0
+		# Idle tilt; turned towards the camera while pushing, grabbing or pulling, or towards
+		# look_target.
+		var want_yaw := PUSH_HEAD_YAW if mode == "push" else clampf(wrapf(-rig_yaw, -PI, PI), -HEAD_YAW_MAX, HEAD_YAW_MAX)
 		if mode in ["free", "follow"] and look_target != null and is_inside_tree() and look_target.is_inside_tree():
 			var to := look_target.global_position - (rig_transform() * look.neck)
 			if Vector2(to.x, to.z).length() > 0.05:
-				want_yaw = clampf(atan2(to.x, to.z), -HEAD_YAW_MAX, HEAD_YAW_MAX)
-		_head_yaw = lerpf(_head_yaw, want_yaw, 0.25) if mode != "push" else want_yaw
+				want_yaw = clampf(wrapf(atan2(to.x, to.z) - rig_yaw, -PI, PI), -HEAD_YAW_MAX, HEAD_YAW_MAX)
+		_head_yaw = lerpf(_head_yaw, want_yaw, 0.25) if mode != "push" and mode != "grab" and mode != "pull" else want_yaw
 		# Idle: a slow nod and tilt (the model has no separate eyes to blink); a nod on a cheer.
 		var nod := 0.05 * sin(_clock * 0.9) + 0.18 * cheer_k + 0.1 * squint
 		head.rotation = Vector3(nod, _head_yaw, 0.06 * sin(_clock * 1.3))
@@ -448,21 +683,129 @@ func _pose() -> void:
 		if _blink >= 0.0:
 			blink = 0.1 + 0.9 * absf(1.0 - 2.0 * _blink / BLINK_S)
 		eyes.scale = Vector3(1.0, minf(blink, 1.0 - 0.7 * squint), 1.0)
-	if mode == "push":
-		_pose_push(hop, yaw, lean)
-		return
+	match mode:
+		"push":
+			_pose_push(hop, yaw, lean)
+			return
+		"grab", "pull":
+			for i in 2:
+				var to := _targets[i] - shoulder(i)
+				_stretch[i] = to.length() / look.reach
+				if mode == "pull" and _rising:
+					_stretch[i] = minf(_stretch[i], JUMP_STRETCH_MAX)
+				_aim(i, to.normalized())
+			return
 	for i in 2:
+		var held := (mode in ["hold", "throw"] and i == _hold_arm) or (mode == "follow" and _rel_arms[i])
 		var d := _arm_dirs[i]
-		if not (i == ARM_HOLD and mode == "throw"):
+		if not held:
 			_stretch[i] = 1.0
-		if i != ARM_HOLD or mode == "free":
 			d = _rest_dir_world(i)
 			if mode == "free" and _cheer >= 0.0 and _cheer_arms:
 				var up := (rig_transform().basis * Vector3(0.45 if i == ARM_L else -0.45, 0.9, 0.2)).normalized()
 				d = d.slerp(up, cheer_k)
 			elif i == ARM_R:
 				d = (d + rig_transform().basis * Vector3(0.0, 0.04 * sin(_clock * 2.1), 0.0)).normalized()
+		elif mode == "hold":
+			_stretch[i] = _hold_stretch
 		_aim(i, d)
+
+
+## Grab: the least lean (forward or back, searched outwards from upright in GRAB_STEP_DEG steps and
+## bisected) that puts the shoulders `reach` from their points on average; none in range: the lean
+## that comes closest (the arms stretch the rest). Writes the rig transform and _lean.
+func _solve_grab() -> void:
+	_squash = 1.0 - GRAB_SQUASH * _effort
+	var key := [global_position if is_inside_tree() else position, _yaw, _targets[0], _targets[1], _squash, _grab_fwd]
+	if key == _grab_key:
+		rig.transform = Transform3D(_body_basis(_yaw, _lean, _squash), Vector3.ZERO)
+		return
+	_grab_key = key
+	var step := deg_to_rad(GRAB_STEP_DEG)
+	var fwd := _grab_fwd
+	var back := deg_to_rad(GRAB_LEAN_BACK_DEG)
+	var e0 := _grab_error(0.0)
+	var best := 0.0
+	var best_err := absf(e0)
+	var last: Array[float] = [e0, e0]   # the error at the last angle forward / back
+	var k := 1
+	var hit := NAN
+	while best_err > 1e-6 and is_nan(hit) and (k - 1) * step < maxf(fwd, back):
+		for side in 2:
+			var limit := fwd if side == 0 else back
+			var a := minf(k * step, limit)
+			if (k - 1) * step >= limit:
+				continue
+			var sign := 1.0 if side == 0 else -1.0
+			var e := _grab_error(sign * a)
+			if absf(e) < best_err:
+				best_err = absf(e)
+				best = sign * a
+			if is_nan(hit) and signf(e) != signf(last[side]):
+				var lo := (k - 1) * step
+				var hi := a
+				for n in 12:
+					var mid := (lo + hi) * 0.5
+					if signf(_grab_error(sign * mid)) == signf(last[side]):
+						lo = mid
+					else:
+						hi = mid
+				hit = sign * (lo + hi) * 0.5
+			last[side] = e
+		k += 1
+	_lean = hit if not is_nan(hit) else best
+	rig.transform = Transform3D(_body_basis(_yaw, _lean, _squash), Vector3.ZERO)
+
+
+## Mean distance (m) of the shoulders from their grab points, less the reach, for a lean `lean`.
+func _grab_error(lean: float) -> float:
+	var b := _body_basis(_yaw, lean, _squash)
+	var xf := global_transform if is_inside_tree() else transform
+	var e := 0.0
+	for i in 2:
+		e += (xf * (b * look.shoulders[i])).distance_to(_targets[i]) - look.reach
+	return e * 0.5
+
+
+## Pull: the turn along the pull direction, the lean back with the effort, the root where the
+## shoulders' middle is `reach` from the grip (on the floor, or hanging; rising at JUMP_SPEED towards a
+## higher place), the paws' points beside the grip. Writes position, the rig transform and the targets.
+func _solve_pull() -> void:
+	var flat := Vector2(_pull_dir.x, _pull_dir.z)
+	if flat.length_squared() > 1e-10:
+		_yaw = atan2(flat.x, flat.y)
+		flat = flat.normalized()
+	else:
+		flat = Vector2(sin(_yaw), cos(_yaw))
+	_lean = -deg_to_rad(PULL_LEAN_DEG) * _effort
+	_squash = 1.0
+	var basis := _body_basis(_yaw, _lean, 1.0)
+	var off := basis * ((look.shoulders[0] + look.shoulders[1]) * 0.5)
+	var s := _grip - _pull_dir * look.reach
+	var root := s - off
+	if root.y < _floor_y:
+		root.y = _floor_y
+		s.y = _floor_y + off.y
+		var dy := _grip.y - s.y
+		var across := sqrt(maxf(look.reach * look.reach - dy * dy, 0.0))
+		s.x = _grip.x - flat.x * across
+		s.z = _grip.z - flat.y * across
+		root = s - off
+	# A grip above where the actor is now: it jumps up (the paws reach for it on the way).
+	if root.y > position.y + 1e-4 and (_rising or root.y > position.y + 0.05):
+		_rising = true
+		root.y = minf(root.y, position.y + JUMP_SPEED * _dt)
+	else:
+		_rising = false
+	position = root
+	rig.transform = Transform3D(basis, Vector3.ZERO)
+	var side := basis * Vector3.RIGHT
+	_targets[0] = _grip - side * PULL_SPREAD
+	_targets[1] = _grip + side * PULL_SPREAD
+	if _pull_ball > 0.0:
+		var centre := _grip + _pull_dir * _pull_ball
+		for i in 2:
+			_targets[i] = centre + (_targets[i] - centre).normalized() * _pull_ball
 
 
 ## Push pose: the root x so both paws' fronts reach the face plane exactly (the shoulders are mirror images,
@@ -486,14 +829,18 @@ func _pose_push(hop: float, yaw: float, lean: float) -> void:
 
 
 ## Points arm `i` (shoulder -> hand) along the world direction `d`, turning it at the shoulder only:
-## the shortest turn from its rest pose, stretched along `d` by _stretch[i].
+## the shortest turn from its rest pose, stretched along `d` by _stretch[i] (in the world: a squashed
+## rig would draw it shorter or longer, so the stretch makes up for it).
 func _aim(i: int, d: Vector3) -> void:
 	_arm_dirs[i] = d
-	var to := (rig_transform().basis.inverse() * d).normalized()   # rig space
+	var rb := rig_transform().basis
+	var local := rb.inverse() * d
+	var to := local.normalized()   # rig space
 	var turn := Basis(Quaternion(look.hand_rest[i].normalized(), to))
 	var stretch := Basis.IDENTITY
-	if _stretch[i] != 1.0:
+	var k := _stretch[i] / (rb * to).length() if _squash != 1.0 else _stretch[i]
+	if k != 1.0:
 		for r in 3:
 			for c in 3:
-				stretch[c][r] += (_stretch[i] - 1.0) * to[r] * to[c]
+				stretch[c][r] += (k - 1.0) * to[r] * to[c]
 	arms[i].transform = Transform3D(stretch * turn * _arm_rest[i], look.shoulders[i])

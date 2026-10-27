@@ -14,6 +14,11 @@
 ##   green on B; the web's "충돌 순간의 힘" overlay),
 ## - reactions: a hit = both balls squash along the rail (ArtJuice.bump) with dust; release = stretch;
 ##   reset = pop.
+## - the bread cat (CatActor wearing the BreadCat look, 2026-10-27) on the lane behind the blue ball A
+##   (on the side A will go away from), both paws on the ball; "출발" pushes (the arms follow through
+##   along the start velocity) and it hops off the lane to behind the rail (a ball may come back);
+##   next to a bumper it stands behind the rail and reaches over it. It cheers after the first
+##   collision. Only meshes: the balls move as the formula model says from the release on.
 class_name CollisionProps
 extends RefCounted
 
@@ -24,6 +29,14 @@ const ARROW_LIFT := 0.35         # m from a ball's top to its arrow and knob
 const LENGTH_STEP := 0.02        # m: arrow lengths are rounded to this (the mesh is rebuilt rarely)
 const FORCE_LENGTH := 0.9        # m, each arrow of the force pair
 const FORCE_SHOW_S := 0.5
+## The cat's base: CAT_BEHIND m from ball A's centre against its start velocity, on the lane; after
+## the push (or next to a bumper) behind the rail at z = CAT_OFF_Z.
+const CAT_BEHIND := 0.7
+const CAT_OFF_Z := -1.1
+const CAT_OFF_LEAN := 15.0       # deg: the most it leans over the rail
+const CAT_HALF := 0.42           # m: the cat's half width with a margin (it stays off the bumpers)
+const CAT_SPREAD := 0.55         # rad: the paws either side of the ball's side facing the cat
+const CAT_PAW_LIFT := 0.12       # m above the ball's centre
 
 var juice_a: ArtJuice
 var juice_b: ArtJuice
@@ -38,6 +51,9 @@ var _radius_a := 0.4
 var _radius_b := 0.5
 var _force_tween: Tween
 var _host: Node3D
+var cat: CatActor
+var _cheered := false
+var _wall := 7.0
 
 
 func track_mesh(wall: float) -> Mesh:
@@ -70,6 +86,7 @@ static func force_pair_mesh() -> Mesh:
 func dress(experiment: Node3D, ball_a: RigidBody3D, radius_a: float, ball_b: RigidBody3D, radius_b: float,
 		knob_a: Node3D, knob_b: Node3D, wall: float) -> void:
 	_host = experiment
+	_wall = wall
 	_radius_a = radius_a
 	_radius_b = radius_b
 	ArtKit.add_world(experiment, Vector3(0.0, 0.0, -0.8))
@@ -94,6 +111,30 @@ func dress(experiment: Node3D, ball_a: RigidBody3D, radius_a: float, ball_b: Rig
 	force_pair.name = "ForcePair"
 	force_pair.visible = false
 	experiment.add_child(force_pair)
+	cat = CatActor.new(BreadCat.new())
+	cat.look_target = ball_a
+	experiment.add_child(cat)
+
+
+## Where the cat stands for ball A at `at` that will start with `velocity` (m/s) on a rail with its
+## bumper faces at +-`wall`: behind the ball on the lane, or behind the rail when that is too close
+## to a bumper.
+static func cat_root(at: Vector3, velocity: float, wall: float) -> Vector3:
+	var side := -1.0 if velocity < 0.0 else 1.0
+	var x := at.x - side * CAT_BEHIND
+	if absf(x) + CAT_HALF > wall:
+		return Vector3(at.x + side * 0.1, 0.0, CAT_OFF_Z)
+	return Vector3(x, 0.0, 0.0)
+
+
+## Waiting (not released): the cat's paws on ball A at `at` (radius `radius`, start `velocity`).
+func update_cat(at: Vector3, radius: float, velocity: float, released_now: bool) -> void:
+	if cat == null or released_now:
+		return
+	var root := cat_root(at, velocity, _wall)
+	# Behind the rail it reaches over it, its head kept off the ball (the arms reach the rest).
+	cat.grab(root, CatActor.facing(root, at), CatActor.ball_grip(at, radius, root, CAT_SPREAD, CAT_PAW_LIFT), 0.0,
+		CatActor.GRAB_LEAN_FWD_DEG if root.z == 0.0 else CAT_OFF_LEAN)
 
 
 ## Visual node (squashed by the juice) with the spinning ball mesh under it; [juice, spin mesh].
@@ -168,11 +209,15 @@ func hit(contact_x: float, strength: float) -> void:
 	_force_tween.tween_callback(force_pair.hide)
 
 
-func released() -> void:
+## "출발": `velocity_a` is ball A's start velocity (the cat's push follows it through).
+func released(velocity_a := 0.0) -> void:
 	knob_visual_a.visible = false
 	knob_visual_b.visible = false
 	juice_a.stretch()
 	juice_b.stretch()
+	_cheered = false
+	if cat != null:
+		cat.let_go(Vector3(signf(velocity_a), 0.0, 0.0), Vector3(cat.position.x, 0.0, CAT_OFF_Z))
 
 
 func reset() -> void:
@@ -190,3 +235,7 @@ func status_changed(_previous: String, current: String) -> void:
 	if current == "rest" and juice_a != null:
 		juice_a.wobble()
 		juice_b.wobble()
+	# The first collision of the run (its result): the cat cheers.
+	if current == "collided" and cat != null and not _cheered:
+		_cheered = true
+		cat.cheer()

@@ -360,7 +360,7 @@ func check_art() -> void:
 	expect.call(runs[0].x == runs[1].x and runs[0].obs == runs[1].obs and runs[0].basis == Basis(),
 		"collision: same motion and panel with and without the reactions; rolling and squash never turn a body", str(runs[0].x))
 	var draw_nodes := lab.find_children("*", "GeometryInstance3D", true, false).size()
-	expect.call(draw_nodes <= 16, "collision: at most 16 drawn 3D nodes (art budget)", "%d" % draw_nodes)
+	expect.call(draw_nodes <= 23, "collision: at most 23 drawn 3D nodes (art budget: 16 + the bread cat's 7, 2026-10-27)", "%d" % draw_nodes)
 	await _free(lab)
 
 

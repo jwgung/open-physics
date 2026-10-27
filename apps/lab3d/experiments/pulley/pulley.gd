@@ -85,6 +85,7 @@ func _new_pull() -> void:
 		holding = false
 		_end_press()
 		_place_handle()
+		props.cat_let_go(handle_top(), false)
 	model.reset()
 	model.holding = false
 	_restart_clock()
@@ -159,6 +160,8 @@ func _process(_delta: float) -> void:
 		return
 	if not holding:
 		_place_handle()
+	else:
+		props.update_cat(handle.global_position, HANDLE_SIZE)
 	_show()
 
 
@@ -277,4 +280,5 @@ func _let_go() -> void:
 	_end_press()
 	model.let_go()
 	_place_handle()
+	props.cat_let_go(handle_top(), model.lift() > 0.0)
 	_changed()

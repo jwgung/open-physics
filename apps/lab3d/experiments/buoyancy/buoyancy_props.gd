@@ -10,6 +10,12 @@
 ##   (blue, up), both ARROW_PER_FULL m for the buoyant force of the whole drum,
 ## - reactions: entering the water fast = splash (dust) and squash; hitting the tank floor = bump;
 ##   settling = wobble; release = stretch; reset = pop.
+## - the bread cat (CatActor wearing the BreadCat look, 2026-10-27) on a stack of bread crates
+##   standing in the tank's back left corner (clear of the drum's way down and of the depth ticks):
+##   while the drum waits above the water it holds it with both paws on its side, leaning over to it;
+##   "놓기" lets go (the paws follow down); a finger holding the drum, or a drum put under the water:
+##   it only watches. It cheers when the drum floats, stays or sinks. Only meshes: the drum moves as
+##   the formula model says.
 class_name BuoyancyProps
 extends RefCounted
 
@@ -18,6 +24,11 @@ const HALF_Z := 0.8
 const WALL := 0.08
 const ARROW_PER_FULL := 1.2      # m of arrow for the buoyant force of the fully submerged drum
 const ARROW_GAP := 0.2           # m between the drum's side and an arrow
+## The cat's crates in the tank (x, z of the stack, its top: the cat's base) and its paws' spread
+## (rad either side of the drum's side facing it).
+const CAT_AT := Vector2(-0.66, -0.4)
+const CAT_TOP := 1.7
+const CAT_SPREAD := 0.45
 
 var juice: ArtJuice
 var drum_visual: Node3D
@@ -27,6 +38,8 @@ var buoyant_arrow: VelocityArrow
 var _radius := 0.25
 var _height := 0.5
 var _waterline := 1.5
+var cat: CatActor
+var cat_stand: CatCrates
 
 
 ## The tank around x = 0, z = 0: base under `floor_y`, water to `waterline`, walls to `top`.
@@ -114,6 +127,27 @@ func dress(experiment: Node3D, drum: RigidBody3D, radius: float, height: float, 
 	drum_visual.add_child(mesh)
 	juice.setup(drum, drum_visual, height, floor_y)
 	set_drum(radius, height)
+	cat = CatActor.new(BreadCat.new())
+	cat.look_target = drum
+	cat.position = Vector3(CAT_AT.x, CAT_TOP, CAT_AT.y)
+	cat_stand = CatCrates.new(cat.look.footprint)
+	experiment.add_child(cat_stand)
+	experiment.add_child(cat)
+	cat_stand.fit(cat, floor_y)
+
+
+## The drum (centre `at`) waits for the release (`waiting`): the cat holds it while it is above the
+## water; otherwise a cat still holding it lets go.
+func update_cat(at: Vector3, waiting: bool) -> void:
+	if cat == null:
+		return
+	var bottom := at.y - _height * 0.5
+	if waiting and bottom >= _waterline - 1e-6:
+		var root := Vector3(CAT_AT.x, CAT_TOP, CAT_AT.y)
+		var y := clampf(root.y + cat.look.shoulders[0].y - 0.1, bottom + 0.06, bottom + _height - 0.04)
+		cat.grab(root, CatActor.facing(root, at), CatActor.ball_grip(Vector3(at.x, y, at.z), _radius, root, CAT_SPREAD))
+	elif cat.mode == "grab":
+		cat.let_go(Vector3.DOWN)
 
 
 ## The drum's size (a new volume): its mesh, the juice's size and the ring.
@@ -170,6 +204,8 @@ func hit_floor(speed: float) -> void:
 func released() -> void:
 	if juice != null:
 		juice.stretch()
+	if cat != null and cat.mode == "grab":
+		cat.let_go(Vector3.DOWN)
 
 
 func reset() -> void:
@@ -180,3 +216,5 @@ func reset() -> void:
 func status_changed(_previous: String, current: String) -> void:
 	if juice != null and current in ["floating", "staying", "sunk"]:
 		juice.wobble()
+		if cat != null:
+			cat.cheer()

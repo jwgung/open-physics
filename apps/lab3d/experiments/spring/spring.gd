@@ -113,6 +113,10 @@ func _process(_delta: float) -> void:
 ## Coil, energy stack and force arrow for the ball where it is now (also a held ball).
 func _show() -> void:
 	props.stretch_coil(ball.global_position.x)
+	if not released or holding != "":
+		props.update_cat(ball.global_position, ball.global_position.x - (ANCHOR_X + REST_LENGTH), EXT_MAX)
+	else:
+		props.update_run(model.time(), model.period())
 	if holding != "":
 		props.show_energy(0.0, 0.0, 0.0)
 		props.show_force(ball.global_position, 0.0)
@@ -146,6 +150,10 @@ func status() -> String:
 
 func _status_changed(previous: String, current: String) -> void:
 	props.status_changed(previous, current)
+
+
+func _notify_released() -> void:
+	props.released(pull)
 
 
 func observations() -> Dictionary:

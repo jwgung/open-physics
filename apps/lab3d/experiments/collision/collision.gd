@@ -196,6 +196,10 @@ func _status_changed(previous: String, current: String) -> void:
 	props.status_changed(previous, current)
 
 
+func _notify_released() -> void:
+	props.released(velocity_a)
+
+
 func observations() -> Dictionary:
 	var state_text: String = {
 		"ready": "출발 전 · 화살표로 속도를 정해요",
@@ -261,6 +265,7 @@ func _process(_delta: float) -> void:
 	if ball_a == null:
 		return
 	props.spin(ball_a.global_position.x - start_a, ball_b.global_position.x - start_b)
+	props.update_cat(ball_a.global_position, RADIUS_A, velocity_a, released)
 	if released:
 		props.show_momentum(ball_a.global_position, RADIUS_A, model.momentum_a(), ball_b.global_position, RADIUS_B, model.momentum_b())
 		return

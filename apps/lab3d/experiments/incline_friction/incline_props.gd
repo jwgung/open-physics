@@ -3,6 +3,11 @@
 ## and are not changed here. Yellow incline (thicker than its collision box, growing downwards so
 ## the top face stays on the collision surface), blue stand, red box, white start line, the island
 ## and the blob shadows, and the box's reactions (ArtJuice) driven by the experiment's status.
+## The bread cat (CatActor wearing the BreadCat look, 2026-10-27) stands on the incline beside the
+## waiting box (behind it, clear of its way down, a little below it), level on a wooden wedge cut to the slope, and
+## holds the box with both paws on its top; "상자 놓기" lets go (the paws follow down the slope); a
+## finger holding the box: it stands by. It cheers when the run's result comes (the box stays, or
+## it has run off the incline). Only meshes: the box slides as Jolt and the correction layer say.
 class_name InclineProps
 extends RefCounted
 
@@ -13,10 +18,26 @@ const AXLE_RADIUS := 0.34           # the hinge axle under the incline (z direct
 const AXLE_DEPTH := 0.68            # axle centre below the incline's top face / pivot (incline-local, m)
 const AXLE_LENGTH := 1.0
 const POST_INSET := 0.1             # the post top sits this far short of the axle centre
+## The cat: its base z (behind the box, on the 2 m wide incline), its paws on the box top near its
+## back edge (z) either side of its middle (along the incline), the wedge's rim beyond its bag and
+## how deep the wedge reaches into the slope (no gap at its low corner).
+const CAT_Z := -0.72
+const CAT_PAW_Z := -0.12
+const CAT_PAW_HALF := 0.12
+## m along the incline below the box's middle, more on a steeper slope (lower: in the front view,
+## a shorter reach up to the box).
+const CAT_DOWNHILL := 0.35
+const CAT_DOWNHILL_STEEP := 0.6   # more, times sin(angle)
+const CAT_LEAN_MAX := 30.0        # deg: the bag stays behind the box (the arms reach the rest)
+const WEDGE_RIM := 0.03
+const WEDGE_SINK := 0.04
 
 var juice: ArtJuice
+var cat: CatActor
+var wedge: MeshInstance3D
 var _ramp_shadow: MeshInstance3D
 var _incline_length := 8.0
+var _wedge_angle := NAN             # the slope the wedge mesh was cut for (deg)
 
 
 func incline_mesh(size: Vector3) -> Mesh:
@@ -114,6 +135,65 @@ func dress(experiment: Node3D, stand_position: Vector3, box_body: RigidBody3D, b
 	juice.name = "BoxJuice"
 	experiment.add_child(juice)
 	juice.setup(box_body, box_visual, box_size)
+	cat = CatActor.new(BreadCat.new())
+	cat.look_target = box_body
+	wedge = ArtKit.instance(wedge_mesh(cat.look.footprint, 0.0))
+	wedge.name = "CatWedge"
+	wedge.visible = false
+	experiment.add_child(wedge)
+	experiment.add_child(cat)
+
+
+## A wooden wedge under a `footprint` wide base: its top level at y = 0 (the node's origin, under the
+## middle of the base), its bottom cut to a slope rising along +x at `angle_deg` that passes through
+## the top's +x edge (WEDGE_SINK lower: into the slope).
+static func wedge_mesh(footprint: Vector2, angle_deg: float) -> Mesh:
+	var size := Vector2(footprint.x + WEDGE_RIM * 2.0, footprint.y + WEDGE_RIM * 2.0)
+	var t := tan(deg_to_rad(angle_deg))
+	var height := t * size.x + WEDGE_SINK
+	var b := ArtKit.builder()
+	b.ao_min = 0.85
+	b.ao_height = 0.4
+	b.add_rounded_box(Transform3D(Basis(), Vector3(0.0, -height * 0.5, 0.0)), Vector3(size.x, height, size.y), 0.0, 1, ArtPalette.CRATE, ArtPalette.CRATE_TOP)
+	var mesh := b.commit()
+	var arrays := mesh.surface_get_arrays(0)
+	var v: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+	for i in v.size():
+		if v[i].y < -height + 1e-4:   # a bottom corner: onto the slope
+			v[i].y = -t * (size.x * 0.5 - v[i].x) - WEDGE_SINK
+	arrays[Mesh.ARRAY_VERTEX] = v
+	var cut := ArrayMesh.new()
+	cut.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	return cut
+
+
+## The cat beside the waiting box (incline `pivot`, the box `box` m centred `start_x` along it at
+## `angle_deg`): it holds the box (`grip`) or stands by, level on its wedge.
+func place_cat(pivot: Transform3D, start_x: float, box: float, angle_deg: float, grip: bool) -> void:
+	if cat == null:
+		return
+	var at := pivot * Vector3(start_x - CAT_DOWNHILL - CAT_DOWNHILL_STEEP * sin(deg_to_rad(angle_deg)), 0.0, 0.0)
+	var t := tan(deg_to_rad(angle_deg))
+	var edge := at.x + cat.look.footprint.x * 0.5 + WEDGE_RIM
+	# The slope's top face under the base's uphill edge: the base rests there, level.
+	var root := Vector3(at.x, pivot.origin.y + (edge - pivot.origin.x) * t, CAT_Z)
+	if grip:
+		var targets: Array[Vector3] = [pivot * Vector3(start_x - CAT_PAW_HALF, box, CAT_PAW_Z), pivot * Vector3(start_x + CAT_PAW_HALF, box, CAT_PAW_Z)]
+		cat.grab(root, 0.0, targets, 0.0, CAT_LEAN_MAX)
+	else:
+		cat.let_go(Vector3.ZERO)
+		cat.position = root
+	if not is_equal_approx(angle_deg, _wedge_angle):
+		_wedge_angle = angle_deg
+		wedge.mesh = wedge_mesh(cat.look.footprint, angle_deg)
+	wedge.position = root
+	wedge.visible = t * cat.look.footprint.x > 0.02
+
+
+## The box was let go down the slope (world direction `downhill`).
+func cat_let_go(downhill: Vector3) -> void:
+	if cat != null:
+		cat.let_go(downhill)
 
 
 ## Half length of the incline shadow's inner rectangle at this angle.
@@ -131,6 +211,9 @@ func angle_changed(angle_deg: float) -> void:
 
 ## Experiment status change -> reactions: placed = pop, let go = stretch, starts sliding = puff.
 func status_changed(previous: String, status: String) -> void:
+	# The run's result: the box stays where it was let go, or it has run off the incline.
+	if cat != null and ((status == "holding" and previous == "ready") or status == "left"):
+		cat.cheer()
 	if juice == null:
 		return
 	match status:

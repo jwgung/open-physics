@@ -19,6 +19,14 @@
 ##    pass (art_outline.gdshader: front faces culled, grown along NORMAL, at least the reference's
 ##    0.010 m), and the meshes keep the outline's contract (vertices at one position share one normal,
 ##    so the grown hull does not tear at seams); no other mesh of the lab (ball, box, island) has it.
+## 6. every other lab (2026-10-27): a scripted run of each of the 9 labs (and 12 other conditions,
+##    ROLE_RUNS) gives the same bodies (every step), panel and graph with and without the cat; in the
+##    screen (phone, tablet, tablet with the sidebar) every frame the paws are on what the cat holds
+##    (2e-3 m), its arms stretch at most STRETCH_MAX, its bag, head and tail are in no body (all of it
+##    once it let go and settled: no moving body passes through it) and clear of the apparatus; on
+##    the view it is inside, clear of the overlays, Dugi and Puppy and hides no body position or key
+##    apparatus point; it cheers at the result; the orbit's cat stays under the orbit plane; one cat
+##    per lab with no physics (nor its stand), 7 drawn nodes and the vertex budget.
 extends RefCounted
 
 const EXPERIMENT_SCREEN := "res://scripts/shell/experiment_screen.gd"
@@ -56,6 +64,7 @@ func run() -> void:
 	await check_storybook()
 	await check_layout("projectile")
 	await check_layout("friction")
+	await run_roles()
 
 
 # --- helpers ----------------------------------------------------------------------------------
@@ -430,6 +439,8 @@ func _verts(node: Node) -> int:
 
 func check_no_physics() -> void:
 	for id in ["projectile", "friction"]:
+		if id.contains("/"):
+			continue
 		var lab: Experiment = await _lab(id)
 		var cat: CatActor = lab.props.cat
 		var physics := cat.find_children("*", "CollisionObject3D", true, false).size() + cat.find_children("*", "CollisionShape3D", true, false).size() \
@@ -593,3 +604,409 @@ func check_layout(id: String) -> void:
 			"cat %s in view %s%s, hidden %d" % [rect, view_rect.size, hit, hidden])
 		screen.get_parent().queue_free()
 		await tree.process_frame
+
+
+# --- 6. every lab (2026-10-27: the cat has a hand in all 11 labs) -------------------------------
+
+## The labs the cat joined on 2026-10-27, each with a scripted run of its primary use: [step, op,
+## ...] ops before that fixed step ("act" id: an action; "pick" id: a finger picks a body up; "move"
+## id offset: the held body is moved by the offset since the pick, linearly up to that step; "place"
+## id: put down) and the run's length in steps.
+const ROLE_RUNS := {
+	"free-fall": {"steps": 240, "ops": [[30, "act", "release"]]},
+	"collision": {"steps": 300, "ops": [[30, "act", "release"]]},
+	"incline-friction": {"steps": 240, "ops": [[0, "call", "set_angle", 35.0], [30, "act", "release"]]},
+	"spring": {"steps": 360, "ops": [[1, "pick", "ball"], [40, "move", "ball", Vector3(1.3, 0.0, 0.0)], [60, "place", "ball"]]},
+	"pulley": {"steps": 240, "ops": [[1, "pick", "handle"], [50, "move", "handle", Vector3(0.0, -2.0, 0.0)], [90, "place", "handle"], [120, "pick", "handle"], [150, "move", "handle", Vector3(0.0, -1.0, 0.0)], [170, "place", "handle"]]},
+	"rotation": {"steps": 200, "ops": [[1, "pick", "handle"], [50, "move", "handle", Vector3(0.0, -1.0, 0.0)], [130, "place", "handle"]]},
+	"constraints": {"steps": 360, "ops": [[30, "act", "release"]]},
+	"buoyancy": {"steps": 600, "ops": [[30, "act", "release"]]},
+	"orbit": {"steps": 480, "ops": [[30, "act", "launch"]]},
+	# Other conditions (the same checks; `lab` before the slash).
+	"free-fall/high": {"steps": 240, "ops": [[0, "call", "set_height", 8.0], [30, "act", "release"]]},
+	"free-fall/low": {"steps": 120, "ops": [[0, "call", "set_height", 0.5], [30, "act", "release"]]},
+	"collision/back": {"steps": 300, "ops": [[0, "call", "set_control", "velocity_a", -3.0], [30, "act", "release"]]},
+	"collision/bumper": {"steps": 300, "ops": [[0, "call", "manipulation_placed", "ball_a", Transform3D(Basis(), Vector3(-6.5, 0.4, 0.0))], [30, "act", "release"]]},
+	"incline-friction/flat": {"steps": 120, "ops": [[0, "call", "set_angle", 0.0], [30, "act", "release"]]},
+	"incline-friction/steep": {"steps": 240, "ops": [[0, "call", "set_angle", 45.0], [1, "call", "set_run_length", 2.0], [30, "act", "release"]]},
+	"spring/in": {"steps": 240, "ops": [[1, "pick", "ball"], [40, "move", "ball", Vector3(-2.6, 0.0, 0.0)], [60, "place", "ball"]]},
+	"rotation/far": {"steps": 160, "ops": [[0, "call", "set_control", "effort", "far"], [1, "call", "set_layout", -1.5, -2.5], [2, "pick", "handle"], [50, "move", "handle", Vector3(0.0, -1.0, 0.0)], [120, "place", "handle"]]},
+	"rotation/near": {"steps": 160, "ops": [[0, "call", "set_control", "effort", "near"], [2, "pick", "handle"], [50, "move", "handle", Vector3(0.0, -1.0, 0.0)], [120, "place", "handle"]]},
+	"constraints/left": {"steps": 420, "ops": [[0, "call", "set_control", "length", 3.5], [20, "pick", "rope"], [40, "move", "rope", Vector3(-2.0, 1.2, 0.0)], [41, "place", "rope"]]},
+	"buoyancy/small": {"steps": 600, "ops": [[0, "call", "set_control", "volume", "small"], [1, "call", "set_control", "mass", 60.0], [30, "act", "release"]]},
+	"orbit/far": {"steps": 300, "ops": [[0, "call", "manipulation_placed", "planet", Transform3D(Basis(), Vector3(5.0, 2.0, 0.0))], [1, "call", "set_control", "speed", 4.0], [30, "act", "launch"]]},
+}
+const BODY_CLEAR := 0.01        # m: a body sample this far inside a cat mesh's box is a touch
+const SETTLE_STEPS := 40        # after a let-go (0.44 s follow-through and settle, and a margin)
+## The most the arms stretch while their paws are on something (2026-10-27: the lever's far effort
+## point once lifted with the fulcrum moved fully left, about 2.4, is the longest reach; the lever
+## lifted, the orbit's planet held over the head and the ball by a bumper about 1.9-2.0).
+const STRETCH_MAX := 2.5
+
+
+func run_roles() -> void:
+	for id in ROLE_RUNS:
+		await check_role_unchanged(id)
+		await check_role(id)
+	await check_role_budget()
+
+
+## Applies the ops of `run` due before step `k` on `lab`; `held` keeps the picked bodies' start.
+func _role_ops(lab: Experiment, run: Dictionary, k: int, held: Dictionary) -> void:
+	for op in run.ops:
+		match op[1]:
+			"act":
+				if op[0] == k:
+					lab.run_action(op[2])
+			"call":
+				if op[0] == k:
+					lab.callv(op[2], op.slice(3))
+			"pick":
+				if op[0] == k:
+					var body: Node3D = lab.manipulation_body(op[2])
+					held[op[2]] = [body.global_position, k]
+					lab.manipulation_started(op[2])
+			"move":
+				if held.has(op[2]) and k <= op[0] and k > held[op[2]][1]:
+					var body: Node3D = lab.manipulation_body(op[2])
+					var from: Vector3 = held[op[2]][0]
+					body.global_position = from + op[3] * clampf(float(k - held[op[2]][1]) / float(op[0] - held[op[2]][1]), 0.0, 1.0)
+			"place":
+				if op[0] == k and held.has(op[2]):
+					var body: Node3D = lab.manipulation_body(op[2])
+					lab.manipulation_placed(op[2], body.global_transform)
+					held.erase(op[2])
+
+
+## The lab's bodies (engine transforms) and panel, graph every step of the run.
+func _role_record(id: String, with_cat: bool) -> Array:
+	var lab: Experiment = await _lab(id.get_slice("/", 0))
+	if not with_cat:
+		lab.props.cat.queue_free()
+		lab.props.cat = null
+	await tree.process_frame   # both runs start in the same frame phase
+	var run: Dictionary = ROLE_RUNS[id]
+	var held := {}
+	var out := []
+	for k in run.steps:
+		_role_ops(lab, run, k, held)
+		await tree.physics_frame
+		var row := [str(lab.observations()), str(lab.graph_series())]
+		for b in lab.find_children("*", "CollisionObject3D", true, false):
+			row.append((b as Node3D).global_transform)
+		out.append(row)
+	await _free(lab)
+	return out
+
+
+## "물리는 모델, 고양이는 연기": every step of the run is the same without the cat.
+func check_role_unchanged(id: String) -> void:
+	var with_cat := await _role_record(id, true)
+	var without := await _role_record(id, false)
+	var first := -1
+	for k in mini(with_cat.size(), without.size()):
+		if with_cat[k] != without[k]:
+			first = k
+			break
+	expect.call(first < 0 and with_cat.size() == ROLE_RUNS[id].steps,
+		"bread cat (%s): bodies (every step), panel and graph are the same with and without the cat" % id,
+		("first difference at step %d: %s" % [first, _row_diff(with_cat[first], without[first])]) if first >= 0 else "%d steps" % with_cat.size())
+
+
+static func _row_diff(a: Array, b: Array) -> String:
+	if a.size() != b.size():
+		return "%d / %d entries" % [a.size(), b.size()]
+	for i in a.size():
+		if a[i] != b[i]:
+			return "entry %d: %s / %s" % [i, str(a[i]).left(200), str(b[i]).left(200)]
+	return ""
+
+
+## The cat's drawn meshes: [mesh, is an arm].
+static func _cat_parts(cat: CatActor) -> Array:
+	var out := []
+	for m in cat.rig.find_children("*", "MeshInstance3D", true, false):
+		out.append([m, String(m.name).begins_with("Arm")])
+	return out
+
+
+## The first vertex of mesh `mi` (every 4th, world) inside a collision shape of `body` (BODY_CLEAR
+## inside its surface), or INF.
+static func _mesh_in_body(mi: MeshInstance3D, body: CollisionObject3D) -> Vector3:
+	var v: PackedVector3Array = mi.mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+	for c in body.find_children("*", "CollisionShape3D", false, false):
+		var cs := c as CollisionShape3D
+		var to_shape := cs.global_transform.affine_inverse() * mi.global_transform
+		var shape := cs.shape
+		for i in range(0, v.size(), 4):
+			var p := to_shape * v[i]
+			var inside := false
+			if shape is SphereShape3D:
+				inside = p.length() < shape.radius - BODY_CLEAR
+			elif shape is CylinderShape3D:
+				inside = Vector2(p.x, p.z).length() < shape.radius - BODY_CLEAR and absf(p.y) < shape.height * 0.5 - BODY_CLEAR
+			elif shape is BoxShape3D:
+				var h: Vector3 = shape.size * 0.5 - Vector3.ONE * BODY_CLEAR
+				inside = absf(p.x) < h.x and absf(p.y) < h.y and absf(p.z) < h.z
+			if inside:
+				return mi.global_transform * v[i]
+	return Vector3.INF
+
+
+## The first world point of `points` inside the ellipsoid that fills mesh `mi`'s box (its own
+## space: the rounded head, bag and tail without the box's empty corners), or INF.
+static func _inside(mi: MeshInstance3D, points: PackedVector3Array) -> Vector3:
+	var box := mi.get_aabb()
+	var c := box.get_center()
+	var half := box.size * 0.5
+	var inv := mi.global_transform.affine_inverse()
+	for p in points:
+		var q := (inv * p - c) / half
+		if q.length_squared() < 1.0:
+			return p
+	return Vector3.INF
+
+
+## Paws on what they hold: the largest distance of a paw's front from the held body's surface.
+static func _contact_gap(id: String, lab: Experiment, cat: CatActor) -> float:
+	var gap := 0.0
+	match id:
+		"free-fall", "constraints", "orbit":
+			# (the pendulum's model: its bob body is posed on the next step after a condition change)
+			var at: Vector3 = lab.props._ball_nodes[lab.props.cat_ball].global_position if id == "free-fall" else (lab.models[0].position() if id == "constraints" else lab.planet.global_position)
+			gap = cat.held_point().distance_to(at)
+		"collision", "spring":
+			var ball: Node3D = lab.ball_a if id == "collision" else lab.ball
+			var r: float = lab.RADIUS_A if id == "collision" else lab.BALL_RADIUS
+			for i in 2:
+				gap = maxf(gap, absf(cat.hand_point(i).distance_to(ball.global_position) - r))
+		"buoyancy":
+			for i in 2:
+				var p: Vector3 = cat.hand_point(i) - lab.drum.global_position
+				var h: float = lab.drum_height() * 0.5
+				gap = maxf(gap, maxf(absf(Vector2(p.x, p.z).length() - lab.drum_radius()), maxf(0.0, absf(p.y) - h)))
+		"incline-friction":
+			var inv: Transform3D = lab.box.global_transform.affine_inverse()
+			for i in 2:
+				var p: Vector3 = inv * cat.hand_point(i)
+				gap = maxf(gap, maxf(absf(p.y - lab.BOX * 0.5), maxf(absf(p.x), absf(p.z)) - lab.BOX * 0.5))
+		"pulley":
+			var grip: Vector3 = lab.handle.global_position
+			for i in 2:
+				var p: Vector3 = cat.hand_point(i) - grip
+				var h: Vector3 = lab.HANDLE_SIZE * 0.5
+				gap = maxf(gap, maxf(absf(p.z + h.z), maxf(absf(p.x) - h.x, absf(p.y) - h.y)))
+		"rotation":
+			var inv: Transform3D = lab.beam.global_transform.affine_inverse()
+			for i in 2:
+				var p: Vector3 = inv * cat.hand_point(i)
+				gap = maxf(gap, maxf(absf(p.y - lab.BEAM_THICK * 0.5), maxf(absf(p.x) - lab.BEAM_HALF, absf(p.z) - lab.BEAM_DEPTH * 0.5)))
+	return gap
+
+
+## The cat should hold now (the paws on the body) in the scripted run, before its let-go.
+static func _role_holds(id: String, lab: Experiment, cat: CatActor) -> bool:
+	match id:
+		"pulley":
+			return lab.holding and not cat.rising()
+		"rotation":
+			return true
+		"spring":
+			return not lab.released or lab.holding != ""
+	return cat.attached() and not lab.released
+
+
+## Static points the cat must not hide in the front view (besides the bodies' motion).
+static func _role_keep(id: String, lab: Experiment) -> PackedVector3Array:
+	var out := PackedVector3Array()
+	match id:
+		"free-fall":
+			for y in range(1, 17):
+				out.append(FreeFallProps.RULER_AT + Vector3(0.1, y * 0.5, 0.06))
+		"spring":
+			for x in range(0, 6):
+				out.append(Vector3(lab.ANCHOR_X + 0.3 + x * 0.5, lab.ROD_Y, 0.0))
+			for y in range(1, 5):
+				out.append(Vector3(SpringProps.BAR_X, y * 0.5, SpringProps.BAR_Z))
+		"pulley":
+			out.append(lab.handle.global_position)
+			out.append(lab.GUIDE)
+		"rotation":
+			for x in range(-6, 7):
+				out.append(Vector3(x * 0.5, lab.PIVOT_Y + lab.BEAM_THICK * 0.5, 0.0))
+			out.append(lab.handle.global_position)
+		"constraints":
+			out.append(lab.anchor(0))
+			out.append(lab.anchor(1))
+		"buoyancy":
+			for y in range(1, 9):
+				out.append(Vector3(BuoyancyProps.HALF_X - 0.35, lab.FLOOR_Y + y * 0.2, -BuoyancyProps.HALF_Z))
+		"orbit":
+			out.append(Vector3(0.0, lab.ORBIT_Y, 0.0))
+		"incline-friction":
+			for x in range(-7, 8):
+				out.append(lab._pivot.global_transform * Vector3(x * 0.5, 0.0, 0.0))
+	return out
+
+
+## The scripted run in the front view of a screen of `size` (sidebar open: `sidebar`): every frame
+## the cat's paws on what it holds, its bag, head and tail clear of every body (all of it once it let
+## go and settled) and of the apparatus meshes; on the view it stays inside, clear of the overlays,
+## Dugi and Puppy, and hides no body position of the run and no key apparatus point; it cheers at
+## the run's result.
+func check_role(run_id: String) -> void:
+	var id := run_id.get_slice("/", 0)
+	for setup in [[PHONE, false, "phone"], [TABLET, false, "tablet"], [TABLET, true, "tablet, sidebar open"]]:
+		var screen: Control = await _open(id, setup[0], setup[1])
+		var lab: Experiment = screen.experiment
+		var cat: CatActor = lab.props.cat
+		var cats := lab.find_children("*", "CatActor", true, false).size()
+		var run: Dictionary = ROLE_RUNS[run_id]
+		var held := {}
+		var problems := []
+		var worst_gap := 0.0
+		var gap_step := -1
+		var worst_stretch := 0.0
+		var holds := 0
+		var free_since := -1
+		var eye: Vector3 = screen.view.rig.global_position
+		var view_rect := Rect2(Vector2.ZERO, screen.view.size)
+		var overlays: Array[Rect2] = screen.overlay_rects()
+		var cast: IslandCast = screen.cast
+		var cheers0 := cat.cheers
+		var stand: Node3D = lab.find_child("CatCrates", true, false)
+		if stand == null:
+			stand = lab.find_child("CatWedge", true, false)
+		var apparatus := {}
+		for k in run.steps:
+			_role_ops(lab, run, k, held)
+			await tree.physics_frame
+			await tree.process_frame
+			if k == 0 or run.ops.any(func(op: Array) -> bool: return op[1] == "call" and op[0] == k):
+				apparatus = _apparatus(lab, cat, stand)   # (a condition may have moved it)
+			if lab.has_method("_process"):
+				lab._process(0.0)
+			cat.advance(0.0)
+			var holding := _role_holds(id, lab, cat)
+			if holding:
+				holds += 1
+				var gap := _contact_gap(id, lab, cat)
+				if gap > worst_gap:
+					worst_gap = gap
+					gap_step = k
+				worst_stretch = maxf(worst_stretch, maxf(cat.stretch(0), cat.stretch(1)))
+				free_since = -1
+			elif free_since < 0:
+				free_since = k
+			var settled: bool = free_since >= 0 and k - free_since > SETTLE_STEPS
+			var bodies := lab.find_children("*", "RigidBody3D", true, false)
+			for part in _cat_parts(cat):
+				if part[1] and not settled:
+					continue   # the paws hold a body
+				for b in bodies:
+					var hit := _mesh_in_body(part[0], b)
+					if hit != Vector3.INF:
+						problems.append("step %d: %s in %s at %s" % [k, part[0].name, b.name, hit.snapped(Vector3.ONE * 0.01)])
+						break
+				if not part[1]:
+					var base_y := cat.global_position.y + 0.05
+					var touching := PackedVector3Array()
+					var wb: AABB = part[0].global_transform * part[0].get_aabb()
+					var lo := Vector3i((wb.position / 0.5).floor())
+					var hi := Vector3i((wb.end / 0.5).floor())
+					for cx in range(lo.x, hi.x + 1):
+						for cy in range(lo.y, hi.y + 1):
+							for cz in range(lo.z, hi.z + 1):
+								for p in apparatus.get(Vector3i(cx, cy, cz), PackedVector3Array()):
+									if p.y > base_y:
+										touching.append(p)
+					var hit2 := _inside(part[0], touching)
+					if hit2 != Vector3.INF:
+						problems.append("step %d: %s in the apparatus at %s" % [k, part[0].name, hit2.snapped(Vector3.ONE * 0.01)])
+			if id == "orbit" and lab.released and cat_aabb(cat).end.y >= lab.ORBIT_Y - lab.PLANET_RADIUS:
+				problems.append("step %d: the cat reaches the orbit plane" % k)
+			if k % 6 == 0:
+				# On the view: inside, clear of the overlays and the cast; nothing kept behind the cat.
+				var rect: Rect2 = screen.view_rect_of(cat_aabb(cat))
+				if not view_rect.encloses(rect) or rect.size.x < 12.0:
+					problems.append("step %d: cat %s not in the view" % [k, rect])
+				for o in overlays:
+					if o.intersects(rect):
+						problems.append("step %d: cat under an overlay" % k)
+						break
+				if cast != null and not setup[1]:
+					for actor: Node3D in [cast.dugi, cast.puppy]:
+						if screen.view_rect_of(actor.bounds()).intersects(rect):
+							problems.append("step %d: cat over %s" % [k, actor.name])
+				var targets := _role_keep(id, lab)
+				for b in bodies:
+					targets.append((b as Node3D).global_position)
+				for part in _cat_parts(cat):
+					var mi: MeshInstance3D = part[0]
+					var inv := mi.global_transform.affine_inverse()
+					var box := mi.get_aabb()
+					for t in targets:
+						if box.intersects_segment(inv * eye, inv * t):
+							problems.append("step %d: %s hides %s" % [k, mi.name, t.snapped(Vector3.ONE * 0.01)])
+							break
+			if problems.size() > 6:
+				break
+		var cheered := cat.cheers > cheers0
+		if setup[2] == "phone":
+			expect.call(cats == 1 and holds > 10 and worst_gap <= 2e-3 and worst_stretch <= STRETCH_MAX and cheered,
+				"bread cat (%s): one cat; its paws on what it holds while it holds (%d frames), it cheers at the result" % [run_id, holds],
+				"gap %s m (step %d), stretch %.2f, cheered %s, cats %d" % [String.num_scientific(worst_gap), gap_step, worst_stretch, cheered, cats])
+		expect.call(problems.is_empty(),
+			"bread cat (%s, %s): never in a body (all of it once it let go), clear of the apparatus; in the front view clear of the overlays, Dugi and Puppy, hiding no body or key point" % [run_id, setup[2]],
+			"; ".join(problems.slice(0, 6)))
+		screen.get_parent().queue_free()
+		await tree.process_frame
+
+
+## Points of the lab's static apparatus meshes in 0.5 m cells (every static mesh but the island,
+## shadows, the cast, the cat and its stand).
+static func _apparatus(lab: Experiment, cat: CatActor, stand: Node3D) -> Dictionary:
+	var apparatus := {}   # 0.5 m cell -> points
+	for m in lab.find_children("*", "MeshInstance3D", true, false):
+		var mi := m as MeshInstance3D
+		if mi.name in ["Island", "IslandShadows"] or String(mi.name).contains("Shadow") or cat.is_ancestor_of(mi) or mi == stand \
+				or (stand != null and stand.is_ancestor_of(mi)) or not mi.is_visible_in_tree():
+			continue
+		var moving := false
+		var n: Node = mi
+		while n != lab and n != null:
+			if n is RigidBody3D:
+				moving = true
+			n = n.get_parent()
+		if moving or mi.mesh == null:
+			continue
+		var arrays := mi.mesh.surface_get_arrays(0)
+		var v: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
+		for i in range(0, v.size(), maxi(1, v.size() / 400)):
+			var p: Vector3 = mi.global_transform * v[i]
+			var cell := Vector3i((p / 0.5).floor())
+			if not apparatus.has(cell):
+				apparatus[cell] = PackedVector3Array()
+			apparatus[cell].append(p)
+	return apparatus
+
+
+## Every lab: one cat, no physics, at most 7 drawn nodes and the vertex budget.
+func check_role_budget() -> void:
+	for id in ROLE_RUNS:
+		if id.contains("/"):
+			continue
+		var lab: Experiment = await _lab(id)
+		var cat: CatActor = lab.props.cat
+		var physics := cat.find_children("*", "CollisionObject3D", true, false).size() + cat.find_children("*", "CollisionShape3D", true, false).size() \
+			+ cat.find_children("*", "Area3D", true, false).size()
+		var stand_physics := 0
+		for name in ["CatCrates", "CatWedge"]:
+			var stand := lab.find_child(name, true, false)
+			if stand != null:
+				stand_physics += stand.find_children("*", "CollisionObject3D", true, false).size() + int(stand is CollisionObject3D)
+		var draws := cat.find_children("*", "GeometryInstance3D", true, false).size()
+		expect.call(physics == 0 and stand_physics == 0 and draws <= 7 and _verts(cat) <= CAT_VERTS_MAX and lab.find_children("*", "CatActor", true, false).size() == 1,
+			"bread cat (%s): one cat, no collision object, shape or area (nor its stand), at most 7 drawn nodes and %d vertices" % [id, CAT_VERTS_MAX],
+			"%d physics nodes, %d drawn, %d vertices" % [physics + stand_physics, draws, _verts(cat)])
+		await _free(lab)

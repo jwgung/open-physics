@@ -141,6 +141,7 @@ func _physics_process(_delta: float) -> void:
 func _process(_delta: float) -> void:
 	if drum == null:
 		return
+	props.update_cat(drum.global_position, not released and holding == "")
 	if holding != "":
 		props.hide_forces()
 		return

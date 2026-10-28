@@ -71,11 +71,11 @@
 ##    number its card shows, the free fall's card is the red ball's time, the spring's first stage shows
 ##    the pull, the push's card is a bar, no 뉴턴 / 초속 / decimals in the kid texts, and every lab's
 ##    자세히 is a science note (법칙 + formula, 3-4 numbers, conditions, graph where kept, 더 보기 closed).
-## 20c. ask an AI (tests/ask_ai_checks.gd, 2026-10-28, an AI app picker since 2026-10-29): every
-##    lab's 자세히 ends with "AI에게 더 물어보기"; the question holds the title, law, formula, the
-##    conditions and numbers of this run in their units and Dugi's words, nothing personal; the picker
-##    (apps from content/ai_apps.json, only the installed ones when known, a missing app's line, the
-##    share sheet, 닫기) blocks what is behind it; one tap is one hand-off; no button in a measurement.
+## 20c. ask an AI (tests/ask_ai_checks.gd, 2026-10-28, the system chooser of the AI apps only since
+##    2026-10-29): every lab's 자세히 ends with "AI에게 더 물어보기"; the question holds the title, law,
+##    formula, the conditions and numbers of this run in their units and Dugi's words, nothing
+##    personal; one tap is one hand-off of the AI packages (content/ai_apps.json) and the question;
+##    a copy (desktop) shows its line; no button in a measurement.
 ## 21. condition looks (tests/condition_look_checks.gd, 2026-10-28): the bodies look as heavy as they
 ##    are (MassLook: cube root, equal masses equal, standing where the body is, the collision balls
 ##    touching at the model's contact), the gravity's signpost and the surface materials follow their

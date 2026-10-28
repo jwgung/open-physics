@@ -1,5 +1,5 @@
 {
-  "about": "\"AI에게 더 물어보기\"(2026-10-29 사용자 결정)의 앱 고르기 목록. 3D 앱(apps/lab3d ScienceNote.ai_apps)만 읽는다. name = 단추 글자(이름만, 상표 그림 없음), package = Google Play 패키지 이름(2026-10-29 확인). 순서 = 단추 순서. 앱을 더하거나 빼려면 이 목록만 고친다.",
+  "about": "\"AI에게 더 물어보기\"(2026-10-29 사용자 결정)에서 Android 공유 화면에 보일 AI 앱 목록(EXTRA_INITIAL_INTENTS: 깔린 앱만 Android가 앱 자신의 이름·아이콘으로 보인다). 3D 앱(apps/lab3d ScienceNote.ai_apps)만 읽는다. name = 앱 이름, package = Google Play 패키지 이름(2026-10-29 확인). 순서 = 넘기는 순서. 앱을 더하거나 빼려면 이 목록만 고친다.",
   "apps": [
     { "name": "Gemini", "package": "com.google.android.apps.bard" },
     { "name": "ChatGPT", "package": "com.openai.chatgpt" },

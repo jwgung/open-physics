@@ -1,11 +1,11 @@
-## "AI에게 더 물어보기" (2026-10-28 user decision, an AI app picker since 2026-10-29): the science
-## note's last button turns this run of a lab into a Korean question and hands it to the AI app the
-## user picks in a small picker (content/ai_apps.json: names and Play package names), or to any app
-## through the share sheet. The question holds the lab's content only — title, question, law and
-## formula, the conditions and the note's numbers of this run, Dugi's explanation — never a name, a
-## device id or the child's progress. The app itself calls no network: an Android intent
-## (ACTION_SEND, text/plain, EXTRA_TEXT; setPackage for a picked app, createChooser for the share
-## sheet) hands the text over, and the user sends it or not in that app.
+## "AI에게 더 물어보기" (2026-10-28 user decision; since 2026-10-29 the system share sheet with the
+## AI apps only): the science note's last button turns this run of a lab into a Korean question and
+## hands it to an AI app through Android's own chooser that lists only the AI apps of
+## content/ai_apps.json that are on the device (their real names and icons; no contacts, no other
+## apps). The question holds the lab's content only — title, question, law and formula, the
+## conditions and the note's numbers of this run, Dugi's explanation — never a name, a device id or
+## the child's progress. The app itself calls no network: an Android intent (ACTION_SEND,
+## text/plain, EXTRA_TEXT) hands the text over, and the user sends it or not in that app.
 ## Why an intent: the AI apps have no official deep link that fills in a prompt, and an AI API called
 ## from the app is not allowed for apps likely used by people under 18 (e.g. the Gemini API terms,
 ## https://ai.google.dev/gemini-api/terms).
@@ -14,7 +14,9 @@ extends RefCounted
 
 const ROLE := "나는 '빵고양이 과학섬' 앱에서 물리 실험을 하고 있어. 초등학생도 이해하게 쉽게 설명해 줘."
 const ENDING := "이 실험에 대해 더 궁금한 걸 물어볼게:"
-const CHOOSER_TITLE := "질문을 보낼 앱 고르기"
+const CHOOSER_TITLE := "질문할 AI 앱 고르기"
+## The chooser's own target: a package no app has, so only the AI apps (EXTRA_INITIAL_INTENTS) show.
+const NO_APP := "invalid.open_physics.no_app"
 const COPIED := "질문을 복사했어요. AI 앱에 붙여 넣어 보세요."
 const APPS_PATH := "res://content/ai_apps.json"
 
@@ -97,7 +99,7 @@ static func condition_text(control: Dictionary, value: Variant) -> String:
 	return ""
 
 
-## The AI apps of the picker in their order: {name, package} (content/ai_apps.json).
+## The AI apps of the chooser in their order: {name, package} (content/ai_apps.json).
 static func ai_apps() -> Array:
 	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(APPS_PATH))
 	var apps: Array = []
@@ -108,55 +110,54 @@ static func ai_apps() -> Array:
 	return apps
 
 
-## Which of `packages` can take the question on this device, or null when that cannot be told
-## (desktop, or Android found none). Android 11+ hides other apps from this one unless the manifest
-## lists them (<queries>, a Gradle build): on SM-X115 (Android 16, 2026-10-29) resolveActivity,
-## queryIntentActivities and getLaunchIntentForPackage all came back empty even for the Gemini that
-## is installed. So "none found" means "unknown": the picker shows every app and a tap on a missing
-## one says so (send_to's "missing"). Where the apps can be seen (Android 10 and older, or a later
-## manifest with <queries>), only those found show.
-static func installed(packages: Array) -> Variant:
-	var android := _android()
-	if android.is_empty():
-		return null
-	var manager: Object = android.activity.getPackageManager()
-	if manager == null:
-		return null
-	var found: Array = []
-	for package in packages:
-		var intent := _send_intent(android.intent_class, "", package)
-		if intent == null:
-			return null
-		var target: Variant = intent.resolveActivity(manager)
-		if JavaClassWrapper.get_exception() != null:
-			return null
-		if target != null:
-			found.append(package)
-	return found if not found.is_empty() else null
-
-
-## Hands `text` to the app `package` (an AI app of the picker), or with "" to the share sheet.
-## Returns "sent" (the app opened), "missing" (no such app here; nothing was sent), "share" (the
-## share sheet opened) or "clipboard" (desktop or a failed intent: the text was copied, and the
-## screen shows COPIED).
-static func send_to(package: String, text: String) -> String:
+## Hands `text` to the AI apps `packages` through the system chooser, which lists only those of them
+## that are on the device. Returns "chooser" (the chooser opened) or "clipboard" (desktop or a failed
+## intent: the text was copied, and the screen shows COPIED).
+## How (SM-X115, Android 16, 2026-10-29): Intent.createChooser(target, title) with a target that no
+## app can take (ACTION_SEND for a package that does not exist), so the chooser has no apps of its
+## own and no direct-share (contact) row, and EXTRA_INITIAL_INTENTS = one ACTION_SEND text/plain
+## intent per AI app with setPackage. The chooser resolves those itself (the system sees every app;
+## this app does not without a manifest <queries>), so a missing app is just not there and an
+## installed one shows with its own name and icon. The array goes in through a Bundle
+## (putParcelableArray: one signature, JavaClassWrapper turns an Array[Object] of Intents into an
+## Intent[] for the Parcelable[] parameter). When none of the apps is there the chooser says so itself
+## (this app cannot tell beforehand, Android 11+ package visibility).
+static func send_to_ai(packages: Array, text: String) -> String:
 	var android := _android()
 	if not android.is_empty():
-		var intent := _send_intent(android.intent_class, text, package)
-		if intent != null:
-			if package != "":
-				# Straight from this thread (not runOnUiThread), so a missing app's
-				# ActivityNotFoundException comes back here (SM-X115, 2026-10-29).
-				android.activity.startActivity(intent)
-				return "sent" if JavaClassWrapper.get_exception() == null else "missing"
-			var chooser: Object = android.intent_class.createChooser(intent, CHOOSER_TITLE)
-			if chooser != null and JavaClassWrapper.get_exception() == null:
-				var activity: Object = android.activity
-				activity.runOnUiThread(android.runtime.createRunnableFromGodotCallable(func() -> void:
-					activity.startActivity(chooser)))
-				return "share"
-	DisplayServer.clipboard_set(text)
+		var chooser := _ai_chooser(android.intent_class, packages, text)
+		if chooser != null:
+			var activity: Object = android.activity
+			activity.runOnUiThread(android.runtime.createRunnableFromGodotCallable(func() -> void:
+				activity.startActivity(chooser)))
+			return "chooser"
+	if DisplayServer.has_feature(DisplayServer.FEATURE_CLIPBOARD):
+		DisplayServer.clipboard_set(text)
 	return "clipboard"
+
+
+## The chooser intent of send_to_ai, or null when any step fails.
+static func _ai_chooser(intent_class: JavaClass, packages: Array, text: String) -> Object:
+	var target := _send_intent(intent_class, text, NO_APP)
+	if target == null:
+		return null
+	var initial: Array[Object] = []
+	for package in packages:
+		var intent := _send_intent(intent_class, text, str(package))
+		if intent == null:
+			return null
+		initial.append(intent)
+	var extras: Object = JavaClassWrapper.wrap("android.os.Bundle").Bundle()
+	if extras == null or JavaClassWrapper.get_exception() != null:
+		return null
+	extras.putParcelableArray(intent_class.EXTRA_INITIAL_INTENTS, initial)
+	if JavaClassWrapper.get_exception() != null:
+		return null
+	var chooser: Object = intent_class.createChooser(target, CHOOSER_TITLE)
+	if chooser == null or JavaClassWrapper.get_exception() != null:
+		return null
+	chooser.putExtras(extras)
+	return chooser if JavaClassWrapper.get_exception() == null else null
 
 
 ## Godot 4.4+ JNI from GDScript (no Gradle build, no plugin): AndroidRuntime's activity and
@@ -171,14 +172,12 @@ static func _android() -> Dictionary:
 	return {"runtime": runtime, "activity": activity, "intent_class": JavaClassWrapper.wrap("android.content.Intent")}
 
 
-## Intent(ACTION_SEND), text/plain with `text` as EXTRA_TEXT, for `package` only when it is not "".
+## Intent(ACTION_SEND), text/plain with `text` as EXTRA_TEXT, for `package` only.
 static func _send_intent(intent_class: JavaClass, text: String, package: String) -> Object:
 	var intent: Object = intent_class.Intent(intent_class.ACTION_SEND)
 	if intent == null or JavaClassWrapper.get_exception() != null:
 		return null
 	intent.setType("text/plain")
-	if text != "":
-		intent.putExtra(intent_class.EXTRA_TEXT, text)
-	if package != "":
-		intent.setPackage(package)
+	intent.putExtra(intent_class.EXTRA_TEXT, text)
+	intent.setPackage(package)
 	return intent

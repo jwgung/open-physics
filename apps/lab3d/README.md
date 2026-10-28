@@ -309,7 +309,7 @@ apps/lab3d/
 
 ### 소리 (2026-10-28)
 
-앱에 처음으로 소리를 넣었다(사용자 결정 2026-10-28: CC0 효과음 + 잔잔한 배경 음악, 설정에서 따로 끄기). 파일은 모두 CC0이고 출처·라이선스는 [소리 출처](audio/CREDITS.md)에 있다(Kenney 팩 5개, 음악은 OpenGameArt "Happy Clappy Loop"). 합계 약 350 KB(효과음 15개 약 117 KB + 음악 234 KB), APK는 HEAD보다 약 352 KiB 커졌다.
+앱에 처음으로 소리를 넣었다(사용자 결정 2026-10-28: CC0 효과음 + 잔잔한 배경 음악, 설정에서 따로 끄기). 파일은 모두 CC0이고 출처·라이선스는 [소리 출처](audio/CREDITS.md)에 있다(Kenney 팩 5개, 음악은 처음에 OpenGameArt "Happy Clappy Loop", 2026-10-28 사용자 선택으로 "Children's March Theme"(716 KB)으로 바꿈). 처음 넣을 때 합계 약 350 KB(효과음 15개 약 117 KB + 음악 234 KB), APK는 HEAD보다 약 352 KiB 커졌다.
 
 - **SoundBoard** (`scripts/core/sound_board.gd`, autoload `Sound`): 부르는 쪽은 사건 이름만 말한다(`SoundBoard.play(&"tap")`). 파일·음량은 `SFX` 표, 재생은 `AudioStreamPlayer` 6개 풀(모두 바쁘면 가장 오래된 것을 끊음), 같은 소리를 0.08초 안에 또 부르면 하나만 낸다. 매 프레임 하는 일은 없다(`_process` 없음).
 - **버스**: Master ← SFX, Master ← Music(실행 중에 만듦). 설정 화면 `소리` 카드의 `효과음`·`배경 음악` 스위치가 각각 자기 버스를 음소거하고 `user://settings.cfg`의 `[sound]`(`sfx`, `music`, 기본 둘 다 켬)에 남는다. 파일의 다른 키(`[ui] show_fps`)는 그대로 둔다.

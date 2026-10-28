@@ -28,12 +28,14 @@
 
 팩의 `License.txt`: "License: (Creative Commons Zero, CC0) http://creativecommons.org/publicdomain/zero/1.0/ … This content is free to use in personal, educational and commercial projects."(Interface Sounds, Impact Sounds), "License (Creative Commons Zero, CC0) … You may use these assets in personal and commercial projects."(Digital Audio, Music Jingles, Casino Audio).
 
-## 배경 음악 — Happy Clappy Loop, OwlishMedia
+## 배경 음악 — Children's March Theme, Cleyton Kauffman (OpenGameArt: Snabisch)
+
+2026-10-28 사용자가 "더 귀엽고 통통 튀는 곡"으로 후보 6곡을 들어 보고 골랐다(앞선 곡 Happy Clappy Loop을 바꿈).
 
 | 파일 | 원본 | 받은 곳 | 라이선스 |
 |---|---|---|---|
-| `audio/music/happy_clappy_loop.ogg` | `HappyClappyLoop.wav`(44.1 kHz 스테레오 float, 17.44초) | <https://opengameart.org/content/happy-clappy-loop> (OpenGameArt, 2018-07-08 올림) | CC0(페이지의 License(s) 항목이 CC0 하나) |
+| `audio/music/childrens_march.ogg` | `Children's March Theme.wav`(44.1 kHz 스테레오 16비트, 64.0초) | <https://opengameart.org/content/childrens-march-theme> (OpenGameArt) | CC0(페이지의 License(s) 항목이 CC0 하나, 묶음 안 readme.txt "License: Creative Commons Zero (CC0)") |
 
-페이지 설명: "This is a piece from my animated short film Cat's Sky, modified to be used as a game loop. … Loops seamlessly." 태그: loop, piano, cheerful, happy, pleasant, fun, upbeat.
+readme.txt의 표시 요청: "Music by Cleyton Kauffman - https://soundcloud.com/cleytonkauffman". CC0라 의무는 아니지만 여기 남긴다.
 
-바꾼 것: 16비트로 바꾼 뒤 마지막 6 ms(264샘플)를 채널마다 첫 샘플 쪽으로 직선 보정해 이음매의 작은 계단(원본 2147/32768)을 없앴다(보정 뒤 112, 보통 이웃 샘플 차 157). 길이는 769,132샘플 그대로라 박자가 맞는다. Vorbis q2(약 107 kbps)로 인코딩했다. 반복은 Godot import 설정 `loop=true`(`happy_clappy_loop.ogg.import`)가 한다.
+바꾼 것: 이음매의 딸깍 소리를 막으려고 처음과 끝 5 ms만 페이드했다(64.0초 그대로, 곡이 끝까지 같은 세기라 박자대로 이어진다). Vorbis q2(약 90 kbps, 716 KB)로 인코딩했다. 반복은 Godot import 설정 `loop=true`(`childrens_march.ogg.import`)가 한다.

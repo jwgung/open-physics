@@ -41,7 +41,7 @@ const SFX := {
 	&"finale": ["jingles_STEEL00.ogg", -6.0],         # the story: the star is back in the sky
 }
 const SFX_DIR := "res://audio/sfx/"
-const MUSIC_PATH := "res://audio/music/happy_clappy_loop.ogg"
+const MUSIC_PATH := "res://audio/music/childrens_march.ogg"
 ## Music volume per place (dB on the music player; the Music bus stays at 0 dB).
 const MUSIC_DB := {&"map": -10.0, &"lab": -19.0}
 const MUSIC_FADE_S := 0.6

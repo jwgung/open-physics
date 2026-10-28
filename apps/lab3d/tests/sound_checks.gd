@@ -53,7 +53,7 @@ func run() -> void:
 	expect.call(_file_state(SoundBoard.PATH) == real_settings, "sound: the tests never touch the real settings file (user://settings.cfg)", "")
 
 
-## Every event's file is there, small; the music loops seamlessly by its import flag (17.4 s loop).
+## Every event's file is there, small; the music loops seamlessly by its import flag (the 64 s Children's March Theme, 2026-10-28).
 func check_assets() -> void:
 	var missing := []
 	var bytes := 0
@@ -67,8 +67,8 @@ func check_assets() -> void:
 		"missing %s, %d bytes" % [str(missing), bytes])
 	var music: AudioStream = load(SoundBoard.MUSIC_PATH)
 	var loops: bool = music is AudioStreamOggVorbis and (music as AudioStreamOggVorbis).loop
-	expect.call(loops and board.music_stream() == music and absf(music.get_length() - 17.44) < 0.05,
-		"sound: the music is the 17.4 s loop and loops (loop flag of its import)", "loop %s length %.2f" % [str(loops), music.get_length() if music else -1.0])
+	expect.call(loops and board.music_stream() == music and absf(music.get_length() - 64.0) < 0.05,
+		"sound: the music is the 64 s march and loops (loop flag of its import)", "loop %s length %.2f" % [str(loops), music.get_length() if music else -1.0])
 	var buses: bool = AudioServer.get_bus_index(SoundBoard.SFX_BUS) > 0 and AudioServer.get_bus_index(SoundBoard.MUSIC_BUS) > 0 \
 		and AudioServer.get_bus_send(AudioServer.get_bus_index(SoundBoard.SFX_BUS)) == &"Master" \
 		and AudioServer.get_bus_send(AudioServer.get_bus_index(SoundBoard.MUSIC_BUS)) == &"Master"

@@ -71,6 +71,11 @@
 ##    and day, skip, replay, the child's camera and a clean map afterwards), Puppy's clue once per spot
 ##    before the question, the piece only on a completed round, its flight once and the emblem's count,
 ##    old saves, the finale once at 11 (the sky star), no story in measurements.
+## 23b. the night map (tests/explore_checks.gd, 2026-10-28 "explore the night map in a fixed order"): the
+##    order and the next spot, only the next and found spots open (a locked tap: Puppy's line, a shake),
+##    names hidden until found, Puppy's riddle on open / after a flight / on a tap on him or 단서, the
+##    hint's glint after the delay, the night by pieces (day after the finale), old saves, a direct
+##    --experiment launch and the bench map unaffected.
 ## 22. sound (tests/sound_checks.gd, 2026-10-28): every event asks SoundBoard for its sound id, the
 ##    효과음 / 배경 음악 switches mute their bus and are kept in the settings file (the real one untouched),
 ##    the music loops, a measurement plays nothing and writes nothing, nothing sounds while idle.
@@ -280,6 +285,11 @@ func _run() -> void:
 	_expect(story != null and story.can_instantiate(), "story checks compile", "")
 	if story != null and story.can_instantiate():
 		await story.new(self, _expect).run()
+	print("== the night map (2026-10-28): fixed order, locks, Puppy's riddle, hint, night by pieces, old saves, launches ==")
+	var explore: GDScript = load("res://tests/explore_checks.gd")
+	_expect(explore != null and explore.can_instantiate(), "explore checks compile", "")
+	if explore != null and explore.can_instantiate():
+		await explore.new(self, _expect).run()
 	print("== the labs' ground: a corner of the map's island, every experiment ==")
 	var lab_world: GDScript = load("res://tests/lab_world_checks.gd")
 	_expect(lab_world != null and lab_world.can_instantiate(), "lab world checks compile", "")

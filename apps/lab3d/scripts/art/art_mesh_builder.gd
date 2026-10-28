@@ -15,6 +15,9 @@ var ao_height := 0.35
 var _verts := PackedVector3Array()
 var _normals := PackedVector3Array()
 var _colors := PackedColorArray()
+## Optional per-vertex tag in UV.x (0 = none; tag_from): the map's spots, so its shader can light or
+## shake one spot of the merged mesh (map_lit.gdshader). Only meshes that tag something get a UV array.
+var _tags := PackedVector2Array()
 
 
 func is_empty() -> bool:
@@ -30,6 +33,9 @@ func commit() -> ArrayMesh:
 	arrays[Mesh.ARRAY_VERTEX] = _verts
 	arrays[Mesh.ARRAY_NORMAL] = _normals
 	arrays[Mesh.ARRAY_COLOR] = _colors
+	if not _tags.is_empty():
+		_pad_tags()
+		arrays[Mesh.ARRAY_TEX_UV] = _tags
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
 	return mesh
 
@@ -177,6 +183,26 @@ func add_triangle_lit(points: Array, colors: Array, facing: Vector3, normal: Vec
 ## Vertices appended so far (tests: how much one call added).
 func vertex_count() -> int:
 	return _verts.size()
+
+
+## Tags the vertices appended since vertex `from` with `tag` (> 0; UV.x of the committed mesh).
+func tag_from(from: int, tag: int) -> void:
+	_pad_tags()
+	for i in range(from, _verts.size()):
+		_tags[i] = Vector2(float(tag), 0.0)
+
+
+## The tag of vertex `i` (tests; 0 = none).
+func tag_of(i: int) -> int:
+	return int(_tags[i].x) if i < _tags.size() else 0
+
+
+func _pad_tags() -> void:
+	if _tags.size() < _verts.size():
+		var from := _tags.size()
+		_tags.resize(_verts.size())
+		for i in range(from, _tags.size()):
+			_tags[i] = Vector2.ZERO
 
 
 

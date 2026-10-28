@@ -16,7 +16,15 @@
 ## shots, and at the end it eases back to the child's view and hands the rig back exactly there
 ## (CameraRig.snap). A flight uses the rig's own timed close-up (CameraRig.focus), like the flag raise.
 ## The night is a global multiplier on the map's shaders (story_tint) and the map's sea colour, put
-## back to the day at the end (and when the map goes away).
+## back to the day when the map goes away (the labs are always bright).
+##
+## The night map (2026-10-28 user-approved "explore the night map in a fixed order"): after the
+## prologue the map stays night; it lifts a step per piece at the lookout and the finale brings the
+## day (Story.night_level; derived from the pieces, nothing new saved). Found spots are lit (map_lit
+## lit_mask). Only the next spot (Story.order) and the found ones open; Puppy says the next one's riddle
+## in his box at the bottom when the map is free (after a flag raise, a flight, the prologue), again
+## on a tap on him or 단서; a tapped locked spot gets "음… 여긴 아닌 것 같아." and a small shake; after
+## HINT_DELAY_S without finding it the next spot glints (a small star twinkling, again and again).
 ##
 ## Pictures and words only: the director never opens a lab, sets a control or reads a body. Its 3D
 ## nodes are outside the map's default view or gone after the story (the map stays clean), apart from
@@ -50,6 +58,11 @@ const RETURN_S := 1.4
 const FIRST_SHOT := {"yaw": 0.0, "pitch": -8.0, "dist": 150.0, "target": Vector3(0.0, 6.0, -55.0)}
 const DIALOGUE_MARGIN := 12.0
 const DIALOGUE_SHARE := 0.8        # of the view width the box may take (the scene stays in view)
+## The night map's hint: the next spot glints this long after the riddle, a twinkle every period.
+const HINT_DELAY_S := 20.0
+const HINT_PERIOD_S := 2.4
+const HINT_TWINKLE_S := 1.1
+const HINT_SIZE := 0.42
 
 var home: IslandHomeScreen
 var part := ""                     # "", "prologue", "flight", "finale"
@@ -92,6 +105,16 @@ var _flight_queue: Array = []
 var _flight: Dictionary = {}       # {id, node, from, to, t}
 var _lift := false                 # the finale's star rides above the cat's paws
 var _finale_due := false           # all pieces found, the finale not played: after the flights
+var _finale_done := false          # the star is back in the sky: the map is day
+## The night map's exploration (refresh): the next spot ("" when all are found) and the found ones.
+var next_id := ""
+var found_ids: Array = []
+var riddle: DialogueBox            # Puppy's box on the map (no shield: the map stays live)
+var riddles_told := 0              # (tests)
+var wrongs_told := 0               # (tests)
+var hint: Node3D                   # the next spot's glint (null until the first hint)
+var _riddle_due := false           # say the riddle as soon as the map is free
+var _hint_t := 0.0                 # seconds since the riddle was last said
 
 
 func _init(screen: IslandHomeScreen) -> void:
@@ -109,8 +132,11 @@ func _ready() -> void:
 	home.add_child(emblem)
 	placed_count = Story.placed(ProgressStore.load()).size()
 	emblem.set_filled(placed_count)
-	if Story.finale_seen():
+	_finale_done = Story.finale_seen()
+	if _finale_done:
 		_place_sky_star()
+	if not home.play_prologue_on_open:   # the prologue starts by day and ends on the map's night
+		_set_night(map_night())
 	_layout()
 	home.resized.connect(_layout)
 
@@ -142,6 +168,97 @@ func refresh() -> void:
 	var progress := ProgressStore.load()
 	_flight_queue = Story.to_fly(progress)
 	_finale_due = Story.found(progress).size() >= Story.spots().size() and not Story.finale_seen()
+	found_ids = Story.found(progress)
+	next_id = Story.next_spot(progress)
+	home.light_spots(found_ids)
+	home.show_clue_button(next_id != "")
+	_riddle_due = next_id != ""
+
+
+## The map's night now: the story's night lifting a step per piece at the lookout, day after the finale.
+func map_night() -> float:
+	return Story.night_level(placed_count, _finale_done)
+
+
+# --- the night map: locks, Puppy's riddle, the hint --------------------------------------------
+
+## The spot does not open yet: neither found nor the next one.
+func locked(id: String) -> bool:
+	return next_id != "" and id != next_id and id not in found_ids
+
+
+## The spot's name shows on the map: its piece is found (an unfound spot's name stays a secret).
+func label_shown(id: String) -> bool:
+	return id in found_ids
+
+
+## Puppy says the next spot's riddle (one page, his box at the bottom); the hint waits again.
+func say_riddle() -> void:
+	if next_id == "" or cinematic():
+		return
+	_riddle_due = false
+	_hint_t = 0.0
+	_hide_hint()
+	_say(Story.map_clue(ExperimentRegistry.find(next_id)))
+	riddles_told += 1
+
+
+## A locked spot was tapped: Puppy's "not here" line (the riddle's timer goes on).
+func say_wrong() -> void:
+	if cinematic():
+		return
+	_riddle_due = false
+	_say(Story.wrong_line())
+	wrongs_told += 1
+
+
+## The child is on the way to a spot: Puppy's box closes.
+func hush() -> void:
+	_riddle_due = false
+	if riddle != null and riddle.active:
+		riddle.close(true)
+
+
+func _say(words: String) -> void:
+	if riddle == null:
+		riddle = DialogueBox.new("")
+		riddle.name = "PuppyRiddle"
+		home.add_child(riddle)
+	riddle.set_speaker("puppy")
+	riddle.open(words)
+	_layout()
+
+
+## The hint's little star over the next spot, twinkling a moment every HINT_PERIOD_S.
+func _step_hint(delta: float) -> void:
+	if next_id == "" or _riddle_due or busy() or home.raising():
+		return
+	_hint_t += delta
+	if _hint_t < HINT_DELAY_S:
+		return
+	if hint == null:
+		hint = StarArt.make(false, HINT_SIZE)
+		hint.name = "HintGlint"
+		home.world.add_child(hint)
+		SoundBoard.play(&"glint")
+	for spot in home._spots:
+		if spot.id == next_id:
+			hint.position = spot.at + Vector3.UP * (float(spot.top) + 0.55)
+	var phase := fmod(_hint_t - HINT_DELAY_S, HINT_PERIOD_S)
+	var k := clampf(phase / HINT_TWINKLE_S, 0.0, 1.0)
+	hint.visible = k < 1.0
+	hint.scale = Vector3.ONE * maxf(0.01, sin(PI * k))
+	hint.rotation.y += delta * 2.5
+
+
+func _hide_hint() -> void:
+	if hint != null:
+		hint.visible = false
+
+
+## The hint glints now (tests).
+func hinting() -> bool:
+	return hint != null and hint.visible
 
 
 # --- the prologue -------------------------------------------------------------------------------
@@ -197,7 +314,7 @@ func _prologue_page(i: int) -> void:
 		7:   # the square: the bread cat hops out and lifts a paw; the day comes back
 			_move({"yaw": 0.0, "pitch": -24.0, "dist": 8.5, "target": home_at + Vector3(0.0, 0.7, 0.0)}, 2.2)
 			_beat(1.0, func() -> void:
-				_night(0.0, 2.0)
+				_night(map_night(), 2.0)   # the map's night (no star in the sky yet; day only once explored)
 				_boats_wander = false)
 			_beat(1.5, func() -> void:
 				_hop_cat(home.cat.position, home.cat.position, 0.6, 0.8)
@@ -276,6 +393,7 @@ func _finale_page(i: int) -> void:
 				_move({"yaw": -10.0, "pitch": 18.0, "dist": 30.0, "target": SKY_HIGH}, 2.4))
 			_beat(4.3, func() -> void:
 				SoundBoard.play(&"finale")
+				_night(0.0, 2.6)   # the star is back: the day
 				_sparkle_sea()
 				sea.set_lanterns(true)
 				_boats_sail = 0.0
@@ -334,6 +452,7 @@ func _step_flight(delta: float) -> void:
 		_flight = {}
 		placed_count += 1
 		emblem.set_filled(placed_count, true)
+		_night(map_night(), 1.2)   # the night lifts a step
 		SoundBoard.play(&"glint")
 
 
@@ -349,6 +468,8 @@ func skip_flights() -> void:
 	if any or part == "flight":
 		placed_count = Story.placed(ProgressStore.load()).size()
 		emblem.set_filled(placed_count)
+		_night_s = 0.0
+		_set_night(map_night())
 		home.view.rig.cut_focus()
 		part = ""
 
@@ -370,6 +491,9 @@ func advance(delta: float) -> void:
 		elif _finale_due:
 			_finale_due = false
 			play_finale()
+		elif _riddle_due and not home._walking:
+			say_riddle()
+	_step_hint(delta)
 	for b in _beats.duplicate():
 		b[0] -= delta
 		if b[0] <= 0.0:
@@ -392,6 +516,9 @@ func advance(delta: float) -> void:
 ## A prologue or the finale starts: the director takes the camera and the screen.
 func _begin(which: String) -> void:
 	skip_flights()
+	if riddle != null and riddle.active:
+		riddle.close(true)
+	_hide_hint()
 	part = which
 	_returning = false
 	_beats.clear()
@@ -456,8 +583,12 @@ func _finish() -> void:
 		dialogue.visible = false
 		shield.visible = false
 		skip_button.visible = false
-	_set_night(0.0)
+	if which == "finale":
+		_finale_done = true
 	_night_s = 0.0
+	_set_night(map_night())   # prologue: the map's night; finale: day
+	_riddle_due = next_id != ""   # then Puppy's riddle for the next spot
+	_hint_t = 0.0
 	_clear_pieces()
 	if _star != null:
 		_star.queue_free()
@@ -511,9 +642,13 @@ func _layout() -> void:
 	if skip_button != null:
 		skip_button.size = skip_button.get_combined_minimum_size()
 		skip_button.position = Vector2(view_size.x - skip_button.size.x - DIALOGUE_MARGIN, DIALOGUE_MARGIN)
+	var right := maxf(view_size.x * DIALOGUE_SHARE, minf(view_size.x - DIALOGUE_MARGIN, 900.0))
 	if dialogue != null and dialogue.active:
-		var right := maxf(view_size.x * DIALOGUE_SHARE, minf(view_size.x - DIALOGUE_MARGIN, 900.0))
 		dialogue.visible = dialogue.layout(Rect2(Vector2.ZERO, view_size), right, DIALOGUE_MARGIN)
+	if riddle != null and riddle.active:
+		# Right of the emblem (bottom left), so the pieces' star stays in view while Puppy talks.
+		var left := StarEmblem.SIZE + DIALOGUE_MARGIN
+		riddle.visible = riddle.layout(Rect2(Vector2(left, 0.0), view_size - Vector2(left, 0.0)), right, DIALOGUE_MARGIN)
 
 
 # --- camera ------------------------------------------------------------------------------------

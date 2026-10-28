@@ -57,7 +57,7 @@
       { "compare": "less", "threshold": 3.0, "conditions": {"mass": {"max": 1.0}}, "text": "가벼운 공으로 3초 안에 빨리 흔들기!" }
     ]
   },
-  "story": { "clue": "용수철이 조각을 물고 있어. 무거운 공은 어떻게 흔들릴까?" },
+  "story": { "clue": "용수철이 조각을 물고 있어. 무거운 공은 어떻게 흔들릴까?", "map_clue": "울타리 안, 통통 튀는 용수철 쪽이야!" },
   "kid": {
     "card": "swing_period",
     "title": "용수철을 당겼다 놓아 보자!",

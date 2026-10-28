@@ -53,6 +53,14 @@ var _raising: Dictionary = {}        # {id, flag, t} of the raise playing now
 var raised_count := 0                # flag raises played (tests)
 ## Screenshots (--demo-flag=<id>): that spot's round counts as just completed, in the bench store only.
 static var _demo_flag_done := false
+## The night map (2026-10-28, with the story only): the top bar's 단서 button (Puppy's riddle again)
+## and the tapped locked spot's shake {tag, t} (map_lit shake_spot / shake_offset).
+var clue_button: Button
+var _shake: Dictionary = {}
+var shakes := 0                      # (tests)
+const SHAKE_S := 0.45
+const SHAKE_M := 0.08
+const PUPPY_TAP_M := 0.7             # m round Puppy (on the square) a tap may be and still hit him
 
 const RAISE_DELAY_S := 0.5           # the map is on screen first (its slide-in, the first heavy frames)
 const RAISE_IN_S := 0.8              # the camera eases to the spot
@@ -116,6 +124,7 @@ func _ready() -> void:
 	for zone in ZONES:
 		for spot in ZONES[zone].spots:
 			_add_spot(world, zone, spot[0], built[spot[0]])
+	light_spots([])
 
 	view.rig.configure(_map_camera())
 	view.rig.focus_modes = ["three_quarter", "orbit", "front", "top", "side"]   # the flag raise frames the spot from any view
@@ -132,6 +141,8 @@ func _ready() -> void:
 		story.refresh()
 		if play_prologue_on_open:
 			story.play_prologue()
+	if Quality.cmdline_value("demo-story").begins_with("map"):
+		get_tree().create_timer(1.5).timeout.connect(_print_spot_points)
 
 
 ## The map's camera definition (CameraRig.configure): a 3/4 view from above by default, then almost
@@ -184,7 +195,7 @@ func _add_spot(world: Node3D, zone: String, id: String, info: Dictionary) -> voi
 	root.add_child(flag)
 	_flags[id] = flag
 	_spots.append({"id": id, "definition": definition, "at": info.at, "top": info.top, "radius": info.radius,
-		"stand": info.stand, "zone": zone, "marker": root})
+		"stand": info.stand, "zone": zone, "marker": root, "tag": int(info.get("tag", 0))})
 
 
 ## The top bar: the brand and the settings button (the home's own chrome, over the map).
@@ -201,6 +212,14 @@ func _build_top_bar() -> void:
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(spacer)
+	clue_button = Ui.button("단서", "", 60)
+	clue_button.name = "ClueButton"
+	clue_button.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	clue_button.visible = false   # the night map shows it (StoryDirector.refresh)
+	clue_button.pressed.connect(func() -> void:
+		if story != null:
+			story.say_riddle())
+	row.add_child(clue_button)
 	var settings := Ui.button("설정", "", 60)
 	settings.name = "SettingsButton"
 	settings.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -318,11 +337,75 @@ func _demo_flag() -> void:
 	ProgressStore.mark_flag_pending(id)
 
 
+## Screenshots (--demo-story=map...): where each spot and Puppy are on the window (pixels), for taps.
+func _print_spot_points() -> void:
+	if not is_inside_tree():
+		return
+	var to_window := get_viewport().get_screen_transform() * view.get_global_transform_with_canvas()
+	for spot in _spots:
+		var point := _world_to_screen(tap_point(spot))
+		if point != Vector2.INF:
+			print("[explore] spot %s %d %d" % [spot.id, roundi((to_window * point).x), roundi((to_window * point).y)])
+	var at := _world_to_screen(puppy.global_position + Vector3.UP * 0.35)
+	if at != Vector2.INF:
+		print("[explore] puppy %d %d" % [roundi((to_window * at).x), roundi((to_window * at).y)])
+
+
+## The night map's 단서 button shows while a spot is still to find.
+func show_clue_button(on: bool) -> void:
+	if clue_button != null:
+		clue_button.visible = on
+
+
+## Lights the found spots on the map's night (map_lit lit_mask; by day it changes nothing). The map's
+## material is shared with the labs' ground, whose vertices carry no spot tag: they never light.
+func light_spots(ids: Array) -> void:
+	var mask := 0
+	for spot in _spots:
+		if spot.id in ids and int(spot.tag) > 0:
+			mask |= 1 << (int(spot.tag) - 1)
+	MapIsland.material().set_shader_parameter("lit_mask", mask)
+
+
+## The spots lit now (tests): their ids.
+func lit_spots() -> Array:
+	var mask := int(MapIsland.material().get_shader_parameter("lit_mask"))
+	return _spots.filter(func(spot: Dictionary) -> bool: return int(spot.tag) > 0 and mask & (1 << (int(spot.tag) - 1)) != 0) \
+		.map(func(spot: Dictionary) -> String: return spot.id)
+
+
+## A little side-to-side shake of spot `index`'s stage and landmark (a locked spot tapped).
+func shake_spot(index: int) -> void:
+	_shake = {"tag": int(_spots[index].tag), "t": 0.0}
+	shakes += 1
+
+
+func _step_shake(delta: float) -> void:
+	if _shake.is_empty():
+		return
+	_shake.t += delta
+	var k := clampf(float(_shake.t) / SHAKE_S, 0.0, 1.0)
+	var material := MapIsland.material()
+	material.set_shader_parameter("shake_spot", _shake.tag if k < 1.0 else 0)
+	material.set_shader_parameter("shake_offset", Vector3(sin(float(_shake.t) * 42.0) * SHAKE_M * (1.0 - k), 0.0, 0.0))
+	if k >= 1.0:
+		_shake = {}
+
+
+func _exit_tree() -> void:
+	# The material is shared with the labs' ground: no light or shake left on it.
+	var material := MapIsland.material()
+	material.set_shader_parameter("lit_mask", 0)
+	material.set_shader_parameter("shake_spot", 0)
+	material.set_shader_parameter("shake_offset", Vector3.ZERO)
+
+
 ## The cat's hop, and the 2D spot labels placed over the map when the view size or the camera changed.
 func _process(delta: float) -> void:
 	if _walking:
 		_step_walk(delta)
 	_step_raise(delta)
+	_step_shake(delta)
 	if _cinematic:
 		return
 	if view != null and view.rig != null and (view.size != _labels_for or view.rig.global_transform != _labels_camera):
@@ -358,7 +441,7 @@ func set_cinematic(on: bool) -> void:
 	if bar != null:
 		bar.visible = not on
 	for id in _labels:
-		(_labels[id] as Control).visible = not on
+		(_labels[id] as Control).visible = not on and _label_shown(str(id))
 	if not on:
 		_label_frames = 3
 
@@ -416,7 +499,7 @@ func _place_labels() -> void:
 			_labels[spot.id] = _make_label(spot)
 		var label: Control = _labels[spot.id]
 		var screen_point := label_point(spot)
-		label.visible = screen_point != Vector2.INF   # behind a close, low camera: hidden
+		label.visible = screen_point != Vector2.INF and _label_shown(spot.id)   # behind a close, low camera: hidden
 		if not label.visible:
 			continue
 		label.position = screen_point - Vector2(label.size.x * 0.5, label.size.y)
@@ -431,6 +514,11 @@ func _place_labels() -> void:
 	for entry in shown:
 		move_child(entry[1], at)
 		at += 1
+
+
+## A spot's name shows: always without the story; on the night map only once its piece is found.
+func _label_shown(id: String) -> bool:
+	return story == null or story.label_shown(id)
 
 
 ## The rect a label covers on screen (its scale about its bottom centre).
@@ -504,7 +592,10 @@ func _on_pointer(kind: String, position: Vector2) -> void:
 			_last = position
 		"release":
 			if _down[0] != Vector2.INF and not _down[1]:
-				_walk_to_spot(_spot_at(position))
+				if story != null and story.next_id != "" and _puppy_at(position):
+					story.say_riddle()   # Puppy again: the riddle
+				else:
+					_walk_to_spot(_spot_at(position))
 			_down[0] = Vector2.INF
 			_down[1] = false
 			_last = Vector2.INF
@@ -563,10 +654,31 @@ func _world_to_screen(world: Vector3) -> Vector2:
 	return view.rig.unproject_position(world) / (Vector2(view.viewport.size) / view.size)
 
 
-## Starts the cat's hop to the spot (beside its landmark); opens the experiment when it arrives.
+## The screen point is on Puppy (on the square): within PUPPY_TAP_M of his middle, on screen.
+func _puppy_at(position: Vector2) -> bool:
+	if puppy == null:
+		return false
+	var middle := puppy.global_position + Vector3.UP * 0.35
+	var point := _world_to_screen(middle)
+	if point == Vector2.INF:
+		return false
+	var eye: Vector3 = view.rig.global_position
+	var world_h := 2.0 * eye.distance_to(middle) * tan(deg_to_rad(view.rig.fov) * 0.5)
+	return point.distance_to(position) <= maxf(TAP_SLOP * 2.0, PUPPY_TAP_M * view.size.y / world_h)
+
+
+## Starts the cat's hop to the spot (beside its landmark); opens the experiment when it arrives. On
+## the night map a locked spot does not open: Puppy says it is not here and the landmark shakes.
 func _walk_to_spot(index: int) -> void:
 	if index < 0 or _walking:
 		return
+	if story != null and story.locked(_spots[index].id):
+		story.say_wrong()
+		shake_spot(index)
+		SoundBoard.play(&"stop")   # a soft knock
+		return
+	if story != null:
+		story.hush()
 	_walk_from = cat.position
 	_walk_to = _spots[index].stand
 	_walk_spot = index

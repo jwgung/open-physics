@@ -310,13 +310,13 @@ static func _v2(at: Array) -> Vector2:
 ## the order they cover each other (what lies on the grass first, the grass and beach last), so
 ## the covered ground fails the depth test instead of being shaded and drawn over (SM-P200 fill).
 ## `spots` are [id, Vector2 at, yaw deg]; returns spot_info: id -> {at (stage top), top (landmark
-## height above at), stand (where the cat waits), flag (where the flag stands), radius, vertices}.
+## height above at), stand (where the cat waits), flag (where the flag stands), radius, vertices, tag}.
 func build(world: Node3D, spots: Array) -> Dictionary:
 	var land := ArtKit.builder()
 	var water := land
 	var marks := land
-	for spot in spots:
-		_add_spot(marks, spot)
+	for i in spots.size():
+		_add_spot(marks, spots[i], i + 1)
 	for zone in zones:
 		var spec: Dictionary = zones[zone]
 		match spec.ground:
@@ -622,8 +622,10 @@ func _add_plaza(b: ArtMeshBuilder) -> void:
 			Vector3(0.5, 0.16, 0.05), 0.0, 0, board[2])
 
 
-## A spot: its round stage (levelled over the ground under it) and its landmark on top.
-func _add_spot(b: ArtMeshBuilder, spot: Array) -> void:
+## A spot: its round stage (levelled over the ground under it) and its landmark on top. Their
+## vertices carry the spot's `tag` (UV.x, 1..11 in build order): map_lit lights a found spot at night
+## and shakes a locked one that was tapped (lit_mask, shake_spot), all in the one merged mesh.
+func _add_spot(b: ArtMeshBuilder, spot: Array, tag := 0) -> void:
 	var id: String = spot[0]
 	var at: Vector2 = spot[1]
 	var yaw := deg_to_rad(float(spot[2]))
@@ -643,6 +645,8 @@ func _add_spot(b: ArtMeshBuilder, spot: Array) -> void:
 		b.ao_height = 0.25
 		b.add_cylinder(Transform3D(Basis(), Vector3(at.x, low - 0.15, at.y)), radius + 0.06, radius, y - low + 0.15, 14, ArtPalette.ROCK, true, ArtPalette.PLATE)
 	var top := MapLandmarks.add(b, id, Transform3D(Basis(Vector3.UP, yaw), Vector3(at.x, y, at.y)))
+	if tag > 0:
+		b.tag_from(before, tag)
 	var to_home := (home - at).normalized() if home.distance_to(at) > 0.01 else Vector2(0.0, 1.0)
 	var stand := at + to_home * (radius + 0.4 if radius > 0.0 else 2.0)   # stageless: ashore, past the dock
 	var side := Vector2(-to_home.y, to_home.x)
@@ -654,6 +658,7 @@ func _add_spot(b: ArtMeshBuilder, spot: Array) -> void:
 		"stand": Vector3(stand.x, walk_height(stand.x, stand.y), stand.y),
 		"flag": Vector3(flag.x, y, flag.y),
 		"vertices": b.vertex_count() - before,
+		"tag": tag,
 	}
 
 

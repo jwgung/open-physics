@@ -1,5 +1,7 @@
 {
-  "about": "이야기 \"별 조각 찾기\"(2026-10-28 사용자 승인). 3D 앱(apps/lab3d Story)만 읽는다. 첫 실행 이야기(prologue, 8쪽)와 별을 다 찾은 뒤의 끝 이야기(finale). who: dugi = 두기두기(과학자, 이유), puppy = 퍼피(탐정, 단서). 빵고양이는 말하지 않는다. 실험마다의 퍼피 단서는 각 실험 JSON의 story.clue.",
+  "about": "이야기 \"별 조각 찾기\"(2026-10-28 사용자 승인). 3D 앱(apps/lab3d Story)만 읽는다. 첫 실행 이야기(prologue, 8쪽)와 별을 다 찾은 뒤의 끝 이야기(finale). who: dugi = 두기두기(과학자, 이유), puppy = 퍼피(탐정, 단서). 빵고양이는 말하지 않는다. 실험마다의 퍼피 단서는 각 실험 JSON의 story.clue. 밤 지도 탐험(2026-10-28 사용자 승인): order = 장소를 찾는 정해진 순서(다음 장소 = 이 순서에서 조각을 아직 못 찾은 첫 장소), 다음 장소의 퍼피 수수께끼는 각 실험 JSON의 story.map_clue, map_wrong = 잠긴 장소를 눌렀을 때 퍼피 말.",
+  "order": ["free-fall", "projectile", "collision", "friction", "incline-friction", "spring", "constraints", "rotation", "pulley", "buoyancy", "orbit"],
+  "map_wrong": "음… 여긴 아닌 것 같아.",
   "prologue": [
     {
       "who": "dugi",

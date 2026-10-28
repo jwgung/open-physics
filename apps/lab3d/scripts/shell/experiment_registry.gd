@@ -242,7 +242,8 @@ static func _validate_kid(kid: Variant, ids: Array) -> PackedStringArray:
 
 
 ## The story's words for this lab (`story`, optional, 2026-10-28 "별 조각 찾기"): {"clue": <Puppy's
-## clue, told once on the first visit before Dugi's question>} (Story.clue).
+## clue, told once on the first visit before Dugi's question>, "map_clue": <Puppy's riddle on the
+## night map while this spot is the next to find>} (Story.clue, Story.map_clue).
 static func _validate_story(story: Variant) -> PackedStringArray:
 	var problems := PackedStringArray()
 	if story == null:
@@ -251,10 +252,10 @@ static func _validate_story(story: Variant) -> PackedStringArray:
 		problems.append("story must be an object")
 		return problems
 	for key in story:
-		if key != "clue":
-			problems.append("story.%s unknown (clue)" % key)
+		if not key in ["clue", "map_clue"]:
+			problems.append("story.%s unknown (clue, map_clue)" % key)
 		elif not (story[key] is String and story[key] != ""):
-			problems.append("story.clue must be a text")
+			problems.append("story.%s must be a text" % key)
 	return problems
 
 

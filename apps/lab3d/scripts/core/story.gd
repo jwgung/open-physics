@@ -33,10 +33,14 @@ static var _content: Dictionary = {}
 
 ## The story's pages: "prologue" or "finale" -> [{who, text}, ...].
 static func pages(part: String) -> Array:
+	return _load().get(part, [])
+
+
+static func _load() -> Dictionary:
 	if _content.is_empty():
 		var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(CONTENT_PATH))
 		_content = parsed if parsed is Dictionary else {}
-	return _content.get(part, [])
+	return _content
 
 
 ## The map plays the prologue when it opens: the story is on and it was never played, or the child
@@ -47,8 +51,59 @@ static func should_play_prologue(replay := false) -> bool:
 
 ## Puppy's clue for a lab ("" when it has none).
 static func clue(definition: Dictionary) -> String:
+	return _story_text(definition, "clue")
+
+
+## Puppy's riddle on the night map while this spot is the next to find ("" when it has none).
+static func map_clue(definition: Dictionary) -> String:
+	return _story_text(definition, "map_clue")
+
+
+static func _story_text(definition: Dictionary, key: String) -> String:
 	var story: Variant = definition.get("story")
-	return str(story.get("clue", "")) if story is Dictionary else ""
+	return str(story.get(key, "")) if story is Dictionary else ""
+
+
+# --- the night map's exploration (2026-10-28 user-approved: explore the night map in a fixed order) --
+# The spots are found one by one in a fixed order (content/story.json `order`). Only the next spot
+# (the first in the order whose piece is not found) and the found spots open; Puppy says the next
+# one's riddle on the map. Nothing new is saved: all of it follows from the found pieces (stamps), so
+# an old save (some spots complete, out of order) works: its found spots are open and lit, the next is
+# the first unfound one in the order.
+
+## The fixed order the spots are found in (all 11 spots, each once).
+static func order() -> Array:
+	var raw: Variant = _load().get("order", [])
+	return raw.filter(func(id: Variant) -> bool: return id is String) if raw is Array else []
+
+
+## The next spot to find: the first in the order whose piece is not found ("" when all are found).
+static func next_spot(progress: Dictionary) -> String:
+	var done := found(progress)
+	for id in order():
+		if id not in done:
+			return id
+	return ""
+
+
+## The spot opens from the map: its piece is found, or it is the next one.
+static func enterable(progress: Dictionary, id: String) -> bool:
+	return id in found(progress) or id == next_spot(progress)
+
+
+## Puppy's line when a locked spot is tapped.
+static func wrong_line() -> String:
+	return str(_load().get("map_wrong", ""))
+
+
+## The map's night (StoryDirector: 1 = the story's night, 0 = day) with `count` pieces at the
+## lookout: the night lifts a step per piece; the last step (day) comes with the finale, so the
+## map stays a little dark until the star is back in the sky (`finale_done`: day from then on).
+static func night_level(count: int, finale_done: bool) -> float:
+	if finale_done:
+		return 0.0
+	var total := spots().size()
+	return 1.0 - float(clampi(count, 0, total - 1)) / total
 
 
 ## The 11 spots, in the map's order (MapIsland.ZONES).

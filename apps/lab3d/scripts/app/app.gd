@@ -7,7 +7,7 @@
 ##   --fps=1             show the fps overlay
 ##   --sound=0|1         0 = no sound and no sound setting written (SoundBoard; measurements default to 0)
 ##   --demo-story=<part> screenshots of the story in the bench store only (never the child's progress):
-##                       prologue | clue:<id> | found:<id> | flight:<id> | finale | map (Story, _demo_story)
+##                       prologue | clue:<id> | found:<id> | flight:<id> | finale | map[:<n>] (Story, _demo_story)
 ## plus the experiment screen's --camera / --ctl-<id> / --sidebar / --scroll-to / --auto-release / --auto-drag.
 class_name App
 extends Control
@@ -149,7 +149,8 @@ func _slide_in(screen: Control) -> void:
 ##   found:<id>    the lab opens and its three stamps play (--demo-celebrate's way), then its piece
 ##   flight:<id>   the map: that spot just completed (its flag, then its piece's flight); 4 others found
 ##   finale        the map: the orbit spot just completed with the 10 others found: flag, flight, finale
-##   map           the map with the story (5 pieces at the lookout), nothing playing: fps measurements
+##   map[:<n>]     the night map with the first n pieces of the order found (5 by default) and at the
+##                 lookout, nothing but Puppy's riddle playing: fps measurements, screenshots
 func _demo_story(value: String) -> Dictionary:
 	if value == "":
 		return {}
@@ -172,9 +173,12 @@ func _demo_story(value: String) -> Dictionary:
 			var definition := ExperimentRegistry.find(id)
 			return {"experiment": definition} if not definition.is_empty() else {}
 		"flight", "map":
-			for spot in Story.spots().slice(0, 5 if kind == "map" else 4):
-				if spot != id:
-					store[spot] = full.call(spot)
+			# The pieces found are the first of the order (the night map's fixed order), as a child finds them.
+			var count := 4
+			if kind == "map":
+				count = clampi(id.to_int(), 0, Story.spots().size()) if id.is_valid_int() else 5
+			for spot in Story.order().filter(func(s: String) -> bool: return s != id).slice(0, count):
+				store[spot] = full.call(spot)
 		"finale":
 			id = "orbit"
 			for spot in Story.spots():

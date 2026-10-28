@@ -1,10 +1,12 @@
 ## Formula model of the pulley lab (Phase 1 Task 4e; web preset "pulley"): the web's
 ## PulleyAdvantageChallenge (src/app/mechanics-challenges.ts) - n = 1, 2 or 4 supporting strands,
 ## required force F = m g / n, the load rises d_pull / n for d_pull of rope pulled (up to max_lift).
-## The rope is pulled hand over hand: the grip is pulled down in strokes on a 5 cm grid (the handle's
-## cells, CELLS_PER_M per metre); letting go keeps the rope (a ratchet at the guide wheel holds the
-## load) and the next stroke adds to it. The hand pulls with F while it holds a load off the ground
-## (the web's graph: the required force once the rope was pulled), 0 when the ratchet holds it.
+## The rope is pulled hand over hand in strokes on a 5 cm grid (cells, CELLS_PER_M per metre);
+## letting go keeps the rope (a ratchet at the guide wheel holds the load) and the next stroke adds
+## to it. The hand's force `hand` (N) is the lab's input since 2026-10-28 (press and hold, HoldRamp):
+## on the rope it is min(hand, F) while held (the rope moves only once it reaches F; F is all a
+## steady pull needs). With no hand force given (INF: the TS vectors' strokes) the hand pulls with F
+## while it holds a load off the ground (the web's graph), and 0 when the ratchet holds it.
 ## Pulled lengths are counted in whole cells, so the TS vectors and this model add the same numbers.
 class_name PulleyLabModel
 extends RefCounted
@@ -18,7 +20,8 @@ var g := 9.81
 var max_lift := 2.4                # m: the load stops under the top block
 var cells_before := 0              # rope pulled in earlier strokes (cells), held by the ratchet
 var stroke_cells := 0              # the stroke the hand is pulling now (cells)
-var holding := false               # the hand holds the grip
+var holding := false               # the hand holds the rope
+var hand := INF                    # N: the hand's force while holding (INF = "pulls with F", the strokes of the vectors)
 
 
 func reset() -> void:
@@ -46,9 +49,14 @@ func required() -> float:
 	return PhysicsLaws.pulley_required_force(mass, g, strands)
 
 
-## The hand's pull (N): F while it holds the load off the ground, else 0.
+## The hand's pull (N): while holding, min(hand, F) (with no hand force given: F once the load is off
+## the ground, else 0); 0 when not holding.
 func applied() -> float:
-	return required() if holding and pulled() > 0.0 else 0.0
+	if not holding:
+		return 0.0
+	if is_finite(hand):
+		return minf(hand, required())
+	return required() if pulled() > 0.0 else 0.0
 
 
 ## Rope to pull for 1 m of lift (m): PulleyAdvantageChallenge.pullDistanceForLift(1).

@@ -1,47 +1,36 @@
-## Base of the labs with one red handle the finger presses or pulls along a grid line (Phase 1
-## Task 4e: the lever and the pulley lab). It owns what both share: the handle body, its press line
-## (PressLineSurface) and the grid cells read from it, the graph clock that runs only while the handle
-## is held (fixed steps, so frame rate does not matter), the rolling graph of the hand's force and the
-## required force, and the panel hooks. A lab names the handle's rest place, reach and cell limit and
-## says when it is held.
+## Base of the labs the finger presses and holds (Phase 1 Task 4e: the lever and the pulley lab; a
+## red handle pressed along a grid line until 2026-10-28, now a press and hold on the object itself).
+## It owns what both share: the hand's force ramp while held (`hand`, HoldRamp: the lab sets its rate
+## and cap), the gauge beside the pressed place (ForceGauge), the graph clock that runs only while
+## the object is held (fixed steps, so frame rate does not matter), the rolling graph of the hand's
+## force and the required force, and the panel hooks. A lab says when it is held, where the gauge
+## stands and what the hand's force does.
 class_name PressHandleLab
 extends Experiment
 
 const GRAPH_EVERY_STEPS := 6       # 10 Hz graph samples
-const HANDLE_LAYER := 2            # pickable handle (mask 0)
+const PICK_LAYER := 2              # pickable press bodies (mask 0)
 const GRAPH_WINDOW := 10.0         # s of the rolling graph
 
 var graph := RollingGraph.new(["applied", "required"] as Array[String], GRAPH_WINDOW)
-var handle: StaticBody3D
 var load_body: RigidBody3D
-## Fixed steps with the handle held (the graph's clock).
+## The hand's press: its force while held (the lab sets rate and cap in _init()).
+var hand := HoldRamp.new()
+var gauge: ForceGauge
+## Fixed steps with the object held (the graph's clock).
 var clock_steps := 0
-var _press: PressLineSurface      # the held handle's line (origin = its rest point when picked up)
-var _press_step := 0.02           # its grid step (m per cell)
-var _line: PressLineSurface       # the last press line built (reused while its top, reach, step and lift are the same)
-var _line_key := []
 
 
 # --- the lab fills these in -----------------------------------------------------------------
 
-## The finger holds the handle.
+## The finger holds the object.
 func _handle_held() -> bool:
-	return false
+	return hand.held
 
 
-## The handle's place when it is not held.
-func _handle_rest() -> Vector3:
+## Where the gauge stands (its foot, world).
+func _gauge_at() -> Vector3:
 	return Vector3.ZERO
-
-
-## The press line's length (m).
-func _handle_reach() -> float:
-	return 1.0
-
-
-## The most grid cells the handle may count now.
-func _handle_cell_limit() -> int:
-	return 1 << 30
 
 
 ## The graph's values in the order of its series: the hand's force and the required force.
@@ -55,15 +44,10 @@ func clock_time() -> float:
 	return clock_steps / float(Engine.physics_ticks_per_second)
 
 
-## Grid cells the handle is along its press line (0..limit) while held.
-func handle_cells() -> int:
-	if not _handle_held() or _press == null:
-		return 0
-	return mini(_handle_cell_limit(), roundi(clampf(_press.depth_of(handle.global_position), 0.0, _handle_reach()) / _press_step))
-
-
-## One fixed step of the clock: it runs while the handle is held, a graph sample every 6th step.
+## One fixed step of the hand and the clock: both run while the object is held, a graph sample every
+## 6th step.
 func _tick_clock() -> void:
+	hand.tick()
 	if not _handle_held():
 		return
 	clock_steps += 1
@@ -81,41 +65,26 @@ func _restart_clock() -> void:
 	graph.clear()
 
 
-## The press line down from `top` (the manipulator asks for it at every pick-up and the lab again to
-## count the cells): built once per top / reach / step / lift and reused.
-func _press_line(top: Vector3, reach: float, step: float, lift: float) -> PressLineSurface:
-	var key := [top, reach, step, lift]
-	if _line == null or _line_key != key:
-		_line = PressLineSurface.new(top, reach, step, lift)
-		_line_key = key
-	return _line
-
-
-## The handle's press line starts at the surface `surface`, counted in the handle rule's grid.
-func _begin_press(surface: ManipSurface) -> void:
-	_press = surface as PressLineSurface
-	_press_step = _grid_step("handle")
-
-
-func _end_press() -> void:
-	_press = null
-
-
-## A pickable static body of `size` (the handle, the lever's stand; mask 0).
+## A pickable static body of `size` (the pulley's rope end, the lever's stand; mask 0).
 func _static_pickable(body_name: String, size: Vector3) -> StaticBody3D:
 	var body := StaticBody3D.new()
 	body.name = body_name
-	body.collision_layer = 1 << (HANDLE_LAYER - 1)
+	body.collision_layer = 1 << (PICK_LAYER - 1)
 	body.collision_mask = 0
 	_add_box_shape(body, size)
 	add_child(body)
 	return body
 
 
-func _place_handle() -> void:
-	var rest := _handle_rest()
-	if handle.global_position != rest:
-		handle.global_position = rest
+## The gauge (built once, the lab adds it) shown while held, filled to the hand's share of its cap.
+func _show_gauge() -> void:
+	if gauge == null:
+		gauge = ForceGauge.new()
+		add_child(gauge)
+	gauge.visible = hand.held
+	if hand.held:
+		gauge.set_fraction(hand.fraction())
+		gauge.global_position = _gauge_at()
 
 
 func graph_series() -> Dictionary:

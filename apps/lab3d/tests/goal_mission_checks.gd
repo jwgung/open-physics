@@ -450,12 +450,14 @@ func check_push() -> void:
 		and ExperimentRegistry.shown_cards(definition) == ["start_force"],
 		"goal (push): the key card shows the push that started the box as a bar (μs·m·g: 7.8 -> 19.6 -> 39.2 N light -> normal -> heavy, longer each, full at clay 10 kg 74.6 N; no text), from the moment it moves, kept after it stops, cleared by a new box",
 		"%s %s; %s" % [str(shown), str(bars), "; ".join(problems)])
-	# Heavier kid boxes (2026-10-28 "너무 쉽게 밀려"): wood takes about 0.4 / 1 / 2 m of handle, and
-	# every material moves every box within the handle's reach (the first grid force past μs·m·g);
-	# pushed with it for 1 s and let go, the box slides and friction stops it on the track.
+	# Heavier kid boxes (2026-10-28 "너무 쉽게 밀려"); since the press and hold (2026-10-28) wood takes
+	# 0.31 / 0.78 / 1.57 s of holding, and every material moves every box within the hold's cap (the
+	# heaviest, clay 10 kg, within 3 s); pushed for 1 s and let go, the box slides and friction stops
+	# it on the track.
 	problems = []
 	var travel := []
-	var reach: float = lab.REACH * lab.FORCE_PER_M
+	var reach: float = lab.PUSH_MAX
+	var slowest := 0.0
 	for material in ["rubber", "wood", "steel", "clay"]:
 		for mass in ["light", "normal", "heavy"]:
 			lab.set_control("material", material)
@@ -463,8 +465,9 @@ func check_push() -> void:
 			await _frames(2)
 			var limit: float = lab.model.max_static()
 			var push := ceilf(limit + 1e-9)
+			slowest = maxf(slowest, limit / lab.PUSH_RATE)
 			if material == "wood":
-				travel.append(snappedf(limit / lab.FORCE_PER_M, 0.01))
+				travel.append(snappedf(limit / lab.PUSH_RATE, 0.01))
 			if push > reach:
 				problems.append("%s %s: %.2f N past the reach %.0f N" % [material, mass, limit, reach])
 				continue
@@ -479,9 +482,9 @@ func check_push() -> void:
 			if not moving or lab.status() != "holding" or lab.model.displacement <= 0.0:
 				problems.append("%s %s: %.0f N moving %s, then %s at %.2f m" % [material, mass, push, moving, lab.status(), lab.model.displacement])
 	lab.queue_free()
-	expect.call(problems.is_empty() and travel == [0.39, 0.98, 1.96],
-		"goal (push): the kid boxes 2 / 5 / 10 kg take 0.39 / 0.98 / 1.96 m of handle on wood; every material moves every box within the reach (clay 10 kg 74.6 < 80 N), slides and stops on the track",
-		"wood travel %s m; %s" % [str(travel), "; ".join(problems)])
+	expect.call(problems.is_empty() and travel == [0.31, 0.78, 1.57] and slowest <= 3.0,
+		"goal (push): the kid boxes 2 / 5 / 10 kg start after 0.31 / 0.78 / 1.57 s of holding on wood; every material moves every box within the cap (clay 10 kg 74.6 < 80 N, after %.2f s), slides and stops on the track" % slowest,
+		"wood %s s; %s" % [str(travel), "; ".join(problems)])
 
 
 # --- (d) the round's invariants ---------------------------------------------------------------------

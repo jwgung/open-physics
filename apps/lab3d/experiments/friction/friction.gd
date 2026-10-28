@@ -1,9 +1,10 @@
 ## Guided push friction lab (Phase 1 Task 4b; web preset "friction", "얼마나 세게 밀어야 움직일까?"):
-## a box on a level floor with friction, pulled (or pushed) through a red handle on a rod. Holding
-## the handle and moving it along the floor sets the applied force: FORCE_PER_M newtons per metre
-## from where it was picked up (the web: 0.9 N per px from the grab point), on the 1 N grid of the
-## handle's `snap` rule, up to +-REACH m (+-80 N); letting go sets it back to 0 and the box slides
-## on until friction stops it (the web's handle). Conditions: material (the web's four, mu_s =
+## a box on a level floor with friction, pushed towards +x by the bread cat. The child presses and
+## holds the box itself (2026-10-28 user decision, no handle): while held the applied force grows
+## from 0 at PUSH_RATE N/s up to PUSH_MAX (80 N, the old handle's +-80 N) - HoldRamp - and a gauge
+## beside the box fills; letting go sets it back to 0 at once and the box slides on until friction
+## stops it (the web's handle let go). The box starts exactly when the ramped force passes
+## mu_s m g (PushFrictionLaw). Conditions: material (the web's four, mu_s =
 ## friction + 0.18, mu_k = friction) and mass (the kid boxes 2 / 5 / 10 kg and the web's 8 kg start
 ## box; 2026-10-28 user decision "너무 쉽게 밀려": the web's 0.5 / 1 / 3 kg buttons broke loose with
 ## 10-60 cm of handle on wood, now about 0.4 / 1 / 2 m. The law is the web's: its vectors drive the
@@ -21,36 +22,32 @@ const START_X := -3.0
 const LOOK_MASS := 8.0        # kg: the box that looks BOX big (the web's start box)
 ## Box centres beyond these x stop the box (the yellow track ends at +-TRACK_HALF, bumpers outside).
 const TRACK_HALF := 6.0
-const FORCE_PER_M := 20.0     # N per metre of handle travel (1 N per 5 cm grid step)
-const REACH := 4.0            # m either way: +-80 N
-const HANDLE_GAP := 0.9       # m from the box's right face to the handle centre
-const HANDLE_SIZE := Vector3(0.4, BOX, 0.4)   # the handle's pick box, standing on the floor
-const HANDLE_LAYER := 2       # pickable, never touched by the box (mask 0)
+## The held push (2026-10-28): 25 N/s, at most 80 N. The heaviest box the child can pick (10 kg on
+## clay: mu_s m g = 74.6 N) starts after 2.98 s; the 2 kg box on wood (7.85 N) after 0.31 s.
+const PUSH_RATE := 25.0       # N per second of holding
+const PUSH_MAX := 80.0        # N
 const GRAPH_EVERY_STEPS := 6  # 10 Hz graph samples
 const END_PADDING := 0.02     # m between a stopped box and the track end
 ## No close-up on the push (2026-10-28 user: the zoom on picking up the handle felt awkward, as the
-## throw's did): the camera stays where the child left it while the handle is held and the box slides.
+## throw's did): the camera stays where the child left it while the box is held and slides.
 
 var mass_id := "start"
 var material_id := "wood"
 var box: FormulaBody
-var handle: StaticBody3D
 var corrector := ContactFrictionCorrector.new()
 var model := PushFrictionModel.new()
 var props := FrictionProps.new()
 ## Box centre x where the current run started (reset / condition change).
 var run_start_x := START_X
-## The handle is held by a finger (the force follows it).
-var holding_handle := false
-## The box hit a track end and waits (frozen) until the handle is picked up or the lab is reset.
+## The finger's press on the box: the applied force while it holds (HoldRamp).
+var push := HoldRamp.new(PUSH_RATE, PUSH_MAX)
+## The box hit a track end and waits (frozen) until the box is pressed again or the lab is reset.
 var ended := false
 
 var _floor: StaticBody3D
 var _track: Node3D
-var _pull: ManipSurface         # the held handle's line (frame origin = where it was picked up)
-var _pull_snap := 0.0           # its grid step (m, 64-bit: the surface keeps a 32-bit Vector2)
 var _freeze_next := false       # the end was reached this step: freeze the box after its step
-var _forced := 0.0              # force set by a test / demo without the handle (set_applied_force)
+var _forced := 0.0              # force set by a test without a hold (set_applied_force)
 ## Fixed steps since the last reset (every step, also at rest; tests and the bench count with it).
 var frames := 0
 var _clock_steps := 0           # steps with a force or a moving box since the reset (the graph's time)
@@ -122,31 +119,22 @@ func set_box_mass(kg: float) -> void:
 	reset_box()
 
 
-## Applied force (N) without the handle: tests and the formula checks drive the lab with it (the
-## handle, when held, wins).
 ## The box look's size against its body's: one stuff, the cube root of the mass against LOOK_MASS.
 func look_factor() -> float:
 	return MassLook.factor(model.mass, LOOK_MASS)
 
 
+## Applied force (N) without a hold: tests and the formula checks drive the lab with it (a hold, when
+## the finger is on the box, wins).
 func set_applied_force(force: float) -> void:
 	_forced = force
 
 
-## The force the handle (or set_applied_force) gives this step: FORCE_PER_M per metre of the held
-## handle's grid point from where it was picked up.
+## The force the hold (or set_applied_force) gives this step: the held push's ramp.
 func applied_force() -> float:
-	if holding_handle and _pull != null:
-		return handle_force(_pull.nearest_inside(_pull.to_plane(handle.global_position)).x, _pull_snap)
+	if push.held:
+		return push.force()
 	return _forced
-
-
-## Force (N) of a handle `offset` m from where it was picked up, on the grid of `snap` m (counted in
-## whole grid steps, so a grid point gives a whole number of newtons exactly).
-static func handle_force(offset: float, snap: float) -> float:
-	if snap <= 0.0:
-		return offset * FORCE_PER_M
-	return roundi(offset / snap) * (snap * FORCE_PER_M)
 
 
 ## Box back at the start, at rest; the run, the heat and the graph start again.
@@ -164,18 +152,14 @@ func reset_box() -> void:
 	_clock_steps = 0
 	_graph.clear()
 	_graph_revision += 1
-	if holding_handle:
-		# The finger keeps the handle where it is: the force counts from here again (0 N), no jump.
-		_pull = _pull_line(handle.global_position.x)
-		_pull.snap = Vector2.ONE * _pull_snap
-	else:
-		_place_handle()
+	if push.held:
+		push.start()   # a finger still on the box: the push counts from 0 again, no jump
 	props.reset()
 	_update_status(true)
 
 
 ## Lets a box waiting at a track end go: not ended, not frozen (also the freeze still pending for
-## the next step), shared by reset_box and picking up the handle.
+## the next step), shared by reset_box and a new press on the box.
 func _release_end() -> void:
 	if _freeze_next:
 		# The freeze did not happen yet: stop the engine box at the bumper like it would have.
@@ -207,13 +191,14 @@ func _physics_process(_delta: float) -> void:
 	# Runs before the box's own step (tree order): the corrector and the model use the same force.
 	var dt := 1.0 / float(Engine.physics_ticks_per_second)
 	frames += 1
+	push.tick()
 	if _freeze_next:
 		_freeze_next = false
 		box.linear_velocity = Vector3.ZERO
 		box.freeze = true
 		box.global_position.x = formula_x()   # at the bumper (the engine step may have run past it)
 	if ended:
-		# The bumper holds the box: the handle's force is shown, nothing moves.
+		# The bumper holds the box: the push is shown, nothing moves.
 		corrector.applied_force = 0.0
 		model.applied = applied_force()
 		model.friction = 0.0
@@ -246,23 +231,8 @@ func _physics_process(_delta: float) -> void:
 
 
 func _process(_delta: float) -> void:
-	if not holding_handle:
-		_place_handle()
-	props.update_rod(box.global_position, handle.global_position, model.holding and not ended)
+	props.show_gauge(box.global_position, push.held, push.fraction())
 	props.update_cat(model.applied, model.max_static(), box.global_position.x, 0.0 if ended else model.velocity)
-
-
-## The handle waits HANDLE_GAP beside the box's right face, on the floor.
-func _place_handle() -> void:
-	if handle == null:
-		return
-	var rest := handle_rest()
-	if handle.global_position != rest:
-		handle.global_position = rest
-
-
-func handle_rest() -> Vector3:
-	return Vector3(box.global_position.x + BOX * 0.5 + HANDLE_GAP, HANDLE_SIZE.y * 0.5, 0.0)
 
 
 func _add_graph_sample() -> void:
@@ -358,18 +328,7 @@ func _build_world() -> void:
 	corrector.history_steps = 2
 	box.corrector = corrector
 
-	handle = StaticBody3D.new()
-	handle.name = "Handle"
-	handle.collision_layer = 1 << (HANDLE_LAYER - 1)
-	handle.collision_mask = 0
-	_add_box_shape(handle, HANDLE_SIZE)
-	var handle_visual := ArtKit.instance(props.handle_mesh(HANDLE_SIZE.y))
-	handle_visual.name = "Visual"
-	handle.add_child(handle_visual)
-	add_child(handle)
-	_place_handle()
-
-	props.dress(self, box, box_visual, BOX, handle_visual, TRACK_HALF - BOX * 0.5 - END_PADDING)
+	props.dress(self, box, box_visual, BOX, TRACK_HALF - BOX * 0.5 - END_PADDING)
 	props.set_look(look_factor())
 	props.juice.landed.connect(impact.emit)
 
@@ -377,50 +336,20 @@ func _build_world() -> void:
 # --- manipulation -----------------------------------------------------------------------------
 
 func manipulation_body(id: String) -> PhysicsBody3D:
-	return handle if id == "handle" else null
+	return box if id == "box" else null
 
 
-## The handle's line along the floor through where it waits now (the grid counts from there, so
-## the grid point under the finger is a whole number of newtons).
-func manipulation_surface(surface_id: String) -> ManipSurface:
-	if surface_id != "pull":
-		return null
-	return _pull_line(handle_rest().x)
-
-
-## The pull line along the floor with its origin (zero force) at `origin_x`.
-func _pull_line(origin_x: float) -> ManipSurface:
-	var line := ManipSurface.new(Transform3D(Basis(), Vector3(origin_x, 0.0, 0.0)),
-		Vector2(-REACH, 0.0), Vector2(REACH, 0.0))
-	line.exclude = [_floor.get_rid(), box.get_rid()]
-	return line
-
-
-## Picked up: from now on the force follows the handle. A box waiting at a track end is let go again.
-func manipulation_started(_id: String) -> void:
-	_pull = manipulation_surface("pull")
-	_pull_snap = float(Manipulator.parse_rules(definition).get("handle", {}).get("snap", 0.0))
-	_pull.snap = Vector2.ONE * _pull_snap
-	holding_handle = true
+## Pressed and held (2026-10-28): from the next step the push grows from 0 (PUSH_RATE). A box waiting
+## at a track end is let go again.
+func hold_started(_id: String) -> void:
+	push.start()
 	_forced = 0.0
 	if ended:
 		_release_end()
 		corrector.status = "holding"
 		_update_status(true)
-	props.grab(true)
 
 
-## Let go (also when the shell puts it back): the force is 0 again, the handle returns to the box.
-func manipulation_placed(_id: String, _transform: Transform3D) -> void:
-	_let_go()
-
-
-func manipulation_cancelled(_id: String) -> void:
-	_let_go()
-
-
-func _let_go() -> void:
-	holding_handle = false
-	_pull = null
-	_place_handle()
-	props.grab(false)
+## Let go (or the hold was cancelled): the push is 0 at once; a moving box slides on.
+func hold_ended(_id: String) -> void:
+	push.stop()

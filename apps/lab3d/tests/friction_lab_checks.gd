@@ -11,12 +11,13 @@
 ##    above it slides from the first step and follows the formula.
 ## 4. conditions: material and mass change the readouts and put the box back; unknown ids ignored;
 ##    the state is the formula's, not the engine corrector's.
-## 5. track end: the box stops at a bumper (formula stop, engine frozen), picking the handle frees it.
+## 5. track end: the box stops at a bumper (formula stop, engine frozen), a new press on the box frees it.
 ## 6. art: visual only (bodies, the same run without the reactions), draw-node budget.
-## 7. the handle through the real input path, in a freshly opened screen: the first pull moves the
-##    box on its first step, the force is FORCE_PER_M per metre on the 1 N grid, letting go sets it
-##    to 0 and the box slides to a stop; a push the other way below the limit holds; the graph.
-## 8. the measurement demo (--auto-drag) pulls the handle and resets the box.
+## 7. press and hold on the box through the real input path, in a freshly opened screen (2026-10-28):
+##    the push grows PUSH_RATE N/s from 0, the gauge shows its share of PUSH_MAX, the box starts on
+##    the first step the ramped force passes mu_s m g (and holds before it), pushed towards +x;
+##    letting go sets the force to 0 at once and the box slides to a stop; the graph.
+## 8. the measurement demo (--auto-drag) holds the box and resets it.
 extends RefCounted
 
 const VECTORS_PATH := "res://tests/friction_lab_vectors.json"
@@ -131,7 +132,7 @@ func check_definition() -> void:
 	var listed := ExperimentRegistry.load_all().map(func(d: Dictionary) -> String: return d.id)
 	var shared: Dictionary = ExperimentRegistry.shared_labs().get("friction", {})
 	expect.call(problems.is_empty() and listed.has("friction") and definition.get("content") == "friction"
-		and definition.get("title") == shared.get("title") and definition.get("tip", "") == shared.get("app", {}).get("tip", "") and definition.tip.contains("빨간 손잡이"),
+		and definition.get("title") == shared.get("title") and definition.get("tip", "") == shared.get("app", {}).get("tip", "") and definition.tip.contains("상자") and not definition.tip.contains("손잡이"),
 		"friction: definition valid, listed, texts and the app tip from the shared content", ", ".join(problems))
 	var ok := true
 	var materials := {}
@@ -281,15 +282,14 @@ func check_state_is_formula() -> void:
 	# The same gravity as the engine's (the formulas' g is the project setting, not a copy).
 	expect.call(lab.model.g == lab.engine_g and lab.engine_g == float(vectors.get("g", lab.engine_g)),
 		"friction: the model's g is the engine's gravity (and the TS vectors' g)", "%s vs %s" % [lab.model.g, lab.engine_g])
-	# A reset while the handle is held keeps the handle in the finger and counts the force from there.
-	lab.manipulation_started("handle")
-	lab.handle.global_position.x += 0.8
-	var held_x: float = lab.handle.global_position.x
+	# A reset while the box is held keeps the hold and counts the push from 0 again.
+	lab.hold_started("box")
+	await _until(lab, lab.frames + 12)   # 12 steps at 25 N/s: 5 N
 	var before: float = lab.applied_force()
 	lab.reset_box()
-	expect.call(before == 16.0 and lab.holding_handle and lab.handle.global_position.x == held_x and lab.applied_force() == 0.0,
-		"friction: a reset while the handle is held keeps the handle and restarts the force at 0 N", "before %.1f N, after %.1f N, handle x %.3f (was %.3f)" % [before, lab.applied_force(), lab.handle.global_position.x, held_x])
-	lab.manipulation_cancelled("handle")
+	expect.call(before == 5.0 and lab.push.held and lab.applied_force() == 0.0,
+		"friction: a reset while the box is held keeps the hold and restarts the push at 0 N", "before %.2f N, after %.2f N" % [before, lab.applied_force()])
+	lab.hold_ended("box")
 	await _free(lab)
 
 
@@ -312,14 +312,14 @@ func check_track_end() -> void:
 	var shown: Dictionary = lab.observations()
 	expect.call(stopped and shown.state == "바닥 끝에 닿았어요" and float(shown.speed) == 0.0,
 		"friction: the box stops at the track end (formula stop; the engine box is frozen there)", "x %.3f (formula %.3f), state %s" % [engine_x, lab.formula_x(), shown.state])
-	lab.manipulation_started("handle")
+	lab.hold_started("box")
 	var freed: bool = not lab.ended and not lab.box.freeze and lab.status() == "holding"
-	lab.manipulation_placed("handle", Transform3D())
+	lab.hold_ended("box")
 	lab.set_applied_force(-8.0)   # past the 2 kg steel box's 5.1 N
 	var start: int = lab.frames
 	await _until(lab, start + 30)
 	expect.call(freed and lab.status() == "sliding" and lab.box.global_position.x < engine_x - 0.01,
-		"friction: picking the handle frees a box at the end; a pull back moves it", "x %.3f" % lab.box.global_position.x)
+		"friction: a new press on the box frees it at the end; a push back moves it", "x %.3f" % lab.box.global_position.x)
 	lab.set_applied_force(0.0)
 	await _free(lab)
 	# Picked up in the very step the end was reached (the freeze is still pending): nothing freezes
@@ -333,14 +333,14 @@ func check_track_end() -> void:
 		k += 1
 		await _until(lab, k)
 	var pending: bool = lab.ended and lab._freeze_next
-	lab.manipulation_started("handle")
-	lab.manipulation_placed("handle", Transform3D())
+	lab.hold_started("box")
+	lab.hold_ended("box")
 	lab.set_applied_force(-8.0)
 	start = lab.frames
 	await _until(lab, start + 30)
 	expect.call(pending and not lab._freeze_next and not lab.box.freeze and lab.status() == "sliding"
 		and absf(lab.box.global_position.x - lab.formula_x()) <= 1e-3,
-		"friction: picking the handle in the step the end is reached leaves no pending freeze (engine box follows the formula)",
+		"friction: a press on the box in the step the end is reached leaves no pending freeze (engine box follows the formula)",
 		"freeze %s, engine %.4f formula %.4f" % [lab.box.freeze, lab.box.global_position.x, lab.formula_x()])
 	lab.set_applied_force(0.0)
 	await _free(lab)
@@ -354,9 +354,8 @@ func check_art() -> void:
 	for node in lab.find_children("*", "CollisionObject3D", true, false):
 		bodies.append("%s:%s" % [node.name, node.get_class()])
 	bodies.sort()
-	var handle: StaticBody3D = lab.handle
-	expect.call(bodies == ["Box:RigidBody3D", "Floor:StaticBody3D", "Handle:StaticBody3D"] and handle.collision_layer == 2 and handle.collision_mask == 0,
-		"friction art adds no collision objects (floor, box, handle on its own layer the box never hits)", ", ".join(bodies))
+	expect.call(bodies == ["Box:RigidBody3D", "Floor:StaticBody3D"] and lab.find_children("*Handle*", "", true, false).is_empty() and lab.find_children("Rod*", "", true, false).is_empty(),
+		"friction art adds no collision objects (floor and box; no handle, no rod since 2026-10-28)", ", ".join(bodies))
 	var runs := []
 	for with_juice in [true, false]:
 		lab.props.juice.process_mode = Node.PROCESS_MODE_INHERIT if with_juice else Node.PROCESS_MODE_DISABLED
@@ -374,65 +373,79 @@ func check_art() -> void:
 	await _free(lab)
 
 
-# --- 7. the handle through the input path -----------------------------------------------------
+# --- 7. press and hold on the box through the input path -------------------------------------
 
 func check_first_pull_input() -> void:
 	var screen: Control = await _open()
 	var lab: Experiment = screen.experiment
 	var m: Manipulator = screen.manipulator
-	var handle: StaticBody3D = lab.handle
-	var rest: Vector3 = lab.handle_rest()
-	# 1.62 m to the right: the grid point 1.60 m = 32 N, above the 8 kg wood box's 31.39 N.
-	var goal := rest + Vector3(1.62, 0.0, 0.0)
+	var limit: float = lab.model.max_static()   # 8 kg wood: 31.39 N
+	var press := _at(screen, lab.box.global_position)
+	_touch(screen, press, true)
+	var held: bool = m.mode == "hold" and m.active_id == "box" and lab.push.held
 	var start: int = lab.frames
-	_swipe(screen, _at(screen, handle.global_position), _at(screen, goal))
-	var held: bool = m.mode == "drag" and m.active_id == "handle" and lab.holding_handle
-	await _until(lab, start + 1)
-	await tree.physics_frame
-	var force: float = lab.applied_force()
-	var first_x: float = lab.model.displacement
-	var first_state: String = lab.status()
-	expect.call(held and force == 32.0 and first_state == "sliding" and first_x > 0.0,
-		"friction (first pull in a fresh screen): the handle 1.62 m out gives 32 N on the 1 N grid and the box moves on its first step",
-		"held %s, F %.2f N, state %s, x %s m" % [held, force, first_state, String.num_scientific(first_x)])
-	var pulled: int = lab.frames
-	await _until(lab, pulled + 60)
+	# Step by step until the box starts: the push is rate x held time, the box holds while it is at
+	# or below mu_s m g and starts on the first step above it.
+	var forces := []
+	var started := -1
+	var gauge_ok := true
+	while started < 0 and lab.frames < start + 4 * STEP_HZ:
+		await _until(lab, lab.frames + 1)
+		forces.append(lab.model.applied)
+		if not lab.model.holding:
+			started = forces.size()
+		var want: float = lab.PUSH_RATE * forces.size() / float(STEP_HZ)
+		if absf(lab.model.applied - want) > 1e-9:
+			gauge_ok = false
+	await tree.process_frame
+	var gauge: ForceGauge = lab.props.gauge
+	# The gauge was filled in the last frame's _process (a step may have run since).
+	var fill_ok: bool = gauge.visible and absf(gauge.fraction * lab.PUSH_MAX - lab.applied_force()) <= lab.PUSH_RATE / STEP_HZ + 1e-6
+	var at_start: float = forces[started - 1] if started > 0 else -1.0
+	var before_start: float = forces[started - 2] if started > 1 else -1.0
+	expect.call(held and gauge_ok and started > 0 and at_start > limit and before_start <= limit and fill_ok
+		and started == ceili(limit / lab.PUSH_RATE * STEP_HZ + 1e-9),
+		"friction (press and hold in a fresh screen): the push grows 25 N/s from 0 (gauge = push / 80 N); the box starts on the first step above mu_s m g = %.2f N (step %d, %.2f s)" % [limit, started, started / float(STEP_HZ)],
+		"held %s, ramp %s, start step %d: %.3f N (before %.3f N), gauge %s %.3f" % [held, gauge_ok, started, at_start, before_start, gauge.visible, gauge.fraction])
+	await _until(lab, lab.frames + 20)
 	var shown: Dictionary = lab.observations()
 	var engine_ok: bool = absf(lab.engine_displacement() - lab.model.displacement) <= 1e-4
-	expect.call(float(shown.applied) == 32.0 and shown.state == "움직여요 · 주는 힘이 마찰을 이겼어요" and engine_ok and lab.box.global_position.x > lab.START_X + 0.3,
-		"friction: while held the force stays 32 N, the box slides and the engine follows the formula", "x %.3f m" % lab.box.global_position.x)
-	_touch(screen, _at(screen, goal), false)
+	expect.call(shown.state == "움직여요 · 주는 힘이 마찰을 이겼어요" and engine_ok and lab.model.velocity > 0.0 and lab.box.global_position.x > lab.START_X,
+		"friction: while held the push keeps growing, the box slides towards +x and the engine follows the formula", "x %.3f m" % lab.box.global_position.x)
+	var peak_now: float = lab.applied_force()
+	_touch(screen, press, false)
 	await tree.process_frame
-	var let_go: bool = not lab.holding_handle and lab.applied_force() == 0.0 and handle.global_position.is_equal_approx(lab.handle_rest())
+	var let_go: bool = not lab.push.held and lab.applied_force() == 0.0 and m.mode == ""
+	await tree.process_frame
+	var gauge_gone: bool = not lab.props.gauge.visible
 	var guard := 0
-	while lab.status() != "holding" and guard < 4 * STEP_HZ:
+	while lab.status() != "holding" and guard < 6 * STEP_HZ:
 		await tree.physics_frame
 		guard += 1
 	await tree.physics_frame
 	var model: PushFrictionModel = lab.model
 	var stopped: Dictionary = lab.observations()
-	expect.call(let_go and lab.status() == "holding" and float(stopped.speed) < 1e-9 and stopped.state == "멈춰 있어요"
+	expect.call(let_go and gauge_gone and lab.status() == "holding" and float(stopped.speed) < 1e-9 and stopped.state == "멈춰 있어요"
 		and absf(model.heat - model.kinetic_friction() * model.path) <= 1e-9 * model.heat and model.heat > 1.0,
-		"friction: letting go sets the force to 0, the handle returns and the box slides to a stop; heat = mu_k m g x distance",
+		"friction: letting go sets the push to 0 at once (gauge gone) and the box slides to a stop; heat = mu_k m g x distance",
 		"heat %.3f J over %.3f m" % [model.heat, model.path])
 	var series: Dictionary = lab.graph_series()
 	var peak := 0.0
 	for p in series.applied:
 		peak = maxf(peak, p.y)
-	expect.call(series.applied.size() > 10 and peak == 32.0 and absf(series.max_static[0].y - lab.model.max_static()) <= 1e-4 and series.applied[-1].x <= lab.graph_x_max() + 1e-6,
-		"friction: the graph shows the applied force (32 N), the maximum static friction and friction over time", "%d points" % series.applied.size())
-	# The other way, 0.5 m left (-10 N, below the limit): it holds; friction = 10 N.
-	rest = lab.handle_rest()
-	var left := rest + Vector3(-0.51, 0.0, 0.0)
+	expect.call(series.applied.size() > 10 and peak <= peak_now + 1e-9 and peak > limit and absf(series.max_static[0].y - lab.model.max_static()) <= 1e-4 and series.applied[-1].x <= lab.graph_x_max() + 1e-6,
+		"friction: the graph shows the growing push, the maximum static friction and friction over time", "%d points, peak %.2f N" % [series.applied.size(), peak])
+	# A short press (0.5 s: 12.5 N, below the limit) holds the box; friction matches the push.
 	var x_before: float = lab.box.global_position.x
-	_swipe(screen, _at(screen, handle.global_position), _at(screen, left))
+	press = _at(screen, lab.box.global_position)
+	_touch(screen, press, true)
 	var held_at: int = lab.frames
 	await _until(lab, held_at + 30)
 	var pushed: Dictionary = lab.observations()
-	_touch(screen, _at(screen, left), false)
-	expect.call(lab.status() == "holding" and float(pushed.applied) == 10.0 and float(pushed.friction) == 10.0 and pushed.state == "버티는 중 · 마찰이 막고 있어요"
+	_touch(screen, press, false)
+	expect.call(lab.status() == "holding" and float(pushed.applied) == 12.5 and float(pushed.friction) == 12.5 and pushed.state == "버티는 중 · 마찰이 막고 있어요"
 		and absf(lab.box.global_position.x - x_before) <= 0.001,
-		"friction: a 10 N push the other way (below the limit) is held by static friction", str(pushed.applied))
+		"friction: a short press (12.5 N, below the limit) is held by static friction", str(pushed.applied))
 	await _close(screen)
 
 
@@ -445,12 +458,12 @@ func check_demo() -> void:
 	var peak := 0.0
 	var moved := 0.0
 	var reset_seen := false
-	for i in 4 * STEP_HZ:
+	for i in 6 * STEP_HZ:   # 1 s before the first press, a 3.2 s hold, the reset 0.4 s later
 		await tree.physics_frame
 		peak = maxf(peak, lab.applied_force())
 		moved = maxf(moved, lab.box.global_position.x - lab.START_X)
 		reset_seen = reset_seen or (moved > 0.5 and lab.box.global_position.x == lab.START_X)
 	screen.manipulator.start_demo(0.0)
-	expect.call(peak >= 0.95 * lab.REACH * lab.FORCE_PER_M and moved > 0.5 and reset_seen,
-		"friction: the measurement demo (--auto-drag) pulls the handle to its end (80 N) and resets the box after letting go", "peak %.1f N, moved %.2f m" % [peak, moved])
+	expect.call(peak >= lab.PUSH_RATE * 1.4 and moved > 0.5 and reset_seen,
+		"friction: the measurement demo (--auto-drag) holds the box (the push grows past mu_s m g) and resets it after letting go", "peak %.1f N, moved %.2f m" % [peak, moved])
 	await _close(screen)

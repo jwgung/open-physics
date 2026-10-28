@@ -1,6 +1,5 @@
 ## Grass island props of the push friction lab (apps/lab3d/docs/art-direction.md, section 9). Meshes
-## and reactions only: the floor, box and handle bodies are built by friction.gd and are not changed
-## here.
+## and reactions only: the floor and box bodies are built by friction.gd and are not changed here.
 ## - a yellow floor track (the web's "마찰이 있는 바닥" strip) with white metre ticks, a white start
 ##   line and blue bumpers beyond both ends; inside its yellow rim the track shows the chosen
 ##   material (SurfaceSkin, set_surface: 2026-10-28, rubber / wood / steel / clay),
@@ -8,22 +7,22 @@
 ##   as it is (set_look, 2026-10-28): one stuff, its side the cube root of its mass against the 8 kg
 ##   start box's 0.7 m, grown from the body's bottom (ArtJuice.look_scale). The body (a 0.7 m cube),
 ##   its friction and the formula's track-end stops stay; the bumpers move to where the look stops,
-##   and the rod, the grip and the cat's paws go to the look's height,
-## - the red handle (grip on a white post with a blue foot) and the rod from the box to it: blue
-##   while friction holds the box, red once it moves (the web's line colours),
-## - reactions: the box starts to move = dust puff + small stretch + red rod; it stops = settle;
-##   a track end = wobble; grabbing the handle = the grip grows a little.
+##   and the cat's paws go to the look's height,
+## - the push gauge (ForceGauge, 2026-10-28: the red handle and its rod went, the child presses and
+##   holds the box itself) beside the box's +x face while the box is held: the push's share of
+##   the most a hold gives (no numbers),
+## - reactions: the box starts to move = dust puff + small stretch; it stops = settle; a track end =
+##   wobble.
 ## - the bread cat (CatActor wearing the BreadCat look, Task 4g) behind the box (-x): both paws on
-##   the box's left face (where the box mesh is, squash included), leaning into a push or back on a
-##   pull with the force's share of the maximum static friction, shuffling along while the box
-##   moves; a small hop when the box comes to rest. Only meshes: the force, the box and the panel are the lab's.
+##   the box's left face (where the box mesh is, squash included), leaning into the push with the
+##   force's share of the maximum static friction (the held push grows, so does the lean), shuffling
+##   along while the box moves; a small hop when the box comes to rest. Only meshes: the force, the
+##   box and the panel are the lab's.
 class_name FrictionProps
 extends RefCounted
 
 const TRACK_WIDTH := 1.6
-const ROD_RADIUS := 0.05
-const GRIP := Vector3(0.18, 0.18, 0.56)
-const GRAB_SCALE := 1.18
+const GAUGE_GAP := 0.35          # m from the box look's +x face to the gauge
 ## Height of the cat's paws on the box face (m above the floor) on the 0.7 m start box; a smaller look
 ## takes them down in proportion.
 const CAT_HAND_Y := 0.62
@@ -35,12 +34,7 @@ var juice: ArtJuice
 var cat: CatActor
 var _box_visual: MeshInstance3D
 var _box_size := 0.7
-var rod_hold: MeshInstance3D    # blue rod (friction holds the box)
-var rod_move: MeshInstance3D    # red rod (the box moves)
-var _grip: MeshInstance3D
-var _rod_from := Vector3.INF    # box / handle positions the rod was last placed for
-var _rod_to := Vector3.INF
-var _rod_holding := true
+var gauge: ForceGauge
 var _look := 1.0                # the box look's size against the body's (set_look)
 var _stop := 5.63               # |x| of the box centre where the formula stops it at a track end
 ## The track's node and the surface material it shows (set_surface).
@@ -79,25 +73,6 @@ static func bumper_mesh(face: float) -> Mesh:
 	return b.commit()
 
 
-## The handle (mesh origin = the pick box centre, `height` tall): blue foot on the floor, white post,
-## red grip across the track at the centre (rod height).
-func handle_mesh(height: float) -> Mesh:
-	var b := ArtKit.builder()
-	var floor_y := -height * 0.5
-	b.ao_height = 0.15
-	b.add_cylinder(Transform3D(Basis(), Vector3(0.0, floor_y, 0.0)), 0.2, 0.17, 0.06, 8, ArtPalette.BLUE_DARK)
-	b.ao_min = 0.9
-	b.add_cylinder(Transform3D(Basis(), Vector3(0.0, floor_y, 0.0)), 0.035, 0.035, height * 0.5, 6, ArtPalette.WHITE)
-	return b.commit()
-
-
-func grip_mesh() -> Mesh:
-	var b := ArtKit.builder()
-	b.ao_min = 0.9
-	b.add_rounded_box(Transform3D.IDENTITY, GRIP, 0.07, 1, ArtPalette.RED, ArtPalette.RED_TOP)
-	return b.commit()
-
-
 ## The track node for a track of `length` with its start line at `start_x`; set_surface swaps its mesh.
 func make_track(length: float, start_x: float, material: String) -> MeshInstance3D:
 	_track_args = Vector2(length, start_x)
@@ -117,17 +92,9 @@ func set_surface(material: String) -> void:
 	track_visual.mesh = _track_meshes[material]
 
 
-## A rod of length 1 along +x from the node origin (scaled along x to the handle).
-static func rod_mesh(color: Color) -> Mesh:
-	var b := ArtKit.builder()
-	b.ao_min = 1.0
-	b.add_cylinder(Transform3D(Basis(Vector3.BACK, -PI * 0.5), Vector3.ZERO), ROD_RADIUS, ROD_RADIUS, 1.0, 6, color)
-	return b.commit()
-
-
-## Island, rod meshes, grip, bumpers and the box reactions. `handle_visual` is the handle's mesh node;
-## `stop` = |x| of the box centre where the formula stops it at a track end.
-func dress(experiment: Node3D, box_body: RigidBody3D, box_visual: MeshInstance3D, box_size: float, handle_visual: MeshInstance3D, stop: float) -> void:
+## Island, bumpers, the push gauge and the box reactions. `stop` = |x| of the box centre where the
+## formula stops it at a track end.
+func dress(experiment: Node3D, box_body: RigidBody3D, box_visual: MeshInstance3D, box_size: float, stop: float) -> void:
 	ArtKit.add_world(experiment, Vector3(0.0, 0.0, -0.8))
 	_stop = stop
 	bumpers = MeshInstance3D.new()
@@ -135,16 +102,8 @@ func dress(experiment: Node3D, box_body: RigidBody3D, box_visual: MeshInstance3D
 	bumpers.material_override = ArtKit.lit_material()
 	bumpers.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	experiment.add_child(bumpers)
-	_grip = ArtKit.instance(grip_mesh())
-	_grip.name = "Grip"
-	handle_visual.add_child(_grip)
-	rod_hold = ArtKit.instance(rod_mesh(ArtPalette.BLUE))
-	rod_hold.name = "RodHold"
-	experiment.add_child(rod_hold)
-	rod_move = ArtKit.instance(rod_mesh(ArtPalette.RED))
-	rod_move.name = "RodMove"
-	rod_move.visible = false
-	experiment.add_child(rod_move)
+	gauge = ForceGauge.new()
+	experiment.add_child(gauge)
 	juice = ArtJuice.new()
 	juice.name = "BoxJuice"
 	experiment.add_child(juice)
@@ -157,17 +116,15 @@ func dress(experiment: Node3D, box_body: RigidBody3D, box_visual: MeshInstance3D
 	set_look(1.0)
 
 
-## The box looks `k` times its body's size: the juice's look, the grip at the look's middle height
-## and the bumpers BUMPER_GAP beyond where the look stops.
+## The box looks `k` times its body's size: the juice's look and the bumpers BUMPER_GAP beyond
+## where the look stops.
 func set_look(k: float) -> void:
 	_look = k
 	juice.set_look_scale(k)
-	_grip.position.y = (k - 1.0) * _box_size * 0.5
 	var face := snappedf(_stop + k * _box_size * 0.5 + BUMPER_GAP, 0.001)
 	if not _bumper_meshes.has(face):
 		_bumper_meshes[face] = bumper_mesh(face)
 	bumpers.mesh = _bumper_meshes[face]
-	_rod_from = Vector3.INF   # the rod goes to the new height
 
 
 ## The box look's bounds now (world, at rest size): its body's bottom, k times the body's side.
@@ -191,31 +148,16 @@ func update_cat(force: float, max_static: float, travel: float, speed: float) ->
 	cat.push(cat_face_x(), CAT_HAND_Y * _look, effort, travel, speed, _box_visual.global_position.z)
 
 
-## Places the rod from the box's centre (at the grip's height, the look's middle) to the handle grip;
-## the colour shows whether friction holds the box. Only moves the rod when one of the ends moved.
-func update_rod(box_center: Vector3, grip: Vector3, holding: bool) -> void:
-	if rod_hold == null:
+## The push gauge beside the box at `box_center` (its body's centre): shown while `held`, filled to
+## `fraction` of the most a hold gives.
+func show_gauge(box_center: Vector3, held: bool, fraction: float) -> void:
+	if gauge == null:
 		return
-	if holding != _rod_holding:
-		_rod_holding = holding
-		rod_hold.visible = holding
-		rod_move.visible = not holding
-		_rod_from = Vector3.INF   # place the now visible rod
-	if box_center == _rod_from and grip == _rod_to:
+	gauge.visible = held
+	if not held:
 		return
-	_rod_from = box_center
-	_rod_to = grip
-	var rod := rod_hold if holding else rod_move
-	var start := box_center
-	var length := grip.x - start.x
-	var xf := Transform3D(Basis(Vector3.UP, PI if length < 0.0 else 0.0).scaled(Vector3(maxf(absf(length), 0.01), 1.0, 1.0)), Vector3(start.x, grip.y + _grip.position.y, start.z))
-	rod.global_transform = xf
-
-
-## The handle was picked up (true) or let go (false): the grip grows a little while held.
-func grab(on: bool) -> void:
-	if _grip != null:
-		_grip.scale = Vector3.ONE * (GRAB_SCALE if on else 1.0)
+	gauge.set_fraction(fraction)
+	gauge.global_position = Vector3(box_center.x + _look * _box_size * 0.5 + GAUGE_GAP + ForceGauge.WIDTH * 0.5, 0.05, box_center.z)
 
 
 ## Experiment status change -> reactions: starts to move = puff + stretch; comes to rest = settle.
@@ -241,4 +183,3 @@ func hit_end() -> void:
 func reset() -> void:
 	if juice != null:
 		juice.pop()
-	grab(false)

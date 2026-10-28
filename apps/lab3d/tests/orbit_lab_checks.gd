@@ -18,9 +18,11 @@
 ##    the prediction's colour, the guide at the start radius.
 ## 7. a freshly opened screen: "발사" gives the TS circular motion from the first step; the graph's
 ##    speed stays on the circular speed line.
-## 8. the real input path: dragging the knob (5 deg, 0.1 m/s grid; preview of the path while held,
-##    sliders follow) and the planet (0.5 m grid); the launch = formula.
-## 9. the measurement demo (--auto-drag) drags the planet and launches.
+## 8. the real input path (2026-10-28, no handles): pulling the planet itself like a slingshot sets
+##    the launch (the reversed pull: 5 deg, PULL_SCALE m per m/s on the 0.1 m/s grid; arrow, pull dots
+##    and the kid readout while held, no path preview) and letting go launches (= 발사; sliders follow);
+##    the launch = formula; the start radius is the condition (0.5 m grid).
+## 9. the measurement demo (--auto-drag) pulls the planet and launches.
 extends RefCounted
 
 const VECTORS_PATH := "res://tests/orbit_lab_vectors.json"
@@ -157,7 +159,7 @@ func check_definition() -> void:
 	var listed := ExperimentRegistry.load_all().map(func(d: Dictionary) -> String: return d.id)
 	var shared: Dictionary = ExperimentRegistry.shared_labs().get("orbit", {})
 	expect.call(problems.is_empty() and listed.has("orbit") and definition.get("title") == shared.get("title")
-		and definition.get("tip", "") == shared.get("app", {}).get("tip", "") and definition.tip.contains("노란 손잡이"),
+		and definition.get("tip", "") == shared.get("app", {}).get("tip", "") and definition.tip.contains("행성") and not definition.tip.contains("손잡이"),
 		"orbit: definition valid, listed, texts and the app tip from the shared content", ", ".join(problems))
 	var start := _case("circular")
 	var defaults := {}
@@ -364,7 +366,7 @@ func check_art() -> void:
 	for node in lab.find_children("*", "CollisionObject3D", true, false):
 		bodies.append("%s:%s" % [node.name, node.get_class()])
 	bodies.sort()
-	expect.call(bodies == ["Floor:StaticBody3D", "Knob:StaticBody3D", "Planet:RigidBody3D"] and lab.planet.collision_mask == 0 and lab.planet.freeze
+	expect.call(bodies == ["Floor:StaticBody3D", "Planet:RigidBody3D"] and lab.planet.collision_mask == 0 and lab.planet.freeze
 		and lab.planet.freeze_mode == RigidBody3D.FREEZE_MODE_KINEMATIC,
 		"orbit art adds no collision objects; the planet is kinematic and touches nothing (the formula moves it)", ", ".join(bodies))
 	var runs := []
@@ -421,17 +423,16 @@ func check_first_launch_screen() -> void:
 	var lab: Experiment = screen.experiment
 	var c := _case("circular")
 	var waiting: Dictionary = lab.observations()
-	# The velocity arrow keeps its length through the launch (same speed, same length) and ends at the
-	# knob's near face before it.
+	# The velocity arrow keeps its length through the launch (same speed, same length).
 	await tree.process_frame
 	var before: float = lab.props.velocity_arrow._built_length
-	var knob_gap: float = (lab.knob.global_position - lab.planet.global_position).length()
 	screen.experiment_action("launch")
 	await tree.process_frame
 	await tree.process_frame
 	var after: float = lab.props.velocity_arrow._built_length
-	expect.call(lab.released and absf(before - after) < 1e-9 and absf(before - (knob_gap - lab.KNOB_SIZE * 0.5)) < 0.02 and before > 0.0,
-		"orbit: the velocity arrow has the same length before and after the launch and ends at the knob's near face", "%.3f m -> %.3f m (knob %.3f m out)" % [before, after, knob_gap])
+	expect.call(lab.released and absf(before - after) < 1e-9 and absf(before - (lab.ARROW_OFFSET + 3.0 * lab.ARROW_SCALE)) < 0.02 and before > 0.0
+		and lab.find_children("Knob*", "", true, false).is_empty(),
+		"orbit: the velocity arrow has the same length before and after the launch (no knob since 2026-10-28)", "%.3f m -> %.3f m" % [before, after])
 	screen.experiment_action("launch")
 	var worst := 0.0
 	for s in c.samples:
@@ -455,46 +456,47 @@ func check_first_launch_screen() -> void:
 
 # --- 8. input path ----------------------------------------------------------------------------
 
+## The view point of a pull from the planet's start by `pull` (orbit-plane x, z metres).
+func _pull_point(screen: Control, lab: Experiment, pull: Vector2) -> Vector2:
+	return _at(screen, Vector3(lab.start_radius + pull.x, lab.ORBIT_Y, pull.y))
+
+
 func check_input_path() -> void:
 	var screen: Control = await _open()
 	var lab: Experiment = screen.experiment
 	var m: Manipulator = screen.manipulator
-	var knob: StaticBody3D = lab.knob
-	# The game round (missions): no path and no guide before the launch, also while the knob is held.
+	var planet: RigidBody3D = lab.planet
+	var at := _at(screen, planet.global_position)
+	# The game round (missions): no path and no guide before the launch, also while the planet is
+	# pulled; both appear at the launch (the release).
 	var game_hidden: bool = not lab.answer_preview and lab.props.path.multimesh.visible_instance_count == 0 \
 		and lab.props.guide.multimesh.visible_instance_count == 0
-	var nudge := knob.global_position + Vector3(0.0, 0.0, -0.4)
-	_swipe(screen, _at(screen, knob.global_position), _at(screen, nudge), 6)
+	# Pull towards the camera (+z) by about 4.52 m/s worth: the launch is 90 deg (away from the
+	# camera, counter-clockwise round the star), snapped to 4.5 m/s.
+	var pull_to := _pull_point(screen, lab, Vector2(0.0, 4.52 * lab.PULL_SCALE))
+	_swipe(screen, at, pull_to, 10)
 	await tree.process_frame
-	game_hidden = game_hidden and m.mode == "drag" and lab.props.path.multimesh.visible_instance_count == 0
-	_touch(screen, _at(screen, nudge), false)
-	await tree.process_frame
-	lab.run_action("launch")
-	game_hidden = game_hidden and lab.props.path.multimesh.visible_instance_count > 1 and lab.props.guide.multimesh.visible_instance_count == OrbitProps.DASHES
-	expect.call(game_hidden, "orbit (game round): no predicted path or guide before the launch, not even while the knob is held; both appear at the launch",
-		"path %d, guide %d" % [lab.props.path.multimesh.visible_instance_count, lab.props.guide.multimesh.visible_instance_count])
-	screen.experiment_action("reset")
-	lab.answer_preview = true   # the lab's own preview (outside a game round) below
-	lab.reset_run()
-	# Knob to about 4.52 m/s at 92 deg: snaps to 4.5 m/s, 90 deg; the preview turns purple (escape) while held.
-	var a := deg_to_rad(92.0)
-	var length: float = OrbitArrowSurface.OFFSET + 4.52 * OrbitArrowSurface.SCALE
-	var goal := Vector3(3.0 + cos(a) * length, knob.global_position.y, -sin(a) * length)
-	_swipe(screen, _at(screen, knob.global_position), _at(screen, goal), 10)
-	await tree.process_frame
-	await tree.process_frame
-	var held: bool = m.mode == "drag" and m.active_id == "arrow"
-	var preview_escape: bool = lab.props.path.multimesh.mesh == lab.props._dots.escape
-	_touch(screen, _at(screen, goal), false)
+	var pulling: bool = m.mode == "slingshot" and m.active_id == "planet" and planet.global_position.is_equal_approx(Vector3(3.0, lab.ORBIT_Y, 0.0)) and not lab.released
+	game_hidden = game_hidden and lab.props.path.multimesh.visible_instance_count == 0 and lab.props.guide.multimesh.visible_instance_count == 0
+	var arrow: float = lab.props.velocity_arrow._built_length
+	var dots: int = lab.props.pull_dots.dots()
+	var last_dot: Vector3 = lab.props.pull_dots.points[dots - 1] if dots > 0 else Vector3.INF
+	var hud: Label = screen._slingshot_hud
+	var readout_ok: bool = hud.visible and hud.text.contains("1초에") and hud.text.contains("4.5") and not hud.text.contains("도") and not hud.text.contains("m/s")
+	var preview_ok: bool = absf(arrow - (lab.ARROW_OFFSET + 4.5 * lab.ARROW_SCALE)) < 0.03 and dots > 3 \
+		and last_dot.distance_to(Vector3(3.0, lab.ORBIT_Y, 4.5 * lab.PULL_SCALE)) < 1e-3
+	_touch(screen, pull_to, false)
 	await tree.process_frame
 	var synced: bool = screen._control_widgets.speed.slider.value == 4.5 and screen._control_widgets.direction.slider.value == 90.0
-	expect.call(held and preview_escape and lab.speed == 4.5 and lab.direction == 90.0 and synced and lab.prediction.outcome == "escape",
-		"orbit: dragging the knob sets the launch on the 5 deg / 0.1 m/s grid (path previewed while held, sliders follow)",
-		"held %s, %.2f m/s at %.0f deg" % [held, lab.speed, lab.direction])
-	var grid := OrbitArrowSurface.launch_of(PolarArrowSurface.tip_point(-37.0, 2.34, OrbitArrowSurface.OFFSET, OrbitArrowSurface.SCALE))
-	var capped := OrbitArrowSurface.launch_of(PolarArrowSurface.tip_point(10.0, 9.0, OrbitArrowSurface.OFFSET, OrbitArrowSurface.SCALE))
-	expect.call(grid[0] == 325.0 and grid[1] == 2.3 and capped[1] == 6.0, "orbit: knob -> (direction 0-360 deg on 5 deg, speed on 0.1 m/s cells, at most 6 m/s)", str(grid))
-	screen.experiment_action("launch")
+	var launched: bool = lab.released and lab.speed == 4.5 and lab.direction == 90.0 and not hud.visible and lab.props.pull_dots.dots() == 0
+	game_hidden = game_hidden and lab.props.path.multimesh.visible_instance_count > 1 and lab.props.guide.multimesh.visible_instance_count == OrbitProps.DASHES
+	expect.call(pulling and preview_ok and readout_ok and launched and synced and game_hidden,
+		"orbit: pulling the planet towards the camera 4.52 m/s worth sets 90 deg, 4.5 m/s (arrow, pull dots and '1초에 4.5미터' while held, the planet stays, no path or guide) and letting go launches (sliders follow; path and guide appear at the launch)",
+		"pulling %s, arrow %.3f m, dots %d (last %s), readout '%s', launched %s (%.2f m/s %.0f deg), synced %s, game hidden %s" % [pulling, arrow, dots, str(last_dot), hud.text, launched, lab.speed, lab.direction, synced, game_hidden])
+	var grid: Vector2 = lab.pull_launch(-Vector2(cos(deg_to_rad(-37.0)), -sin(deg_to_rad(-37.0))) * 2.34 * lab.PULL_SCALE)
+	var capped: Vector2 = lab.pull_launch(Vector2(-9.0 * lab.PULL_SCALE, 0.0))
+	expect.call(grid.x == 325.0 and is_equal_approx(grid.y, 2.3) and capped == Vector2(0.0, 6.0),
+		"orbit: a pull -> the reversed launch (direction 0-355 deg on 5 deg, speed = length / %.1f m on 0.1 m/s cells, at most 6 m/s)" % lab.PULL_SCALE, "%s %s" % [str(grid), str(capped)])
 	var reference := OrbitModel.new()
 	reference.reset(3.0, 4.5 * cos(PI / 2.0), -4.5)
 	var worst := 0.0
@@ -503,21 +505,24 @@ func check_input_path() -> void:
 		while reference.steps < lab.model.steps:
 			reference.step(1.0 / STEP_HZ)
 		worst = maxf(worst, Vector2(lab.planet.global_position.x - reference.x, lab.planet.global_position.z - reference.z).length())
-	expect.call(worst <= ENGINE_TOLERANCE and lab.model.radius() > 4.0, "orbit: the launch after dragging the knob follows the formula (leaving)", "|dx| %s m" % String.num_scientific(worst))
-	# Since 2026-10-27 the knob is the lab's one drag: a press on the flying planet picks nothing up
-	# (the flight goes on), and the start radius is the picture buttons' and the slider's condition.
-	var planet: RigidBody3D = lab.planet
-	_swipe(screen, _at(screen, planet.global_position), _at(screen, Vector3(4.1, planet.global_position.y, 0.0)), 8)
-	var flying: bool = lab.released and m.mode == ""
-	_touch(screen, _at(screen, Vector3(4.1, planet.global_position.y, 0.0)), false)
+	expect.call(worst <= ENGINE_TOLERANCE and lab.model.radius() > 4.0, "orbit: the launch after the pull follows the formula (leaving)", "|dx| %s m" % String.num_scientific(worst))
+	# A press on the flying planet readies the next shot (the run waits at the start again, the launch
+	# and the radius stay); a tap launches nothing.
+	_touch(screen, _at(screen, planet.global_position), true)
+	var rearmed: bool = m.mode == "slingshot" and not lab.released and lab.speed == 4.5 and lab.start_radius == 3.0
+	_touch(screen, _at(screen, planet.global_position), false)
+	await tree.process_frame
+	var tap_nothing: bool = not lab.released and lab.speed == 4.5 and m.mode == ""
+	# 발사 launches with the last pulled launch.
+	screen.experiment_action("launch")
+	var again: bool = lab.released and lab.speed == 4.5 and lab.direction == 90.0
+	# The start radius is the condition: it stops the flight and the planet waits there.
 	screen._set_control("radius", 4.0)
 	await tree.process_frame
 	await tree.process_frame
-	var knob_back: bool = lab.props.knob_visual.visible and not lab.props.gravity_arrow.visible
-	expect.call(knob_back, "orbit: a new start radius during a flight shows the yellow launch knob again (waiting look)", "knob %s, gravity arrow %s" % [lab.props.knob_visual.visible, lab.props.gravity_arrow.visible])
-	expect.call(flying and not lab.released and lab.start_radius == 4.0 and is_equal_approx(planet.global_position.x, 4.0) and screen._control_widgets.radius.slider.value == 4.0
-		and is_equal_approx(knob.global_position.x, 4.0) and lab.radius_at(9.0) == 5.0 and lab.radius_at(0.0) == 2.0,
-		"orbit: a press on the flying planet picks nothing up; the radius condition (2-5 m, 0.5 m grid) stops the flight and the knob follows", "r %.2f" % lab.start_radius)
+	expect.call(rearmed and tap_nothing and again and not lab.released and lab.start_radius == 4.0 and is_equal_approx(planet.global_position.x, 4.0)
+		and screen._control_widgets.radius.slider.value == 4.0 and not lab.props.gravity_arrow.visible and lab.radius_at(9.0) == 5.0 and lab.radius_at(0.0) == 2.0,
+		"orbit: a press on the flying planet readies the next shot (a tap launches nothing), 발사 uses the last pull; the radius condition (2-5 m, 0.5 m grid) stops the flight", "r %.2f" % lab.start_radius)
 	await _close(screen)
 
 
@@ -537,6 +542,6 @@ func check_demo() -> void:
 			launches_seen[Vector2(lab.speed, lab.direction)] = true
 		was = lab.released
 	screen.manipulator.start_demo(0.0)
-	expect.call(launches >= 2 and launches_seen.size() >= 2, "orbit: the measurement demo (--auto-drag) drags the launch knob and launches",
+	expect.call(launches >= 2 and launches_seen.size() >= 2, "orbit: the measurement demo (--auto-drag) pulls the planet and launches",
 		"%d launches, (speed, direction) %s" % [launches, str(launches_seen.keys())])
 	await _close(screen)

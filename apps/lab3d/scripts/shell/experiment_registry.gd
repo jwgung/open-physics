@@ -581,7 +581,8 @@ static func _validate_key_observations(keys: Variant, observations: Array) -> Pa
 
 
 ## Optional `manipulation` (Task 2b): {"objects": [{"id", "surface", "snap" (m, optional),
-## "height": false | {"max" (m, > 0, a multiple of step), "step" (m, optional)}}],
+## "height": false | {"max" (m, > 0, a multiple of step), "step" (m, optional)}} or a hold object
+## {"id", "hold": true} (2026-10-28: press and hold, no surface)],
 ## "demo_action" (optional, an action id: what the --auto-drag demo does after putting an object down)}.
 static func _validate_manipulation(manipulation: Variant, actions: Array = []) -> PackedStringArray:
 	var problems := PackedStringArray()
@@ -592,8 +593,14 @@ static func _validate_manipulation(manipulation: Variant, actions: Array = []) -
 		return problems
 	var ids := {}
 	for object in manipulation.objects:
-		if not object is Dictionary or not object.get("id") is String or not object.get("surface") is String:
-			problems.append("manipulation object needs id and surface")
+		if not object is Dictionary or not object.get("id") is String:
+			problems.append("manipulation object needs an id")
+			continue
+		var hold: Variant = object.get("hold", false)
+		if not hold is bool:
+			problems.append("manipulation %s.hold must be true or false" % object.id)
+		if hold != true and not object.get("surface") is String:
+			problems.append("manipulation object %s needs a surface (or \"hold\": true)" % object.id)
 			continue
 		if ids.has(object.id):
 			problems.append("duplicate manipulation object %s" % object.id)

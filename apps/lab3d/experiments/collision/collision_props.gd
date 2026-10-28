@@ -1,12 +1,12 @@
 ## Grass island props of the collision lab (apps/lab3d/docs/art-direction.md, section 9). Meshes and
-## reactions only: the floor, ball and knob bodies are built and moved by collision.gd; nothing here
+## reactions only: the floor and ball bodies are built and moved by collision.gd; nothing here
 ## touches a body (the balls' rolling turns a child mesh, the squash is ArtJuice's mesh transform).
 ## - the rail: a yellow lane (14 x 1.4 m) between two white guide rails, white metre ticks, a white
 ##   middle mark between the two start halves and blue bumpers at both walls (visual: the walls are
 ##   the formula's; each bumper's face is where its ball's look meets it, set_sizes),
 ## - ball A blue, ball B orange (the web's object colours, from the palette), yarn balls (Task 4g;
 ##   until then each with a white band)
-##   that shows it rolling, its ArtJuice (shadow, dust, squash) and a yellow knob above it,
+##   that shows it rolling, its ArtJuice (shadow, dust, squash),
 ## - the balls' look follows their masses (set_sizes, 2026-10-28 user request: two 1 kg balls looked
 ##   different): one stuff, radii in the cube root of the mass ratio, chosen so that the two balls
 ##   resting on the floor touch exactly at the model's contact (centres radius_a + radius_b apart
@@ -14,9 +14,11 @@
 ##   The model, its radii and the bodies stay as they are. Ball A only ever meets the left bumper and
 ##   B the right one (A starts left of B and the model never lets them pass), so each bumper's face is
 ##   put where its ball's look reaches at the model's wall bounce.
-## - one arrow per ball above it: the purple velocity arrow to the knob while waiting (the web's
-##   purple arrow), the momentum arrow p = mv in the ball's colour while it moves (the web's
-##   momentum arrows; length 0.25 m per kg m/s),
+## - one arrow per ball above it: the purple velocity arrow while waiting (the web's purple arrow;
+##   while ball A is pulled, the pull's velocity), the momentum arrow p = mv in the ball's colour
+##   while it moves (the web's momentum arrows; length 0.25 m per kg m/s),
+## - the slingshot's pull line (PullDots, 2026-10-28): white dots from ball A back to where the
+##   finger pulls it, only while a pull is held,
 ## - the force pair at the contact for 0.5 s after a hit: two equal arrows pointing apart (red on A,
 ##   green on B; the web's "충돌 순간의 힘" overlay),
 ## - reactions: a hit = both balls squash along the rail (ArtJuice.bump) with dust; release = stretch;
@@ -32,7 +34,7 @@ extends RefCounted
 const LANE_WIDTH := 1.4
 const MOMENTUM_SCALE := 0.25     # m of arrow per kg m/s
 const MOMENTUM_MAX := 3.0        # m
-const ARROW_LIFT := 0.35         # m from a ball's top to its arrow and knob
+const ARROW_LIFT := 0.35         # m from a ball's top to its arrow
 const LENGTH_STEP := 0.02        # m: arrow lengths are rounded to this (the mesh is rebuilt rarely)
 const FORCE_LENGTH := 0.9        # m, each arrow of the force pair
 const FORCE_SHOW_S := 0.5
@@ -53,8 +55,7 @@ var spin_b: MeshInstance3D
 var arrow_a: VelocityArrow
 var arrow_b: VelocityArrow
 var force_pair: MeshInstance3D
-var knob_visual_a: MeshInstance3D
-var knob_visual_b: MeshInstance3D
+var pull_dots: PullDots
 var _radius_a := 0.4             # the model's (and the bodies') radii
 var _radius_b := 0.5
 ## The balls' look radii now (set_sizes): x = A, y = B.
@@ -107,8 +108,7 @@ static func force_pair_mesh() -> Mesh:
 	return b.commit()
 
 
-func dress(experiment: Node3D, ball_a: RigidBody3D, radius_a: float, ball_b: RigidBody3D, radius_b: float,
-		knob_a: Node3D, knob_b: Node3D, wall: float) -> void:
+func dress(experiment: Node3D, ball_a: RigidBody3D, radius_a: float, ball_b: RigidBody3D, radius_b: float, wall: float) -> void:
 	_host = experiment
 	_wall = wall
 	_radius_a = radius_a
@@ -129,8 +129,8 @@ func dress(experiment: Node3D, ball_a: RigidBody3D, radius_a: float, ball_b: Rig
 	var b := _dress_ball(experiment, ball_b, radius_b, ArtPalette.ORANGE)
 	juice_b = b[0]
 	spin_b = b[1]
-	knob_visual_a = knob_a.get_node("Visual")   # built with the knob (Experiment._make_knob)
-	knob_visual_b = knob_b.get_node("Visual")
+	pull_dots = PullDots.new()
+	experiment.add_child(pull_dots)
 	arrow_a = VelocityArrow.new()
 	arrow_a.name = "ArrowA"
 	experiment.add_child(arrow_a)
@@ -209,8 +209,8 @@ func spin(moved_a: float, moved_b: float) -> void:
 	spin_b.rotation.z = -moved_b / look.y
 
 
-## Waiting: purple velocity arrows from above each ball to its knob, signed lengths `la` / `lb` (m,
-## up to the knob's near face; 0 = hidden, any other length is drawn at least VelocityArrow.MIN_LENGTH long).
+## Waiting: purple velocity arrows above each ball, signed lengths `la` / `lb` (m,
+## 0 = hidden, any other length is drawn at least VelocityArrow.MIN_LENGTH long).
 func show_velocity(at_a: Vector3, radius_a: float, la: float, at_b: Vector3, radius_b: float, lb: float) -> void:
 	arrow_a.set_colors(ArtPalette.PURPLE, ArtPalette.PURPLE_TOP)
 	arrow_b.set_colors(ArtPalette.PURPLE, ArtPalette.PURPLE_TOP)
@@ -226,7 +226,17 @@ func show_momentum(at_a: Vector3, radius_a: float, pa: float, at_b: Vector3, rad
 	_place(arrow_b, at_b, radius_b, clampf(pb * MOMENTUM_SCALE, -MOMENTUM_MAX, MOMENTUM_MAX))
 
 
-## Height of a ball's arrow and knob centre above the floor.
+## The slingshot's pull line from ball A's centre `from` to the pulled point `to` (INF: no pull).
+func show_pull(from: Vector3, to: Vector3) -> void:
+	if pull_dots == null:
+		return
+	if to == Vector3.INF:
+		pull_dots.hide_line()
+	else:
+		pull_dots.show_line(from, to)
+
+
+## Height of a ball's arrow centre above the floor.
 static func arrow_height(radius: float) -> float:
 	return 2.0 * radius + ARROW_LIFT
 
@@ -258,8 +268,7 @@ func hit(contact_x: float, strength: float) -> void:
 
 ## "출발": `velocity_a` is ball A's start velocity (the cat's push follows it through).
 func released(velocity_a := 0.0) -> void:
-	knob_visual_a.visible = false
-	knob_visual_b.visible = false
+	pull_dots.hide_line()
 	juice_a.stretch()
 	juice_b.stretch()
 	_cheered = false
@@ -270,8 +279,6 @@ func released(velocity_a := 0.0) -> void:
 func reset() -> void:
 	if juice_a == null:
 		return
-	knob_visual_a.visible = true
-	knob_visual_b.visible = true
 	force_pair.visible = false
 	juice_a.pop()
 	juice_b.pop()

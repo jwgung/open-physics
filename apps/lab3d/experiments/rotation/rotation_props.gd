@@ -1,5 +1,5 @@
 ## Grass island props of the lever lab (apps/lab3d/docs/art-direction.md, section 9). Meshes and
-## reactions only: the beam, the load, the fulcrum stand and the handle are bodies built and posed by
+## reactions only: the beam, the load and the fulcrum stand are bodies built and posed by
 ## rotation.gd; nothing here moves a body.
 ## - the static base (one mesh): a yellow board on the grass and the blue rest block under the beam's
 ##   left end (the load side rests on it until the lever lifts),
@@ -8,15 +8,15 @@
 ## - the fulcrum stand: a blue triangular prism with its blob shadow, under the stand body,
 ## - the orange load box (the web's load colour) with its ArtJuice; it looks as heavy as it is
 ##   (set_look, 2026-10-28: one stuff, the cube root of its mass against the 20 kg load's 0.7 m, grown
-##   from its bottom on the beam; the body, its place on the beam and the model stay); the red handle grip, and a white
-##   rod from the grip down to the effort point on the beam (posed each frame),
+##   from its bottom on the beam; the body, its place on the beam and the model stay). The red
+##   handle and its rod went on 2026-10-28: the child presses and holds the chosen (red) effort
+##   point itself and the lab's gauge (ForceGauge) beside it fills,
 ## - arrows: the red force on the beam at the effort point (down) and the orange weight of the load,
 ##   FORCE_SCALE m per N (at most ARROW_MAX m),
 ## - reactions: lifted = the load stretches; back down = a small squash; reset = pop.
 ## - the bread cat (CatActor wearing the BreadCat look, 2026-10-27) on a stack of bread crates behind
-##   the beam just right of the effort point (left of it near the beam's end; clear of the handle and
-##   its rod): both paws on the
-##   beam's top there, pressing it down with the finger (the bag squashes a little with the force's
+##   the beam just right of the effort point (left of it near the beam's end): both paws on the
+##   beam's top there, pressing it down with the held press (the bag squashes a little with the force's
 ##   share of the required force; as the effort side goes down it leans after it, at most
 ##   CAT_LEAN_MAX, and its arms reach the rest); a nod when the load lifts. Only meshes: the beam
 ##   turns as the lever model says.
@@ -26,7 +26,6 @@ extends RefCounted
 const BEAM_COLOR := ArtPalette.YELLOW
 const FORCE_SCALE := 0.006        # m of arrow per N
 const ARROW_MAX := 2.4
-const ROD_RADIUS := 0.04
 ## The cat: its base right of the effort point (CAT_RIGHT along the beam) and behind the beam
 ## (CAT_Z), its paws' z on the beam top and their distance either side of that point, its
 ## shoulders' height above the level beam's top, its lean limit (deg).
@@ -42,7 +41,6 @@ var juice: ArtJuice
 var look := 1.0
 var _load_size := 0.7
 var markers: MeshInstance3D
-var rod: MeshInstance3D
 var force_arrow: VelocityArrow
 var weight_arrow: VelocityArrow
 var _marker_key := Vector4(INF, INF, INF, INF)   # the three points and the chosen one
@@ -102,15 +100,6 @@ static func stand_mesh(height: float, depth: float) -> Mesh:
 	return b.commit()
 
 
-static func grip_mesh(size: Vector3) -> Mesh:
-	var b := ArtKit.builder()
-	b.ao_min = 0.9
-	b.add_rounded_box(Transform3D.IDENTITY, size, 0.08, 1, ArtPalette.RED, ArtPalette.RED_TOP)
-	b.ao_min = 1.0
-	b.add_rounded_box(Transform3D(Basis(), Vector3(0.0, size.y * 0.5 + 0.005, 0.0)), Vector3(size.x * 0.6, 0.01, 0.06), 0.0, 1, ArtPalette.WHITE)
-	return b.commit()
-
-
 func dress(experiment: Node3D, parts: Dictionary, sizes: Dictionary) -> void:
 	ArtKit.add_world(experiment, Vector3(0.0, 0.0, -0.6))
 	var base := ArtKit.instance(base_mesh(sizes.beam_half, sizes.rest_x, sizes.rest_top))
@@ -141,12 +130,6 @@ func dress(experiment: Node3D, parts: Dictionary, sizes: Dictionary) -> void:
 	experiment.add_child(juice)
 	juice.setup(parts.load, load_visual, sizes.load_size)
 	_load_size = sizes.load_size
-	var grip := ArtKit.instance(grip_mesh(sizes.handle))
-	grip.name = "Visual"
-	parts.handle.add_child(grip)
-	rod = ArtKit.instance(ArtKit.link_mesh(ROD_RADIUS, ArtPalette.WHITE))
-	rod.name = "HandleRod"
-	experiment.add_child(rod)
 	force_arrow = VelocityArrow.new(ArtPalette.RED, ArtPalette.RED_TOP)
 	force_arrow.name = "ForceArrow"
 	experiment.add_child(force_arrow)
@@ -199,10 +182,9 @@ func show_markers(points: Array[float], chosen: int, thick: float, depth: float)
 	markers.mesh = marker_mesh(points, chosen, thick, depth)
 
 
-## The rod from the grip's bottom `grip_bottom` to the effort point `effort`; the force arrow above
-## the effort point (`force` N, down) and the weight arrow below the load centre (`weight` N).
-func show_forces(grip_bottom: Vector3, effort: Vector3, force: float, load_centre: Vector3, load_half: float, weight: float) -> void:
-	ArtKit.stretch_link(rod, grip_bottom, effort)
+## The force arrow above the effort point `effort` (`force` N, down) and the weight arrow below the
+## load centre (`weight` N).
+func show_forces(effort: Vector3, force: float, load_centre: Vector3, load_half: float, weight: float) -> void:
 	force_arrow.visible = force >= 0.5
 	if force_arrow.visible:
 		var l := minf(ARROW_MAX, snappedf(force * FORCE_SCALE, 0.02))

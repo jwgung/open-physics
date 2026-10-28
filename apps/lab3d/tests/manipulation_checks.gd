@@ -632,6 +632,8 @@ func check_default_view_drag() -> void:
 			turned.append("%s: no manipulator" % definition.id)
 		else:
 			for id in m.rules:
+				if m.rules[id].hold:
+					continue   # a press and hold (2026-10-28) moves nothing and never turns the camera
 				for kind in ["drag", "height"] if m.rules[id].height_max > 0.0 else ["drag"]:
 					var yaw := rig.goal_yaw
 					var pitch := rig.goal_pitch
@@ -641,7 +643,7 @@ func check_default_view_drag() -> void:
 						turned.append("%s/%s/%s" % [definition.id, id, kind])
 					m.cancel()
 		await _close(screen)
-	expect.call(turned.is_empty() and count >= 21, "default front view: grabbing any object (%d grabs in 11 experiments) leaves the camera where it is" % count, ", ".join(turned))
+	expect.call(turned.is_empty() and count >= 15, "default front view: grabbing any object (%d grabs in 11 experiments; the press-and-hold objects move nothing) leaves the camera where it is" % count, ", ".join(turned))
 	# A line along the view (the incline seen from its lower end) still turns the camera.
 	var rig_only := CameraRig.new()
 	rig_only.configure(ExperimentRegistry.find("incline-friction").camera)

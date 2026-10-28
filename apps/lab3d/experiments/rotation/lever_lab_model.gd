@@ -2,11 +2,9 @@
 ## (src/app/mechanics-challenges.ts) on a 6 m beam. The fulcrum sits under the beam at pivot_x, the
 ## load at load_x (both dragged on a 0.25 m grid; the beam's centre stays at x = 0), and the effort
 ## point is one of the web's three points, a fraction 0.35 / 0.6 / 0.9 of the way from the fulcrum
-## to the beam's right end. The red handle is a spring scale: each grid cell it is pressed down
-## (force_step newtons per cell) is that much more hand force. The scale starts at the web-like
-## FORCE_STEP = 5 N per cell and takes the next of FORCE_STEPS when the full press (max_cells cells)
-## would not reach the required force (up to 1588 N for a 20 kg load close to the fulcrum), so
-## every condition can be lifted; fit_force_step() chooses it from the conditions.
+## to the beam's right end. The hand force `hand` (N) is the lab's input: since 2026-10-28 the child
+## presses and holds the effort point and the force grows (HoldRamp); before that a red handle was a
+## spring scale of 5 N per 2 cm cell (the TS vectors still press in those cells: hand = cells x 5 N).
 ## As in the web app, the force on the beam is the hand force capped at the required force
 ## F = m g r_load / r_effort (LeverChallenge.applyForce: lifting when it reaches it), and the beam
 ## lies level or turns to the web's lift angle 0.18 rad (load side up) - a quasi-static lever: at
@@ -16,8 +14,6 @@ class_name LeverLabModel
 extends RefCounted
 
 const LIFT_ANGLE := PhysicsLaws.LEVER_LIFT_ANGLE   # rad, the web's LEVER_LIFT_ANGLE
-const FORCE_STEP := 5.0            # N per handle grid cell (the rule's snap, 0.02 m: 250 N/m)
-const FORCE_STEPS: Array[float] = [5.0, 10.0, 20.0, 50.0]   # the scales fit_force_step() picks from
 
 var beam_half := 3.0               # m, half the beam length (beam centre at x = 0)
 var pivot_x := -0.5                # world x of the fulcrum (the beam turns about it)
@@ -27,8 +23,7 @@ var load_up := 0.46                # m from the beam axis up to the load centre 
 var fraction := 0.6                # effort point: this fraction of the right arm (web 0.35 / 0.6 / 0.9)
 var mass := 20.0
 var g := 9.81
-var cells := 0                     # handle grid cells pressed down
-var force_step := FORCE_STEP       # N per handle grid cell now (one of FORCE_STEPS)
+var hand := 0.0                    # N: the hand's force on the effort point (0 = not pressed)
 
 
 ## r_load: fulcrum to load (m).
@@ -60,29 +55,9 @@ func required() -> float:
 	return PhysicsLaws.lever_required_force(mass, g, load_arm(), effort_arm())
 
 
-## The smallest scale of FORCE_STEPS whose full press of `max_cells` cells reaches the required
-## force (the largest if none does); sets force_step.
-func fit_force_step(max_cells: int) -> void:
-	force_step = FORCE_STEPS[-1]
-	for step in FORCE_STEPS:
-		if max_cells * step >= required():
-			force_step = step
-			return
-
-
-## The most the handle can push (N) with `max_cells` cells of press.
-func max_hand_force(max_cells: int) -> float:
-	return max_cells * force_step
-
-
-## The spring scale's reading (N): force_step per pressed cell.
-func hand_force() -> float:
-	return cells * force_step
-
-
 ## Force on the beam (N): the hand force capped at the required force (the web's lever drag).
 func applied() -> float:
-	return minf(required(), hand_force())
+	return minf(required(), hand)
 
 
 func lifting() -> bool:

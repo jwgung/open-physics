@@ -70,7 +70,7 @@
     "card": "start_force",
     "place": "상자 밀기",
     "say": "바닥이 상자를 붙잡고 버텨요. 무거운 상자일수록 꽉 붙잡아서 더 세게 밀어야 움직여요.",
-    "tip": "빨간 손잡이를 옆으로 끌면 상자를 밀어요.",
+    "tip": "상자를 꾹 누르고 있으면 밀어요!",
     "picks": {
       "mass": [
         {"value": "light", "label": "가벼운 상자", "picture": "box", "size": 0.585},
@@ -112,7 +112,7 @@
   "manipulation": {
     "grab_radius": 72.0,
     "objects": [
-      { "id": "handle", "surface": "pull", "snap": 0.05, "height": false }
+      { "id": "box", "hold": true }
     ],
     "demo_action": "reset"
   },

@@ -63,6 +63,10 @@
 ## 20. easy controls (tests/easy_controls_checks.gd, 2026-10-27): per lab the stage's condition picture
 ##    buttons (exactly its conditions, a tap = the sidebar's change, clear of the other overlays on
 ##    phone and tablet), one drag gesture per lab and its grab radius, the removed handles gone.
+## 20a. object controls (tests/object_controls_checks.gd, 2026-10-28): no handle in the collision,
+##    orbit, friction, lever and pulley labs; the slingshot of ball A and the planet, the press and hold
+##    of the box, the effort end and the rope end (rates per stage, the heaviest within ~3 s); the same
+##    runs as the forces / values given without the hand; empty space does nothing; one tap is one.
 ## 20b. kid words and the science note (tests/kid_words_checks.gd, 2026-10-28): a stage judges the
 ##    number its card shows, the free fall's card is the red ball's time, the spring's first stage shows
 ##    the pull, the push's card is a bar, no 뉴턴 / 초속 / decimals in the kid texts, and every lab's
@@ -298,6 +302,11 @@ func _run() -> void:
 	_expect(easy != null and easy.can_instantiate(), "easy controls checks compile", "")
 	if easy != null and easy.can_instantiate():
 		await easy.new(self, _expect).run()
+	print("== object controls (2026-10-28): no handles, slingshot pulls, press-and-hold rates, physics unchanged ==")
+	var objects: GDScript = load("res://tests/object_controls_checks.gd")
+	_expect(objects != null and objects.can_instantiate(), "object controls checks compile", "")
+	if objects != null and objects.can_instantiate():
+		await objects.new(self, _expect).run()
 	print("== story (2026-10-28 별 조각 찾기): prologue, clues, pieces, flights, finale, old saves, measurements ==")
 	var story: GDScript = load("res://tests/story_checks.gd")
 	_expect(story != null and story.can_instantiate(), "story checks compile", "")

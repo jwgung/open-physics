@@ -7,11 +7,10 @@
 ##    takes one, focus_enabled false takes none.
 ## 2. throw (projectile screen): no close-up (2026-10-28 user): the camera does not move from
 ##    "공 놓기" to the landing, the ball leaves the paw inside the view, the formula path on screen.
-## 3. push (friction screen): no close-up (2026-10-28 user): picking up the handle keeps the view;
-##    (before: picking up the handle of a box at rest framed the cat, box and handle
-##    closer; while the camera moves a still finger changes neither the handle nor the force; the
-##    first force starts the return; from the first step the box slides (a hard pull: cut) or from a
-##    gentle push's slide, the camera transform does not change while the handle is held.
+## 3. push (friction screen): no close-up (2026-10-28 user): pressing and holding the box keeps the
+##    view while the push grows, and from the step the box slides the camera transform does not
+##    change while the box is held (the red handle went on 2026-10-28; before, picking it up framed
+##    the cat, box and handle closer).
 extends RefCounted
 
 const EXPERIMENT_SCREEN := "res://scripts/shell/experiment_screen.gd"
@@ -20,8 +19,6 @@ const TABLET := Vector2(1152, 720)
 const PHONE := Vector2(1560, 720)
 ## Same as bread_cat_checks.gd: frames before the release frame after "공 놓기" (0.48 s).
 const THROW_FRAMES := 28
-## The cat on screen in the close-up vs the front view (the front view shows it ~11 % of the height).
-const CAT_GROWTH := 2.0
 
 var tree: SceneTree
 var expect: Callable   # (ok: bool, label: String, detail: String)
@@ -71,11 +68,6 @@ func _screen_rect(screen: Control, box: AABB) -> Rect2:
 	for i in 8:
 		r = r.expand(_at(screen, box.get_endpoint(i)))
 	return r
-
-
-## Share of the view height the cat takes on screen.
-func _cat_fill(screen: Control) -> float:
-	return _screen_rect(screen, screen.experiment.props.cat.bounds()).size.y / screen.view.size.y
 
 
 func _same_view(a: Dictionary, b: Dictionary) -> bool:
@@ -235,67 +227,39 @@ func check_throw(size: Vector2, label: String) -> void:
 # --- 3. push ----------------------------------------------------------------------------------
 
 func check_push() -> void:
-	for pull in [["hard", 320.0], ["gentle", 0.0]]:
-		await _push_case(pull[0], pull[1])
-
-
-## Picks up the handle of the box at rest, waits with a still finger, then pulls: `far` UI units in
-## one move (hard: the box breaks loose at once, the return is cut), or (gentle) 1 N steps until the
-## box slides, slowly enough that the return has ended before it does.
-func _push_case(kind: String, far: float) -> void:
 	var screen: Control = await _open("friction", TABLET)
 	var rig: CameraRig = screen.view.rig
 	var lab: Experiment = screen.experiment
 	var manipulator: Manipulator = screen.manipulator
 	var home := rig.get_state()
-	var front_fill := _cat_fill(screen)
-	var finger := _at(screen, lab.handle.global_position)
+	var finger := _at(screen, lab.box.global_position)
 	manipulator.handle_pointer("press", finger)
-	var picked: bool = manipulator.mode == "drag" and not rig.is_focused()
-	var grab_view := rig.global_transform
+	var held: bool = manipulator.mode == "hold" and not rig.is_focused()
+	var view := rig.global_transform
 	var moved_holding := 0
-	var handle_at: Vector3 = lab.handle.global_position
-	var still := true
 	var forces := {}
-	for i in 30:
-		await tree.process_frame
-		await tree.physics_frame
-		still = still and lab.handle.global_position.is_equal_approx(handle_at)
-		forces[lab.applied_force()] = true
-		if rig.global_transform != grab_view:
-			moved_holding += 1
-	var close_fill := _cat_fill(screen)
 	var slid := false
 	var moved_sliding := 0
 	var sliding_frames := 0
-	var at := rig.global_transform
 	var guard := 0
-	var pulled := finger
 	while sliding_frames < 30 and guard < 600:
 		guard += 1
-		if not slid:
-			if kind == "hard":
-				pulled = finger + Vector2(far, 0.0)
-			elif guard % 12 == 0:
-				pulled += Vector2(4.0, 0.0)   # about a grid step (1 N) every 0.2 s
-			manipulator.handle_pointer("move", pulled)
 		await tree.physics_frame
 		await tree.process_frame
-		if lab.status() == "sliding" and not slid:
-			slid = true
-			at = rig.global_transform
-		elif slid:
+		forces[lab.applied_force()] = true
+		if not slid:
+			if rig.global_transform != view:
+				moved_holding += 1
+			if lab.status() == "sliding":
+				slid = true
+		else:
 			sliding_frames += 1
-			if rig.global_transform != at:
+			if rig.global_transform != view:
 				moved_sliding += 1
-	var back := _at_home(rig, home) and manipulator.mode == "drag"
-	manipulator.handle_pointer("release", pulled)
+	var back := _at_home(rig, home) and manipulator.mode == "hold"
+	manipulator.handle_pointer("release", finger)
 	await tree.process_frame
-	if kind == "hard":
-		expect.call(picked and still and forces.size() == 1 and forces.has(0.0) and moved_holding == 0,
-			"no close-up (push, 2026-10-28 user): picking up the handle keeps the child's view; a still finger moves neither the handle nor the force",
-			"picked %s, handle still %s, forces %s, moved %d, cat %.1f %% -> %.1f %%" % [picked, still, str(forces.keys()), moved_holding, front_fill * 100.0, close_fill * 100.0])
-	expect.call(slid and moved_sliding == 0 and back,
-		"push (%s pull): from the step the box slides the camera does not move (the user's view, handle still held)" % kind,
-		"slid %s, moved %d of %d sliding frames, home %s" % [slid, moved_sliding, sliding_frames, back])
+	expect.call(held and forces.size() > 30 and moved_holding == 0 and slid and moved_sliding == 0 and back,
+		"no close-up (push, 2026-10-28 user): pressing and holding the box keeps the child's view while the push grows and while the box slides",
+		"held %s, %d forces, moved %d holding / %d of %d sliding, home %s" % [held, forces.size(), moved_holding, moved_sliding, sliding_frames, back])
 	await _close(screen)

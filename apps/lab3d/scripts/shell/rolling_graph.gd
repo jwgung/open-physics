@@ -1,5 +1,5 @@
 ## Graph samples over a sliding time window (Phase 1 Task 4e: the lever and pulley labs, whose clock
-## runs only while a handle is held, like the web's graph time). add() keeps the samples of the last
+## runs only while the object is held, like the web's graph time). add() keeps the samples of the last
 ## `window` seconds; series() gives them shifted so the window starts at x = 0 (GraphView's fixed x
 ## range). `revision` changes with every add() / clear() (Experiment.graph_revision()).
 ## While the clock stands still (nothing held) repeated add()s at the same time keep at most two

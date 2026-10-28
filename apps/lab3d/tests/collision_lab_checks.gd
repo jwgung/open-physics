@@ -17,12 +17,13 @@
 ## 5. art: visual only (bodies, the same run without reactions), draw-node budget.
 ## 6. a freshly opened screen: "출발" gives the first collision on the TS step with the TS outcome, the
 ##    engine balls on the TS positions; the graph shows both momenta (signed).
-## 7. the real input path: dragging ball A (0.5 m grid on its half) and its arrow knob (0.5 m/s grid,
-##    preview while held, slider follows), then a run = formula.
-## 8. the measurement demo (--auto-drag) drags ball A and starts runs that collide.
+## 7. the real input path (2026-10-28, no handles): pulling ball A back like a slingshot sets its
+##    velocity (PULL_SCALE m per m/s, 0.5 m/s grid, +-9 m/s; arrow, pull dots and the kid readout
+##    while held) and letting go launches it towards B (= 출발; slider follows), then a run = formula.
+## 8. the measurement demo (--auto-drag) pulls ball A and starts runs that collide.
 ## 9. review fixes: signed graph ticks, reactions by the step's closing speed, engine record past the
 ##    history window (29 s run), arrows of slow balls, one restart per restored state, squash keeps
-##    the ball on the rail, arrow cache key, knob factory.
+##    the ball on the rail, arrow cache key, knob factory (the projectile's).
 extends RefCounted
 
 const VECTORS_PATH := "res://tests/collision_lab_vectors.json"
@@ -192,7 +193,7 @@ func check_definition() -> void:
 	var listed := ExperimentRegistry.load_all().map(func(d: Dictionary) -> String: return d.id)
 	var shared: Dictionary = ExperimentRegistry.shared_labs().get("collision", {})
 	expect.call(problems.is_empty() and listed.has("collision") and definition.get("content") == "collision"
-		and definition.get("title") == shared.get("title") and definition.get("tip", "") == shared.get("app", {}).get("tip", "") and definition.tip.contains("노란 손잡이"),
+		and definition.get("title") == shared.get("title") and definition.get("tip", "") == shared.get("app", {}).get("tip", "") and definition.tip.contains("파란 공") and not definition.tip.contains("손잡이"),
 		"collision: definition valid, listed, texts and the app tip from the shared content", ", ".join(problems))
 	# Materials: every vector case's (material, e) pair is the option's e.
 	var ok := true
@@ -345,9 +346,9 @@ func check_art() -> void:
 	for node in lab.find_children("*", "CollisionObject3D", true, false):
 		bodies.append("%s:%s" % [node.name, node.get_class()])
 	bodies.sort()
-	expect.call(bodies == ["BallA:RigidBody3D", "BallB:RigidBody3D", "Floor:StaticBody3D", "KnobA:StaticBody3D", "KnobB:StaticBody3D"]
-		and lab.ball_a.collision_mask == 0 and lab.knob_a.collision_mask == 0 and lab.ball_a.get_collision_exceptions().has(lab.ball_b),
-		"collision art adds no collision objects; the balls touch nothing in the engine (the formula owns the hit)", ", ".join(bodies))
+	expect.call(bodies == ["BallA:RigidBody3D", "BallB:RigidBody3D", "Floor:StaticBody3D"]
+		and lab.ball_a.collision_mask == 0 and lab.ball_a.get_collision_exceptions().has(lab.ball_b) and lab.find_children("Knob*", "", true, false).is_empty(),
+		"collision art adds no collision objects (no knobs since 2026-10-28); the balls touch nothing in the engine (the formula owns the hit)", ", ".join(bodies))
 	var runs := []
 	for with_juice in [true, false]:
 		for juice in [lab.props.juice_a, lab.props.juice_b]:
@@ -386,7 +387,7 @@ func check_first_collision_screen() -> void:
 	await _until(lab, int(sample.step))
 	var dx: float = maxf(absf(lab.ball_a.global_position.x - float(sample.x[0])), absf(lab.ball_b.global_position.x - float(sample.x[1])))
 	expect.call(before_hit and lab.model.first_step == hit and _first_error(shown, first) <= tolerance and shown.state == "충돌! 충격량이 전달됐어요" and dx <= ENGINE_TOLERANCE
-		and waiting.state == "출발 전 · 화살표로 속도를 정해요" and float(waiting.before_a) == 3.4,
+		and waiting.state == "출발 전 · 파란 공을 당겨 속도를 정해요" and float(waiting.before_a) == 3.4,
 		"collision (fresh screen): 출발 → the first collision on the TS step %d with the TS outcome, engine balls on the TS positions" % hit,
 		"after %.4f / %.4f m/s, |dx| %s m" % [float(shown.after_a), float(shown.after_b), String.num_scientific(dx)])
 	await _until(lab, 240)
@@ -404,31 +405,31 @@ func check_input_path() -> void:
 	var lab: Experiment = screen.experiment
 	var m: Manipulator = screen.manipulator
 	var ball: RigidBody3D = lab.ball_a
-	# Since 2026-10-27 the knobs are the lab's one drag: a ball is not slid along the rail any more.
-	var goal := Vector3(-2.1, ball.global_position.y, 0.0)
-	_swipe(screen, _at(screen, ball.global_position), _at(screen, goal))
-	var held: bool = m.active_id == "ball_a"
-	_touch(screen, _at(screen, goal), false)
-	await tree.process_frame
-	var knob: StaticBody3D = lab.knob_a
 	var start: float = lab.start_a
-	expect.call(not held and start == lab.START_A and is_equal_approx(ball.global_position.x, lab.START_A),
-		"collision: a ball is not dragged along the rail (the knob is the lab's drag)", "held %s, start %.3f" % [held, start])
-	# Knob to about 5.1 m/s: snaps to 5 m/s; the arrow previews the snapped value while held.
-	var knob_goal := Vector3(start + 5.1 * lab.ARROW_SCALE, knob.global_position.y, 0.0)
-	_swipe(screen, _at(screen, knob.global_position), _at(screen, knob_goal))
+	var at := _at(screen, ball.global_position)
+	# Pull ball A back (away from B) by about 5.1 m/s worth: the pull snaps to 5 m/s; the ball itself
+	# stays, the arrow, the pull dots and the readout show the value the release launches.
+	var pull_to := _at(screen, Vector3(start - 5.1 * lab.PULL_SCALE, lab.RADIUS_A, 0.0))
+	_swipe(screen, at, pull_to)
 	await tree.process_frame
-	await tree.process_frame
-	var preview_length: float = lab.props.arrow_a.mesh.get_aabb().size.x if lab.props.arrow_a.mesh else 0.0
-	_touch(screen, _at(screen, knob_goal), false)
+	lab._process(1.0 / 60.0)
+	var pulling: bool = m.mode == "slingshot" and m.active_id == "ball_a" and is_equal_approx(ball.global_position.x, start) and not lab.released
+	var arrow_length: float = lab.props.arrow_a.mesh.get_aabb().size.x if lab.props.arrow_a.mesh else 0.0
+	var dots: int = lab.props.pull_dots.dots()
+	var last_dot: Vector3 = lab.props.pull_dots.points[dots - 1] if dots > 0 else Vector3.INF
+	var hud: Label = screen._slingshot_hud
+	var readout_ok: bool = hud.visible and hud.text.contains("1초에") and hud.text.contains("5.0") and not hud.text.contains("m/s")
+	var preview_ok: bool = absf(arrow_length - 5.0 * lab.ARROW_SCALE) < 0.05 and dots > 3 and absf(last_dot.x - (lab.props.look_centre(ball, true).x - 5.0 * lab.PULL_SCALE)) < 1e-4
+	_touch(screen, pull_to, false)
 	await tree.process_frame
 	var synced: bool = screen._control_widgets.velocity_a.slider.value == 5.0
-	expect.call(lab.velocity_a == 5.0 and synced and is_equal_approx(knob.global_position.x, start + 5.0 * lab.ARROW_SCALE)
-		and absf(preview_length - (5.0 * lab.ARROW_SCALE - lab.KNOB_SIZE * 0.5)) < 0.05,
-		"collision: dragging the arrow knob sets the velocity on the 0.5 m/s grid (preview while held, slider follows)", "v %.2f, arrow %.3f m" % [lab.velocity_a, preview_length])
-	var grid_ok: bool = lab.knob_velocity(5.1 * lab.ARROW_SCALE) == 5.0 and lab.knob_velocity(0.3 * lab.ARROW_SCALE) == 0.5 \
-		and lab.knob_velocity(-1.24 * lab.ARROW_SCALE) == -1.0 and lab.knob_velocity(20.0) == 9.0 and lab.knob_velocity(0.2 * lab.ARROW_SCALE) == 0.0
-	expect.call(grid_ok, "collision: knob offset -> velocity on the 0.5 m/s grid, capped at 9 m/s (the web arrow's cap)", "")
+	var launched: bool = lab.released and lab.velocity_a == 5.0 and lab.model.va > 0.0 and lab.velocity_b == -1.7 and not hud.visible and lab.props.pull_dots.dots() == 0
+	expect.call(pulling and preview_ok and readout_ok and launched and synced,
+		"collision: pulling ball A back 5.1 m/s worth sets 5 m/s (0.5 m/s grid; arrow, pull dots and '1초에 5.0미터' while held, the ball stays) and letting go launches it towards B (B keeps its -1.7 m/s, the slider follows)",
+		"pulling %s, arrow %.3f m, dots %d (last %s), readout '%s', launched %s (v %.2f), synced %s" % [pulling, arrow_length, dots, str(last_dot), hud.text, launched, lab.velocity_a, synced])
+	var grid_ok: bool = lab.pull_velocity(-5.1 * lab.PULL_SCALE) == 5.0 and lab.pull_velocity(-0.3 * lab.PULL_SCALE) == 0.5 \
+		and lab.pull_velocity(1.24 * lab.PULL_SCALE) == -1.0 and lab.pull_velocity(-20.0) == 9.0 and lab.pull_velocity(-0.2 * lab.PULL_SCALE) == 0.0
+	expect.call(grid_ok, "collision: a pull along the rail -> the reversed velocity on the 0.5 m/s grid, capped at 9 m/s (the web arrow's cap)", "")
 	# A run from there follows the formula: the outcome = world_collision_velocities of the velocities before.
 	screen.experiment_action("release")
 	var guard := 0
@@ -439,12 +440,27 @@ func check_input_path() -> void:
 	var want := PhysicsLaws.world_collision_velocities(1.0, 2.0, model.before[0], 0.0, model.before[1], 0.0, 1.0, 0.0, 0.88, 0.88, 1.0)
 	expect.call(model.collided and model.after[0] == want[0] and model.after[1] == want[2] and absf(model.momentum_of(model.after[0], model.after[1]) - model.momentum_of(model.before[0], model.before[1])) < 1e-12
 		and lab.driver.worst_position <= ENGINE_TOLERANCE,
-		"collision: the run after dragging collides by the formula (TS world outcome, momentum kept, engine on the formula)", "step %d" % model.first_step)
-	# A press on a rolling ball picks nothing up: the run goes on ("다시" starts over).
+		"collision: the run after the pull collides by the formula (TS world outcome, momentum kept, engine on the formula)", "step %d" % model.first_step)
+	# A press on rolling ball B (far from A) picks nothing up: the run goes on ("다시" starts over).
+	guard = 0
+	while _at(screen, lab.ball_b.global_position).distance_to(_at(screen, lab.ball_a.global_position)) < m.pick_radius() * 2.0 and guard < 600:
+		await tree.physics_frame
+		guard += 1
 	_swipe(screen, _at(screen, lab.ball_b.global_position), _at(screen, lab.ball_b.global_position + Vector3(0.02, 0, 0)), 2)
 	var rolling: bool = lab.released and m.mode == ""
 	_touch(screen, _at(screen, lab.ball_b.global_position), false)
-	expect.call(rolling, "collision: a press on a rolling ball does not pick it up (the run goes on)", "")
+	expect.call(rolling, "collision: a press on rolling ball B does not pick it up (the run goes on)", "")
+	# 출발 again: the last pulled speed; a tap on ball A launches nothing and changes nothing.
+	screen.experiment_action("reset")
+	screen.experiment_action("release")
+	var again: bool = lab.released and lab.model.va == 5.0
+	screen.experiment_action("reset")
+	at = _at(screen, ball.global_position)
+	_touch(screen, at, true)
+	_touch(screen, at, false)
+	await tree.process_frame
+	expect.call(again and not lab.released and lab.velocity_a == 5.0 and m.mode == "",
+		"collision: 출발 launches with the last pulled speed; a tap on ball A launches nothing", "again %s, released %s" % [again, lab.released])
 	await _close(screen)
 
 
@@ -466,7 +482,7 @@ func check_demo() -> void:
 		was = lab.released
 	screen.manipulator.start_demo(0.0)
 	expect.call(runs >= 2 and hits > 0 and lab.velocity_a != 3.4,
-		"collision: the measurement demo (--auto-drag) drags ball A's knob and starts runs that collide", "%d runs, v %.1f" % [runs, lab.velocity_a])
+		"collision: the measurement demo (--auto-drag) pulls ball A and starts runs that collide", "%d runs, v %.1f" % [runs, lab.velocity_a])
 	await _close(screen)
 
 
@@ -568,15 +584,13 @@ func check_review() -> void:
 	arrow.point(Vector3.ZERO, 0.0, 1.0)
 	expect.call(kept and arrow.mesh != built, "arrow: the mesh cache keeps the mesh for the same length and colours and rebuilds it when only the top colour changes", "")
 	arrow.free()
-	# Shared knob factory: a pickable handle with the knob mesh, on the knob layer, hit by nothing.
+	# The knob factory (the projectile's arrow knob): a pickable body with the knob mesh, on its layer, hit by nothing.
 	var proj: Experiment = ExperimentRegistry.instantiate(ExperimentRegistry.find("projectile"))
 	tree.root.add_child(proj)
 	await tree.process_frame
-	var knobs: Array = [lab.knob_a, lab.knob_b, proj.knob]
-	var ok := true
-	for knob in knobs:
-		ok = ok and knob.collision_layer == (1 << (lab.KNOB_LAYER - 1)) and knob.collision_mask == 0 and knob.get_node("Visual") is MeshInstance3D \
-			and knob.get_children().any(func(n): return n is CollisionShape3D)
-	expect.call(ok, "collision and projectile build their yellow arrow knobs with the same factory (layer, mask 0, shape, mesh)", "")
+	var knob: StaticBody3D = proj.knob
+	var ok: bool = knob.collision_layer == (1 << (proj.KNOB_LAYER - 1)) and knob.collision_mask == 0 and knob.get_node("Visual") is MeshInstance3D \
+		and knob.get_children().any(func(n): return n is CollisionShape3D)
+	expect.call(ok, "the projectile builds its yellow arrow knob with the shared factory (layer, mask 0, shape, mesh)", "")
 	await _free(proj)
 	await _free(lab)

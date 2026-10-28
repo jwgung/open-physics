@@ -10,8 +10,9 @@
 ##   the key card, the mission strip and the action buttons (다시 and the main one); while Dugi talks
 ##   it sits over his box, clear of the box, his portrait and his name tag; beside the open sidebar it
 ##   never reaches the actions.
-## - one drag per lab: the objects a finger picks up are the lab's one gesture (KEPT); the others are
-##   never picked up (a press on them starts nothing), and no game lab shows a height handle.
+## - one drag per lab: the objects a finger picks up are the lab's one gesture (KEPT: a drag, a
+##   slingshot pull or, since 2026-10-28, a press and hold); the others are never picked up (a press
+##   on them starts nothing), and no game lab shows a height handle.
 ## - the grab radius: a press within pick_radius() (at least 72 UI units) of a draggable object starts
 ##   its drag; a little farther, on empty ground, picks nothing.
 extends RefCounted
@@ -27,14 +28,14 @@ const GRAB_MIN := 72.0
 const KEPT := {
 	"free-fall": ["drop_red", "drop_purple", "drop_yellow"],
 	"projectile": ["ball"],
-	"collision": ["arrow_a", "arrow_b"],
+	"collision": ["ball_a"],
 	"spring": ["ball"],
-	"friction": ["handle"],
-	"rotation": ["handle"],
-	"orbit": ["arrow"],
+	"friction": ["box"],
+	"rotation": ["effort"],
+	"orbit": ["planet"],
 	"buoyancy": ["drum"],
 	"constraints": ["rope", "rod"],
-	"pulley": ["handle"],
+	"pulley": ["rope"],
 	"incline-friction": ["box"],
 }
 const FRAMES_AFTER := 30   # physics steps compared after a tap and the same sidebar change
@@ -319,7 +320,7 @@ func check_drags(id: String) -> void:
 		if body == null:
 			problems.append("%s has no body" % kept)
 			continue
-		var at: Vector2 = screen.view_point(body.global_position)
+		var at: Vector2 = screen.view_point(lab.manipulation_pick_point(kept))
 		# Within the radius (straight up on the screen, off the object itself): the press starts its gesture.
 		m.handle_pointer("press", at + Vector2(0.0, -(r - 6.0)))
 		if m.active_id != kept or m.mode == "":

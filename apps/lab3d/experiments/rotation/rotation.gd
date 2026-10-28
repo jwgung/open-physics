@@ -1,16 +1,16 @@
 ## Guided lever lab (Phase 1 Task 4e; web preset "rotation", "지렛대로 무거운 짐을 들 수 있을까?"): a
-## 6 m beam on a fulcrum with an orange load (the web's 20 kg) on its left side. The red handle above
-## the chosen effort point (the web's three points 가까이 / 중간 / 멀리) is pressed down by one finger:
-## a spring scale, force_step newtons per 2 cm (5 N; the scale steps up to 10 / 20 / 50 N when the
-## full press of REACH would not lift the load, so every condition can be lifted). When the force reaches F = m g r_load / r_effort the
-## beam turns to the web's lift angle (load side up); letting go puts it back level. The fulcrum and
-## the load can be dragged along the beam (0.25 m grid; the web's lever has them fixed). Conditions:
-## the load mass (the web's mass input, 1-20 kg) and the effort point.
+## 6 m beam on a fulcrum with an orange load (the web's 20 kg) on its left side. The child presses
+## and holds the chosen effort point (the web's three points 가까이 / 중간 / 멀리, the red peg) on the
+## beam itself (2026-10-28 user decision, no handle): while held the hand's force grows from 0 at
+## PRESS_RATE N/s up to PRESS_MAX (HoldRamp) and a gauge beside it fills. When the force reaches
+## F = m g r_load / r_effort the beam turns to the web's lift angle (load side up); letting go puts it
+## back level. The fulcrum and the load stay (set_layout: tests; the web's lever has them fixed).
+## Conditions: the load mass (the web's mass input, 1-20 kg) and the effort point.
 ## Motion and every displayed number: LeverLabModel (LeverChallenge: required force, capped force on
 ## the beam, lifting, torques); LeverLabDriver poses the engine beam and load on it every step
 ## (method "kinematic_model"). See docs/formula-correction.md (Task 4e).
 ## The graph is the web's "지렛대에 필요한 힘": the force on the beam and the required force over the
-## last 10 s of pressing (the clock runs while the handle is held; a changed condition adds a point).
+## last 10 s of pressing (the clock runs while the beam is held; a changed condition adds a point).
 ## The load looks as heavy as it is (2026-10-28, look_factor): its mesh grows from its bottom on the
 ## beam; its body (a LOAD_SIZE cube), its place and the model do not change with the mass.
 extends PressHandleLab
@@ -28,19 +28,21 @@ const LOAD_GAP := 0.5              # the load stays this far left of the fulcrum
 const DEFAULT_PIVOT := -0.5
 const DEFAULT_LOAD := -2.5
 const REST_X := -2.75              # the rest block under the beam's left end
-const HANDLE_SIZE := Vector3(0.6, 0.3, 0.5)
-const HANDLE_REST := 1.6           # m above the beam's axis (the grip's centre, not pressed)
-const REACH := 1.0                 # m of press: 50 cells (REACH / the handle's 2 cm grid)
-const MAX_CELLS := 50
-const LOAD_LAYER := 3              # the pickable load (the handle and the stand are on HANDLE_LAYER)
-const IDS: Array[String] = ["handle", "load", "fulcrum"]
+## The held press (2026-10-28): 110 N/s, at most 400 N. The heaviest stage (20 kg, the near point:
+## F = 320.3 N) lifts after 2.91 s, the middle point (186.9 N) after 1.70 s, the far one (124.6 N)
+## after 1.13 s; a 1 kg load at the far point (6.2 N) after 0.06 s.
+const PRESS_RATE := 110.0          # N per second of holding
+const PRESS_MAX := 400.0           # N
+const GAUGE_LEFT := 0.5            # m left of the effort point (the cat stands right of it)
+const GAUGE_UP := 0.4              # m above the beam's axis (its foot)
+const GAUGE_Z := 0.05
+const LOAD_LAYER := 3              # the load's layer (the stand is on PICK_LAYER)
+const IDS: Array[String] = ["effort", "load", "fulcrum"]
 
 var model := LeverLabModel.new()
 var driver := LeverLabDriver.new()
 var props := RotationProps.new()
 var effort_id := "mid"
-## false = the scale stays where a test set it (model.force_step).
-var auto_force_step := true
 var beam: RigidBody3D
 var stand: StaticBody3D
 ## The finger holds this object ("" = none).
@@ -95,7 +97,7 @@ func run_action(id: String) -> void:
 	if id == "reset":
 		model.pivot_x = DEFAULT_PIVOT
 		model.load_x = DEFAULT_LOAD
-		model.cells = 0
+		model.hand = 0.0
 		_placed.clear()
 		_restart_clock()
 		_was_lifted = false   # the pop below is the reaction; no lowering on top of it
@@ -107,8 +109,6 @@ func run_action(id: String) -> void:
 func _changed() -> void:
 	if beam == null:
 		return
-	if auto_force_step:
-		model.fit_force_step(MAX_CELLS)
 	driver.pose(true)
 	_place_stand()
 	_add_graph_point()
@@ -120,25 +120,25 @@ func _changed() -> void:
 
 # --- PressHandleLab ---------------------------------------------------------------------------
 
+func _init() -> void:
+	hand = HoldRamp.new(PRESS_RATE, PRESS_MAX)
+
+
 func _handle_held() -> bool:
-	return holding == "handle"
+	return holding == "effort"
 
 
-func _handle_rest() -> Vector3:
-	return handle_rest()
-
-
-func _handle_reach() -> float:
-	return REACH
+func _gauge_at() -> Vector3:
+	return Vector3(model.effort_x() - GAUGE_LEFT, PIVOT_Y + GAUGE_UP, GAUGE_Z)
 
 
 func _graph_values() -> Array:
 	return [model.applied(), model.required()]
 
 
-## Pressed cells without the handle (tests): the force of `cells` grid steps.
-func set_cells(cells: int) -> void:
-	model.cells = cells
+## The hand's force without a hold (tests, N).
+func set_hand(force: float) -> void:
+	model.hand = force
 
 
 ## Fulcrum and load positions (world x) without dragging (tests): a condition change.
@@ -149,9 +149,9 @@ func set_layout(pivot: float, load_at: float) -> void:
 
 
 func _physics_process(_delta: float) -> void:
-	if holding == "handle":
-		model.cells = handle_cells()
+	if holding == "effort":
 		_tick_clock()
+		model.hand = hand.force()
 	driver.hand_holds = holding == "load"
 	driver.step(1.0 / float(Engine.physics_ticks_per_second))
 	_track_lift()
@@ -162,14 +162,17 @@ func _physics_process(_delta: float) -> void:
 func _process(_delta: float) -> void:
 	if beam == null:
 		return
-	if holding != "handle":
-		_place_handle()
+	_show_gauge()
 	_show()
 
 
+## The effort point on the (posed) beam's top (world).
+func effort_point() -> Vector3:
+	return Vector3(model.beam_x(model.effort_x(), BEAM_THICK * 0.5), model.beam_y(model.effort_x(), BEAM_THICK * 0.5), 0.0)
+
+
 func _show() -> void:
-	var effort := Vector3(model.beam_x(model.effort_x(), BEAM_THICK * 0.5), model.beam_y(model.effort_x(), BEAM_THICK * 0.5), 0.0)
-	props.show_forces(handle.global_position - Vector3(0.0, HANDLE_SIZE.y * 0.5, 0.0), effort, model.applied(),
+	props.show_forces(effort_point(), model.applied(),
 		props.look_centre(load_body), LOAD_SIZE * 0.5 * props.look, model.weight())
 	props.update_cat(model, beam, BEAM_THICK, clampf(model.applied() / model.required(), 0.0, 1.0) if model.required() > 0.0 else 0.0)
 
@@ -189,15 +192,15 @@ func _show_markers() -> void:
 func status() -> String:
 	if model.lifting():
 		return "lifted"
-	if holding == "handle":
-		return "pressing" if model.cells > 0 else "holding"
+	if holding == "effort":
+		return "pressing" if model.hand > 0.0 else "holding"
 	if holding != "":
 		return "moving"
 	return "ready"
 
 
 ## The lift and lowering reactions follow the beam's state itself, not status() changes: a change made
-## by the hand (a released handle, a moved load, a new condition) updates the status quietly but
+## by the hand (a let-go press, a moved load, a new condition) updates the status quietly but
 ## still lifts or sets the beam down.
 func _track_lift() -> void:
 	var up := model.lifting()
@@ -211,8 +214,8 @@ func _track_lift() -> void:
 
 func observations() -> Dictionary:
 	var state_text: String = {
-		"ready": "힘점을 골라 빨간 손잡이를 아래로 눌러 보세요",
-		"holding": "손잡이를 아래로 눌러요",
+		"ready": "힘점을 골라 막대의 빨간 힘점을 꾹 눌러 보세요",
+		"holding": "빨간 힘점을 꾹 누르고 있어요",
 		"pressing": "누르는 중 · 아직 힘이 모자라요",
 		"lifted": "들렸다! 힘이 충분해요",
 		"moving": "받침점·짐 위치를 옮기는 중",
@@ -224,7 +227,6 @@ func observations() -> Dictionary:
 		"effort_arm": model.effort_arm(),
 		"required": model.required(),
 		"applied": model.applied(),
-		"force_step": model.force_step,
 		"advantage": model.advantage(),
 		"load_torque": absf(model.load_torque()),
 		"effort_torque": absf(model.effort_torque()),
@@ -259,12 +261,10 @@ func _build_world() -> void:
 	driver.history_steps = 600
 	driver.attach(model, beam, load_body)
 	stand = _static_pickable("Fulcrum", Vector3(0.9, stand_height(), BEAM_DEPTH))
-	handle = _static_pickable("Handle", HANDLE_SIZE)
 	_place_stand()
-	_place_handle()
-	props.dress(self, {"beam": beam, "load": load_body, "stand": stand, "handle": handle}, {
+	props.dress(self, {"beam": beam, "load": load_body, "stand": stand}, {
 		"beam_half": BEAM_HALF, "beam_thick": BEAM_THICK, "beam_depth": BEAM_DEPTH, "rest_x": REST_X,
-		"rest_top": PIVOT_Y - BEAM_THICK * 0.5, "stand_height": stand_height(), "load_size": LOAD_SIZE, "handle": HANDLE_SIZE,
+		"rest_top": PIVOT_Y - BEAM_THICK * 0.5, "stand_height": stand_height(), "load_size": LOAD_SIZE,
 	})
 
 
@@ -278,17 +278,12 @@ func _place_stand() -> void:
 		stand.global_position = Vector3(model.pivot_x, stand_height() * 0.5, 0.0)
 
 
-## The grip's rest point: HANDLE_REST above the effort point of the level beam.
-func handle_rest() -> Vector3:
-	return Vector3(model.effort_x(), PIVOT_Y + HANDLE_REST, 0.0)
-
-
 # --- manipulation -------------------------------------------------------------------------------
 
 func manipulation_body(id: String) -> PhysicsBody3D:
 	match id:
-		"handle":
-			return handle
+		"effort":
+			return beam
 		"load":
 			return load_body
 		"fulcrum":
@@ -299,8 +294,6 @@ func manipulation_body(id: String) -> PhysicsBody3D:
 func manipulation_surface(surface_id: String) -> ManipSurface:
 	var surface: ManipSurface
 	match surface_id:
-		"press":
-			surface = _press_line(handle_rest(), REACH, _grid_step("handle"), HANDLE_SIZE.y * 0.5)
 		"beam_top":
 			surface = ManipSurface.new(Transform3D(Basis(), Vector3(0.0, PIVOT_Y + BEAM_THICK * 0.5, 0.0)),
 				Vector2(LOAD_MIN, 0.0), Vector2(model.pivot_x - LOAD_GAP, 0.0), Vector2(_grid_step("load"), 0.0))
@@ -326,20 +319,35 @@ func placement_allowed(id: String, transform: Transform3D) -> bool:
 	return true
 
 
-func manipulation_started(id: String) -> void:
+## The effort end is picked at the effort point on the beam (not the beam's centre).
+func manipulation_pick_point(id: String) -> Vector3:
+	return effort_point() if id == "effort" else super(id)
+
+
+## Pressed and held at the effort point: the hand's force grows from 0 from the next step.
+func hold_started(id: String) -> void:
 	holding = id
-	model.cells = 0
-	if id == "handle":
-		_begin_press(manipulation_surface("press"))
+	hand.start()
+	model.hand = 0.0
 	_update_status(true)
 
 
-## Put down: the handle lets go (no force, the beam back level); the load or the fulcrum takes its
-## new place (a condition change).
+## Let go: no force, the beam back level.
+func hold_ended(_id: String) -> void:
+	holding = ""
+	hand.stop()
+	model.hand = 0.0
+	_changed()
+
+
+func manipulation_started(id: String) -> void:
+	holding = id
+	_update_status(true)
+
+
+## Put down: the load or the fulcrum takes its new place (a condition change).
 func manipulation_placed(id: String, transform: Transform3D) -> void:
 	holding = ""
-	_end_press()
-	model.cells = 0
 	match id:
 		"load":
 			model.load_x = _snap_to_grid("load", transform.origin.x, LOAD_MIN, model.pivot_x - LOAD_GAP)
@@ -352,8 +360,6 @@ func manipulation_placed(id: String, transform: Transform3D) -> void:
 
 func manipulation_cancelled(_id: String) -> void:
 	holding = ""
-	_end_press()
-	model.cells = 0
 	_changed()
 
 

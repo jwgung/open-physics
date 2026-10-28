@@ -1,8 +1,10 @@
 ## Guided orbit lab (Phase 1 Task 4d; web preset "orbit", "조금만 다르게 쏘면 궤도를 벗어날까?"): a small
 ## planet launched around a big star floating over a space stage on the island. Conditions: the
-## launch speed and direction (the web's purple arrow: the yellow knob is dragged in the orbit plane,
-## 0.1 m/s and 5 deg steps, also sliders) and the start radius (the planet is dragged along the line
-## east of the star, 0.5 m grid, 2-5 m). "원 궤도 속력" sets the circular speed sqrt(GM / r).
+## launch speed and direction (0.1 m/s and 5 deg steps, also sliders) and the start radius (picture
+## buttons and a slider, 0.5 m grid, 2-5 m). The child pulls the planet itself like a slingshot
+## (2026-10-28 user decision, no handles): in the orbit plane, the launch is the reversed pull
+## (direction on the 5 deg grid, speed = pull length / PULL_SCALE on the 0.1 m/s grid, 0-6 m/s) and
+## letting go launches (the same run as "발사"). "원 궤도 속력" sets the circular speed sqrt(GM / r).
 ## Before the launch the panel and the dotted path show the web's prediction (OrbitChallenge: crash,
 ## orbit or escape, with the circular and escape speeds); "발사" launches. In a game round
 ## (answer_preview false) the path and the dashed circle appear only once the planet is launched:
@@ -24,13 +26,18 @@ const DEFAULT_SPEED := 3.0
 const DEFAULT_DIRECTION := 90.0
 const RADIUS_MIN := 2.0
 const RADIUS_MAX := 5.0
-const KNOB_SIZE := 0.3
-const KNOB_LAYER := 2
 const PLANET_LAYER := 3
+const PULL_SCALE := 0.6           # m of slingshot pull per m/s of launch speed
+const ANGLE_STEP := 5.0           # deg: the direction slider's grid
+const SPEED_STEP := 0.1           # m/s: the speed slider's grid
+const SPEED_MAX := 6.0
+## The velocity arrow: ARROW_OFFSET + speed * ARROW_SCALE m from the planet centre (the old knob's
+## arrow, up to its near face).
+const ARROW_OFFSET := 0.3
+const ARROW_SCALE := 0.4
 
 var model := OrbitModel.new()
 var planet: RigidBody3D
-var knob: StaticBody3D
 ## Conditions (64-bit): start radius (m), launch speed (m/s), direction (deg from outwards,
 ## counter-clockwise seen from above: 90 = the counter-clockwise tangent).
 var start_radius := DEFAULT_RADIUS
@@ -40,12 +47,11 @@ var direction := DEFAULT_DIRECTION
 var prediction: Dictionary = {}
 var crashes := 0
 var _floor: StaticBody3D
-var _preview := PackedFloat64Array()   # (direction, speed, radius) the held preview shows
-var _chosen := PackedFloat64Array([0.0, 0.0])   # (direction, speed) the waiting arrow shows (reused every frame)
-var _surface: OrbitArrowSurface
 var _analyzed_key := PackedFloat64Array()   # (radius, vx, vz) of _analyzed
 var _analyzed: Dictionary = {}
-var _surface_at := Vector3.INF         # planet position the cached surface was built for
+## The slingshot pull's (direction, speed) while a finger holds the planet; INF when no pull (the
+## screen sets it from the Manipulator's slingshot signal).
+var _slingshot_preview := Vector2.INF
 
 
 func _init() -> void:
@@ -98,6 +104,8 @@ func run_action(id: String) -> void:
 			speed = DEFAULT_SPEED
 			direction = DEFAULT_DIRECTION
 			reset_run()
+		"rearm":   # the slingshot's next shot after a run: the run waits again, the conditions stay
+			reset_run()
 
 
 ## Launch velocity in the plane (x, z) for (direction deg, speed): the TS angle maths (deg * pi / 180).
@@ -125,7 +133,6 @@ func reset_run() -> void:
 	else:
 		props.hide_prediction()
 	props.reset()
-	_preview.clear()
 	_show_waiting()
 	_update_status(true)
 
@@ -182,32 +189,38 @@ func _process(_delta: float) -> void:
 	_show_waiting()
 
 
-## Waiting: the knob at the arrow tip of the launch (or where a finger holds it); while a finger holds
-## the knob or the planet, the snapped launch from where the planet is now is previewed (arrow and
-## the predicted path).
+## Waiting: the velocity arrow of the launch; while a finger pulls the planet, the arrow of the
+## pull's launch and the pull dots back to the pulled point (no path preview).
 func _show_waiting() -> void:
 	var at := planet.global_position
 	props.place_cat(at, holding != "planet")
-	var chosen := _chosen
-	chosen[0] = direction
-	chosen[1] = speed
-	if holding == "arrow":
-		OrbitArrowSurface.launch_into(_arrow_surface().to_plane(knob.global_position), chosen)
-	else:
-		var tip := PolarArrowSurface.tip_point(direction, speed, OrbitArrowSurface.OFFSET, OrbitArrowSurface.SCALE)
-		knob.global_position = Vector3(at.x + tip.x, ORBIT_Y, at.z + tip.y)
-	var v := launch_velocity(chosen[0], chosen[1])
-	props.show_velocity(at, v[0], v[1], _arrow_length(chosen[1]))
-	if holding == "" or not answer_preview:
-		return
-	var radius := radius_at(at.x)
-	if _preview.size() == 3 and _preview[0] == chosen[0] and _preview[1] == chosen[1] and _preview[2] == radius:
-		return
-	_preview.resize(3)
-	_preview[0] = chosen[0]
-	_preview[1] = chosen[1]
-	_preview[2] = radius
-	_show_prediction(radius, analyze(radius, v[0], v[1]))
+	var pulling := _slingshot_preview != Vector2.INF
+	var shown_direction := _slingshot_preview.x if pulling else direction
+	var shown_speed := _slingshot_preview.y if pulling else speed
+	var v := launch_velocity(shown_direction, shown_speed)
+	props.show_velocity(at, v[0], v[1], _arrow_length(shown_speed))
+	var pull := Vector3.INF
+	if pulling and shown_speed > 0.0:
+		pull = at - Vector3(v[0], 0.0, v[1]) / shown_speed * (shown_speed * PULL_SCALE)
+	props.show_pull(at, pull)
+
+
+## The pull's (direction, speed) while a finger holds the planet (INF when the pull ends).
+func set_slingshot_preview(value: Variant) -> void:
+	_slingshot_preview = value if value is Vector2 else Vector2.INF
+	if planet != null and not released:
+		_show_waiting()
+
+
+## The launch (direction deg, speed m/s) of a slingshot pull `pull` (orbit-plane coordinates: x, z;
+## from the press to the finger): the reversed pull, its direction on the 5 deg grid (0..355,
+## counter-clockwise from +x seen from above, as the "direction" slider), its length / PULL_SCALE on
+## the 0.1 m/s grid within 0..SPEED_MAX.
+static func pull_launch(pull: Vector2) -> Vector2:
+	var launch := -pull
+	var angle := fposmod(roundf(rad_to_deg(atan2(-launch.y, launch.x)) / ANGLE_STEP) * ANGLE_STEP, 360.0)
+	var launch_speed := clampf(roundf(launch.length() / PULL_SCALE / SPEED_STEP) * SPEED_STEP, 0.0, SPEED_MAX)
+	return Vector2(angle, launch_speed)
 
 
 ## PhysicsLaws.orbit_analyze of a launch from (radius, 0) with (vx, vz), the last one remembered: the
@@ -286,29 +299,19 @@ func _build_world() -> void:
 	planet = _make_driven_body("Planet", sphere, PLANET_LAYER)
 	planet.position = Vector3(start_radius, ORBIT_Y, 0.0)
 	add_child(planet)
-	knob = _make_knob("Knob", KNOB_LAYER, KNOB_SIZE)
-	props.dress(self, planet, PLANET_RADIUS, knob, ORBIT_Y, STAR_RADIUS)
+	props.dress(self, planet, PLANET_RADIUS, ORBIT_Y, STAR_RADIUS)
 	_load_model()
 	driver.history_steps = _history_steps()
 	driver.bind(model, planet)
 	driver.reset()
 
 
-## The knob's surface through the planet (rebuilt only when the planet stands elsewhere).
-func _arrow_surface() -> OrbitArrowSurface:
-	if _surface == null or _surface_at != planet.global_position:
-		_surface_at = planet.global_position
-		_surface = OrbitArrowSurface.new(_surface_at, KNOB_SIZE * 0.5)
-	return _surface
-
-
-## Length of the velocity arrow of launch speed `launch_speed` (m): from the planet centre up to
-## the knob's near face (the knob sits OFFSET + speed * SCALE out), the same before the launch and
-## in flight so the arrow does not jump when the knob goes; 0 for a planet at rest.
+## Length of the velocity arrow of launch speed `launch_speed` (m), the same before the launch and
+## in flight; 0 for a planet at rest.
 static func _arrow_length(launch_speed: float) -> float:
 	if launch_speed == 0.0:
 		return 0.0
-	return OrbitArrowSurface.OFFSET + launch_speed * OrbitArrowSurface.SCALE - KNOB_SIZE * 0.5
+	return ARROW_OFFSET + launch_speed * ARROW_SCALE
 
 
 # --- manipulation -------------------------------------------------------------------------------
@@ -317,8 +320,6 @@ func manipulation_body(id: String) -> PhysicsBody3D:
 	match id:
 		"planet":
 			return planet
-		"arrow":
-			return null if released else knob
 	return null
 
 
@@ -328,16 +329,35 @@ func manipulation_surface(surface_id: String) -> ManipSurface:
 		"radius_line":
 			surface = ManipSurface.new(Transform3D(Basis(), Vector3(0.0, ORBIT_Y - PLANET_RADIUS, 0.0)),
 				Vector2(RADIUS_MIN, 0.0), Vector2(RADIUS_MAX, 0.0), Vector2(_grid_step("planet"), 0.0))
-		"arrow":
-			surface = _arrow_surface()
+		"pull":
+			# The slingshot's pull: the level orbit plane through the planet's start.
+			surface = ManipSurface.new(Transform3D(Basis(), Vector3(start_radius, ORBIT_Y, 0.0)), Vector2(-30.0, -30.0), Vector2(30.0, 30.0))
 		_:
 			return null
-	surface.exclude = [_floor.get_rid(), planet.get_rid(), knob.get_rid()]
+	surface.exclude = [_floor.get_rid(), planet.get_rid()]
 	return surface
 
 
 func manipulation_juice(id: String) -> ArtJuice:
 	return props.juice if id == "planet" else null
+
+
+## The slingshot (2026-10-28): the planet is pulled in the orbit plane; a release sets "direction"
+## and "speed" (pull_launch) and runs "launch" ("발사"); the next shot after a run is "rearm" (the
+## run waits, the radius and the launch stay). The readout says the speed only, in a child's words.
+func slingshot_setup() -> Dictionary:
+	var spec: Dictionary = definition.get("manipulation", {}).get("slingshot", {})
+	if spec.is_empty() or manipulation_body(str(spec.get("object", ""))) == null:
+		return {}
+	return {"object": str(spec.object), "surface": manipulation_surface("pull"), "launch": launch_point,
+		"controls": ["direction", "speed"], "value": pull_launch, "action": "launch", "rearm": "rearm",
+		"readout": func(value: Vector2) -> String: return ExperimentScreen.kid_value("m/s", value.y, 1),
+		"demo": [Vector2(0.0, 45.0), Vector2(-20.0, 70.0)]}
+
+
+## The planet's start (the slingshot's launch point: a press there after a run pulls the next shot).
+func launch_point() -> Vector3:
+	return Vector3(start_radius, ORBIT_Y, 0.0)
 
 
 ## Picked up: a flight stops (a planet picked up in flight jumps under the finger onto its start line).
@@ -351,9 +371,5 @@ func manipulation_placed(id: String, transform: Transform3D) -> void:
 	match id:
 		"planet":
 			start_radius = radius_at(transform.origin.x)
-		"arrow":
-			var chosen := OrbitArrowSurface.launch_of(_arrow_surface().to_plane(transform.origin))
-			direction = chosen[0]
-			speed = chosen[1]
 	_restart()
 

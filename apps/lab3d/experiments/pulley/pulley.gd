@@ -1,14 +1,17 @@
 ## Guided pulley lab (Phase 1 Task 4e; web preset "pulley", "도르래 줄이 많으면 얼마나 쉬워질까?"): an
-## orange load (the web's 20 kg) hangs from n = 1, 2 or 4 supporting strands under a gantry. The red
-## grip on the pull strand is pulled down by one finger in strokes (5 cm grid); the load rises the
-## pulled length / n. Letting go keeps the rope (a ratchet) and the grip goes back up the rope for the
-## next stroke (hand over hand), so the same height can be reached with any n. Conditions: the
-## number of strands (the web's 1 / 2 / 4 buttons) and the load mass (the web's mass input, 1-20 kg).
+## orange load (the web's 20 kg) hangs from n = 1, 2 or 4 supporting strands under a gantry. The
+## child presses and holds the end of the pull strand (2026-10-28 user decision: the red grip went):
+## the hand's force grows from 0 at PULL_RATE N/s up to PULL_MAX (HoldRamp) and a gauge beside it
+## fills; once it reaches F = m g / n the rope comes down ROPE_SPEED m/s (a steady pull at F, on the
+## 5 cm grid, at most STROKE per hold) and the load rises the pulled length / n. Letting go keeps the
+## rope (a ratchet) and the rope end goes back up for the next stroke (hand over hand), so the same
+## height can be reached with any n. Conditions: the number of strands (the web's 1 / 2 / 4 buttons)
+## and the load mass (the web's mass input, 1-20 kg).
 ## Motion and every displayed number: PulleyLabModel (PulleyAdvantageChallenge: F = m g / n, lift =
 ## pull / n, pull for 1 m = n m; work F d_pull = m g d_lift); PulleyLabDriver poses the engine load on
 ## it every step (method "kinematic_model"). See docs/formula-correction.md (Task 4e).
 ## The graph is the web's "줄 수에 따른 필요한 힘": the hand's pull and the required force over the
-## last 10 s with the grip held (a changed condition adds a point).
+## last 10 s with the rope held (a changed condition adds a point).
 ## The load looks as heavy as it is (2026-10-28, look_factor): its mesh grows from its bottom and the
 ## moving block rides on its top; its body (a LOAD_SIZE cube), its lift and the model stay.
 extends PressHandleLab
@@ -21,23 +24,34 @@ const TOP_Y := 4.4                 # bottom of the fixed block's wheels: the str
 const BEAM_Y := 4.95               # the gantry's top beam
 const HOOK_UP := 0.62              # the moving block's hook above the load centre
 const GUIDE := Vector3(1.2, 4.6, 0.0)   # the guide wheel over the pull side
-const HANDLE_SIZE := Vector3(0.5, 0.3, 0.4)
-const HANDLE_TOP := 3.4            # the grip's centre at the start of a stroke
+const END_SIZE := Vector3(0.5, 0.5, 0.4)   # the rope end's pick box (the knot and around it)
+const END_TOP := 3.4               # the rope end's centre at the start of a stroke
 const STROKE := 2.6                # m: the longest stroke (down to 0.8 m)
+## The held pull (2026-10-28): 65 N/s, at most 250 N; the rope then comes down 1 m/s. One strand
+## with 20 kg (F = 196.2 N) moves after 3.02 s, two strands (98.1 N) after 1.51 s, four (49.05 N)
+## after 0.75 s; 1 kg on four strands (2.45 N) after 0.04 s.
+const PULL_RATE := 65.0            # N per second of holding
+const PULL_MAX := 250.0            # N
+const ROPE_SPEED := 1.0            # m of rope per second once the hand's force reaches F
+const GAUGE_RIGHT := 0.7           # m right of the rope end
 
 var model := PulleyLabModel.new()
 var driver := PulleyLabDriver.new()
 var props := PulleyProps.new()
 var strands_id := "one"
-## The finger holds the grip.
+## The finger holds the rope end.
 var holding := false
+## The rope end (pickable; its knot mesh from the props).
+var rope_end: StaticBody3D
 var _lifted := false
+var _moving_steps := 0             # fixed steps of this hold with the hand at F (the rope coming down)
 
 
 func _ready() -> void:
 	model.g = engine_g   # the weight m g uses the engine's gravity (the project setting, the web's 9.81)
 	model.max_lift = MAX_LIFT
-	var snap := _grid_step("handle")   # the one source of the cell size: the definition's handle grid
+	hand = HoldRamp.new(PULL_RATE, PULL_MAX)
+	var snap := _grid_step("rope")   # the one source of the cell size: the definition's rope grid
 	if snap > 0.0:
 		model.cells_per_m = roundi(1.0 / snap)
 	_build_world()
@@ -92,9 +106,12 @@ func run_action(id: String) -> void:
 func _new_pull() -> void:
 	if holding:
 		holding = false
-		_end_press()
-		_place_handle()
-		props.cat_let_go(handle_top(), false)
+		hand.stop()
+		model.hand = INF
+		_moving_steps = 0
+		model.stroke_cells = 0
+		_place_end()
+		props.cat_let_go(end_top(), false)
 	model.reset()
 	model.holding = false
 	_restart_clock()
@@ -126,17 +143,15 @@ func _handle_held() -> bool:
 	return holding
 
 
-func _handle_rest() -> Vector3:
-	return handle_top()
+func _gauge_at() -> Vector3:
+	return Vector3(end_top().x + GAUGE_RIGHT, END_TOP - ForceGauge.HEIGHT, 0.2)
 
 
-func _handle_reach() -> float:
-	return STROKE
-
-
-## The rest of the rope up to the top.
-func _handle_cell_limit() -> int:
-	return model.stroke_limit()
+## The cells this hold has pulled: ROPE_SPEED for the steps with the hand at F, on the 5 cm grid,
+## at most a STROKE and the rest of the rope up to the top.
+func stroke_cells_now() -> int:
+	var metres := _moving_steps / float(Engine.physics_ticks_per_second) * ROPE_SPEED
+	return mini(mini(floori(metres * model.cells_per_m + 1e-9), roundi(STROKE * model.cells_per_m)), model.stroke_limit())
 
 
 func _graph_values() -> Array:
@@ -156,8 +171,12 @@ func let_go() -> void:
 
 func _physics_process(_delta: float) -> void:
 	if holding:
-		model.stroke_cells = handle_cells()
 		_tick_clock()
+		model.hand = hand.force()
+		if model.hand >= model.required():
+			_moving_steps += 1
+		model.stroke_cells = stroke_cells_now()
+		_place_end()
 	driver.step(1.0 / float(Engine.physics_ticks_per_second))
 	_track_lift()
 	if status() != _last_status:
@@ -167,15 +186,15 @@ func _physics_process(_delta: float) -> void:
 func _process(_delta: float) -> void:
 	if load_body == null:
 		return
-	if not holding:
-		_place_handle()
-	else:
-		props.update_cat(handle.global_position, HANDLE_SIZE)
+	_place_end()
+	if holding:
+		props.update_cat(rope_end.global_position, END_SIZE)
+	_show_gauge()
 	_show()
 
 
 func _show() -> void:
-	var grip_top := handle.global_position + Vector3(0.0, HANDLE_SIZE.y * 0.5, 0.0)
+	var grip_top := rope_end.global_position + Vector3(0.0, PulleyProps.KNOT_RADIUS, 0.0)
 	props.show_rope(TOP_Y, load_body.global_position.y + props.hook_up, GUIDE, grip_top,
 		model.pulled(), props.look_centre(load_body), LOAD_SIZE * 0.5 * props.look, model.weight(), model.applied())
 
@@ -201,9 +220,9 @@ func _track_lift() -> void:
 
 func observations() -> Dictionary:
 	var state_text: String = {
-		"ground": "빨간 손잡이를 아래로 당겨 짐을 올려요",
+		"ground": "줄 끝을 꾹 눌러 짐을 올려요",
 		"pulling": "당기는 중 · 손이 짐을 받치고 있어요",
-		"held": "멈추개가 짐을 잡고 있어요 · 손잡이를 다시 당겨요",
+		"held": "멈추개가 짐을 잡고 있어요 · 줄 끝을 다시 눌러요",
 		"top": "맨 위까지 올라갔어요",
 	}.get(status(), "")
 	return {
@@ -234,60 +253,51 @@ func _build_world() -> void:
 	add_child(load_body)
 	driver.history_steps = 600
 	driver.attach(model, load_body, Vector3(LOAD_X, LOAD_SIZE * 0.5, 0.0))
-	handle = _static_pickable("Handle", HANDLE_SIZE)
-	_place_handle()
-	props.dress(self, load_body, handle, {
+	rope_end = _static_pickable("RopeEnd", END_SIZE)
+	_place_end()
+	props.dress(self, load_body, rope_end, {
 		"left": LOAD_X - 1.4, "right": GUIDE.x + 1.0, "beam_y": BEAM_Y, "guide": GUIDE, "load_x": LOAD_X,
-		"top_y": TOP_Y, "hook_up": HOOK_UP, "load_size": LOAD_SIZE, "handle": HANDLE_SIZE,
+		"top_y": TOP_Y, "hook_up": HOOK_UP, "load_size": LOAD_SIZE,
 	})
 
 
-## The grip's place at the start of a stroke: under the guide wheel's right side.
-func handle_top() -> Vector3:
-	return Vector3(GUIDE.x + PulleyProps.WHEEL_RADIUS, HANDLE_TOP, 0.0)
+## The rope end's place at the start of a stroke: under the guide wheel's right side.
+func end_top() -> Vector3:
+	return Vector3(GUIDE.x + PulleyProps.WHEEL_RADIUS, END_TOP, 0.0)
+
+
+## The rope end follows the stroke: down by the rope this hold has pulled (back up when let go).
+func _place_end() -> void:
+	var at := end_top() - Vector3(0.0, model.stroke_cells / float(model.cells_per_m), 0.0)
+	if rope_end.global_position != at:
+		rope_end.global_position = at
 
 
 # --- manipulation -------------------------------------------------------------------------------
 
 func manipulation_body(id: String) -> PhysicsBody3D:
-	return handle if id == "handle" else null
+	return rope_end if id == "rope" else null
 
 
-## The grip's line down from the top of a stroke, as long as the rope left to pull allows.
-func manipulation_surface(surface_id: String) -> ManipSurface:
-	if surface_id != "pull":
-		return null
-	var reach := minf(STROKE, model.stroke_limit() / float(model.cells_per_m))
-	var surface := _press_line(handle_top(), reach, _grid_step("handle"), HANDLE_SIZE.y * 0.5)
-	surface.exclude = [load_body.get_rid()]
-	return surface
-
-
-func manipulation_started(_id: String) -> void:
+## Pressed and held: the hand's force grows from 0 from the next step; the rope moves once it is F.
+func hold_started(_id: String) -> void:
 	holding = true
 	model.holding = true
-	_begin_press(manipulation_surface("pull"))
+	model.stroke_cells = 0
+	_moving_steps = 0
+	hand.start()
+	model.hand = 0.0
 	_update_status(true)
 
 
-## Let go where the grip was put down: that stroke counts, the ratchet keeps the rope pulled so far
-## and the grip goes back up for the next stroke.
-func manipulation_placed(_id: String, transform: Transform3D) -> void:
-	if _press != null:
-		model.stroke_cells = mini(model.stroke_limit(), roundi(clampf(_press.depth_of(transform.origin), 0.0, STROKE) / _press_step))
-	_let_go()
-
-
-## A cancelled pull (second finger, system cancel): the grip went back, the stroke does not count.
-func manipulation_cancelled(_id: String) -> void:
-	model.stroke_cells = 0
-	_let_go()
-
-
-func _let_go() -> void:
+## Let go (or cancelled): the stroke pulled so far counts, the ratchet keeps the rope and the rope end
+## goes back up for the next stroke.
+func hold_ended(_id: String) -> void:
 	holding = false
-	_end_press()
+	hand.stop()
+	model.hand = INF
+	_moving_steps = 0
 	model.let_go()
-	_place_handle()
-	props.cat_let_go(handle_top(), model.lift() > 0.0)
+	_place_end()
+	props.cat_let_go(end_top(), model.lift() > 0.0)
 	_changed()

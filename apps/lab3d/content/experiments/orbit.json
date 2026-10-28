@@ -66,7 +66,7 @@
     "title": "별 둘레를 빙글빙글 돌아 보자!",
     "place": "별 돌기",
     "say": "별이 행성을 끌어당겨서 빙글빙글 돌게 해요. 가까우면 더 빨리 돌고, 너무 빠르면 별을 떠나요.",
-    "tip": "노란 손잡이를 끌어 쏠 방향과 세기를 정해요.",
+    "tip": "행성을 뒤로 당겼다 놓으면 반대쪽으로 날아가요!",
     "picks": {
       "radius": [
         {"value": 2.0, "label": "2미터", "picture": "orbit", "size": 0.0},
@@ -108,10 +108,10 @@
   "manipulation": {
     "grab_radius": 72.0,
     "objects": [
-      { "id": "arrow", "surface": "arrow", "snap": 0.1, "height": false },
-      { "id": "planet", "surface": "radius_line", "snap": 0.5, "height": false, "drag": false }
+      { "id": "planet", "surface": "radius_line", "snap": 0.5, "height": false }
     ],
-    "demo_action": "launch"
+    "demo_action": "launch",
+    "slingshot": { "object": "planet" }
   },
   "graph": {
     "title": "발사 속력과 궤도 기준",

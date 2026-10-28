@@ -1,7 +1,7 @@
 ## Plan G2 — the missions of the other 10 labs on their real screens. Per lab a scripted round
 ## through the screen's own paths (conditions with _set_control, buttons with experiment_action, a
 ## ball let go where a finger would put it, and the labs' existing test hooks for the hand on a
-## handle: the push force, the lever's pressed cells, the pulley's stroke): an attempt that misses
+## press: the push force, the lever's held force, the pulley's stroke): an attempt that misses
 ## its stage (short, or made under other conditions) earns nothing; each stage is reachable inside
 ## the lab's control ranges and earns exactly one stamp; the setup that cleared a stage, tried again
 ## unchanged, never earns the next one (each stage asks for a changed condition: check_conditions
@@ -21,7 +21,7 @@ const AFTER_STAMP := 40          # frames an attempt runs on after its stamp (no
 
 ## Per lab: the attempts in order, [what, ops, frames, stamps after]. Ops: ["ctl", id, value],
 ## ["act", id], ["place", object, pull m] (the spring ball let go there), ["force", N] (the push),
-## ["cells", n] (the lever's press), ["layout", fulcrum x, load x] (the lever's dragged fulcrum and
+## ["hand", N] (the lever's held press), ["layout", fulcrum x, load x] (the lever's fulcrum and
 ## load), ["stroke", cells] (one pulley stroke let go).
 const ROUNDS := {
 	"free-fall": [
@@ -62,12 +62,12 @@ const ROUNDS := {
 		["the heavy box pushed loose (41 N)", [["force", 41.0]], 90, 3],
 	],
 	"rotation": [
-		["the middle point lifts with 186.9 N: not the near point", [["cells", 50]], 20, 0],
-		["the near point: 320.3 N", [["cells", 0], ["ctl", "effort", "near"], ["cells", 50]], 20, 1],
-		["the near point again: nothing", [["cells", 0], ["ctl", "effort", "near"], ["cells", 50]], 20, 1],
-		["the middle point, a 1 kg load: not the 20 kg load", [["cells", 0], ["ctl", "effort", "mid"], ["ctl", "mass", 1.0], ["cells", 50]], 20, 1],
-		["the middle point, 20 kg: 186.9 N", [["cells", 0], ["ctl", "mass", 20.0], ["cells", 50]], 20, 2],
-		["the far point: 124.6 N", [["cells", 0], ["ctl", "effort", "far"], ["cells", 50]], 20, 3],
+		["the middle point lifts with 186.9 N: not the near point", [["hand", 400.0]], 20, 0],
+		["the near point: 320.3 N", [["hand", 0.0], ["ctl", "effort", "near"], ["hand", 400.0]], 20, 1],
+		["the near point again: nothing", [["hand", 0.0], ["ctl", "effort", "near"], ["hand", 400.0]], 20, 1],
+		["the middle point, a 1 kg load: not the 20 kg load", [["hand", 0.0], ["ctl", "effort", "mid"], ["ctl", "mass", 1.0], ["hand", 400.0]], 20, 1],
+		["the middle point, 20 kg: 186.9 N", [["hand", 0.0], ["ctl", "mass", 20.0], ["hand", 400.0]], 20, 2],
+		["the far point: 124.6 N", [["hand", 0.0], ["ctl", "effort", "far"], ["hand", 400.0]], 20, 3],
 	],
 	"orbit": [
 		["the start (3 m): a circle, not from 4 m", [["act", "launch"]], 300, 0],
@@ -257,8 +257,8 @@ func _ops(screen: Control, ops: Array) -> void:
 				m.changed.emit()
 			"force":
 				lab.set_applied_force(float(op[1]))
-			"cells":
-				lab.set_cells(int(op[1]))
+			"hand":
+				lab.set_hand(float(op[1]))   # the held press's force (N; 400 N = its cap)
 			"layout":
 				lab.set_layout(float(op[1]), float(op[2]))
 			"stroke":

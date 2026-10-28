@@ -1,14 +1,17 @@
 ## Grass island props of the orbit lab (apps/lab3d/docs/art-direction.md, section 9): a small "space"
-## stage on the island with the orbit floating above it. Meshes and reactions only: the planet and
-## knob bodies are built and posed by orbit.gd.
+## stage on the island with the orbit floating above it. Meshes and reactions only: the planet body
+## is built and posed by orbit.gd.
 ## - the stage: a deep blue disk (SPACE) on the grass with white and yellow star dots, and a blue
 ##   pedestal holding the big yellow star at the orbit's height,
 ## - the blue planet (a yarn ball, Task 4g; a white band before), its ArtJuice (shadow on the stage, squash, pop),
 ## - a white dashed circle at the start radius in the orbit plane (the circular orbit),
 ## - the predicted path of OrbitChallenge (the web's dashed path) as dots in the outcome's colour:
 ##   green orbit, red crash, purple escape (the web's colours),
-## - the purple velocity arrow (to the yellow knob while waiting, the planet's velocity in flight) and
-##   the red gravity arrow towards the star in flight (0.15 m per m/s^2),
+## - the purple velocity arrow (the launch while waiting, the pull's launch while the planet is
+##   pulled, the planet's velocity in flight) and the red gravity arrow towards the star in flight
+##   (0.15 m per m/s^2),
+## - the slingshot's pull line (PullDots, 2026-10-28): white dots from the planet back to where the
+##   finger pulls it, only while a pull is held,
 ## - reactions: launch = stretch; crash = bump towards the star; reset = pop.
 ## - the bread cat (CatActor wearing the BreadCat look, 2026-10-27) on a bread crate under the waiting
 ##   planet, holding it up over its shoulder (its arm stretches up: the whole cat stays under the
@@ -35,7 +38,7 @@ var guide: MultiMeshInstance3D
 var path: MultiMeshInstance3D
 var velocity_arrow: VelocityArrow
 var gravity_arrow: VelocityArrow
-var knob_visual: Node3D
+var pull_dots: PullDots
 var cat: CatActor
 var cat_stand: CatCrates
 var _cat_ceiling := 0.0
@@ -98,7 +101,7 @@ static func dot_mesh(color: Color) -> Mesh:
 	return b.commit()
 
 
-func dress(experiment: Node3D, planet: RigidBody3D, planet_radius: float, knob: Node3D, star_y: float, star_radius: float) -> void:
+func dress(experiment: Node3D, planet: RigidBody3D, planet_radius: float, star_y: float, star_radius: float) -> void:
 	_plane_y = star_y
 	ArtKit.add_world(experiment, Vector3(0.0, 0.0, -0.5), Vector3.ZERO, 0.6)
 	var stage := ArtKit.instance(stage_mesh(star_y, star_radius))
@@ -147,7 +150,8 @@ func dress(experiment: Node3D, planet: RigidBody3D, planet_radius: float, knob: 
 	gravity_arrow.name = "GravityArrow"
 	gravity_arrow.visible = false
 	experiment.add_child(gravity_arrow)
-	knob_visual = knob.get_node("Visual")
+	pull_dots = PullDots.new()
+	experiment.add_child(pull_dots)
 	_planet_radius = planet_radius
 	cat = CatActor.new(BreadCat.new())
 	cat.look_target = planet
@@ -235,26 +239,34 @@ func hide_gravity() -> void:
 
 
 ## The launch along the plane velocity `velocity`: the cat flings the planet off its paw.
+## The slingshot's pull line from the planet `from` to the pulled point `to` (INF: no pull).
+func show_pull(from: Vector3, to: Vector3) -> void:
+	if pull_dots == null:
+		return
+	if to == Vector3.INF:
+		pull_dots.hide_line()
+	else:
+		pull_dots.show_line(from, to)
+
+
 func launched(velocity := Vector3.ZERO) -> void:
-	knob_visual.visible = false
+	pull_dots.hide_line()
 	juice.stretch()
 	if cat != null:
 		cat.let_go(velocity)
 		_lapped = false
 
 
-## Picked up (in flight or waiting): the waiting look again, the yellow knob back and no gravity arrow.
+## Picked up (in flight or waiting): the waiting look again, no gravity arrow.
 func picked_up() -> void:
 	if juice == null:
 		return
-	knob_visual.visible = true
 	hide_gravity()
 
 
 func reset() -> void:
 	if juice == null:
 		return
-	knob_visual.visible = true
 	gravity_arrow.visible = false
 	juice.pop()
 

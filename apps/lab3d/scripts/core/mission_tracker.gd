@@ -38,7 +38,7 @@
 ##
 ## An attempt (what one stamp at most comes from): the run since the child last acted on the lab —
 ## an action ("공 놓기", "발사", "처음으로"), a condition change, an object put down or put back (a
-## let-go handle, a placed ball), a slingshot throw — or since the lab was back at "ready". The
+## let-go hold, a placed ball), a slingshot throw — or since the lab was back at "ready". The
 ## screen judges every poll while the status is a judge_on one and keeps judging until the attempt
 ## earns its stamp (a growing value — orbit laps, a measured period — is judged when it gets there);
 ## then the attempt is done. A run that falls short changes nothing, and the next attempt is judged

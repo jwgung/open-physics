@@ -314,7 +314,7 @@ func check_box_looks(id: String) -> void:
 				"friction":
 					run.set_applied_force(30.0)
 				"rotation":
-					run.set_cells(mini(i, 60))
+					run.set_hand(mini(i, 60) * 5.0)   # the old handle's 5 N cells, one per step
 				"pulley":
 					run.model.holding = true
 					run.model.stroke_cells = mini(i, 60)   # the hand pulls 1 cell per step

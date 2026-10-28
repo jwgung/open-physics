@@ -2,9 +2,8 @@
 ## the web's purple arrows: the knob sits at the arrow tip, `offset` + speed * `scale` metres from the
 ## body centre, in a plane through it. Plane coordinates are those of ManipSurface; the direction is
 ## measured from frame +x towards frame -z (angle = atan2(-p.y, p.x)): for the projectile's vertical
-## plane (frame z = world -y) that is up from the horizon, for the orbit's level plane (frame = world
-## axes) counter-clockwise seen from above. Subclasses: ArrowSurface (projectile, Task 4a),
-## OrbitArrowSurface (orbit, Task 4d).
+## plane (frame z = world -y) that is up from the horizon. Subclass: ArrowSurface (projectile, Task
+## 4a; the orbit lab's knob surface went with its knob, 2026-10-28).
 class_name PolarArrowSurface
 extends ManipSurface
 

@@ -226,7 +226,7 @@ static func instance(mesh: Mesh, material: Material = null) -> MeshInstance3D:
 
 ## A link of length 1 from the origin down along -y (a string, a rod, a rope segment): a 6-sided
 ## cylinder posed between two points by stretch_link() (Task 4e: pendulum string and rod, the
-## lever's handle rod, the pulley's rope).
+## pulley's rope).
 static func link_mesh(radius: float, color: Color) -> Mesh:
 	var b := builder()
 	b.ao_min = 1.0

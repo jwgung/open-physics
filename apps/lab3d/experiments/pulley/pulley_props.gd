@@ -1,5 +1,5 @@
 ## Grass island props of the pulley lab (apps/lab3d/docs/art-direction.md, section 9). Meshes and
-## reactions only: the load and the handle are bodies built and posed by pulley.gd; nothing here
+## reactions only: the load and the rope end are bodies built and posed by pulley.gd; nothing here
 ## moves a body.
 ## - the gantry (one mesh): a yellow board, two blue posts and the top beam with the guide wheel over
 ##   the pull side,
@@ -9,15 +9,16 @@
 ##   (n = 1: one fixed wheel; 2: one fixed + one moving; 4: two + two), rebuilt when n changes,
 ## - the rope (white): the n supporting strands from the fixed block down to the moving block (one
 ##   mesh, stretched each frame), the run over to the guide wheel (in the fixed block's mesh) and the
-##   pull strand down to the red grip (a link posed each frame); the rope pulled in earlier strokes lies coiled on the ground (its height grows
-##   with the length),
+##   pull strand down to its end, a white knot the child presses and holds (2026-10-28: the red grip
+##   went; a link posed each frame); the rope pulled in earlier strokes lies coiled on the ground
+##   (its height grows with the length),
 ## - arrows: the orange weight of the load and the red pull of the hand (down), FORCE_SCALE m per N,
 ## - reactions: lifting off = stretch; set down (reset) = pop.
-## - the bread cat (CatActor wearing the BreadCat look, 2026-10-27) under the grip, behind the pull
-##   strand: while the finger pulls the grip the cat holds it with both paws and pulls it down with
-##   it (it jumps up to the grip and hangs from it while the grip is above its reach, stands and
+## - the bread cat (CatActor wearing the BreadCat look, 2026-10-27) under the rope end, behind the
+##   pull strand: while the finger holds the rope the cat holds its end with both paws and pulls it
+##   down with it (it jumps up to the end and hangs from it while it is above its reach, stands and
 ##   leans back once it is low); letting go it drops back to its spot, cheering when the stroke
-##   lifted the load. Only meshes: the rope, the grip and the load are the formula model's.
+##   lifted the load. Only meshes: the rope, its end and the load are the formula model's.
 class_name PulleyProps
 extends RefCounted
 
@@ -27,7 +28,8 @@ const ROPE_RADIUS := 0.03
 const FORCE_SCALE := 0.006
 const ARROW_MAX := 2.4
 const BLOCK_DEPTH := 0.3
-## The cat's reach to the grip's back face (shoulders -> grip: from below and behind), how hard it
+const KNOT_RADIUS := 0.13       # m, the rope end's knot
+## The cat's reach to the rope end's back face (shoulders -> grip: from below and behind), how hard it
 ## leans back pulling, and its spot under the grip (x offset, z) when it does not hold it.
 const CAT_DIR := Vector3(0.0, 0.45, 0.89)
 const CAT_EFFORT := 0.6
@@ -38,7 +40,7 @@ var juice: ArtJuice
 var fixed_block: MeshInstance3D
 var moving_block: MeshInstance3D
 var strands: MeshInstance3D               # the n supporting strands: one mesh, 1 m long, scaled to the gap
-var pull_link: MeshInstance3D              # guide wheel -> grip
+var pull_link: MeshInstance3D              # guide wheel -> rope end
 var pile: MeshInstance3D
 var weight_arrow: VelocityArrow
 var pull_arrow: VelocityArrow
@@ -108,10 +110,12 @@ static func strands_mesh(n: int) -> Mesh:
 	return b.commit()
 
 
-static func grip_mesh(size: Vector3) -> Mesh:
+## The rope end: a white knot (a ball of rope) with a short tail under it.
+static func knot_mesh() -> Mesh:
 	var b := ArtKit.builder()
 	b.ao_min = 0.9
-	b.add_rounded_box(Transform3D.IDENTITY, size, 0.08, 1, ArtPalette.RED, ArtPalette.RED_TOP)
+	b.add_sphere(Transform3D.IDENTITY, KNOT_RADIUS, 4, 8, ArtPalette.WHITE)
+	b.add_cylinder(Transform3D(Basis(), Vector3(0.0, -KNOT_RADIUS - 0.12, 0.0)), ROPE_RADIUS, ROPE_RADIUS, 0.16, 6, ArtPalette.WHITE)
 	return b.commit()
 
 
@@ -123,7 +127,7 @@ static func pile_mesh() -> Mesh:
 	return b.commit()
 
 
-func dress(experiment: Node3D, load_body: RigidBody3D, handle: StaticBody3D, sizes: Dictionary) -> void:
+func dress(experiment: Node3D, load_body: RigidBody3D, rope_end: StaticBody3D, sizes: Dictionary) -> void:
 	ArtKit.add_world(experiment, Vector3(0.0, 0.0, -0.6))
 	var gantry := ArtKit.instance(gantry_mesh(sizes.left, sizes.right, sizes.beam_y, sizes.guide))
 	gantry.name = "Gantry"
@@ -149,9 +153,9 @@ func dress(experiment: Node3D, load_body: RigidBody3D, handle: StaticBody3D, siz
 	juice.dust_amount = 12
 	experiment.add_child(juice)
 	juice.setup(load_body, load_visual, sizes.load_size)
-	var grip := ArtKit.instance(grip_mesh(sizes.handle))
-	grip.name = "Visual"
-	handle.add_child(grip)
+	var knot := ArtKit.instance(knot_mesh())
+	knot.name = "Visual"
+	rope_end.add_child(knot)
 	strands = MeshInstance3D.new()
 	strands.name = "Strands"
 	strands.material_override = ArtKit.lit_material()
@@ -174,8 +178,8 @@ func dress(experiment: Node3D, load_body: RigidBody3D, handle: StaticBody3D, siz
 	pull_arrow.name = "PullArrow"
 	experiment.add_child(pull_arrow)
 	cat = CatActor.new(BreadCat.new())
-	cat.look_target = handle
-	cat.position = cat_spot(handle.global_position)
+	cat.look_target = rope_end
+	cat.position = cat_spot(rope_end.global_position)
 	experiment.add_child(cat)
 
 
@@ -192,18 +196,18 @@ func look_centre(load: Node3D) -> Vector3:
 	return load.global_position + Vector3.UP * (look - 1.0) * _load_size * 0.5
 
 
-## The cat's spot on the floor under the grip at `grip` (when it does not hold it).
+## The cat's spot on the floor under the rope end at `grip` (when it does not hold it).
 static func cat_spot(grip: Vector3) -> Vector3:
 	return Vector3(grip.x + CAT_SPOT_X, 0.0, CAT_SPOT_Z)
 
 
-## The finger holds the grip (centre `grip`, `size`): the cat's paws on its back face, pulling.
+## The finger holds the rope (its end's centre `grip`, pick box `size`): the cat's paws on its back, pulling.
 func update_cat(grip: Vector3, size: Vector3) -> void:
 	if cat != null:
 		cat.pull(grip - Vector3(0.0, 0.0, size.z * 0.5), CAT_DIR.normalized(), 0.0, CAT_EFFORT)
 
 
-## The finger let the grip go: the cat lets go and drops back to its spot (a cheer when the load is
+## The finger let the rope go: the cat lets go and drops back to its spot (a cheer when the load is
 ## off the ground).
 func cat_let_go(grip_rest: Vector3, lifted: bool) -> void:
 	if cat == null:
@@ -231,7 +235,7 @@ static func strand_x(load_x: float, i: int, n: int) -> float:
 
 
 ## The n strands between the fixed block (top_y) and the hook (hook_y), the pull strand from the
-## guide wheel to the grip top; the pile for `piled` m of rope; the arrows.
+## guide wheel to the rope end's top; the pile for `piled` m of rope; the arrows.
 func show_rope(top_y: float, hook_y: float, guide: Vector3, grip_top: Vector3, piled: float,
 		load_centre: Vector3, load_half: float, weight: float, pull: float) -> void:
 	strands.scale = Vector3(1.0, maxf(0.01, top_y - hook_y), 1.0)

@@ -109,7 +109,8 @@ var _updating := false                  # a control/action is running: refresh o
 var _graph_revision := -2               # Experiment.graph_revision() of the series on the graph
 var _slingshot_hud: Label = null        # the big pull readout (Plan G3)
 var _slingshot_units: PackedStringArray = PackedStringArray(["°", "m/s"])
-var _slingshot_controls: PackedStringArray = PackedStringArray()   # the two controls a pull sets
+var _slingshot_controls: PackedStringArray = PackedStringArray()   # the controls a pull sets (one or two)
+var _slingshot_spec: Dictionary = {}    # the lab's slingshot_setup() (its readout, action, rearm)
 ## The game's first round (Plan G4): the mission strip (도장), Dugi's prediction question and the
 ## reason he tells once after the first throw.
 var _missions: MissionTracker = null
@@ -466,18 +467,26 @@ func handle_back() -> bool:
 ## sliders in "자세히" follow) and throws with the "release" action, the same run as setting the
 ## controls and pressing "공 놓기". A tap or a cancel throws nothing and changes nothing. After a
 ## run the next press resets it first (처음으로's reset): the next shot is ready.
+## The collision and orbit labs (2026-10-28) pull their ball / planet the same way: the spec may give
+## the pull's own value (`value`: pull -> Vector2), its readout (`readout`: value -> text), the
+## action that launches (`action`, default "release"), the one that readies the next shot (`rearm`,
+## default "reset") and the demo's pulls (`demo`). One control: the value's x.
 func _setup_slingshot() -> void:
 	if manipulator == null or not experiment.has_method("slingshot_setup"):
 		return
 	var spec: Dictionary = experiment.slingshot_setup()
 	if spec.is_empty():
 		return
+	_slingshot_spec = spec
 	_slingshot_controls = PackedStringArray(spec.controls)
 	manipulator.set_slingshot(str(spec.object), spec.surface, spec.launch, func() -> Vector2:
-		return Vector2(experiment.control_value(_slingshot_controls[0]), experiment.control_value(_slingshot_controls[1])))
+		return Vector2(experiment.control_value(_slingshot_controls[0]),
+			experiment.control_value(_slingshot_controls[1]) if _slingshot_controls.size() > 1 else 0.0),
+		spec.get("value", Callable()), spec.get("demo", Manipulator.DEMO_PULLS))
 	manipulator.slingshot.connect(_on_slingshot)
 	_make_slingshot_hud()
-	_slingshot_units = PackedStringArray([str(spec.units.get("angle", "°")), str(spec.units.get("speed", "m/s"))])
+	var units: Dictionary = spec.get("units", {})
+	_slingshot_units = PackedStringArray([str(units.get("angle", "°")), str(units.get("speed", "m/s"))])
 
 
 ## The big readout shown while a pull is held (white with a dark shadow, over the 3D view):
@@ -501,6 +510,9 @@ func _make_slingshot_hud() -> void:
 ## The pull's readout text in a child's words: "45도 · 1초에 9.0미터" (the values the release throws,
 ## already on the grids; kid_value).
 func slingshot_readout(value: Vector2) -> String:
+	var own: Callable = _slingshot_spec.get("readout", Callable())
+	if own.is_valid():
+		return own.call(value)
 	return "%s · %s" % [kid_value(_slingshot_units[0], roundf(value.x), 0), kid_value(_slingshot_units[1], value.y, 1)]
 
 
@@ -522,7 +534,7 @@ func _on_slingshot(state: String, value: Variant) -> void:
 		"rearm":
 			_new_attempt()
 			_updating = true
-			experiment.change_from_input(experiment.run_action.bind("reset"))
+			experiment.change_from_input(experiment.run_action.bind(str(_slingshot_spec.get("rearm", "reset"))))
 			_updating = false
 			if cast != null:
 				cast.reset()
@@ -544,13 +556,35 @@ func _on_slingshot(state: String, value: Variant) -> void:
 			_new_attempt()
 			_updating = true
 			experiment.change_from_input(func() -> void:
-				experiment.set_control(_slingshot_controls[0], v.x)
-				experiment.set_control(_slingshot_controls[1], v.y))
-			experiment.change_from_input(experiment.run_action.bind("release"))
+				experiment.begin_batch()
+				experiment.set_control(_slingshot_controls[0], on_grid(definition, _slingshot_controls[0], v.x))
+				if _slingshot_controls.size() > 1:
+					experiment.set_control(_slingshot_controls[1], on_grid(definition, _slingshot_controls[1], v.y))
+				experiment.end_batch())
+			for id in _slingshot_controls:
+				_sync_control(id)
+			experiment.change_from_input(experiment.run_action.bind(str(_slingshot_spec.get("action", "release"))))
 			_updating = false
 			if cast != null:
 				cast.user_changed()
 			_refresh()
+
+
+## `value` (a pull's value, a 32-bit Vector2 component) on the slider `id`'s grid in 64 bit: whole
+## steps counted from 0 (0.1 m/s: 23 / 10.0 = 2.3, not 2.29999995). A value off the grid (a pull's
+## finer grid than the slider's) or a control without a step stays as it is.
+static func on_grid(lab_definition: Dictionary, id: String, value: float) -> float:
+	for control in lab_definition.get("controls", []):
+		if control.id != id or float(control.get("step", 0.0)) <= 0.0:
+			continue
+		var step := float(control.step)
+		if step >= 1.0:
+			var whole := roundf(value / step) * step
+			return whole if absf(whole - value) < 1e-4 else value
+		var cells := roundf(1.0 / step)
+		var snapped := roundi(value * cells) / cells
+		return snapped if absf(snapped - value) < 1e-4 else value
+	return value
 
 
 # --- game: the mission round (Plan G4) -----------------------------------------------------------
@@ -1636,7 +1670,7 @@ func _on_state_changed() -> void:
 
 
 func _on_manipulator_changed() -> void:
-	_new_attempt()   # an object put down or put back (a let-go handle, a placed ball)
+	_new_attempt()   # an object put down or put back (a let-go hold, a placed ball)
 	if not _updating:
 		_refresh()
 

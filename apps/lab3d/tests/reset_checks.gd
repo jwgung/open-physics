@@ -4,7 +4,7 @@
 ## with frames that have no fixed step (physics ticks lowered to 20 /s while it is checked, as on a
 ## device): the first action of each of the 11 experiments, then 처음으로 at several moments (the
 ## bread cat winding up, just after a release, in flight, landed / rolling, with the sidebar open, with
-## the push handle held). From the press frame on, for the next frames: every rigid body at its start
+## the box held by a press). From the press frame on, for the next frames: every rigid body at its start
 ## pose, every ArtJuice mesh at rest (no grow-in), the camera at the view the screen opened with, the
 ## panel values, graph and status as at the start, the bread cat holding the ball. The engine bug this
 ## guards (a pose set from input reverted by the next step's state report) is in BodyResync.
@@ -39,7 +39,7 @@ func run() -> void:
 		if definition.id == "friction":
 			problems.append_array(await _case(definition, 60, false, true))
 		expect.call(problems.is_empty(),
-			"처음으로 (%s, touch on the button, frames without a step): from the press frame every body at its start, meshes at rest, camera, panel, graph and status as at the start (after %s steps, sidebar open%s)" % [definition.id, str(waits), ", handle held" if definition.id == "friction" else ""],
+			"처음으로 (%s, touch on the button, frames without a step): from the press frame every body at its start, meshes at rest, camera, panel, graph and status as at the start (after %s steps, sidebar open%s)" % [definition.id, str(waits), ", the box held" if definition.id == "friction" else ""],
 			"; ".join(problems))
 		if definition.id == "spring":
 			var home := await _rebuilt_home_case(definition)
@@ -335,7 +335,7 @@ func _view_touch(view: View3D, position: Vector2, pressed: bool, canceled := fal
 
 ## One case: the screen opened, the first action pressed (and for friction a push), `wait` fixed
 ## steps, then 처음으로 pressed; the state checked in the press frame and CHECK_FRAMES frames after.
-func _case(definition: Dictionary, wait: int, sidebar: bool, hold_handle: bool) -> Array:
+func _case(definition: Dictionary, wait: int, sidebar: bool, hold_box: bool) -> Array:
 	var problems := []
 	var root_size := tree.root.size
 	tree.root.size = Vector2i(1560, 720)
@@ -357,13 +357,13 @@ func _case(definition: Dictionary, wait: int, sidebar: bool, hold_handle: bool) 
 	var status0 := lab.status()
 	var camera0: Dictionary = screen.view.rig.get_state()
 	var actions: Array = definition.actions.map(func(a: Dictionary) -> String: return a.id).filter(func(id: String) -> bool: return id != "reset")
-	if lab.has_method("set_applied_force") and not hold_handle:
+	if lab.has_method("set_applied_force") and not hold_box:
 		lab.set_applied_force(60.0)
 	if not actions.is_empty():
 		await _tap((screen._action_buttons[actions[0]] as Control).get_global_rect().get_center())
-	if hold_handle:
-		# A finger takes the handle and pulls it (touch index 0); 처음으로 is the second finger.
-		var at: Vector2 = screen.view.rig.unproject_position(lab.handle.global_position) / (Vector2(screen.view.viewport.size) / screen.view.size)
+	if hold_box:
+		# A finger presses and holds the box (touch index 0; a wiggle changes nothing); 처음으로 is the second finger.
+		var at: Vector2 = screen.view.rig.unproject_position(lab.box.global_position) / (Vector2(screen.view.viewport.size) / screen.view.size)
 		await _tap(at, 0, true, false)
 		for i in 6:
 			var drag := InputEventScreenDrag.new()
@@ -373,14 +373,14 @@ func _case(definition: Dictionary, wait: int, sidebar: bool, hold_handle: bool) 
 			await tree.process_frame
 	for i in wait:
 		await tree.physics_frame
-	if lab.has_method("set_applied_force") and not hold_handle:
+	if lab.has_method("set_applied_force") and not hold_box:
 		lab.set_applied_force(0.0)
 	if sidebar:
 		screen.open_sidebar(false)
 		await tree.process_frame
 	var reset: Control = screen._action_buttons["reset"]
 	Engine.physics_ticks_per_second = SLOW_TICKS
-	await _tap(reset.get_global_rect().get_center(), 1 if hold_handle else 0)
+	await _tap(reset.get_global_rect().get_center(), 1 if hold_box else 0)
 	for f in CHECK_FRAMES + 1:
 		for b: RigidBody3D in bodies0:
 			if is_instance_valid(b) and b.global_transform.origin.distance_to((bodies0[b] as Transform3D).origin) > POSE_TOL:
@@ -391,9 +391,9 @@ func _case(definition: Dictionary, wait: int, sidebar: bool, hold_handle: bool) 
 				problems.append("%s frame %d: %s mesh scale %s" % [definition.id, f, juice.name, juice.mesh_scale()])
 				break
 		var camera: Dictionary = screen.view.rig.get_state()
-		if not hold_handle and (camera.mode != camera0.mode or absf(camera.yaw - camera0.yaw) > 1e-6 or absf(camera.distance - camera0.distance) > 1e-6 or camera.target != camera0.target):
+		if not hold_box and (camera.mode != camera0.mode or absf(camera.yaw - camera0.yaw) > 1e-6 or absf(camera.distance - camera0.distance) > 1e-6 or camera.target != camera0.target):
 			problems.append("%s frame %d: camera %s" % [definition.id, f, camera])
-		if f == 0 and not hold_handle:
+		if f == 0 and not hold_box:
 			if str(lab.observations()) != obs0:
 				problems.append("%s: panel %s vs %s" % [definition.id, str(lab.observations()).substr(0, 80), obs0.substr(0, 80)])
 			if _graph_key(lab) != graph0:
@@ -406,7 +406,7 @@ func _case(definition: Dictionary, wait: int, sidebar: bool, hold_handle: bool) 
 			break
 		await tree.process_frame
 	Engine.physics_ticks_per_second = 60
-	if hold_handle:
+	if hold_box:
 		await _tap(Vector2.ZERO, 0, false, true)
 	host.queue_free()
 	await tree.process_frame

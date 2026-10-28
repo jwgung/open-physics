@@ -310,6 +310,24 @@ func manipulation_cancelled(_id: String) -> void:
 	pass
 
 
+## Where a press picks object `id` (world): its body's centre, unless the lab names another point of
+## it (the lever's effort end on the beam). The Manipulator measures the pick radius from here.
+func manipulation_pick_point(id: String) -> Vector3:
+	var body := manipulation_body(id)
+	return body.global_position if body != null else global_position
+
+
+## A finger presses and holds the hold object `id` (rule `"hold": true`, 2026-10-28): the lab ramps
+## its applied force from 0 (HoldRamp) until hold_ended.
+func hold_started(_id: String) -> void:
+	pass
+
+
+## The hold ended (let go, a second finger, a system cancel, a control change): the force is 0 again.
+func hold_ended(_id: String) -> void:
+	pass
+
+
 ## id -> Transform3D of the objects the user placed (kept across a screen rebuild).
 func placements() -> Dictionary:
 	return {}

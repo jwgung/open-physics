@@ -40,7 +40,7 @@
   ],
   "key_observations": ["effort_arm", "advantage", "state"],
   "predict": {
-    "question": "손잡이를 멀리 잡으면 힘이 덜 들까?",
+    "question": "멀리 누르면 힘이 덜 들까?",
     "choices": [
       { "id": "less", "label": "덜 들어요", "picture": "lever_far" },
       { "id": "same", "label": "똑같아요", "picture": "lever_same" }
@@ -55,9 +55,9 @@
     "hidden_until_end": ["required", "advantage", "load_torque", "net_torque"],
     "hidden_series_until_end": ["required"],
     "stages": [
-      { "threshold": 350.0, "conditions": {"mass": 20.0, "effort": "near"}, "text": "손잡이를 가까이 잡고 짐 들기!" },
-      { "threshold": 200.0, "conditions": {"mass": 20.0, "effort": "mid"}, "text": "손잡이를 중간에 잡고 짐 들기!" },
-      { "threshold": 130.0, "conditions": {"mass": 20.0, "effort": "far"}, "text": "손잡이를 멀리 잡고 살살 들기!" }
+      { "threshold": 350.0, "conditions": {"mass": 20.0, "effort": "near"}, "text": "막대를 가까이 눌러 짐 들기!" },
+      { "threshold": 200.0, "conditions": {"mass": 20.0, "effort": "mid"}, "text": "막대를 중간에 눌러 짐 들기!" },
+      { "threshold": 130.0, "conditions": {"mass": 20.0, "effort": "far"}, "text": "막대를 멀리 눌러 살살 들기!" }
     ]
   },
   "story": { "clue": "무거운 짐 밑에 조각이 있어! 막대로 짐을 들어 보자.", "map_clue": "빨간 시소 밑에 뭔가 있어!" },
@@ -65,8 +65,8 @@
     "card": "state",
     "title": "긴 막대로 무거운 짐을 들어 보자!",
     "place": "시소 들기",
-    "say": "받침에서 손잡이를 멀리 잡을수록 힘이 덜 들어요. 그래서 무거운 짐도 살살 들 수 있어요.",
-    "tip": "빨간 손잡이를 아래로 눌러 봐요.",
+    "say": "받침에서 멀리 누를수록 힘이 덜 들어요. 그래서 무거운 짐도 살살 들 수 있어요.",
+    "tip": "막대의 빨간 힘점을 꾹 누르고 있어 봐요.",
     "picks": {
       "effort": [
         {"value": "near", "label": "가까이", "picture": "lever", "size": 0.0},
@@ -74,8 +74,8 @@
         {"value": "far", "label": "멀리", "picture": "lever", "size": 1.0}
       ]
     },
-    "cards": {"effort_arm": "손잡이까지 거리", "advantage": "몇 배 덜 힘들까", "state": "막대는?"},
-    "states": {"힘점을 골라 빨간 손잡이를 아래로 눌러 보세요": "손잡이를 눌러 봐요", "손잡이를 아래로 눌러요": "손잡이를 눌러요", "누르는 중 · 아직 힘이 모자라요": "아직 힘이 모자라요", "들렸다! 힘이 충분해요": "들렸다!", "받침점·짐 위치를 옮기는 중": "옮기는 중"}
+    "cards": {"effort_arm": "누르는 곳까지 거리", "advantage": "몇 배 덜 힘들까", "state": "막대는?"},
+    "states": {"힘점을 골라 막대의 빨간 힘점을 꾹 눌러 보세요": "꾹 눌러 봐요", "빨간 힘점을 꾹 누르고 있어요": "누르는 중", "누르는 중 · 아직 힘이 모자라요": "아직 힘이 모자라요", "들렸다! 힘이 충분해요": "들렸다!", "받침점·짐 위치를 옮기는 중": "옮기는 중"}
   },
   "note": {
     "law": "받침점에서 멀리 누를수록 작은 힘으로 짐을 들 수 있어요. 양쪽의 힘 × 거리(돌림힘)가 같아지면 들려요.",
@@ -83,7 +83,7 @@
     "numbers": [
       { "label": "짐 무게 F₂ = mg", "ids": ["weight"] },
       { "label": "받침점–짐 거리 r₂", "ids": ["load_arm"] },
-      { "label": "받침점–손잡이 거리 r₁", "ids": ["effort_arm"] },
+      { "label": "받침점–힘점 거리 r₁", "ids": ["effort_arm"] },
       { "label": "들어 올리는 데 필요한 힘 F₁", "ids": ["required"] }
     ],
     "graph": true
@@ -99,7 +99,6 @@
     { "id": "effort_arm", "label": "받침점–힘점 거리 r₁", "unit": "m", "digits": 2 },
     { "id": "required", "label": "들어 올리는 데 필요한 힘 F₂r₂/r₁", "unit": "N", "digits": 1 },
     { "id": "applied", "label": "내가 누르는 힘 F₁", "unit": "N", "digits": 1 },
-    { "id": "force_step", "label": "손잡이 2 cm당 힘 (모자라면 자동으로 커져요)", "unit": "N", "digits": 0 },
     { "id": "advantage", "label": "역학적 이득 r₁/r₂", "unit": "배", "digits": 2 },
     { "id": "load_torque", "label": "짐 쪽 토크 F₂r₂ (반시계)", "unit": "N·m", "digits": 1 },
     { "id": "effort_torque", "label": "내 쪽 토크 F₁r₁ (시계)", "unit": "N·m", "digits": 1 },
@@ -108,7 +107,7 @@
   "manipulation": {
     "grab_radius": 72.0,
     "objects": [
-      { "id": "handle", "surface": "press", "snap": 0.02, "height": false },
+      { "id": "effort", "hold": true },
       { "id": "load", "surface": "beam_top", "snap": 0.25, "height": false, "drag": false },
       { "id": "fulcrum", "surface": "floor_line", "snap": 0.25, "height": false, "drag": false }
     ]

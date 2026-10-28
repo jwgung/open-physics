@@ -593,14 +593,13 @@ func check_layout(id: String) -> void:
 		else:
 			for x in [-5.5, -3.0, 0.0, 3.0, 5.5]:
 				targets.append(Vector3(x, lab.BOX * 0.5, 0.0))
-			targets.append(lab.handle.global_position)
 		var hidden := 0
 		for t in targets:
 			if box.intersects_segment(eye, t):
 				hidden += 1
 		var on_screen := view_rect.encloses(rect) and rect.size.x > 12.0
 		expect.call(on_screen and clear and hidden == 0,
-			"bread cat (%s, %s): in the front view, clear of the title, key cards, buttons and actions, hides none of %d points (ball / path / box / handle)" % [id, setup[2], targets.size()],
+			"bread cat (%s, %s): in the front view, clear of the title, key cards, buttons and actions, hides none of %d points (ball / path / box)" % [id, setup[2], targets.size()],
 			"cat %s in view %s%s, hidden %d" % [rect, view_rect.size, hit, hidden])
 		screen.get_parent().queue_free()
 		await tree.process_frame
@@ -611,14 +610,15 @@ func check_layout(id: String) -> void:
 ## The labs the cat joined on 2026-10-27, each with a scripted run of its primary use: [step, op,
 ## ...] ops before that fixed step ("act" id: an action; "pick" id: a finger picks a body up; "move"
 ## id offset: the held body is moved by the offset since the pick, linearly up to that step; "place"
-## id: put down) and the run's length in steps.
+## id: put down; "hold" / "letgo" id: a press and hold begins / ends, 2026-10-28) and the run's
+## length in steps.
 const ROLE_RUNS := {
 	"free-fall": {"steps": 240, "ops": [[30, "act", "release"]]},
 	"collision": {"steps": 300, "ops": [[30, "act", "release"]]},
 	"incline-friction": {"steps": 240, "ops": [[0, "call", "set_angle", 35.0], [30, "act", "release"]]},
 	"spring": {"steps": 360, "ops": [[1, "pick", "ball"], [40, "move", "ball", Vector3(1.3, 0.0, 0.0)], [60, "place", "ball"]]},
-	"pulley": {"steps": 240, "ops": [[1, "pick", "handle"], [50, "move", "handle", Vector3(0.0, -2.0, 0.0)], [90, "place", "handle"], [120, "pick", "handle"], [150, "move", "handle", Vector3(0.0, -1.0, 0.0)], [170, "place", "handle"]]},
-	"rotation": {"steps": 200, "ops": [[1, "pick", "handle"], [50, "move", "handle", Vector3(0.0, -1.0, 0.0)], [130, "place", "handle"]]},
+	"pulley": {"steps": 240, "ops": [[0, "call", "set_control", "mass", 4.0], [1, "hold", "rope"], [130, "letgo", "rope"], [140, "hold", "rope"], [220, "letgo", "rope"]]},
+	"rotation": {"steps": 200, "ops": [[1, "hold", "effort"], [160, "letgo", "effort"]]},
 	"constraints": {"steps": 360, "ops": [[30, "act", "release"]]},
 	"buoyancy": {"steps": 600, "ops": [[30, "act", "release"]]},
 	"orbit": {"steps": 480, "ops": [[30, "act", "launch"]]},
@@ -630,8 +630,8 @@ const ROLE_RUNS := {
 	"incline-friction/flat": {"steps": 120, "ops": [[0, "call", "set_angle", 0.0], [30, "act", "release"]]},
 	"incline-friction/steep": {"steps": 240, "ops": [[0, "call", "set_angle", 45.0], [1, "call", "set_run_length", 2.0], [30, "act", "release"]]},
 	"spring/in": {"steps": 240, "ops": [[1, "pick", "ball"], [40, "move", "ball", Vector3(-2.6, 0.0, 0.0)], [60, "place", "ball"]]},
-	"rotation/far": {"steps": 160, "ops": [[0, "call", "set_control", "effort", "far"], [1, "call", "set_layout", -1.5, -2.5], [2, "pick", "handle"], [50, "move", "handle", Vector3(0.0, -1.0, 0.0)], [120, "place", "handle"]]},
-	"rotation/near": {"steps": 160, "ops": [[0, "call", "set_control", "effort", "near"], [2, "pick", "handle"], [50, "move", "handle", Vector3(0.0, -1.0, 0.0)], [120, "place", "handle"]]},
+	"rotation/far": {"steps": 160, "ops": [[0, "call", "set_control", "effort", "far"], [1, "call", "set_layout", -1.5, -2.5], [2, "hold", "effort"], [120, "letgo", "effort"]]},
+	"rotation/near": {"steps": 240, "ops": [[0, "call", "set_control", "effort", "near"], [2, "hold", "effort"], [200, "letgo", "effort"]]},
 	"constraints/left": {"steps": 420, "ops": [[0, "call", "set_control", "length", 3.5], [20, "pick", "rope"], [40, "move", "rope", Vector3(-2.0, 1.2, 0.0)], [41, "place", "rope"]]},
 	"buoyancy/small": {"steps": 600, "ops": [[0, "call", "set_control", "volume", "small"], [1, "call", "set_control", "mass", 60.0], [30, "act", "release"]]},
 	"orbit/far": {"steps": 300, "ops": [[0, "call", "manipulation_placed", "planet", Transform3D(Basis(), Vector3(5.0, 2.0, 0.0))], [1, "call", "set_control", "speed", 4.0], [30, "act", "launch"]]},
@@ -676,6 +676,12 @@ func _role_ops(lab: Experiment, run: Dictionary, k: int, held: Dictionary) -> vo
 					var body: Node3D = lab.manipulation_body(op[2])
 					lab.manipulation_placed(op[2], body.global_transform)
 					held.erase(op[2])
+			"hold":
+				if op[0] == k:
+					lab.hold_started(op[2])
+			"letgo":
+				if op[0] == k:
+					lab.hold_ended(op[2])
 
 
 ## The lab's bodies (engine transforms) and panel, graph every step of the run.
@@ -794,10 +800,10 @@ static func _contact_gap(id: String, lab: Experiment, cat: CatActor) -> float:
 				var p: Vector3 = inv * cat.hand_point(i)
 				gap = maxf(gap, maxf(absf(p.y - lab.BOX * 0.5), maxf(absf(p.x), absf(p.z)) - lab.BOX * 0.5))
 		"pulley":
-			var grip: Vector3 = lab.handle.global_position
+			var grip: Vector3 = lab.rope_end.global_position
 			for i in 2:
 				var p: Vector3 = cat.hand_point(i) - grip
-				var h: Vector3 = lab.HANDLE_SIZE * 0.5
+				var h: Vector3 = lab.END_SIZE * 0.5
 				gap = maxf(gap, maxf(absf(p.z + h.z), maxf(absf(p.x) - h.x, absf(p.y) - h.y)))
 		"rotation":
 			var inv: Transform3D = lab.beam.global_transform.affine_inverse()
@@ -832,12 +838,12 @@ static func _role_keep(id: String, lab: Experiment) -> PackedVector3Array:
 			for y in range(1, 5):
 				out.append(Vector3(SpringProps.BAR_X, y * 0.5, SpringProps.BAR_Z))
 		"pulley":
-			out.append(lab.handle.global_position)
+			out.append(lab.rope_end.global_position)
 			out.append(lab.GUIDE)
 		"rotation":
 			for x in range(-6, 7):
 				out.append(Vector3(x * 0.5, lab.PIVOT_Y + lab.BEAM_THICK * 0.5, 0.0))
-			out.append(lab.handle.global_position)
+			out.append(lab.effort_point())
 		"constraints":
 			out.append(lab.anchor(0))
 			out.append(lab.anchor(1))

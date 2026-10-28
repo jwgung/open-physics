@@ -30,6 +30,10 @@ const NIGHT_TINT := Vector3(0.42, 0.5, 0.82)
 const DARK_TINT := Vector3(0.26, 0.31, 0.6)
 const NIGHT_SEA := Color("1b4478")
 const DARK_SEA := Color("0e2649")
+## The sky backdrop's own extra night on top of the tint (2026-10-28 device check: the tinted day sky
+## still read as day, a light blue over the dark sea): night and the darker night.
+const NIGHT_SKY := Vector3(0.22, 0.24, 0.4)
+const DARK_SKY := Vector3(0.16, 0.18, 0.32)
 ## The guiding star in the prologue's night sky, above and behind the island (default view: -z).
 const STAR_AT := Vector3(0.0, 24.0, -16.0)
 const STAR_SIZE := 2.4
@@ -488,7 +492,8 @@ func _finish() -> void:
 ## A tap anywhere but the box and 건너뛰기: the same as a tap on the box (the whole page, the next).
 func _on_shield_input(event: InputEvent) -> void:
 	var tap: bool = (event is InputEventScreenTouch and event.pressed) \
-		or (event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT)
+		or (event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT
+			and event.device != InputEvent.DEVICE_ID_EMULATION)   # a touch's emulated click: one tap, one page
 	if tap:
 		tap_page()
 		shield.accept_event()
@@ -597,6 +602,8 @@ func _set_night(level: float) -> void:
 		sea_color = NIGHT_SEA.lerp(DARK_SEA, level - 1.0)
 	if _can_tint:
 		RenderingServer.global_shader_parameter_set(&"story_tint", tint)
+	var sky := Vector3.ONE.lerp(NIGHT_SKY, minf(level, 1.0)) if level <= 1.0 else NIGHT_SKY.lerp(DARK_SKY, level - 1.0)
+	MapIsland.sky_material().set_shader_parameter("own_tint", sky)
 	if home != null and home.env != null and _day_sea != Color.BLACK:
 		home.env.environment.background_color = sea_color
 

@@ -313,7 +313,8 @@ func _has_point(point: Vector2) -> bool:
 
 func _gui_input(event: InputEvent) -> void:
 	var tap: bool = (event is InputEventScreenTouch and event.pressed) \
-		or (event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT)
+		or (event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT
+			and event.device != InputEvent.DEVICE_ID_EMULATION)   # a touch's emulated click: one tap, one page
 	if tap and active:
 		advance()
 		accept_event()

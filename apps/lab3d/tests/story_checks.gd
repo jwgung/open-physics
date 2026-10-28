@@ -58,6 +58,7 @@ func run() -> void:
 	await check_piece_found()
 	await check_flight()
 	await check_finale()
+	await check_one_tap()
 	Story.enabled = was
 	await check_measurements()
 	DirAccess.remove_absolute(ProgressStore.path)
@@ -469,3 +470,33 @@ func _free(screen: Control) -> void:
 	screen.get_parent().queue_free()
 	for i in 3:
 		await tree.process_frame
+
+
+## One finger tap on Android arrives twice: the touch and its emulated click
+## (emulate_mouse_from_touch). The dialogue box takes one step for it: the next page, not the next
+## page already typed out (2026-10-28, SM-X115 prologue check).
+func check_one_tap() -> void:
+	var words := "퍼피랜드에는 섬이 많아요. 그중 하나가 우리 과학섬이에요."
+	for i in 16:
+		words += " 밤마다 길잡이 별이 바다를 비춰 줘. 그래서 배들이 길을 잃지 않아."
+	var box := DialogueBox.new(words)
+	box.size = Vector2(900, 200)
+	tree.root.add_child(box)
+	box.layout(Rect2(0, 0, 1340, 800), 1340.0, 16.0)
+	box.open()
+	await tree.process_frame
+	box.advance()   # the first page all typed
+	var before := box.page
+	var touch := InputEventScreenTouch.new()
+	touch.pressed = true
+	var click := InputEventMouseButton.new()
+	click.pressed = true
+	click.button_index = MOUSE_BUTTON_LEFT
+	click.device = InputEvent.DEVICE_ID_EMULATION
+	box._gui_input(touch)
+	box._gui_input(click)
+	var one := box.page == before + 1 and not box.typed()   # the next page, still typing (the click did not also finish it)
+	expect.call(box.pages().size() >= 3 and one, "dialogue: one tap (a touch and its emulated click) is one step: the next page starts typing",
+		"pages %d, page %d -> %d" % [box.pages().size(), before, box.page])
+	box.queue_free()
+	await tree.process_frame

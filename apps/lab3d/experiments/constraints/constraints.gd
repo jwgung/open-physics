@@ -149,7 +149,7 @@ func _process(_delta: float) -> void:
 		_load_one(held, angle_at(held, bobs[held].global_position))
 	_show()
 	if released:
-		props.update_cat(models[0].period)
+		props.update_cat(models[0].half_swing_period)   # with the stamp (half a swing), not a full measured period
 
 
 ## The string and the rod from their anchors to the bobs where they are now.

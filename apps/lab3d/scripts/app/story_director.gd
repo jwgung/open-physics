@@ -75,6 +75,8 @@ var shield: Control
 var skip_button: Button
 ## Night: 0 day, 1 night, 2 the darker night after the star broke. The tint it puts on (tests).
 var night := 0.0
+var _sky_t := 0.0     # the sky star's and the guiding star's sway clocks (StarArt.face_camera)
+var _star_t := 0.0
 var tint := Vector3.ONE
 var placed_count := 0              # pieces at the lookout shown on the emblem
 var flights_played := 0            # (tests)
@@ -248,7 +250,7 @@ func _step_hint(delta: float) -> void:
 	var k := clampf(phase / HINT_TWINKLE_S, 0.0, 1.0)
 	hint.visible = k < 1.0
 	hint.scale = Vector3.ONE * maxf(0.01, sin(PI * k))
-	hint.rotation.y += delta * 2.5
+	StarArt.face_camera(hint, home.view.rig, _hint_t)
 
 
 func _hide_hint() -> void:
@@ -508,7 +510,8 @@ func advance(delta: float) -> void:
 	if _driving:
 		_step_camera(delta)
 	if sky_star != null:
-		sky_star.rotation.y += delta * 0.8
+		_sky_t += delta
+		StarArt.face_camera(sky_star, home.view.rig, _sky_t)
 
 
 # --- cinematic plumbing -------------------------------------------------------------------------
@@ -849,7 +852,8 @@ func _move_star(to: Vector3, seconds: float) -> void:
 func _step_star(delta: float) -> void:
 	if _star == null:
 		return
-	_star.rotation.y += delta * 1.2
+	_star_t += delta
+	StarArt.face_camera(_star, home.view.rig, _star_t)
 	if _lift and home.cat != null:
 		var top := home.cat.position + Vector3.UP * 2.0
 		_star.position = _star.position.lerp(top, 1.0 - exp(-8.0 * delta))

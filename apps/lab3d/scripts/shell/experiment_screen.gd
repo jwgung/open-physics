@@ -867,7 +867,7 @@ func _show_piece() -> void:
 		_piece.queue_free()
 	var cat := lab_cat()
 	var height := cat.bounds().size.y if cat != null else 1.4
-	_piece = StarArt.make(true, clampf(height * 0.22, 0.2, 0.8))
+	_piece = StarArt.make(true, clampf(height * 0.32, 0.25, 1.0))   # big enough to see its face
 	_piece.name = "FoundPiece"
 	_piece_t = 0.0
 	_piece.scale = Vector3.ONE * 0.01
@@ -889,7 +889,7 @@ func _place_piece(delta: float) -> void:
 		height = box.size.y
 		at = Vector3(box.get_center().x, box.end.y + height * 0.32, box.get_center().z)
 	_piece.position = at + Vector3.UP * height * 0.05 * sin(_piece_t * 5.0)
-	_piece.rotation.y += delta * 3.0
+	StarArt.face_camera(_piece, view.rig, _piece_t)
 	var k := clampf(_piece_t / PIECE_POP_S, 0.0, 1.0)
 	_piece.scale = Vector3.ONE * maxf(0.01, 1.0 + 0.35 * sin(PI * k) - (1.0 - k) * (1.0 - k))
 

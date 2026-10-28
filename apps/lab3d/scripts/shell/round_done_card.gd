@@ -101,6 +101,17 @@ func _draw_stamps() -> void:
 		stamp_row.draw_colored_polygon(StarEmblem.star_points(c, STAMP_R + 4.0), ArtPalette.OUTLINE)
 		stamp_row.draw_colored_polygon(StarEmblem.star_points(c, STAMP_R - 1.0), StarEmblem.FILL)
 		stamp_row.draw_colored_polygon(StarEmblem.star_points(c + Vector2(-4.0, -5.0), STAMP_R * 0.45), StarEmblem.FILL_LIGHT)
+		_draw_face(c, STAMP_R)
+
+
+## The star piece's face, as on the 3D piece (StarArt): two shiny eyes, pink cheeks, a smile.
+func _draw_face(c: Vector2, r: float) -> void:
+	for x in [-1.0, 1.0]:
+		var eye := c + Vector2(x * r * 0.2, -r * 0.02)
+		stamp_row.draw_circle(c + Vector2(x * r * 0.33, r * 0.14), r * 0.08, StarArt.CHEEK)
+		stamp_row.draw_circle(eye, r * 0.085, StarArt.FACE_INK)
+		stamp_row.draw_circle(eye + Vector2(-r * 0.025, -r * 0.03), r * 0.032, Color.WHITE)
+	stamp_row.draw_arc(c + Vector2(0.0, r * 0.08), r * 0.08, PI * 0.15, PI * 0.85, 8, StarArt.FACE_INK, maxf(2.0, r * 0.04), true)
 
 
 ## Closes now: the touch of this same frame already reaches what is behind (IGNORE before the free).

@@ -60,7 +60,7 @@
       { "threshold": 50.0, "conditions": {"strands": "four", "mass": 20.0}, "text": "4줄로 가볍게 들기!" }
     ]
   },
-  "story": { "clue": "조각이 높은 곳에 있어. 줄을 당겨 짐을 올려 보자!", "map_clue": "높은 틀에 줄이 걸린 곳이야!" },
+  "story": { "clue": "조각이 높은 곳에 있어. 줄을 당겨 짐을 올려 보자!", "map_clue": "줄 끝에 빨간 상자가 매달린 곳이야!" },
   "kid": {
     "card": "strands",
     "title": "줄이 많으면 짐이 가벼워질까?",

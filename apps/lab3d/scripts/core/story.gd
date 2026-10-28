@@ -96,14 +96,18 @@ static func wrong_line() -> String:
 	return str(_load().get("map_wrong", ""))
 
 
-## The map's night (StoryDirector: 1 = the story's night, 0 = day) with `count` pieces at the
-## lookout: the night lifts a step per piece; the last step (day) comes with the finale, so the
-## map stays a little dark until the star is back in the sky (`finale_done`: day from then on).
+## The map's night (StoryDirector: 2 = the dark night after the star broke, 1 = the story's night,
+## 0 = day) with `count` pieces at the lookout: the night lifts a step per piece, slowly at first
+## (2026-10-28 user: the map should really be dark; with the linear 1 -> 0 the grass read as day and
+## 7 pieces as almost day), so the island stays a night island until the last pieces. The last step
+## (day) comes with the finale (`finale_done`: day from then on).
+const NIGHT_CURVE := 0.7
 static func night_level(count: int, finale_done: bool) -> float:
 	if finale_done:
 		return 0.0
 	var total := spots().size()
-	return 1.0 - float(clampi(count, 0, total - 1)) / total
+	var left := 1.0 - float(clampi(count, 0, total - 1)) / total
+	return 2.0 * pow(left, NIGHT_CURVE)
 
 
 ## The 11 spots, in the map's order (MapIsland.ZONES).

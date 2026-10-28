@@ -18,12 +18,12 @@ const MAP_CLUES := {
 	"free-fall": "파란 탑 꼭대기에서 반짝했어!",
 	"projectile": "과녁 근처 풀밭에 뭔가 떨어졌어!",
 	"collision": "공 두 개가 놓인 길쭉한 레일 쪽이야!",
-	"friction": "빨간 손잡이 달린 상자 쪽에서 소리가 났어!",
+	"friction": "빨간 화살표가 상자를 미는 곳이야!",
 	"incline-friction": "노란 비탈 아래를 봐!",
 	"spring": "울타리 안, 통통 튀는 용수철 쪽이야!",
-	"constraints": "줄에 매달린 공이 흔들리는 곳이야!",
+	"constraints": "기둥에 큰 노란 공이 매달린 곳이야!",
 	"rotation": "빨간 시소 밑에 뭔가 있어!",
-	"pulley": "높은 틀에 줄이 걸린 곳이야!",
+	"pulley": "줄 끝에 빨간 상자가 매달린 곳이야!",
 	"buoyancy": "연못 물속에서 반짝여!",
 	"orbit": "마지막은 섬에서 제일 높은 전망대야!",
 }
@@ -216,7 +216,7 @@ func check_brightness() -> void:
 	config.load(ProgressStore.path)
 	var sections := Array(config.get_sections())
 	sections.sort()
-	expect.call(is_equal_approx(levels[0], 1.0) and levels[0] > levels[1] and levels[1] > levels[2] and levels[2] > levels[3] and levels[3] > 0.0
+	expect.call(is_equal_approx(levels[0], 2.0) and levels[0] > levels[1] and levels[1] > levels[2] and levels[2] > levels[3] and levels[3] > 0.0
 		and tints[0] < tints[1] and tints[2] < tints[3] and lit_ok and sections == ["progress", "story"],
 		"explore: the map is night with no piece and lighter with each one (3, 7, 10), still a little dark before the finale; found spots lit; nothing new saved",
 		"%s %s" % [str(levels), str(sections)])

@@ -157,8 +157,8 @@ func check_prologue() -> void:
 		story.advance(0.05)
 	var state: Dictionary = rig.get_state()
 	var pieces_left: Array = home.world.find_children("Star*", "Node3D", true, false).filter(func(n: Node) -> bool: return not n.is_queued_for_deletion())
-	expect.call(not story.busy() and Story.prologue_seen() and is_equal_approx(story.night, 1.0) and story.tint.is_equal_approx(StoryDirector.NIGHT_TINT)
-		and home.env.environment.background_color.is_equal_approx(StoryDirector.NIGHT_SEA),
+	expect.call(not story.busy() and Story.prologue_seen() and is_equal_approx(story.night, Story.night_level(0, false)) and story.tint.is_equal_approx(StoryDirector.DARK_TINT)
+		and home.env.environment.background_color.is_equal_approx(StoryDirector.DARK_SEA),
 		"prologue: at the end the map is the night map (no piece found yet: the story's night, tint and sea) and it is marked played",
 		"night %.2f" % story.night)
 	expect.call(rig.is_processing() and rig.cur_distance == rig.goal_distance and rig.cur_target.is_equal_approx(rig._goal_target())
@@ -214,7 +214,7 @@ func check_skip() -> void:
 	story.skip_button.pressed.emit()
 	await tree.process_frame
 	var left: Array = home.world.find_children("Star*", "Node3D", true, false).filter(func(n: Node) -> bool: return not n.is_queued_for_deletion())
-	expect.call(mid and not story.busy() and Story.prologue_seen() and is_equal_approx(story.night, 1.0) and left.is_empty() and rig.is_processing()
+	expect.call(mid and not story.busy() and Story.prologue_seen() and is_equal_approx(story.night, Story.night_level(0, false)) and left.is_empty() and rig.is_processing()
 		and str(rig.get_state()) == str(_default_state(rig)) and rig.cur_distance == rig.goal_distance and not story.dialogue.visible
 		and story.sea.lanterns.all(func(l: Node3D) -> bool: return not l.visible),
 		"prologue: 건너뛰기 ends it at once (the map's night, no pieces, lanterns off, the child's camera exactly, played)", str(mid))

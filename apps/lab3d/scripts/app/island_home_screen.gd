@@ -164,11 +164,7 @@ func _add_spot(world: Node3D, zone: String, id: String, info: Dictionary) -> voi
 	flag.visible = false
 	flag.position = info.flag - info.at
 	var fb := ArtKit.builder()
-	fb.add_cylinder(Transform3D.IDENTITY, 0.05, 0.05, 2.2, 6, ArtPalette.TRUNK)
-	# A cloth flag (2026-10-28 user: the old 4-sided cone read as a red diamond): a flat red banner off
-	# the pole's top, facing the map's default view, and a yellow knob on the pole.
-	fb.add_rounded_box(Transform3D(Basis(), Vector3(0.47, 1.83, 0.0)), Vector3(0.8, 0.52, 0.06), 0.03, 1, ArtPalette.RED)
-	fb.add_sphere(Transform3D(Basis(), Vector3(0.0, 2.24, 0.0)), 0.09, 4, 8, ArtPalette.YELLOW)
+	MapFlag.build(fb)
 	flag.add_child(ArtKit.instance(fb.commit()))
 	root.add_child(flag)
 	_flags[id] = flag

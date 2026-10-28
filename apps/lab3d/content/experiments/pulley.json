@@ -63,7 +63,7 @@
   "story": { "clue": "조각이 높은 곳에 있어. 줄을 당겨 짐을 올려 보자!", "map_clue": "줄 끝에 빨간 상자가 매달린 곳이야!" },
   "kid": {
     "card": "strands",
-    "title": "줄이 많으면 짐이 가벼워질까?",
+    "title": "줄이 많으면 힘이 덜 들까?",
     "place": "줄로 짐 들기",
     "say": "줄이 많을수록 힘이 덜 들어요. 대신 줄을 더 길게 당겨야 해요.",
     "tip": "빨간 손잡이를 아래로 당겨요.",
@@ -75,6 +75,17 @@
       ]
     },
     "cards": {"strands": "짐을 잡은 줄", "pulled": "내가 당긴 줄 길이", "lift": "짐이 올라간 높이"}
+  },
+  "note": {
+    "law": "짐을 받치는 줄이 n개면 필요한 힘은 n분의 1로 줄어요. 대신 줄을 n배 길게 당겨야 해요.",
+    "formula": "F = mg / n",
+    "numbers": [
+      { "label": "짐 무게 mg", "ids": ["weight"] },
+      { "label": "짐을 받치는 줄 n", "ids": ["strands"] },
+      { "label": "필요한 힘 F = mg/n", "ids": ["required"] },
+      { "label": "당긴 줄 → 짐이 올라간 높이", "ids": ["pulled", "lift"] }
+    ],
+    "graph": true
   },
   "cast": {
     "dugi": { "at": [3.5, 4.0], "explain_on": ["held", "top"], "delay_s": 0.6 },

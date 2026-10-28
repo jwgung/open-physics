@@ -35,6 +35,8 @@ const PICK_PREFIX := "내 생각: "
 const PICK_SIZE := Vector2(132.0, 112.0)    # a condition picture button (UI units, at least)
 const PICK_GAP := 10.0                      # between the buttons of one condition
 const PICK_GROUP_GAP := 22.0                # between two conditions' buttons
+const MORE_CLOSED := "더 보기"              # the science note's collapsed rest (_build_sidebar)
+const MORE_OPEN := "접기"
 
 ## Set by App for the screen it opens from --experiment: then the launch args (--ctl-*, --camera,
 ## ...) apply to this screen only (a rebuilt screen with a saved state restores that state instead).
@@ -63,6 +65,8 @@ var _top_buttons: HBoxContainer
 var _sidebar_button: Button
 var _key_row: HBoxContainer
 var _key_labels: Dictionary = {}        # observation id -> value Label of its key card
+var _key_bars: Dictionary = {}          # observation id -> KidBar of its key card (kid.bars)
+var _key_ids: Array = [null]            # the cards built (ExperimentRegistry.shown_cards; [null]: none yet)
 var _action_row: HBoxContainer
 var _action_buttons: Dictionary = {}    # action id -> Button
 var _extra_actions: Array[Button] = []  # a game lab's secondary actions, shown under the conditions in the sidebar
@@ -82,6 +86,8 @@ var _observation_labels: Dictionary = {}
 var _control_widgets: Dictionary = {}   # id -> {"slider": HSlider, "value": Label} or {"buttons": {}, "note": Label}
 var _graph: GraphView
 var _sections: Dictionary = {}          # section id -> card (for --scroll-to)
+var _more: VBoxContainer                # 더 보기's contents (collapsed when the screen opens)
+var _more_button: Button
 var refresh_count := 0                  # full panel refreshes so far (tests)
 var _refresh_left := 0.0
 var _auto_release_every := 0.0
@@ -242,8 +248,8 @@ func _restore_state() -> void:
 
 ## Measurement/screenshot hooks from the launch args (Quality.all_args):
 ## --camera=<mode>, --ctl-<control>=<value>, --auto-release=<seconds> (re-release periodically),
-## --sidebar=open (open the sidebar), --scroll-to=<conditions|observations|graph|explanation>
-## (open the sidebar at that section).
+## --sidebar=open (open the sidebar), --scroll-to=<law|numbers|conditions|graph|more|...> (open the
+## sidebar at that section; "observations" = numbers, "explanation" = more, opened).
 func _apply_launch_args() -> void:
 	for control in definition.controls:
 		var text := Quality.cmdline_value("ctl-" + control.id)
@@ -253,6 +259,7 @@ func _apply_launch_args() -> void:
 	if camera != "":
 		view.rig.set_mode(camera, true)
 	var section := Quality.cmdline_value("scroll-to")
+	section = SECTION_ALIASES.get(section, section)
 	if Quality.cmdline_value("sidebar") == "open" or _sections.has(section):
 		open_sidebar(false)
 	if _sections.has(section):
@@ -464,7 +471,7 @@ func _setup_slingshot() -> void:
 
 
 ## The big readout shown while a pull is held (white with a dark shadow, over the 3D view):
-## "45도 · 초속 9.0미터".
+## "45도 · 1초에 9.0미터".
 func _make_slingshot_hud() -> void:
 	if _slingshot_hud != null:
 		return
@@ -481,7 +488,7 @@ func _make_slingshot_hud() -> void:
 	_slingshot_hud.visible = false
 
 
-## The pull's readout text in a child's words: "45도 · 초속 9.0미터" (the values the release throws,
+## The pull's readout text in a child's words: "45도 · 1초에 9.0미터" (the values the release throws,
 ## already on the grids; kid_value).
 func slingshot_readout(value: Vector2) -> String:
 	return "%s · %s" % [kid_value(_slingshot_units[0], roundf(value.x), 0), kid_value(_slingshot_units[1], value.y, 1)]
@@ -671,6 +678,11 @@ func _show_stamps(count: int) -> void:
 		_mission_text.text = DONE_TEXT
 	else:
 		_mission_text.text = str(stages[count].get("text", ""))
+	var before := _key_ids
+	_build_key_cards(count if count < stages.size() else -1)
+	if _key_ids != before:
+		_update_readouts(false)
+		_fit_overlays()
 	_fit_mission_strip()
 	_build_picks(count if count < stages.size() else -1)
 
@@ -1185,23 +1197,7 @@ func _build_view_overlays() -> void:
 	_key_row = Ui.hbox(8)
 	_key_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	view.add_child(_key_row)
-	for id in ExperimentRegistry.shown_cards(definition):
-		var observation := _observation(id)
-		var card := Ui.panel("KeyCard")
-		card.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		card.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-		card.custom_minimum_size.x = KEY_CARD_WIDTH
-		var stack := Ui.vbox(0)
-		stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		card.add_child(stack)
-		var caption := Ui.label(ExperimentRegistry.card_label(definition, id), "KeyLabel", true)
-		caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		stack.add_child(caption)
-		var value := Ui.label("—", "KeyValueLabel", true)   # a status text may take two lines
-		value.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		stack.add_child(value)
-		_key_row.add_child(card)
-		_key_labels[id] = value
+	_build_key_cards(-1)
 
 	_action_row = Ui.hbox(10)
 	_action_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1228,6 +1224,49 @@ func _build_view_overlays() -> void:
 	view.resized.connect(_fit_overlays)
 	# Wrapped card texts settle their height after the first layout pass (and change with status texts).
 	_key_row.minimum_size_changed.connect(_fit_overlays)
+
+
+## The key cards of mission stage `stage` (-1: the lab's own, ExperimentRegistry.shown_cards): built
+## again only when the stage shows other cards (the spring's first stage: how far it was pulled).
+## A card is a caption and its value in a child's words, or a bar (kid.bars) for a force.
+func _build_key_cards(stage: int) -> void:
+	var ids := ExperimentRegistry.shown_cards(definition, stage)
+	if ids == _key_ids:
+		return
+	_key_ids = ids.duplicate()
+	for child in _key_row.get_children():
+		_key_row.remove_child(child)
+		child.queue_free()
+	_key_labels.clear()
+	_key_bars.clear()
+	for id in ids:
+		var card := Ui.panel("KeyCard")
+		card.name = "KeyCard_" + str(id)
+		card.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		card.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+		card.custom_minimum_size.x = KEY_CARD_WIDTH
+		var stack := Ui.vbox(4)
+		stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		card.add_child(stack)
+		var caption := Ui.label(ExperimentRegistry.card_label(definition, id), "KeyLabel", true)
+		caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		stack.add_child(caption)
+		var value := Ui.label("—", "KeyValueLabel", true)   # a status text may take two lines
+		value.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		stack.add_child(value)
+		if ExperimentRegistry.card_bar(definition, id) > 0.0:
+			var bar := KidBar.new()
+			bar.name = "KidBar"
+			bar.visible = false
+			stack.add_child(bar)
+			_key_bars[id] = bar
+		_key_row.add_child(card)
+		_key_labels[id] = value
+
+
+## The key cards shown now (their observation ids).
+func key_card_ids() -> Array:
+	return _key_ids.duplicate()
 
 
 func _observation(id: String) -> Dictionary:
@@ -1299,7 +1338,16 @@ func _fit_tip() -> void:
 	_tip.position = Vector2(m, bottom - _tip.size.y)
 
 
+## --scroll-to's older names: the numbers were "observations", the texts "explanation" (now in 더 보기).
+const SECTION_ALIASES := {"observations": "numbers", "explanation": "more"}
+## The sections inside the collapsed 더 보기 (scrolling to one opens it first).
+const MORE_SECTIONS := ["more", "more_observations", "more_graph", "more_explanation"]
+
+
 func _scroll_to(section: String) -> void:
+	section = SECTION_ALIASES.get(section, section)
+	if section in MORE_SECTIONS:
+		set_more_open(true)
 	# Containers sort over the first frames; the card's offset inside the scrolled content
 	# (its parent margin included) is the same measure as scroll_vertical.
 	await get_tree().process_frame
@@ -1308,6 +1356,14 @@ func _scroll_to(section: String) -> void:
 	_scroll.scroll_vertical = int(_sections[section].global_position.y - content.global_position.y)
 
 
+## The science note (2026-10-28 "세부쪽도 좀 정리가 필요해", for older children and adults): a few
+## cards with clear headings in this order —
+##   법칙 (the law in one plain sentence and its formula), 이번 실험 숫자 (3-4 numbers of this run in
+##   their units, a "before → after" pair on one row), 조건 바꾸기 (the sliders and choices), 그래프
+##   (only where it shows the law: note.graph), and 더 보기 (collapsed): every other observation, the
+##   graph when it is not kept above, the steps, the observe card, the shared law and its terms.
+## Every observation has one label (_observation_labels) wherever it sits, with format_observation's
+## text, so nothing the panel showed before is lost (ExperimentRegistry.note).
 func _build_sidebar() -> void:
 	_sidebar = Ui.panel("SideSheet")
 	_sidebar.visible = false
@@ -1332,14 +1388,90 @@ func _build_sidebar() -> void:
 	header.add_child(close)
 	column.add_child(header)
 
+	var note := ExperimentRegistry.note(definition)
 	_sections = {
+		"law": _build_law(note),
+		"numbers": _build_numbers(note),
 		"conditions": _build_conditions(),
-		"observations": _build_observations(),
-		"graph": _build_graph(),
-		"explanation": _build_explanation(),
 	}
+	var graph := _build_graph()
+	if note.get("graph", true):
+		_sections["graph"] = graph
 	for id in _sections:
+		_sections[id].name = "Note_" + id
 		column.add_child(_sections[id])
+
+	# 더 보기: a button and the collapsed rest.
+	_more_button = Ui.button(MORE_CLOSED, "", 56)
+	_more_button.name = "MoreButton"
+	_more_button.pressed.connect(func() -> void: set_more_open(not _more.visible))
+	column.add_child(_more_button)
+	_sections["more"] = _more_button
+	_more = Ui.vbox(16)
+	_more.name = "More"
+	_more.visible = false
+	column.add_child(_more)
+	var shown: Dictionary = {}
+	for row in note.get("numbers", []):
+		for id in row.get("ids", []):
+			shown[id] = true
+	var rest: Array = definition.observations.filter(func(o: Dictionary) -> bool: return not shown.has(o.id))
+	if not rest.is_empty():
+		_sections["more_observations"] = _build_observations(rest)
+		_more.add_child(_sections.more_observations)
+	if not note.get("graph", true):
+		_sections["more_graph"] = graph
+		_more.add_child(graph)
+	_sections["more_explanation"] = _build_explanation()
+	_more.add_child(_sections.more_explanation)
+
+
+## Opens or folds 더 보기 (closed when the screen opens).
+func set_more_open(open: bool) -> void:
+	if _more == null:
+		return
+	_more.visible = open
+	_more_button.text = MORE_OPEN if open else MORE_CLOSED
+
+
+func is_more_open() -> bool:
+	return _more != null and _more.visible
+
+
+## 법칙: the lab's law in one plain sentence and its formula (note.law, note.formula).
+func _build_law(note: Dictionary) -> Control:
+	var parts := _section("법칙")
+	var body: VBoxContainer = parts[1]
+	body.add_child(Ui.label(str(note.get("law", "")), "", true))
+	var formula := Ui.label(str(note.get("formula", "")), "EquationLabel", true)
+	formula.name = "Formula"
+	formula.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	body.add_child(formula)
+	return parts[0]
+
+
+## 이번 실험 숫자: note.numbers, a caption and the value(s) of this run in their units (the panel's
+## format_observation text); two ids read "before → after".
+func _build_numbers(note: Dictionary) -> Control:
+	var parts := _section("이번 실험 숫자")
+	var body: VBoxContainer = parts[1]
+	for row in note.get("numbers", []):
+		var tile := Ui.panel("Tile")
+		var stack := Ui.vbox(2)
+		tile.add_child(stack)
+		stack.add_child(Ui.label(str(row.get("label", "")), "MutedLabel", true))
+		var values := HFlowContainer.new()
+		values.add_theme_constant_override("h_separation", 8)
+		stack.add_child(values)
+		var ids: Array = row.get("ids", [])
+		for i in ids.size():
+			if i > 0:
+				values.add_child(Ui.label("→", "MutedLabel"))
+			var value := Ui.label("—", "ValueLabel")
+			values.add_child(value)
+			_observation_labels[ids[i]] = value
+		body.add_child(tile)
+	return parts[0]
 
 
 func _section(title: String) -> Array:
@@ -1487,13 +1619,14 @@ func _sync_control(id: String) -> void:
 	_sync_picks(id)
 
 
-func _build_observations() -> Control:
-	var parts := _section("관찰")
+## The other numbers (in 더 보기): the observations the note does not list, two per row.
+func _build_observations(observations: Array) -> Control:
+	var parts := _section("다른 숫자")
 	var grid := GridContainer.new()
 	grid.columns = 2
 	grid.add_theme_constant_override("h_separation", 10)
 	grid.add_theme_constant_override("v_separation", 10)
-	for observation in definition.observations:
+	for observation in observations:
 		var tile := Ui.panel("Tile")
 		var stack := Ui.vbox(2)
 		tile.add_child(stack)
@@ -1629,12 +1762,13 @@ static func format_observation(observation: Dictionary, value: Variant) -> Strin
 
 
 ## A number in a child's words (ExperimentRegistry.KID_UNITS): one decimal at most and the unit
-## spelled out, "1.3초", "12.5미터", "초속 12.5미터", "45도", "2줄". `minus` (optional) reads a
+## spelled out, "1.3초", "12.5미터", "1초에 12.5미터", "45도", "2줄". A mission stage judges this
+## rounded number (MissionTracker.shown). `minus` (optional) reads a
 ## negative value as its size after that word ("눌려서 0.3미터"). Only the rounding and the words
 ## differ from format_observation: the value is the same formula value.
 static func kid_value(unit: String, value: float, digits: int, minus := "") -> String:
 	var words: Array = ExperimentRegistry.KID_UNITS.get(unit, ["", " " + unit])
-	var places := mini(digits, 1)
+	var places := mini(digits, MissionTracker.CARD_PLACES)
 	var text := Ui.number(absf(value), places)
 	var lead := ""
 	if value < 0.0 and text != Ui.number(0.0, places):   # a -0.04 reads 0.0, never "-0.0"
@@ -1644,18 +1778,30 @@ static func kid_value(unit: String, value: float, digits: int, minus := "") -> S
 
 ## The text of a key card over the 3D view (the sidebar keeps format_observation): a number in
 ## kid_value words, a lab status text in the definition's kid.states words, "?" with the unit's words
-## while the answer is hidden ("? 미터", "초속 ? 미터").
+## while the answer is hidden ("? 미터", "1초에 ? 미터"). A bar card (kid.bars) has no text for a
+## number (its bar shows it, bar_fraction) and "?" while hidden.
 static func card_text(definition: Dictionary, observation: Dictionary, value: Variant, hidden := false) -> String:
 	var unit := str(observation.get("unit", ""))
-	var words: Array = ExperimentRegistry.KID_UNITS.get(unit, ["", " " + unit])
+	var bar := ExperimentRegistry.card_bar(definition, str(observation.get("id", ""))) > 0.0
+	var words: Array = ExperimentRegistry.KID_UNITS.get(unit, ["", " " + unit]) if not bar else ["", ""]
 	if hidden:
 		return (str(words[0]) + "? " + str(words[1])).strip_edges()
 	var kid: Dictionary = definition.get("kid", {}) if definition.get("kid") is Dictionary else {}
+	if bar and (value is float or value is int):
+		return ""
 	if value is float or value is int:
 		return kid_value(unit, float(value), int(observation.get("digits", 2)), str(kid.get("minus", {}).get(observation.id, "")))
 	if value is String:
 		return str(kid.get("states", {}).get(value, value))
 	return "—"
+
+
+## A bar card's length for `value` (0..1 of kid.bars' full value; 0 for no number).
+static func bar_fraction(definition: Dictionary, id: String, value: Variant) -> float:
+	var full := ExperimentRegistry.card_bar(definition, id)
+	if full <= 0.0 or not (value is float or value is int):
+		return 0.0
+	return clampf(float(value) / full, 0.0, 1.0)
 
 
 func _update_readouts(force_graph: bool) -> void:
@@ -1674,6 +1820,12 @@ func _update_readouts(force_graph: bool) -> void:
 		var card := card_text(definition, observation, values.get(observation.id), hidden.has(observation.id))
 		if key.text != card:
 			key.text = card
+		var bar: KidBar = _key_bars.get(observation.id)
+		if bar != null:
+			var value: Variant = values.get(observation.id)
+			bar.visible = not hidden.has(observation.id) and (value is float or value is int)
+			key.visible = not bar.visible
+			bar.fraction = bar_fraction(definition, observation.id, value)
 	var revision := experiment.graph_revision()
 	var series_hidden := _missions != null and not MissionTracker.result_in(definition, experiment.status(), values)
 	if force_graph or revision < 0 or revision != _graph_revision or series_hidden != _series_hidden:

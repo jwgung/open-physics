@@ -43,7 +43,7 @@
       "options": [
         { "id": "rubber", "label": "고무", "e": 0.88, "note": "반발계수 e = 0.88" },
         { "id": "wood", "label": "나무", "e": 0.5, "note": "반발계수 e = 0.50" },
-        { "id": "steel", "label": "금속", "e": 0.72, "note": "반발계수 e = 0.72" },
+        { "id": "steel", "label": "강철", "e": 0.72, "note": "반발계수 e = 0.72" },
         { "id": "clay", "label": "점토", "e": 0.08, "note": "반발계수 e = 0.08" }
       ]
     },
@@ -52,7 +52,7 @@
       "options": [
         { "id": "rubber", "label": "고무", "e": 0.88, "note": "반발계수 e = 0.88" },
         { "id": "wood", "label": "나무", "e": 0.5, "note": "반발계수 e = 0.50" },
-        { "id": "steel", "label": "금속", "e": 0.72, "note": "반발계수 e = 0.72" },
+        { "id": "steel", "label": "강철", "e": 0.72, "note": "반발계수 e = 0.72" },
         { "id": "clay", "label": "점토", "e": 0.08, "note": "반발계수 e = 0.08" }
       ]
     }
@@ -75,9 +75,9 @@
     "observe": "after_b",
     "judge_on": ["collided", "rest"],
     "stages": [
-      { "threshold": 2.0, "conditions": {"mass_a": 1.0, "mass_b": 1.0}, "text": "두 공을 1킬로그램으로 하고 세게 부딪히기!" },
-      { "threshold": 4.0, "conditions": {"mass_a": {"min": 3.0}, "mass_b": {"min": 1.0}}, "text": "파란 공을 3킬로그램으로 해서 세게 치기!" },
-      { "threshold": 5.0, "conditions": {"mass_b": 0.5}, "text": "주황 공을 0.5킬로그램으로 해서 쌩 날리기!" }
+      { "threshold": 2.0, "conditions": {"mass_a": 1.0, "mass_b": 1.0}, "text": "두 공을 같은 무게로 하고 세게 부딪히기!" },
+      { "threshold": 4.0, "conditions": {"mass_a": {"min": 3.0}, "mass_b": {"min": 1.0}}, "text": "파란 공을 무겁게 해서 세게 치기!" },
+      { "threshold": 5.0, "conditions": {"mass_b": 0.5}, "text": "주황 공을 제일 가볍게 해서 쌩 날리기!" }
     ]
   },
   "story": { "clue": "조각이 레일 끝에 있어. 공끼리 부딪혀서 쌩 보내 보자!", "map_clue": "공 두 개가 놓인 길쭉한 레일 쪽이야!" },
@@ -89,17 +89,27 @@
     "tip": "노란 손잡이를 끌어서 세기를 정해요.",
     "picks": {
       "mass_a": [
-        {"value": 1.0, "label": "1킬로그램", "picture": "ball_blue", "size": 0.693},
-        {"value": 3.0, "label": "3킬로그램", "picture": "ball_blue", "size": 1.0}
+        {"value": 1.0, "label": "보통 공", "picture": "ball_blue", "size": 0.693},
+        {"value": 3.0, "label": "무거운 공", "picture": "ball_blue", "size": 1.0}
       ],
       "mass_b": [
-        {"value": 0.5, "label": "0.5킬로그램", "picture": "ball_orange", "size": 0.55},
-        {"value": 1.0, "label": "1킬로그램", "picture": "ball_orange", "size": 0.693},
-        {"value": 2.0, "label": "2킬로그램", "picture": "ball_orange", "size": 0.874}
+        {"value": 0.5, "label": "가벼운 공", "picture": "ball_orange", "size": 0.55},
+        {"value": 1.0, "label": "보통 공", "picture": "ball_orange", "size": 0.693},
+        {"value": 2.0, "label": "조금 무거운 공", "picture": "ball_orange", "size": 0.874}
       ]
     },
     "cards": {"before_a": "부딪히기 전 파란 공", "after_a": "부딪힌 뒤 파란 공", "after_b": "부딪힌 뒤 주황 공"},
     "minus": {"before_a": "왼쪽으로", "after_a": "왼쪽으로", "after_b": "왼쪽으로"}
+  },
+  "note": {
+    "law": "부딪히기 전과 뒤에 두 공의 운동량(질량 × 속도) 합은 같아요. 한 공이 잃은 만큼 다른 공이 얻어요.",
+    "formula": "m₁v₁ + m₂v₂ = m₁v₁′ + m₂v₂′",
+    "numbers": [
+      { "label": "파란 공 속도 · 부딪히기 전 → 뒤", "ids": ["before_a", "after_a"] },
+      { "label": "주황 공 속도 · 부딪히기 전 → 뒤", "ids": ["before_b", "after_b"] },
+      { "label": "운동량 합 · 부딪히기 전 → 뒤", "ids": ["p_before", "p_after"] }
+    ],
+    "graph": true
   },
   "cast": {
     "dugi": { "at": [8.5, 0.5], "explain_on": ["collided", "rest"], "delay_s": 0.6 },

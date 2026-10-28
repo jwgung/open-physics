@@ -63,6 +63,10 @@
 ## 20. easy controls (tests/easy_controls_checks.gd, 2026-10-27): per lab the stage's condition picture
 ##    buttons (exactly its conditions, a tap = the sidebar's change, clear of the other overlays on
 ##    phone and tablet), one drag gesture per lab and its grab radius, the removed handles gone.
+## 20b. kid words and the science note (tests/kid_words_checks.gd, 2026-10-28): a stage judges the
+##    number its card shows, the free fall's card is the red ball's time, the spring's first stage shows
+##    the pull, the push's card is a bar, no 뉴턴 / 초속 / decimals in the kid texts, and every lab's
+##    자세히 is a science note (법칙 + formula, 3-4 numbers, conditions, graph where kept, 더 보기 closed).
 ## 21. condition looks (tests/condition_look_checks.gd, 2026-10-28): the bodies look as heavy as they
 ##    are (MassLook: cube root, equal masses equal, standing where the body is, the collision balls
 ##    touching at the model's contact), the gravity's signpost and the surface materials follow their
@@ -270,6 +274,11 @@ func _run() -> void:
 	_expect(goals != null and goals.can_instantiate(), "goal mission checks compile", "")
 	if goals != null and goals.can_instantiate():
 		await goals.new(self, _expect).run()
+	print("== kid words and the science note (2026-10-28): the number shown is judged, the red ball's card, the pull card, the push bar, the content lint, 법칙 / 숫자 / 더 보기 per lab ==")
+	var words: GDScript = load("res://tests/kid_words_checks.gd")
+	_expect(words != null and words.can_instantiate(), "kid words checks compile", "")
+	if words != null and words.can_instantiate():
+		await words.new(self, _expect).run()
 	print("== condition looks (2026-10-28): mass looks, the gravity sign, surface materials, physics unchanged ==")
 	var looks: GDScript = load("res://tests/condition_look_checks.gd")
 	_expect(looks != null and looks.can_instantiate(), "condition look checks compile", "")
@@ -1351,13 +1360,17 @@ func _check_key_cards() -> void:
 		var shown := PackedStringArray()
 		var values: Dictionary = screen.experiment.observations()
 		var hidden: Array = screen._hidden_answers(values)
-		for id in ExperimentRegistry.shown_cards(definition):
+		for id in screen.key_card_ids():
 			var observation: Dictionary = screen._observation(id)
 			var card: String = screen._key_labels[id].text
 			var panel: String = screen.hidden_observation(observation) if hidden.has(id) else screen.format_observation(observation, values.get(id))
-			same = same and card == screen.card_text(definition, observation, values.get(id), hidden.has(id)) and card != "" \
+			# A bar card (kid.bars: the push that started the box) draws a number as its bar, no text.
+			var bar: Control = screen._key_bars.get(id)
+			var number: bool = values.get(id) is float or values.get(id) is int
+			var drawn: bool = card != "" if bar == null or not number else (bar.visible and card == "")
+			same = same and card == screen.card_text(definition, observation, values.get(id), hidden.has(id)) and drawn \
 				and screen._observation_labels[id].text == panel and not _kid_symbols.search(card)
-			shown.append(card)
+			shown.append(card if card != "" else "(bar)")
 		_expect(definition.camera.default_mode == "front" and screen.view.rig.mode == "front" and same and sidebar_fits and tip_clear \
 			and definition.key_observations.size() >= 2 and definition.key_observations.size() <= 3,
 			"%s: front camera, key cards %s = panel values in kid words (no unit symbol), the open sidebar keeps its width, the tip clears the actions and cards" % [definition.id, definition.key_observations],

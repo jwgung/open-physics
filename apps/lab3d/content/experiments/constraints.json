@@ -67,7 +67,7 @@
       { "threshold": 8.0, "conditions": {"gravity": "moon", "length": {"min": 2.75}}, "change": ["length"], "text": "달에서 아주 긴 줄로 8초 넘게 흔들기!" }
     ]
   },
-  "story": { "clue": "추가 아주 천천히 흔들리면 조각이 떨어진대!", "map_clue": "기둥에 큰 노란 공이 매달린 곳이야!" },
+  "story": { "clue": "매달린 공이 아주 천천히 흔들리면 조각이 떨어진대!", "map_clue": "기둥에 큰 노란 공이 매달린 곳이야!" },
   "kid": {
     "card": "rope_half_swing",
     "title": "줄에 매단 공을 흔들어 보자!",
@@ -87,6 +87,16 @@
     },
     "cards": {"rope_distance": "줄 길이", "rope_half_swing": "한 번 왔다 갔다", "small_period": "조금 흔들 때 왔다 갔다"},
     "states": {"한 번 왕복하면 보여요": "흔들면 보여요"}
+  },
+  "note": {
+    "law": "줄이 길수록, 중력이 약할수록 진자는 천천히 흔들려요. 추의 무게와는 상관없어요.",
+    "formula": "T = 2π√(L/g)",
+    "numbers": [
+      { "label": "줄 길이 L", "ids": ["length"] },
+      { "label": "공식 주기 2π√(L/g) (조금 흔들 때)", "ids": ["small_period"] },
+      { "label": "줄 진자 한 번 왕복한 시간 (잰 값)", "ids": ["rope_half_swing"] }
+    ],
+    "graph": true
   },
   "cast": {
     "dugi": { "at": [3.5, 4.0], "explain_on": ["swinging", "weightless"], "delay_s": 1.5 },

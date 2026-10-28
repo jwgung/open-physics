@@ -206,6 +206,7 @@ func observations() -> Dictionary:
 	return {
 		"g": g,
 		"time": shown_time(),
+		"red_time": t_red,   # the red ball's own time (its landing once it landed): the kid card and the stamp
 		"state": state_text,
 		"height_red": h_red,
 		"height_purple": formula_height("purple", ball_time("purple") if released else 0.0),

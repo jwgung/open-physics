@@ -17,6 +17,8 @@
 ## - `observe` (optional): a numeric observation id; the stage's `threshold` must be beaten —
 ##   `compare` "greater" (default: farther, faster) or "less" (a smaller force) — strictly (exactly
 ##   at the threshold is not past it). A run with no number there (e.g. "닿지 않아요") is not judged.
+##   The number judged is the number shown (2026-10-28): the value rounded as the key card rounds it
+##   (shown(): one decimal at most), so a card reading "3.0초" never earns "3초 넘게" and "3.1초" does.
 ##   Without `observe` a stage is a state goal: reaching a `judge_on` status is the clear.
 ## - a stage's `conditions` (optional): {control id: option id | number | {"min"?, "max"?}} — the
 ##   lab's current control values the run must have been made with ("가벼운 상자", "20 kg 짐",
@@ -53,6 +55,8 @@ const DEFAULT_JUDGE_ON := ["landed"]
 const COMPARES := ["greater", "less"]
 ## A number condition matches a control value within this (slider values sit on their grid).
 const CONDITION_EPS := 1e-6
+## The decimals a child reads on a key card (ExperimentScreen.kid_value): a stage judges that number.
+const CARD_PLACES := 1
 
 var definition: Dictionary
 ## The cleared stages so far (0..stages.size()); the current stage is stamps (one stamp per stage).
@@ -139,7 +143,8 @@ static func judge(definition: Dictionary, stamps: int, status: String, lab: Expe
 			return stamps
 		var less: bool = how.compare == "less"
 		var threshold := float(stage.get("threshold", INF if less else -INF))
-		var beaten := float(value) < threshold if less else float(value) > threshold
+		var number := shown(definition, how.observe, float(value))
+		var beaten := number < threshold if less else number > threshold
 		if not beaten:
 			return stamps
 	return mini(stamps + 1, ProgressStore.MAX_STAMPS)
@@ -189,6 +194,16 @@ static func change_controls(definition: Dictionary, lab: Experiment) -> Dictiona
 		for id in stage.get("change", []):
 			out[id] = lab.control_value(id)
 	return out
+
+
+## The number a child reads for observation `id` (the key card's rounding, ExperimentScreen.kid_value:
+## the observation's digits, one decimal at most): what a stage compares with its threshold.
+static func shown(definition: Dictionary, id: String, value: float) -> float:
+	var digits := 2
+	for observation in definition.get("observations", []):
+		if observation.get("id") == id:
+			digits = int(observation.get("digits", 2))
+	return float(Ui.number(value, mini(digits, CARD_PLACES)))
 
 
 static func _number(value: Variant) -> bool:

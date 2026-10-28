@@ -54,7 +54,7 @@
     "hidden_until_end": ["judgement", "density", "floating_depth"],
     "hidden_series_until_end": ["floating"],
     "stages": [
-      { "conditions": {"volume": "big", "mass": 80.0}, "text": "80킬로그램 통도 둥둥 띄우기!" },
+      { "conditions": {"volume": "big", "mass": 80.0}, "text": "80킬로그램 통을 둥둥 띄우기!" },
       { "conditions": {"volume": "big", "mass": 95.0}, "text": "95킬로그램 통도 둥둥 띄우기!" },
       { "conditions": {"volume": "small", "mass": 45.0}, "text": "작은 통을 45킬로그램으로 띄우기!" }
     ]
@@ -79,6 +79,17 @@
     },
     "cards": {"depth": "물에 잠긴 깊이", "floating_depth": "뜰 때 잠기는 깊이", "state": "통은?"},
     "states": {"놓기 전 · 통을 끌어 물에 넣어요": "통을 물에 넣어 봐요", "통을 옮기는 중": "옮기는 중", "떠 있어요 · 부력 = 무게": "둥둥 떠 있어요", "물속에 그대로 머물러요": "물속에 머물러요", "바닥에 가라앉았어요": "가라앉았어요"}
+  },
+  "note": {
+    "law": "물에 잠긴 부피만큼 물이 통을 위로 밀어 올려요. 부력이 무게와 같아지면 떠요.",
+    "formula": "F부력 = ρ물 g V잠김",
+    "numbers": [
+      { "label": "통의 무게 mg", "ids": ["weight"] },
+      { "label": "부력 ρ물 g V잠김", "ids": ["buoyant"] },
+      { "label": "지금 잠긴 깊이", "ids": ["depth"] },
+      { "label": "뜰 때 잠기는 깊이", "ids": ["floating_depth"] }
+    ],
+    "graph": false
   },
   "cast": {
     "dugi": { "at": [2.5, 3.0], "explain_on": ["floating", "sunk", "staying"], "delay_s": 0.6 },

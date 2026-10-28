@@ -78,6 +78,17 @@
     "tip": "공을 뒤로 쭉 당겼다 놓아 봐요!",
     "cards": {"range": "얼마나 멀리", "flight_time": "날아간 시간", "landing": "떨어진 곳"}
   },
+  "note": {
+    "law": "세게 던질수록, 45°에 가까운 각도로 던질수록 멀리 가요. 옆으로는 같은 빠르기로 가고 아래로는 중력이 끌어당겨요.",
+    "formula": "R = v₀² sin 2θ / g",
+    "numbers": [
+      { "label": "날아가는 거리 R (던진 높이 포함)", "ids": ["range"] },
+      { "label": "비행 시간 T", "ids": ["flight_time"] },
+      { "label": "가장 높이 올라간 높이 H", "ids": ["apex"] },
+      { "label": "중력 가속도 g", "ids": ["g"] }
+    ],
+    "graph": true
+  },
   "cast": {
     "dugi": { "at": [7.25, -1.0], "explain_on": ["landed", "fence"], "delay_s": 0.6 },
     "puppy": { "at": [-2.0, -6.25] }

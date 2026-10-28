@@ -40,10 +40,13 @@ func run() -> void:
 
 # --- helpers ---------------------------------------------------------------------------------------
 
-## The stage's threshold is beaten by `value` under its rule (strictly, like MissionTracker.judge).
+## The stage's threshold is beaten by `value` under its rule (strictly, like MissionTracker.judge),
+## on the number the child reads (MissionTracker.shown: the card's one decimal, 2026-10-28).
 static func beats(definition: Dictionary, stage: int, value: float) -> bool:
 	var threshold := float(MissionTracker.missions(definition).stages[stage].threshold)
-	return value < threshold if MissionTracker.rule(definition, stage).compare == "less" else value > threshold
+	var how := MissionTracker.rule(definition, stage)
+	var number := MissionTracker.shown(definition, how.observe, value)
+	return number < threshold if how.compare == "less" else number > threshold
 
 
 ## The grid values of a slider control (min..max on its step).
@@ -161,7 +164,7 @@ func check_free_fall() -> void:
 		problems.append("stage 1: the light red ball on the earth, not the start")
 	# Stage 2: the Moon beats 3 s only from a high drop; the other worlds never.
 	var moon: Array = heights.filter(func(h: float) -> bool: return beats(definition, 1, fall.call("moon", h)))
-	if moon.is_empty() or moon.min() < 7.0 or beats(definition, 1, fall.call("moon", 5.0)):
+	if moon != [8.0] or beats(definition, 1, fall.call("moon", 7.5)):
 		problems.append("stage 2: the Moon beats 3 s from %s m (want a high drop only)" % str(moon))
 	for world in picked(definition, 1, "gravity", false):
 		if heights.any(func(h: float) -> bool: return beats(definition, 1, fall.call(world, h))):
@@ -173,16 +176,21 @@ func check_free_fall() -> void:
 	for world in picked(definition, 2, "gravity", false):
 		if heights.filter(func(h: float) -> bool: return h >= 5.0).any(func(h: float) -> bool: return beats(definition, 2, fall.call(world, h))):
 			problems.append("stage 3: %s beats it from 5 m up" % world)
-	# The lab's judged value is the formula's: fall_time = √(2h/g) on the real lab.
+	# The lab's judged value is the formula's: fall_time = √(2h/g) on the real lab, and the red ball's
+	# own time (the card and the stamps, red_time) is that landing once it landed, even when a higher
+	# ball is still falling (the slowest ball's `time` is not the red ball's, 2026-10-28).
 	var lab: Experiment = await _lab("free-fall")
 	lab.set_control("gravity", "moon")
 	lab.set_control("height", 7.5)
 	var shown: Variant = lab.observations().fall_time
 	if not (shown is float and absf(shown - sqrt(2.0 * 7.5 / 1.62)) < 1e-9):
 		problems.append("the lab's fall_time %s is not √(2h/g)" % str(shown))
+	if MissionTracker.rule(definition, 1).observe != "red_time" or MissionTracker.rule(definition, 2).observe != "red_time" \
+			or ExperimentRegistry.shown_cards(definition) != ["red_time"]:
+		problems.append("the card and stages 2-3 are not the red ball's time")
 	lab.queue_free()
 	expect.call(problems.is_empty(),
-		"goal (free fall): light and heavy together on the earth; the Moon past 3 s only from 7.5 m up (3.04 s, max 3.14 s), never on the earth or Jupiter; Jupiter under 1 s from any height, the earth not from 5 m up",
+		"goal (free fall): light and heavy together on the earth; the Moon past 3 s (as shown: 3.1초) only from 8 m (3.14 s; 7.5 m 3.04 s reads 3.0초), never on the earth or Jupiter; Jupiter under 1 s from any height, the earth not from 5 m up; card and stamp = the red ball's time",
 		"; ".join(problems))
 
 
@@ -203,7 +211,10 @@ func check_spring() -> void:
 	var spring_script: GDScript = load("res://experiments/spring/spring.gd")
 	var constants := spring_script.get_script_constant_map()
 	if MissionTracker.rule(definition, 0).observe != "pull" or not (beats(definition, 0, constants.EXT_MAX) and not beats(definition, 0, constants.DEFAULT_PULL)):
-		problems.append("stage 1: the pull past 1.5 m is not reachable / the start pull clears it")
+		problems.append("stage 1: the pull past 2 m is not reachable / the start pull clears it")
+	if beats(definition, 0, 2.0) or not beats(definition, 0, 2.1) or stages[0].get("card") != "pull" or ExperimentRegistry.shown_cards(definition, 0) != ["pull"] \
+			or ExperimentRegistry.shown_cards(definition, 1) != ["swing_period"]:
+		problems.append("stage 1: 2.0 m (2.0미터) must not clear and 2.1 m must, and the card must be the pull during stage 1 only")
 	# Stages 2 and 3: every mass the stage allows beats it (either damping); the other button never.
 	for stage in [1, 2]:
 		var want: Variant = stages[stage].conditions.mass
@@ -227,7 +238,7 @@ func check_spring() -> void:
 		problems.append("the swing reads %s after 4 s, %s after 5.2 s (want text, then 2π√(3/5))" % [str(early), str(late)])
 	lab.queue_free()
 	expect.call(problems.is_empty(),
-		"goal (spring): pull 1.5 m (rod 2.5 m, start 1.2 m); a 2.5 kg+ ball swings past 4 s (3 kg 4.87 s), a 1 kg one never; a 1 kg- ball under 3 s (2.81 s), a 3 kg one never; the swing shows after one return",
+		"goal (spring): pull past 2 m (2.1 m yes, 2.0 m no; rod 2.5 m, start 1.2 m), the pull card in stage 1; a 2.5 kg+ ball swings past 4 s (3 kg 4.87 s), a 1 kg one never; a 1 kg- ball under 3 s (2.81 s), a 3 kg one never; the swing shows after one return",
 		"; ".join(problems))
 
 
@@ -286,9 +297,17 @@ func check_pendulum() -> void:
 	# The default rope (2 m on the earth) does not clear stage 1.
 	if beats(definition, 0, measured_period(2.0, 9.81, float(option(definition, "damping", "web").rope_b))):
 		problems.append("the default 2 m rope clears stage 1")
+	# As shown (one decimal): the shortest rope stage 1 allows (2.25 m) still reads past 3 s (3.08 s:
+	# 3.1초) with either damping, the default 2 m does not (2.90 s: 2.9초).
+	var web_b := float(option(definition, "damping", "web").rope_b)
+	var t225 := measured_period(2.25, 9.81, web_b)
+	if not beats(definition, 0, t225) or not beats(definition, 0, measured_period(2.25, 9.81, 0.0)):
+		problems.append("stage 1: the 2.25 m rope (%.3f s) does not read past 3 s" % t225)
+	var seen := "earth 2.25 m %.3f, 2.5 m %.3f; moon 1 m %.3f, 1.5 m %.3f, 2.5 m %.3f, 2.75 m %.3f" % [t225, measured_period(2.5, 9.81, web_b),
+		measured_period(1.0, 1.62, web_b), measured_period(1.5, 1.62, web_b), measured_period(2.5, 1.62, web_b), measured_period(2.75, 1.62, web_b)]
 	expect.call(problems.is_empty() and (stages[2].get("change", []) as Array).has("length"),
-		"goal (pendulum): judged on the half swing x 2: the earth's long rope past 3 s (2.25 m 3.08 s, 2 m 2.90 s not), the Moon past 5 s with any rope (1 m 5.05 s) and the earth never (3.5 m 3.84 s), the Moon's very long rope past 8 s (2.75 m 8.37 s) and the long 2.5 m never (7.98 s, undamped 7.997 s); the last stage wants another rope",
-		"; ".join(problems))
+		"goal (pendulum): judged on the half swing x 2 as shown (one decimal): the earth's long rope past 3 s from 2.25 m (3.08 s reads 3.1초; 2 m 2.9초 not), the Moon past 5 s with any rope (1 m 5.05 s reads 5.1초), the earth never, the Moon's very long rope past 8 s and the long 2.5 m never; the last stage wants another rope",
+		"%s; %s" % [seen, "; ".join(problems)])
 
 
 ## The half swing x 2 against the measured period (2026-10-28): every rope of the grid, the Moon and
@@ -416,10 +435,21 @@ func check_push() -> void:
 			problems.append("%s: before %s, held %s, moved %s (μs m g %.3f), stopped %s (%s)" % [mass, before, held, moved, want, after, lab.status()])
 		shown.append(moved)
 		cards.append(ExperimentScreen.card_text(definition, observation, moved))
-	expect.call(problems.is_empty() and shown[0] < shown[1] and shown[1] < shown[2] and cards == ["7.8뉴턴", "19.6뉴턴", "39.2뉴턴"]
+	# The card is a bar (kid.bars, 2026-10-28: no "뉴턴" on the kid screen): no text, heavier is longer,
+	# full at the heaviest kid box on clay (its μs·m·g on the real lab).
+	var bars := shown.map(func(v: float) -> float: return ExperimentScreen.bar_fraction(definition, "start_force", v))
+	lab.set_control("material", "clay")
+	lab.set_control("mass", "heavy")
+	await _frames(2)
+	var full: float = lab.model.max_static()
+	lab.set_control("material", "wood")
+	if not (cards == ["", "", ""] and bars[0] < bars[1] and bars[1] < bars[2] and bars[2] < 1.0
+			and absf(ExperimentRegistry.card_bar(definition, "start_force") - full) < 1e-3):
+		problems.append("the bar: cards %s, lengths %s, full %.3f N vs clay 10 kg %.3f N" % [str(cards), str(bars), ExperimentRegistry.card_bar(definition, "start_force"), full])
+	expect.call(problems.is_empty() and shown[0] < shown[1] and shown[1] < shown[2]
 		and ExperimentRegistry.shown_cards(definition) == ["start_force"],
-		"goal (push): the key card shows the push that started the box (μs·m·g: 7.8 -> 19.6 -> 39.2뉴턴 light -> normal -> heavy 2 / 5 / 10 kg), from the moment it moves, kept after it stops, cleared by a new box",
-		"%s %s; %s" % [str(shown), str(cards), "; ".join(problems)])
+		"goal (push): the key card shows the push that started the box as a bar (μs·m·g: 7.8 -> 19.6 -> 39.2 N light -> normal -> heavy, longer each, full at clay 10 kg 74.6 N; no text), from the moment it moves, kept after it stops, cleared by a new box",
+		"%s %s; %s" % [str(shown), str(bars), "; ".join(problems)])
 	# Heavier kid boxes (2026-10-28 "너무 쉽게 밀려"): wood takes about 0.4 / 1 / 2 m of handle, and
 	# every material moves every box within the handle's reach (the first grid force past μs·m·g);
 	# pushed with it for 1 s and let go, the box slides and friction stops it on the track.

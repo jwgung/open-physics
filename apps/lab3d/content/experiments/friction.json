@@ -27,7 +27,7 @@
       "options": [
         { "id": "rubber", "label": "고무", "mu_s": 0.60, "mu_k": 0.42 },
         { "id": "wood", "label": "나무", "mu_s": 0.40, "mu_k": 0.22 },
-        { "id": "steel", "label": "금속", "mu_s": 0.26, "mu_k": 0.08 },
+        { "id": "steel", "label": "강철", "mu_s": 0.26, "mu_k": 0.08 },
         { "id": "clay", "label": "점토", "mu_s": 0.76, "mu_k": 0.58 }
       ]
     },
@@ -79,7 +79,19 @@
       ]
     },
     "cards": {"state": "상자는?", "start_force": "움직이려면 필요한 힘", "distance": "상자가 간 거리"},
+    "bars": {"start_force": 74.556},
     "states": {"버티는 중 · 마찰이 막고 있어요": "꼼짝 안 해요", "움직여요 · 주는 힘이 마찰을 이겼어요": "움직여요!", "미끄러지다 멈추는 중": "천천히 멈추는 중", "바닥 끝에 닿았어요": "끝까지 갔어요"}
+  },
+  "note": {
+    "law": "바닥은 최대 정지 마찰력까지 상자를 붙잡아요. 그보다 세게 밀어야 움직이고, 무거운 상자일수록 이 힘이 커요.",
+    "formula": "f최대 = μₛ m g",
+    "numbers": [
+      { "label": "내가 주는 힘 F", "ids": ["applied"] },
+      { "label": "최대 정지 마찰력 μₛmg", "ids": ["max_static"] },
+      { "label": "지금 마찰력", "ids": ["friction"] },
+      { "label": "움직이기 시작할 때 민 힘", "ids": ["start_force"] }
+    ],
+    "graph": true
   },
   "cast": {
     "dugi": { "at": [7.25, -1.0], "explain_on": ["sliding", "end"], "delay_s": 0.6 },

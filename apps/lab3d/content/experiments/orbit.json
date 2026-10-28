@@ -78,6 +78,17 @@
     "cards": {"state": "행성은?", "launch_speed": "쏘는 빠르기", "escape_speed": "떠나는 빠르기"},
     "states": {"발사 전": "쏘기 전", "별 둘레를 도는 중": "별을 빙글빙글 돌아요", "별에서 멀어지는 중": "별에서 멀어져요"}
   },
+  "note": {
+    "law": "별의 중력이 행성을 끌어당겨 길을 휘게 해요. 원 궤도 속력이면 빙글빙글 돌고, 탈출 속력보다 빠르면 떠나요.",
+    "formula": "v탈출 = √(2GM/r) = √2 · v원",
+    "numbers": [
+      { "label": "발사 속력", "ids": ["launch_speed"] },
+      { "label": "원 궤도 속력 √(GM/r)", "ids": ["circular_speed"] },
+      { "label": "탈출 속력 √(2GM/r)", "ids": ["escape_speed"] },
+      { "label": "별 둘레를 돈 바퀴 수", "ids": ["laps"] }
+    ],
+    "graph": true
+  },
   "cast": {
     "dugi": { "at": [8.0, 4.75], "explain_on": ["orbiting", "leaving", "crash", "far"], "delay_s": 1.5 },
     "puppy": { "at": [5.0, -8.75] }

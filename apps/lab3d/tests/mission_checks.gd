@@ -28,9 +28,11 @@ func run() -> void:
 
 
 ## The key cards over the 3D view of every listed lab (2026-10-27, 7~10세): a number reads with one
-## decimal and its unit in words ("1.3초", "초속 12.5미터", "? 미터" while hidden), never a unit
-## symbol or a formula letter; a lab's status text reads in its kid words. The sidebar's text of the
-## same value is format_observation's, unchanged (the formula value at full precision, its unit).
+## decimal and its unit in words ("1.3초", "1초에 12.5미터", "? 미터" while hidden), never a unit
+## symbol or a formula letter; a lab's status text reads in its kid words. A force is a bar with no
+## text (kid.bars, 2026-10-28: no "뉴턴" on the kid screen), its length the value against the full bar.
+## The sidebar's text of the same value is format_observation's, unchanged (the formula value at full
+## precision, its unit).
 func check_key_card_words() -> void:
 	var symbols := RegEx.create_from_string("[A-Za-z√θ₀²³·μ=°]")
 	var found := []
@@ -40,7 +42,13 @@ func check_key_card_words() -> void:
 			if observation.id not in definition.key_observations:
 				continue
 			var cards := []
-			if observation.has("unit"):
+			if ExperimentRegistry.card_bar(definition, observation.id) > 0.0:
+				var full := ExperimentRegistry.card_bar(definition, observation.id)
+				var lengths := [0.0, full * 0.5, full, full * 2.0].map(func(v: float) -> float: return ExperimentScreen.bar_fraction(definition, observation.id, v))
+				if lengths != [0.0, 0.5, 1.0, 1.0] or ExperimentScreen.card_text(definition, observation, full * 0.5) != "" \
+						or ExperimentScreen.card_text(definition, observation, null, true) != "?":
+					found.append("%s.%s bar %s" % [definition.id, observation.id, str(lengths)])
+			elif observation.has("unit"):
 				for value in [12.345, -0.678, 0.04, -0.04, 3.0]:
 					var card := ExperimentScreen.card_text(definition, observation, value)
 					cards.append(card)
@@ -64,7 +72,7 @@ func check_key_card_words() -> void:
 		"; ".join(found))
 	var cases := [
 		[{"unit": "m", "digits": 2}, 12.345, "12.3미터"], [{"unit": "s", "digits": 2}, 1.26, "1.3초"],
-		[{"unit": "m/s", "digits": 2}, 12.46, "초속 12.5미터"], [{"unit": "°", "digits": 1}, 31.0, "31.0도"],
+		[{"unit": "m/s", "digits": 2}, 12.46, "1초에 12.5미터"], [{"unit": "°", "digits": 1}, 31.0, "31.0도"],
 		[{"unit": "줄", "digits": 0}, 4.0, "4줄"], [{"unit": "m", "digits": 2}, -0.04, "0.0미터"]]
 	var wrong := []
 	for c in cases:
@@ -77,11 +85,11 @@ func check_key_card_words() -> void:
 	var state: Dictionary = friction.observations.filter(func(o: Dictionary) -> bool: return o.id == "state")[0]
 	expect.call(wrong.is_empty() and ExperimentScreen.card_text(spring, stretch, -0.31) == "눌려서 0.3미터"
 		and ExperimentScreen.card_text({}, {"unit": "m", "id": "x"}, null, true) == "? 미터"
-		and ExperimentScreen.card_text({}, {"unit": "m/s", "id": "x"}, null, true) == "초속 ? 미터"
+		and ExperimentScreen.card_text({}, {"unit": "m/s", "id": "x"}, null, true) == "1초에 ? 미터"
 		and ExperimentScreen.card_text(friction, state, "버티는 중 · 마찰이 막고 있어요") == "꼼짝 안 해요"
 		and ExperimentScreen.card_text(friction, state, "새 상태") == "새 상태"
 		and not spring.key_observations.has("total"),
-		"key card words: 12.3미터, 1.3초, 초속 12.5미터, 31.0도, 4줄, 눌려서 0.3미터, ? 미터, a status in kid words; spring's 에너지 합 only in 자세히",
+		"key card words: 12.3미터, 1.3초, 1초에 12.5미터, 31.0도, 4줄, 눌려서 0.3미터, ? 미터, a status in kid words; spring's 에너지 합 only in 자세히",
 		"; ".join(wrong))
 
 

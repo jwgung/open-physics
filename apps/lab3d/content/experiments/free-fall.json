@@ -47,7 +47,7 @@
     { "id": "release", "label": "공 놓기", "style": "primary" },
     { "id": "reset", "label": "처음으로" }
   ],
-  "key_observations": ["time", "fall_time", "speed"],
+  "key_observations": ["red_time", "fall_time", "speed"],
   "predict": {
     "question": "무거운 공이 먼저 떨어질까?",
     "choices": [
@@ -55,7 +55,7 @@
       { "id": "heavy", "label": "무거운 공 먼저", "picture": "fall_heavy_first" }
     ],
     "answer": "together",
-    "reason": "무거운 공도 가벼운 공도 똑같이 빨라져요. 그래서 같이 땅에 닿아요."
+    "reason": "무거운 공도 가벼운 공도 똑같이 빨라져요. 그래서 같은 높이에서 놓으면 같이 닿아요."
   },
   "missions": {
     "judge_on": ["landed"],
@@ -64,16 +64,16 @@
     "hidden_series_until_end": ["yellow", "purple", "red"],
     "stages": [
       { "conditions": {"gravity": "earth", "mass": "light"}, "text": "빨간 공을 가볍게 바꿔 떨어뜨리기!" },
-      { "observe": "fall_time", "threshold": 3.0, "conditions": {"gravity": "moon"}, "text": "달에서 3초 넘게 떨어지게 하기!" },
-      { "observe": "fall_time", "compare": "less", "threshold": 1.0, "conditions": {"gravity": "jupiter"}, "text": "목성에서 1초 안에 땅에 닿게 하기!" }
+      { "observe": "red_time", "threshold": 3.0, "conditions": {"gravity": "moon"}, "text": "달에서 빨간 공이 3초 넘게 떨어지게 하기!" },
+      { "observe": "red_time", "compare": "less", "threshold": 1.0, "conditions": {"gravity": "jupiter"}, "text": "목성에서 빨간 공이 1초 안에 땅에 닿게 하기!" }
     ]
   },
   "story": { "clue": "조각이 탑 위에 걸렸어! 달에서는 공이 천천히 떨어진대.", "map_clue": "파란 탑 꼭대기에서 반짝했어!" },
   "kid": {
-    "card": "time",
+    "card": "red_time",
     "title": "공을 높은 곳에서 떨어뜨려 보자!",
     "place": "공 떨어뜨리기",
-    "say": "무거운 공도 가벼운 공도 같이 땅에 닿아요. 달에서는 천천히, 목성에서는 빨리 떨어져요.",
+    "say": "무거운 공도 가벼운 공도 같은 높이에서 놓으면 같이 닿아요. 달에서는 천천히, 목성에서는 빨리 떨어져요.",
     "tip": "공을 위로 끌어 올려 봐요. 두 손가락으로 돌려 봐요.",
     "picks": {
       "gravity": [
@@ -86,7 +86,18 @@
         {"value": "heavy", "label": "무거운 공", "picture": "ball_red", "size": 1.0}
       ]
     },
-    "cards": {"time": "떨어진 시간", "fall_time": "땅까지 걸리는 시간", "speed": "빨간 공 빠르기"}
+    "cards": {"red_time": "빨간 공이 떨어진 시간", "fall_time": "땅까지 걸리는 시간", "speed": "빨간 공 빠르기"}
+  },
+  "note": {
+    "law": "같은 높이에서 놓으면 무거운 공도 가벼운 공도 같이 떨어져요. 중력 g가 작을수록 오래 걸려요.",
+    "formula": "t = √(2h/g)",
+    "numbers": [
+      { "label": "중력 가속도 g", "ids": ["g"] },
+      { "label": "빨간 공이 바닥까지 걸리는 시간 √(2h/g)", "ids": ["fall_time"] },
+      { "label": "빨간 공이 지금까지 떨어진 시간 t", "ids": ["red_time"] },
+      { "label": "빨간 공 속력 v = gt", "ids": ["speed"] }
+    ],
+    "graph": true
   },
   "cast": {
     "dugi": { "at": [2.75, 5.0], "explain_on": ["landed"], "delay_s": 0.6 },
@@ -95,6 +106,7 @@
   "observations": [
     { "id": "g", "label": "중력 가속도 g", "unit": "m/s²", "digits": 2 },
     { "id": "time", "label": "놓은 뒤 시간 t", "unit": "s", "digits": 2 },
+    { "id": "red_time", "label": "빨간 공이 떨어진 시간 t (바닥에 닿으면 멈춤)", "unit": "s", "digits": 2 },
     { "id": "state", "label": "공 상태" },
     { "id": "fall_time", "label": "빨간 공이 바닥까지 √(2h₀/g)", "unit": "s", "digits": 2 },
     { "id": "height_red", "label": "빨간 공 높이 h", "unit": "m", "digits": 2 },

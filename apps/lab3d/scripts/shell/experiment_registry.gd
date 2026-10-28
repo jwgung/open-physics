@@ -186,6 +186,7 @@ static func validate(definition: Dictionary) -> PackedStringArray:
 	problems.append_array(_validate_predict(definition.get("predict")))
 	problems.append_array(_validate_kid(definition.get("kid"), definition.observations.map(func(o: Dictionary) -> Variant: return o.get("id"))))
 	problems.append_array(_validate_story(definition.get("story")))
+	problems.append_array(_validate_note(definition.get("note"), definition.observations))
 	if definition.get("kid") is Dictionary:
 		problems.append_array(_validate_kid_cards(definition))
 		problems.append_array(ConditionPicks.validate(definition))
@@ -201,19 +202,21 @@ static func validate(definition: Dictionary) -> PackedStringArray:
 ##           "cards": {<observation id>: <its key card's caption>},
 ##           "states": {<a status text of the lab>: <its key card words>},
 ##           "minus": {<observation id>: <the word a negative value reads with: "눌려서", "왼쪽으로">},
+##           "bars": {<observation id>: <the value of a full bar>},
 ##           "picks": {<control id>: [the mission's picture buttons, ConditionPicks]}}
 ## Every key is optional; a missing one falls back to the shared text (kid_text, card_label).
 ## The key cards over the 3D view show a number with one decimal and its unit in words (KID_UNITS:
-## "1.3초", "초속 12.5미터"); a game lab's key observations have such a unit (an energy, an
-## acceleration stays in "자세히"; a force reads "11.8뉴턴" only where it is the lab's goal: the push
-## that started the box, 2026-10-28). States and minus words change the card's words only: the lab's
-## text and the value (the sidebar's, full precision) stay the formula's (ExperimentScreen.card_text).
+## "1.3초", "1초에 12.5미터"); a game lab's key observations have such a unit (an energy, an
+## acceleration, a force stays in "자세히"). A force that is the lab's goal (the push that started the
+## box) is a bar instead (`bars`, 2026-10-28 "어려운 말들은 세부 쪽으로": no "뉴턴" on the kid screen):
+## the bar grows with the value up to its full length at the given value; the number is in "자세히".
+## States and minus words change the card's words only: the lab's text and the value (the sidebar's,
+## full precision) stay the formula's (ExperimentScreen.card_text).
 const KID_TEXTS := {"title": "title", "place": "title", "say": "observe", "tip": "tip_short"}
 const KID_MAPS := ["cards", "states", "minus"]
 ## Observation unit -> [the words before the number, the words after it] on a key card.
-const KID_UNITS := {"": ["", ""], "m": ["", "미터"], "s": ["", "초"], "m/s": ["초속 ", "미터"],
-	"°": ["", "도"], "kg": ["", "킬로그램"], "바퀴": ["", "바퀴"], "줄": ["", "줄"], "배": ["", "배"],
-	"N": ["", "뉴턴"]}
+const KID_UNITS := {"": ["", ""], "m": ["", "미터"], "s": ["", "초"], "m/s": ["1초에 ", "미터"],
+	"°": ["", "도"], "kg": ["", "킬로그램"], "바퀴": ["", "바퀴"], "줄": ["", "줄"], "배": ["", "배"]}
 
 
 static func _validate_kid(kid: Variant, ids: Array) -> PackedStringArray:
@@ -234,8 +237,13 @@ static func _validate_kid(kid: Variant, ids: Array) -> PackedStringArray:
 				problems.append("kid.card must name an observation")
 		elif key == "picks":
 			pass   # ConditionPicks.validate (it needs the controls and the missions)
+		elif key == "bars":
+			var bars: Variant = kid.bars
+			if not (bars is Dictionary and bars.keys().all(func(id: Variant) -> bool: return id in ids)
+					and bars.values().all(func(v: Variant) -> bool: return (v is float or v is int) and v > 0.0)):
+				problems.append("kid.bars must name observations with a full-bar value > 0 each")
 		elif not KID_TEXTS.has(key):
-			problems.append("kid.%s unknown (title, place, say, tip, card, cards, states, minus, picks)" % key)
+			problems.append("kid.%s unknown (title, place, say, tip, card, cards, states, minus, bars, picks)" % key)
 		elif not (kid[key] is String and kid[key] != ""):
 			problems.append("kid.%s must be a text" % key)
 	return problems
@@ -259,15 +267,22 @@ static func _validate_story(story: Variant) -> PackedStringArray:
 	return problems
 
 
-## A game lab's key cards (it has `kid`): every key observation's unit has its words (KID_UNITS).
+## A game lab's key cards (it has `kid`): every key observation's unit has its words (KID_UNITS) or
+## the observation is a bar (kid.bars); kid.card and every stage's `card` are key observations.
 static func _validate_kid_cards(definition: Dictionary) -> PackedStringArray:
 	var problems := PackedStringArray()
-	for observation in definition.observations:
-		if observation.get("id") in definition.key_observations and not KID_UNITS.has(str(observation.get("unit", ""))):
-			problems.append("key_observations: %s (%s) has no kid unit words; keep it in the sidebar" % [observation.id, observation.unit])
 	var kid: Dictionary = definition.kid if definition.get("kid") is Dictionary else {}
+	var bars: Dictionary = kid.get("bars") if kid.get("bars") is Dictionary else {}
+	for observation in definition.observations:
+		if observation.get("id") in definition.key_observations and not KID_UNITS.has(str(observation.get("unit", ""))) \
+				and not bars.has(observation.get("id")):
+			problems.append("key_observations: %s (%s) has no kid unit words; keep it in the sidebar" % [observation.id, observation.unit])
 	if kid.has("card") and not kid.card in definition.key_observations:
 		problems.append("kid.card %s is not one of key_observations" % str(kid.card))
+	var stages: Array = MissionTracker.missions(definition).get("stages", [])
+	for i in stages.size():
+		if stages[i] is Dictionary and stages[i].has("card") and not stages[i].card in definition.key_observations:
+			problems.append("missions.stages[%d].card %s is not one of key_observations" % [i, str(stages[i].card)])
 	return problems
 
 
@@ -285,11 +300,24 @@ static func kid_text(definition: Dictionary, key: String) -> String:
 
 ## The key observations shown as cards over the 3D view: the game lab's one card (`kid.card`, one
 ## number for a child; the rest stay in "자세히", 2026-10-27), else all of key_observations.
-static func shown_cards(definition: Dictionary) -> Array:
+## Stage `stage`'s own `card` (optional, 2026-10-28: the spring's first stage shows how far the ball
+## was pulled) replaces kid.card while that stage is the current one.
+static func shown_cards(definition: Dictionary, stage := -1) -> Array:
+	var stages: Array = MissionTracker.missions(definition).get("stages", [])
+	if stage >= 0 and stage < stages.size() and stages[stage] is Dictionary and stages[stage].get("card") is String:
+		return [stages[stage].card]
 	var kid: Variant = definition.get("kid")
 	if kid is Dictionary and kid.get("card") is String:
 		return [kid.card]
 	return definition.get("key_observations", [])
+
+
+## The full-bar value of a key card shown as a bar (kid.bars), or 0 when the card is a number.
+static func card_bar(definition: Dictionary, id: String) -> float:
+	var kid: Variant = definition.get("kid")
+	if kid is Dictionary and kid.get("bars") is Dictionary and kid.bars.has(id):
+		return float(kid.bars[id])
+	return 0.0
 
 
 ## The caption of a key observation's card over the 3D view: the kid wording, or the observation's
@@ -444,6 +472,68 @@ static func _validate_predict(predict: Variant) -> PackedStringArray:
 	if predict.get("answer") not in ids:
 		problems.append("predict.answer must be one of the choice ids")
 	return problems
+
+
+## The science note of "자세히" (`note`, optional, 2026-10-28 "세부쪽도 좀 정리가 필요해"): for older
+## children and adults, the lab's law in one plain sentence and one formula, the run's key numbers
+## (with units), and whether the graph stays in the note or goes under "더 보기" —
+##   {"law": <one sentence>, "formula": <one formula, unicode sub/superscripts and primes>,
+##    "numbers": [{"label": <what it is>, "ids": [<observation id>, <optional second id: "before → after">]}],
+##    "graph": true | false}
+## NOTE_NUMBERS_MIN..NOTE_NUMBERS_MAX rows, each observation at most once. Every other observation
+## (and the graph when "graph" is false, the steps, the observe card, the shared law and its terms)
+## sits under the collapsed "더 보기" (ExperimentScreen._build_sidebar). Without `note` the sidebar
+## takes the shared law and the key observations (note()).
+const NOTE_NUMBERS_MIN := 3
+const NOTE_NUMBERS_MAX := 4
+
+
+static func _validate_note(note: Variant, observations: Array) -> PackedStringArray:
+	var problems := PackedStringArray()
+	if note == null:
+		return problems
+	if not note is Dictionary:
+		problems.append("note must be an object")
+		return problems
+	for key in note:
+		if not key in ["law", "formula", "numbers", "graph"]:
+			problems.append("note.%s unknown (law, formula, numbers, graph)" % key)
+	for key in ["law", "formula"]:
+		if not (note.get(key) is String and note.get(key) != ""):
+			problems.append("note.%s must be a text" % key)
+	if not note.get("graph", true) is bool:
+		problems.append("note.graph must be true or false")
+	var ids := observations.map(func(o: Dictionary) -> Variant: return o.get("id"))
+	var rows: Variant = note.get("numbers")
+	if not (rows is Array and rows.size() >= NOTE_NUMBERS_MIN and rows.size() <= NOTE_NUMBERS_MAX):
+		problems.append("note.numbers must list %d-%d rows" % [NOTE_NUMBERS_MIN, NOTE_NUMBERS_MAX])
+		return problems
+	var seen := {}
+	for row in rows:
+		var row_ids: Variant = row.get("ids") if row is Dictionary else null
+		if not (row is Dictionary and row.get("label") is String and row.label != "" and row_ids is Array
+				and row_ids.size() >= 1 and row_ids.size() <= 2 and row_ids.all(func(id: Variant) -> bool: return id in ids and not seen.has(id))):
+			problems.append("note.numbers: each row needs a label and 1-2 observation ids not used before")
+			continue
+		for id in row_ids:
+			seen[id] = true
+	return problems
+
+
+## The definition's science note (`note`), or one made from the shared law (its description and
+## equation), the key observations as the numbers and the graph kept.
+static func note(definition: Dictionary) -> Dictionary:
+	var own: Variant = definition.get("note")
+	if own is Dictionary:
+		return own
+	var law: Dictionary = definition.get("law", {}) if definition.get("law") is Dictionary else {}
+	var labels := {}
+	for observation in definition.get("observations", []):
+		labels[observation.get("id")] = str(observation.get("label", ""))
+	var numbers := []
+	for id in definition.get("key_observations", []):
+		numbers.append({"label": labels.get(id, str(id)), "ids": [id]})
+	return {"law": str(law.get("description", "")), "formula": str(law.get("equation", "")), "numbers": numbers, "graph": true}
 
 
 ## `cast` (Task 4h, optional): {"dugi": {"at": [x, z], "explain_on": [status...], "delay_s"?},

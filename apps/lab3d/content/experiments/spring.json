@@ -38,7 +38,7 @@
     { "id": "release", "label": "놓기", "style": "primary" },
     { "id": "reset", "label": "처음으로" }
   ],
-  "key_observations": ["extension", "swing_period"],
+  "key_observations": ["extension", "pull", "swing_period"],
   "predict": {
     "question": "무거운 공은 더 천천히 흔들릴까?",
     "choices": [
@@ -52,7 +52,7 @@
     "observe": "swing_period",
     "judge_on": ["moving", "rest"],
     "stages": [
-      { "observe": "pull", "threshold": 1.5, "conditions": {"mass": {"max": 1.0}}, "text": "가벼운 공을 1.5미터 넘게 당겼다 놓기!" },
+      { "observe": "pull", "threshold": 2.0, "card": "pull", "conditions": {"mass": {"max": 1.0}}, "text": "가벼운 공을 2미터 넘게 당겼다 놓기!" },
       { "threshold": 4.0, "conditions": {"mass": {"min": 2.5}}, "text": "무거운 공으로 4초 넘게 천천히 흔들기!" },
       { "compare": "less", "threshold": 3.0, "conditions": {"mass": {"max": 1.0}}, "text": "가벼운 공으로 3초 안에 빨리 흔들기!" }
     ]
@@ -70,9 +70,20 @@
         {"value": 3.0, "label": "무거운 공", "picture": "ball_orange", "size": 1.0}
       ]
     },
-    "cards": {"extension": "얼마나 늘어났나", "swing_period": "한 번 왔다 갔다"},
+    "cards": {"extension": "얼마나 늘어났나", "pull": "얼마나 당겼나", "swing_period": "한 번 왔다 갔다"},
     "states": {"한 번 왕복하면 보여요": "흔들면 보여요"},
-    "minus": {"extension": "눌려서"}
+    "minus": {"extension": "눌려서", "pull": "눌려서"}
+  },
+  "note": {
+    "law": "용수철은 늘어난 만큼 공을 되돌리는 힘을 내요. 무거운 공일수록 한 번 왔다 갔다 하는 데 오래 걸려요.",
+    "formula": "T = 2π√(m/k)",
+    "numbers": [
+      { "label": "당겼다 놓은 길이 x₀", "ids": ["pull"] },
+      { "label": "되돌리는 힘 F = −kx (지금)", "ids": ["force"] },
+      { "label": "공식 주기 T = 2π√(m/k)", "ids": ["natural_period"] },
+      { "label": "한 번 왕복한 시간 (잰 값)", "ids": ["swing_period"] }
+    ],
+    "graph": false
   },
   "cast": {
     "dugi": { "at": [2.5, 5.75], "explain_on": ["moving", "rest"], "delay_s": 1.5 },

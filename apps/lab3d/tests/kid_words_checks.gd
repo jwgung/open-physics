@@ -265,7 +265,7 @@ func check_note(definition: Dictionary) -> void:
 		for id in screen._sections:
 			if screen._sections[id] == child:
 				order.append(id)
-	var want := ["law", "numbers", "conditions"] + (["graph"] if note.graph else []) + ["more"]
+	var want := ["law", "numbers", "conditions"] + (["graph"] if note.graph else []) + ["more", "ask"]
 	if order != want:
 		problems.append("order %s (want %s)" % [str(order), str(want)])
 	var law_texts: Array = screen._sections.law.find_children("*", "Label", true, false).map(func(l: Label) -> String: return l.text)

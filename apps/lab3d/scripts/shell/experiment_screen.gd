@@ -37,6 +37,8 @@ const PICK_GAP := 10.0                      # between the buttons of one conditi
 const PICK_GROUP_GAP := 22.0                # between two conditions' buttons
 const MORE_CLOSED := "더 보기"              # the science note's collapsed rest (_build_sidebar)
 const MORE_OPEN := "접기"
+const ASK_TEXT := "Gemini에게 더 물어보기"
+const ASK_CAPTION := "이 실험의 조건과 숫자로 질문을 만들어, 고른 앱에 보내요."
 
 ## Set by App for the screen it opens from --experiment: then the launch args (--ctl-*, --camera,
 ## ...) apply to this screen only (a rebuilt screen with a saved state restores that state instead).
@@ -88,6 +90,14 @@ var _graph: GraphView
 var _sections: Dictionary = {}          # section id -> card (for --scroll-to)
 var _more: VBoxContainer                # 더 보기's contents (collapsed when the screen opens)
 var _more_button: Button
+## "Gemini에게 더 물어보기" (ScienceNote, 2026-10-28): a tap hands the question to this handler
+## (text -> "share" | "clipboard"); tests put a recorder here. The default is ScienceNote.share.
+var ask_handler: Callable = func(text: String) -> String: return ScienceNote.share(text)
+## A measurement or a device check (Story.measurement_run): the note has no ask button, unless the
+## device check of the button itself asks for it (--ask=show, with --progress=bench,--sound=0).
+var measurement := Story.measurement_run(Quality.all_args()) and Quality.cmdline_value("ask") != "show"
+var _ask_button: Button = null
+var _ask_status: Label = null           # "질문을 복사했어요..." when the text went to the clipboard
 var refresh_count := 0                  # full panel refreshes so far (tests)
 var _refresh_left := 0.0
 var _auto_release_every := 0.0
@@ -1362,6 +1372,8 @@ func _scroll_to(section: String) -> void:
 ##   their units, a "before → after" pair on one row), 조건 바꾸기 (the sliders and choices), 그래프
 ##   (only where it shows the law: note.graph), and 더 보기 (collapsed): every other observation, the
 ##   graph when it is not kept above, the steps, the observe card, the shared law and its terms.
+## Last comes "Gemini에게 더 물어보기" (ScienceNote: this run as a question for another app; not in a
+## measurement).
 ## Every observation has one label (_observation_labels) wherever it sits, with format_observation's
 ## text, so nothing the panel showed before is lost (ExperimentRegistry.note).
 func _build_sidebar() -> void:
@@ -1424,6 +1436,36 @@ func _build_sidebar() -> void:
 		_more.add_child(graph)
 	_sections["more_explanation"] = _build_explanation()
 	_more.add_child(_sections.more_explanation)
+	# Last: the question for Gemini (or any app), never in a measurement.
+	if not measurement:
+		_sections["ask"] = _build_ask()
+		_sections.ask.name = "Note_ask"
+		column.add_child(_sections.ask)
+
+
+## The note's last card: one button that turns this run into a question (ScienceNote.question) and
+## hands it to ask_handler (the share sheet on Android), and a line when it was copied instead.
+func _build_ask() -> Control:
+	var box := Ui.vbox(6)
+	_ask_button = Ui.button(ASK_TEXT, "", 56)
+	_ask_button.name = "AskGemini"
+	_ask_button.pressed.connect(ask_gemini)
+	box.add_child(_ask_button)
+	box.add_child(Ui.label(ASK_CAPTION, "MutedLabel", true))
+	_ask_status = Ui.label(ScienceNote.COPIED, "MutedLabel", true)
+	_ask_status.name = "AskStatus"
+	_ask_status.visible = false
+	box.add_child(_ask_status)
+	return box
+
+
+## The ask button's tap: this run's question (the hidden answers left out) to ask_handler, once.
+func ask_gemini() -> void:
+	if measurement or experiment == null:
+		return
+	var text := ScienceNote.question(definition, experiment, _hidden_answers(experiment.observations()))
+	var how: Variant = ask_handler.call(text)
+	_ask_status.visible = how == "clipboard"
 
 
 ## Opens or folds 더 보기 (closed when the screen opens).
@@ -1749,16 +1791,10 @@ func _hidden_answers(values: Dictionary) -> Array:
 	return MissionTracker.missions(definition).get("hidden_until_end", [])
 
 
+## The sidebar's text of an observation value (ScienceNote.format_observation: the question for
+## Gemini reads the same text).
 static func format_observation(observation: Dictionary, value: Variant) -> String:
-	if value is float or value is int:
-		var text := Ui.number(value, int(observation.get("digits", 2)))
-		var unit: String = observation.get("unit", "")
-		if unit != "":
-			text += unit if unit == "°" else " " + unit
-		return text
-	if value is String:
-		return value
-	return "—"
+	return ScienceNote.format_observation(observation, value)
 
 
 ## A number in a child's words (ExperimentRegistry.KID_UNITS): one decimal at most and the unit

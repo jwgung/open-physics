@@ -445,8 +445,17 @@ apps/lab3d/
 3. **조건 바꾸기**: 슬라이더·선택지(그림 단추보다 촘촘함) 그대로.
 4. **그래프**: 법칙을 보여 줄 때만(`note.graph`).
 5. **더 보기**(처음엔 접힘): 나머지 관찰값 전부("다른 숫자"), 접은 그래프, 단계·관찰 포인트·공유 법칙·용어·조작 방법. 빠지는 값은 없다(모든 관찰값에 라벨이 하나씩, 웹 대조 시험이 읽는 `_observation_labels`).
+6. **Gemini에게 더 물어보기**(2026-10-28 사용자 승인): 노트 맨 끝(더 보기와 그 접힌 내용 아래) 단추 하나와 설명 한 줄. 아래 "Gemini에게 더 물어보기".
 
-`--scroll-to=`은 `law`·`numbers`·`conditions`·`graph`·`more`(예전 `observations` = `numbers`, `explanation` = `more`, 더 보기를 연다).
+`--scroll-to=`은 `law`·`numbers`·`conditions`·`graph`·`more`·`ask`(예전 `observations` = `numbers`, `explanation` = `more`, 더 보기를 연다).
+
+#### Gemini에게 더 물어보기
+
+- 누르면 지금 실험으로 한국어 질문을 만들어(`ScienceNote.question(definition, experiment, hidden)`, 순수 함수) Android 공유 시트에 넘긴다(`Intent.ACTION_SEND`, `text/plain`, `EXTRA_TEXT`, `Intent.createChooser`). 사용자가 Gemini(또는 글을 받는 다른 앱)를 고르고, 보낼지는 그 앱에서 정한다. 앱 자신은 네트워크를 쓰지 않는다.
+- 질문에 들어가는 것: 역할 한 줄("나는 '빵고양이 과학섬' 앱에서 물리 실험을 하고 있어. 초등학생도 이해하게 쉽게 설명해 줘."), 실험 제목·실험 질문, 법칙 문장과 공식(`note.law`·`note.formula`), 지금 조건(슬라이더 값과 단위, 선택지 이름과 설명, 사이드바 글자 그대로), 이번 실험 숫자(`note.numbers`, `format_observation` 글자 그대로, 두 값은 "전 → 뒤"), 두기두기 설명(`kid.say`), 끝 줄 "이 실험에 대해 더 궁금한 걸 물어볼게:"(이어서 직접 씀). 미션이 결과 전까지 가린 답과 아직 값이 없는 숫자("—")는 뺀다. 이름·기기 ID·진행(도장·조각) 같은 개인 정보는 넣지 않는다.
+- 왜 공유 시트인가: Gemini에는 질문을 미리 채워 여는 공식 딥 링크가 없고, 앱 안에서 Gemini API를 부르는 길은 [Gemini API 약관](https://ai.google.dev/gemini-api/terms)이 18세 미만이 쓸 법한 앱에 쓰는 것을 막는다.
+- 구현: Gradle 빌드·플러그인 없이 Godot 4.4+ JNI(`Engine.get_singleton("AndroidRuntime")`의 `getActivity()`, `JavaClassWrapper.wrap("android.content.Intent")`로 생성자 `Intent(ACTION_SEND)`·`putExtra`·`createChooser`), `startActivity`는 `activity.runOnUiThread(runtime.createRunnableFromGodotCallable(...))`로 Android UI 스레드에서. SM-X115(Android 16, Godot 4.7.2 release 템플릿)에서 공유 시트가 뜨고 Gemini가 보인다(2026-10-28). Android가 아니거나 인텐트를 못 만들면 클립보드에 복사하고(`DisplayServer.clipboard_set`) Gemini 웹(`https://gemini.google.com/app`)을 열며 "질문을 복사했어요. Gemini에 붙여 넣어 보세요."를 보인다.
+- 시험·측정: 단추는 `ExperimentScreen.ask_handler`(글 → `"share"`·`"clipboard"`)를 부르고 시험은 여기에 기록기를 넣는다. 측정 실행(`Story.measurement_run`: `--progress=bench`, `--auto-*`, `--demo-*`, `--sound=0`)에는 단추가 없다. 단추 자체를 기기에서 볼 때만 `--ask=show`를 더한다. `tests/ask_gemini_checks.gd`(11개 실험의 자리, 질문 내용·단위·개인 정보 없음, 조건 바꾸면 질문도 바뀜, 터치 + 흉내 클릭 한 번 = 넘김 한 번, 측정에는 없음).
 
 | 실험 | 법칙 공식 | 이번 실험 숫자 | 그래프 |
 |---|---|---|---|

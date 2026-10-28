@@ -67,6 +67,10 @@
 ##    number its card shows, the free fall's card is the red ball's time, the spring's first stage shows
 ##    the pull, the push's card is a bar, no 뉴턴 / 초속 / decimals in the kid texts, and every lab's
 ##    자세히 is a science note (법칙 + formula, 3-4 numbers, conditions, graph where kept, 더 보기 closed).
+## 20c. ask Gemini (tests/ask_gemini_checks.gd, 2026-10-28): every lab's 자세히 ends with
+##    "Gemini에게 더 물어보기"; the question holds the title, law, formula, the conditions and numbers of
+##    this run in their units and Dugi's words, nothing personal; one tap is one hand-off; no button in a
+##    measurement.
 ## 21. condition looks (tests/condition_look_checks.gd, 2026-10-28): the bodies look as heavy as they
 ##    are (MassLook: cube root, equal masses equal, standing where the body is, the collision balls
 ##    touching at the model's contact), the gravity's signpost and the surface materials follow their
@@ -279,6 +283,11 @@ func _run() -> void:
 	_expect(words != null and words.can_instantiate(), "kid words checks compile", "")
 	if words != null and words.can_instantiate():
 		await words.new(self, _expect).run()
+	print("== ask Gemini (2026-10-28): the note's last button, the question, one tap one hand-off, none in a measurement ==")
+	var ask: GDScript = load("res://tests/ask_gemini_checks.gd")
+	_expect(ask != null and ask.can_instantiate(), "ask Gemini checks compile", "")
+	if ask != null and ask.can_instantiate():
+		await ask.new(self, _expect).run()
 	print("== condition looks (2026-10-28): mass looks, the gravity sign, surface materials, physics unchanged ==")
 	var looks: GDScript = load("res://tests/condition_look_checks.gd")
 	_expect(looks != null and looks.can_instantiate(), "condition look checks compile", "")

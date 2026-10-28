@@ -19,7 +19,7 @@
 | `impactWood_heavy_000.ogg` | Impact Sounds 1.0 | 위와 같음 | `stamp` 도장 쾅 |
 | `phaseJump1.ogg` | Digital Audio | <https://kenney.nl/assets/digital-audio> | `launch` 놓기·던지기·쏘기·밀기 시작 |
 | `pepSound1.ogg` | Digital Audio | 위와 같음 | `spring` 용수철 공을 놓음(보잉) |
-| `jingles_PIZZI02.ogg` | Music Jingles (Pizzicato jingles) | <https://kenney.nl/assets/music-jingles> | `fanfare` 다 깼을 때(색종이와 함께) |
+| `jingles_STEEL02.ogg` | Music Jingles (Steel jingles) | <https://kenney.nl/assets/music-jingles> | `fanfare` 다 깼을 때(색종이와 함께, 2026-10-29 사용자가 후보 10개 중 고름) |
 | `jingles_PIZZI10.ogg` | Music Jingles (Pizzicato jingles) | 위와 같음 | `flag` 지도 깃발이 솟음 |
 | `impactGlass_light_000.ogg` | Impact Sounds 1.0 | <https://kenney.nl/assets/impact-sounds> | `star_break` 이야기: 길잡이 별이 깨짐 (2026-10-28) |
 | `glass_002.ogg` | Interface Sounds 1.0 | <https://kenney.nl/assets/interface-sounds> | `glint` 이야기: 별 조각이 나타남·떨어짐·전망대에 도착 |

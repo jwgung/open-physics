@@ -32,7 +32,7 @@ const SFX := {
 	&"splash": ["drop_003.ogg", -4.0],                # the drum drops into the water
 	&"spring": ["pepSound1.ogg", -12.0],              # the spring ball is let go (boing)
 	&"stamp": ["impactWood_heavy_000.ogg", -2.0],     # 도장 쾅
-	&"fanfare": ["jingles_PIZZI02.ogg", -4.0],        # the whole round is done (with the confetti)
+	&"fanfare": ["jingles_STEEL02.ogg", -4.0],        # the whole round is done (with the confetti; 2026-10-29 user pick)
 	&"flag": ["jingles_PIZZI10.ogg", -4.0],           # the map's flag is raised
 	&"question": ["question_002.ogg", -14.0],         # Dugi asks
 	&"star_break": ["impactGlass_light_000.ogg", -8.0],   # the story: the guiding star cracks (soft glass)

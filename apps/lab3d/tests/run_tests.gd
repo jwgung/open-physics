@@ -67,6 +67,10 @@
 ##    are (MassLook: cube root, equal masses equal, standing where the body is, the collision balls
 ##    touching at the model's contact), the gravity's signpost and the surface materials follow their
 ##    controls, the picture buttons draw a mass like the lab; physics unchanged with or without them.
+## 23. story (tests/story_checks.gd, 2026-10-28 "별 조각 찾기"): the prologue once (camera moves, night
+##    and day, skip, replay, the child's camera and a clean map afterwards), Puppy's clue once per spot
+##    before the question, the piece only on a completed round, its flight once and the emblem's count,
+##    old saves, the finale once at 11 (the sky star), no story in measurements.
 ## 22. sound (tests/sound_checks.gd, 2026-10-28): every event asks SoundBoard for its sound id, the
 ##    효과음 / 배경 음악 switches mute their bus and are kept in the settings file (the real one untouched),
 ##    the music loops, a measurement plays nothing and writes nothing, nothing sounds while idle.
@@ -101,6 +105,10 @@ func _run() -> void:
 	var real_progress := _file_state(ProgressStore.PATH)
 	ProgressStore.path = ProgressStore.TEST_PATH
 	DirAccess.remove_absolute(ProgressStore.path)
+	# The story plays only where a check turns it on (tests/story_checks.gd): the App screens the
+	# other checks build never start it.
+	Story.app_may_enable = false
+	Story.enabled = false
 	_vectors = JSON.parse_string(FileAccess.get_file_as_string(VECTORS_PATH))
 	print("== parity: GDScript PhysicsLaws vs TS core vectors ==")
 	_check_parity()
@@ -267,6 +275,11 @@ func _run() -> void:
 	_expect(easy != null and easy.can_instantiate(), "easy controls checks compile", "")
 	if easy != null and easy.can_instantiate():
 		await easy.new(self, _expect).run()
+	print("== story (2026-10-28 별 조각 찾기): prologue, clues, pieces, flights, finale, old saves, measurements ==")
+	var story: GDScript = load("res://tests/story_checks.gd")
+	_expect(story != null and story.can_instantiate(), "story checks compile", "")
+	if story != null and story.can_instantiate():
+		await story.new(self, _expect).run()
 	print("== the labs' ground: a corner of the map's island, every experiment ==")
 	var lab_world: GDScript = load("res://tests/lab_world_checks.gd")
 	_expect(lab_world != null and lab_world.can_instantiate(), "lab world checks compile", "")

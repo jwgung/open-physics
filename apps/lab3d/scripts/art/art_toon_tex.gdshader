@@ -22,6 +22,8 @@ uniform float threshold = -0.03;
 uniform float rim = 0.12;
 uniform vec4 rim_color = vec4(1.0, 0.95, 0.82, 1.0);
 
+// The story's night (StoryDirector, 2026-10-28): a global multiplier, (1, 1, 1) except while the story's night plays.
+global uniform vec3 story_tint;
 varying vec3 world_normal;
 
 void vertex() {
@@ -37,7 +39,7 @@ void fragment() {
 	vec3 light = mix(shade.rgb, vec3(1.0), lit);
 	vec3 srgb = texture(albedo_texture, UV).rgb;
 	vec3 linear = mix(pow((srgb + 0.055) / 1.055, vec3(2.4)), srgb / 12.92, lessThan(srgb, vec3(0.04045)));
-	vec3 color = linear * light;
+	vec3 color = linear * light * story_tint;
 	// Layer Weight facing = (1 - |N.V|)^(2 x blend) for blend < 0.5; NORMAL and VIEW are view space.
 	float facing = pow(clamp(1.0 - abs(dot(normalize(NORMAL), VIEW)), 0.0, 1.0), 0.7);
 	float r = smoothstep(0.62, 0.70, facing) * lit * rim;

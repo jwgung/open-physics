@@ -15,6 +15,8 @@ uniform float softness = 0.03;
 uniform float sky_fill = 0.1;
 uniform bool encode_srgb = false;
 
+// The story's night (StoryDirector, 2026-10-28): a global multiplier, (1, 1, 1) except while the story's night plays.
+global uniform vec3 story_tint;
 varying vec3 shaded;
 
 void vertex() {
@@ -22,7 +24,7 @@ void vertex() {
 	float wrap = dot(n, normalize(sun_dir)) * 0.5 + 0.5;
 	float t = smoothstep(threshold - softness, threshold + softness, wrap);
 	vec3 light = mix(shade_color.rgb, lit_color.rgb, t) + sky_fill * max(n.y, 0.0);
-	vec3 color = COLOR.rgb * light;
+	vec3 color = COLOR.rgb * light * story_tint;
 	if (encode_srgb) {
 		color = mix(1.055 * pow(max(color, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, color * 12.92, lessThan(color, vec3(0.0031308)));
 	}

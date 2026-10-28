@@ -49,6 +49,13 @@ common/max_physics_steps_per_frame=8
 
 theme/custom_font="res://assets/fonts/NotoSansKR-Lab3dSubset-Regular.otf"
 
+[shader_globals]
+
+story_tint={
+"type": "vec3",
+"value": Vector3(1, 1, 1)
+}
+
 [rendering]
 
 renderer/rendering_method="gl_compatibility"

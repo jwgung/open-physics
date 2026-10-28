@@ -60,6 +60,7 @@
       { "observe": "launch_speed", "threshold": 3.67, "judge_on": ["far"], "conditions": {"radius": 4.0}, "text": "4미터에서 아주 세게 쏴서 별을 떠나기!" }
     ]
   },
+  "story": { "clue": "조각 하나가 하늘로 날아갔어! 별 둘레를 돌며 찾아보자." },
   "kid": {
     "card": "state",
     "title": "별 둘레를 빙글빙글 돌아 보자!",

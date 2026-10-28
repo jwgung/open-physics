@@ -234,6 +234,7 @@ func on_run_ended(status: String, lab: Experiment, observations: Dictionary) -> 
 		ProgressStore.save_cleared(id, cleared)
 	if stamps >= (missions(definition).get("stages", []) as Array).size():
 		ProgressStore.mark_flag_pending(id)   # the map raises this spot's flag once (IslandHomeScreen)
+		ProgressStore.set_mark(ProgressStore.PIECES, id, false)   # its star piece flies to the lookout once (StoryDirector)
 	if progress.is_valid():
 		progress.call(id, stamps)
 	return true

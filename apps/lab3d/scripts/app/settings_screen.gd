@@ -6,6 +6,8 @@ extends Control
 
 signal back_requested
 signal fps_toggled(on: bool)
+## 이야기 다시 보기: the map opens and the story's prologue plays again.
+signal story_requested
 
 const DESCRIPTIONS := {
 	"low": "가벼운 기기용이에요. 3D 화면만 낮은 해상도(화면의 45%)로 그리고 가장자리 다듬기(MSAA)는 끄고 60 fps를 지켜요. 글자와 버튼은 선명하게 그대로예요.",
@@ -88,6 +90,7 @@ func _ready() -> void:
 	quality.add_child(_apply)
 	column.add_child(quality_card)
 	column.add_child(_build_sound_card())
+	column.add_child(_build_story_card())
 
 	var debug_card := Ui.panel()
 	var debug := Ui.vbox(8)
@@ -123,6 +126,19 @@ func _build_sound_card() -> Control:
 		if board != null:
 			check.toggled.connect(Callable(board, entry[2]))
 		box.add_child(check)
+	return card
+
+
+## 이야기: the story's prologue again (the map plays it; nothing found is lost).
+func _build_story_card() -> Control:
+	var card := Ui.panel()
+	var box := Ui.vbox(8)
+	card.add_child(box)
+	box.add_child(Ui.label("이야기", "SectionLabel"))
+	var replay := Ui.button("이야기 다시 보기", "", 60)
+	replay.name = "StoryReplay"
+	replay.pressed.connect(story_requested.emit)
+	box.add_child(replay)
 	return card
 
 

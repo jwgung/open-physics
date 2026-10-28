@@ -133,6 +133,14 @@ var _cat: CatActor = null
 var _demo_left := -1.0                 # --demo-celebrate: s until the next demo stamp
 var _demo_stamps := 0
 const CARD_DELAY_S := 0.8
+## The story (2026-10-28 "별 조각 찾기"): Puppy's clue on the first visit (before Dugi's question) and,
+## when the round is completed, the star piece the bread cat lifts before the card comes.
+var _clue := ""                        # Puppy's clue still to tell ("" when none)
+var _clue_open := false                # it is in the box now
+var _piece: Node3D = null              # the found piece over the bread cat
+var _piece_t := 0.0
+const PIECE_HOLD_S := 1.4              # the card waits this much longer: the piece is seen first
+const PIECE_POP_S := 0.4
 const DEMO_STAMP_EVERY_S := 1.6
 
 
@@ -254,6 +262,8 @@ func _apply_launch_args() -> void:
 		_auto_release_every = float(every)
 		_auto_release_left = 1.0
 	var demo := Quality.cmdline_value("demo-celebrate")
+	if Quality.cmdline_value("demo-story").begins_with("found:"):
+		demo = "2.5"   # the story's screenshots: the clue is told, then the stamps and the piece
 	if demo.is_valid_float() and _missions != null:
 		_demo_left = float(demo)   # screenshots: the stamps and the round's end play (bench store only, nothing judged)
 	var drag_every := Quality.cmdline_value("auto-drag")
@@ -321,14 +331,30 @@ func _run_dialogue() -> void:
 ## Dugi's question (Plan G4): his box holds the question with the picture buttons over it. It
 ## yields to the sidebar (hidden while it is open) and comes back when it closes.
 func _run_question() -> void:
-	if not dialogue.active and not is_sidebar_open() and _layout_dialogue():
+	if _clue != "":
+		if _clue_open and not dialogue.active:   # the clue was read: Dugi asks
+			_clue = ""
+			_clue_open = false
+			dialogue.set_speaker("dugi")
+			dialogue.hold = true
+			if _question == "":
+				_end_question()
+				return
+		elif not _clue_open and not dialogue.active and not is_sidebar_open() and _layout_dialogue():
+			_hide_tip()
+			dialogue.set_speaker("puppy")
+			dialogue.hold = false   # a tap or the read timer closes it
+			dialogue.open(_clue)
+			_clue_open = true
+			ProgressStore.set_mark(ProgressStore.CLUES, str(definition.id), true)   # told once
+	if _clue == "" and not dialogue.active and not is_sidebar_open() and _layout_dialogue():
 		_hide_tip()
 		dialogue.open(_question)
 	var shown := dialogue.active and not is_sidebar_open() and _layout_dialogue()
 	dialogue.visible = shown
 	if _choices != null:
-		_choices.visible = shown
-		if shown:
+		_choices.visible = shown and _clue == ""
+		if _choices.visible:
 			_fit_choices()
 
 
@@ -562,8 +588,16 @@ func _setup_game() -> void:
 	_make_mission_strip()
 	_show_stamps(_missions.stamps)
 	var predict := MissionTracker.predict(definition)
-	if predict.is_empty() or _missions.stage() < 0 or dialogue == null:
-		_predict_ended = true   # the round is done (or no Dugi to ask): no question
+	if _missions.stage() < 0 or dialogue == null:
+		_predict_ended = true   # the round is done (or no Dugi to ask): no question, no clue
+		return
+	# The story: Puppy's clue, once per spot, before the question (the same shield and box).
+	if Story.enabled and not Story.clue_seen(str(definition.id)):
+		_clue = Story.clue(definition)
+	if predict.is_empty():
+		_predict_ended = true   # no question: the clue alone, if any
+		if _clue != "":
+			_ask("", [])
 		return
 	_reason_pending = str(predict.get("reason", ""))
 	_ask(str(predict.get("question", "")), predict.get("choices", []))
@@ -733,8 +767,11 @@ func _end_question() -> void:
 	if not _asking:
 		return
 	_asking = false
+	_clue = ""
+	_clue_open = false
 	dialogue.hold = false
 	dialogue.close(true)
+	dialogue.set_speaker("dugi")
 	if _choices != null:
 		_choices.queue_free()
 		_choices = null
@@ -818,6 +855,48 @@ func _celebrate_round() -> void:
 	if cat != null:
 		cat.cheer(cat.mode == "free", 4)
 	_card_left = CARD_DELAY_S
+	if Story.enabled:
+		_show_piece()
+		_card_left += PIECE_HOLD_S
+
+
+## The story: the round's star piece appears over the bread cat, who lifts it (its cheer); pictures
+## only. A node beside the lab (the cast's place), never in it.
+func _show_piece() -> void:
+	if _piece != null and is_instance_valid(_piece):
+		_piece.queue_free()
+	var cat := lab_cat()
+	var height := cat.bounds().size.y if cat != null else 1.4
+	_piece = StarArt.make(true, clampf(height * 0.22, 0.2, 0.8))
+	_piece.name = "FoundPiece"
+	_piece_t = 0.0
+	_piece.scale = Vector3.ONE * 0.01
+	view.viewport.add_child(_piece)
+	_place_piece(0.0)
+	SoundBoard.play(&"glint")
+
+
+## The piece above the cat's raised paws (or the lab's middle without a cat): it pops in, bobs, turns.
+func _place_piece(delta: float) -> void:
+	if _piece == null or not is_instance_valid(_piece):
+		return
+	_piece_t += delta
+	var cat := lab_cat()
+	var at := experiment.follow_point() + Vector3.UP * 1.5
+	var height := 1.4
+	if cat != null:
+		var box := cat.bounds()
+		height = box.size.y
+		at = Vector3(box.get_center().x, box.end.y + height * 0.32, box.get_center().z)
+	_piece.position = at + Vector3.UP * height * 0.05 * sin(_piece_t * 5.0)
+	_piece.rotation.y += delta * 3.0
+	var k := clampf(_piece_t / PIECE_POP_S, 0.0, 1.0)
+	_piece.scale = Vector3.ONE * maxf(0.01, 1.0 + 0.35 * sin(PI * k) - (1.0 - k) * (1.0 - k))
+
+
+## The found piece over the cat (tests; null when none).
+func found_piece() -> Node3D:
+	return _piece if _piece != null and is_instance_valid(_piece) else null
 
 
 ## The bread cat acting in the lab (inside its props; null in a lab without it).
@@ -840,7 +919,10 @@ func _show_done_card() -> void:
 	if is_sidebar_open():
 		close_sidebar(false)
 	_hide_tip()
-	_done_card = RoundDoneCard.new(_stamp_labels.size())
+	_done_card = RoundDoneCard.new(_stamp_labels.size(), Story.enabled)
+	if _piece != null and is_instance_valid(_piece):
+		_piece.queue_free()   # the card shows the piece now
+	_piece = null
 	_done_card.to_map.connect(func() -> void:
 		_done_card = null
 		back_requested.emit())
@@ -851,6 +933,7 @@ func _show_done_card() -> void:
 ## The card's timer and the screenshot demo (--demo-celebrate: one stamp every DEMO_STAMP_EVERY_S,
 ## shown as earned, nothing judged or saved).
 func _run_celebration(delta: float) -> void:
+	_place_piece(delta)
 	if _card_left >= 0.0:
 		_card_left -= delta
 		if _card_left < 0.0:

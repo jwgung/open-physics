@@ -68,6 +68,7 @@
       { "observe": "fall_time", "compare": "less", "threshold": 1.0, "conditions": {"gravity": "jupiter"}, "text": "목성에서 1초 안에 땅에 닿게 하기!" }
     ]
   },
+  "story": { "clue": "조각이 탑 위에 걸렸어! 달에서는 공이 천천히 떨어진대." },
   "kid": {
     "card": "time",
     "title": "공을 높은 곳에서 떨어뜨려 보자!",

@@ -67,6 +67,7 @@
       { "threshold": 8.0, "conditions": {"gravity": "moon", "length": {"min": 2.75}}, "change": ["length"], "text": "달에서 아주 긴 줄로 8초 넘게 흔들기!" }
     ]
   },
+  "story": { "clue": "추가 아주 천천히 흔들리면 조각이 떨어진대!" },
   "kid": {
     "card": "rope_half_swing",
     "title": "줄에 매단 공을 흔들어 보자!",

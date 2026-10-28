@@ -6,6 +6,8 @@
 ##   --screen=settings   open the settings screen
 ##   --fps=1             show the fps overlay
 ##   --sound=0|1         0 = no sound and no sound setting written (SoundBoard; measurements default to 0)
+##   --demo-story=<part> screenshots of the story in the bench store only (never the child's progress):
+##                       prologue | clue:<id> | found:<id> | flight:<id> | finale | map (Story, _demo_story)
 ## plus the experiment screen's --camera / --ctl-<id> / --sidebar / --scroll-to / --auto-release / --auto-drag.
 class_name App
 extends Control
@@ -47,12 +49,17 @@ func _ready() -> void:
 	_definitions = ExperimentRegistry.load_all()
 	if Quality.cmdline_value("progress") == "bench":
 		ProgressStore.path = ProgressStore.BENCH_PATH   # a measured map never raises the child's flags
+	# The story plays in the child's app only: never in a measurement (bench store, auto runs, silent).
+	Story.enabled = Story.app_may_enable and not Story.measurement_run(Quality.all_args())
+	var demo := _demo_story(Quality.cmdline_value("demo-story"))
 
 	var resume := ""
 	if FileAccess.file_exists(RESUME_PATH):
 		resume = FileAccess.get_file_as_string(RESUME_PATH).strip_edges()
 		DirAccess.remove_absolute(RESUME_PATH)
 	var requested := ExperimentRegistry.find(Quality.cmdline_value("experiment"))
+	if demo.has("experiment"):
+		requested = demo.experiment
 	if resume == "settings" or Quality.cmdline_value("screen") == "settings":
 		show_settings()
 	elif not requested.is_empty():
@@ -76,10 +83,12 @@ func _go_back() -> void:
 		get_tree().quit()   # the map is the home
 
 
-## The home is the 3D island (Plan G2): tap a spot, the cat hops over, the experiment opens.
-func show_list() -> void:
+## The home is the 3D island (Plan G2): tap a spot, the cat hops over, the experiment opens. The
+## story's prologue plays over it the first time (or again from the settings: `replay`).
+func show_list(replay := false) -> void:
 	var screen := IslandHomeScreen.new()
 	screen.definitions = _definitions
+	screen.play_prologue_on_open = Story.should_play_prologue(replay)
 	screen.experiment_chosen.connect(show_experiment)
 	screen.settings_requested.connect(show_settings)
 	_swap(screen, "home")
@@ -96,6 +105,7 @@ func show_settings() -> void:
 	var screen := SettingsScreen.new()
 	screen.show_fps = _show_fps
 	screen.back_requested.connect(show_list)   # settings opens from the map (Plan G2) and goes back to it
+	screen.story_requested.connect(func() -> void: show_list(true))   # 이야기 다시 보기
 	screen.fps_toggled.connect(func(on: bool) -> void:
 		_set_fps(on)
 		var config := ConfigFile.new()
@@ -130,6 +140,53 @@ func _slide_in(screen: Control) -> void:
 	screen.set_meta("slide_tween", tween)
 	tween.tween_property(screen, "position:x", 0.0, SLIDE_S).set_trans(Tween.TRANS_CUBIC).set_ease(Tween.EASE_OUT)
 	tween.tween_property(screen, "modulate:a", 1.0, SLIDE_S * 0.7)
+
+
+## --demo-story=<part> (screenshots): the story on, in the bench store set up for that part. Returns
+## {"experiment": definition} when the part is a lab's ({} otherwise: the map).
+##   prologue      the map plays the prologue (nothing found yet)
+##   clue:<id>     the lab opens with Puppy's clue (its round not started)
+##   found:<id>    the lab opens and its three stamps play (--demo-celebrate's way), then its piece
+##   flight:<id>   the map: that spot just completed (its flag, then its piece's flight); 4 others found
+##   finale        the map: the orbit spot just completed with the 10 others found: flag, flight, finale
+##   map           the map with the story (5 pieces at the lookout), nothing playing: fps measurements
+func _demo_story(value: String) -> Dictionary:
+	if value == "":
+		return {}
+	ProgressStore.path = ProgressStore.BENCH_PATH
+	Story.enabled = true
+	var kind := value.get_slice(":", 0)
+	var id := value.get_slice(":", 1) if ":" in value else ""
+	var config := ConfigFile.new()   # a fresh bench store
+	config.save(ProgressStore.path)
+	if kind != "prologue":
+		ProgressStore.set_mark(ProgressStore.STORY, "prologue", true)
+	var store := {}
+	var full := func(spot: String) -> int:
+		return MissionTracker.missions(ExperimentRegistry.find(spot)).get("stages", []).size()
+	match kind:
+		"clue", "found":
+			if kind == "found":
+				ProgressStore.set_mark(ProgressStore.CLUES, id, true)
+			ProgressStore.save(store)
+			var definition := ExperimentRegistry.find(id)
+			return {"experiment": definition} if not definition.is_empty() else {}
+		"flight", "map":
+			for spot in Story.spots().slice(0, 5 if kind == "map" else 4):
+				if spot != id:
+					store[spot] = full.call(spot)
+		"finale":
+			id = "orbit"
+			for spot in Story.spots():
+				store[spot] = full.call(spot)
+	if kind in ["flight", "finale"] and ExperimentRegistry.find(id).size() > 0:
+		store[id] = full.call(id)
+		ProgressStore.save(store)
+		ProgressStore.mark_flag_pending(id)
+		ProgressStore.set_mark(ProgressStore.PIECES, id, false)
+	else:
+		ProgressStore.save(store)
+	return {}
 
 
 func _set_fps(on: bool) -> void:

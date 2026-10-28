@@ -25,6 +25,15 @@ const CLEARED := "cleared"
 ## flag still to be raised on the map); the map raises it once and writes `true`. A missing key
 ## counts as raised: a save from before this section (a spot already at full stamps) never replays.
 const FLAGS := "flags"
+## The story "별 조각 찾기" (2026-10-28, Story): its own sections, never read as stamps.
+##   [story]  prologue / finale = true once played (a missing key: not played yet)
+##   [clues]  <spot id> = true once Puppy's clue was told in that lab
+##   [pieces] <spot id> = false: the star piece was found in the lab (the round completed), its
+##            flight to the lookout still to play on the map; true: flown. A missing key counts as
+##            flown: a save from before the story (a spot already at full stamps) never replays.
+const STORY := "story"
+const CLUES := "clues"
+const PIECES := "pieces"
 
 
 static func load() -> Dictionary:
@@ -112,10 +121,35 @@ static func mark_flag_raised(id: String) -> void:
 ## The spots whose flag waits to be raised (explicitly `false`; a missing key or any other value is
 ## raised: an old save, a hand-edited file).
 static func pending_flags() -> Array:
+	return pending(FLAGS)
+
+
+## The keys of `section` that are explicitly `false` (flags still to raise, pieces still to fly).
+static func pending(section: String) -> Array:
 	var config := _read()
 	var out := []
-	if config.has_section(FLAGS):
-		for id in config.get_section_keys(FLAGS):
-			if config.get_value(FLAGS, id) is bool and config.get_value(FLAGS, id) == false:
+	if config.has_section(section):
+		for id in config.get_section_keys(section):
+			if config.get_value(section, id) is bool and config.get_value(section, id) == false:
 				out.append(id)
 	return out
+
+
+## A yes/no mark of the story sections (true only when stored as true; a missing or odd value: false).
+static func mark(section: String, key: String) -> bool:
+	var value: Variant = _read().get_value(section, key, false)
+	return value is bool and value
+
+
+static func set_mark(section: String, key: String, value: bool) -> void:
+	var config := _read()
+	config.set_value(section, key, value)
+	config.save(path)
+
+
+## Removes a story section (a replay, the screenshot demos' bench store).
+static func clear_section(section: String) -> void:
+	var config := _read()
+	if config.has_section(section):
+		config.erase_section(section)
+		config.save(path)

@@ -35,6 +35,10 @@ const SFX := {
 	&"fanfare": ["jingles_PIZZI02.ogg", -4.0],        # the whole round is done (with the confetti)
 	&"flag": ["jingles_PIZZI10.ogg", -4.0],           # the map's flag is raised
 	&"question": ["question_002.ogg", -14.0],         # Dugi asks
+	&"star_break": ["impactGlass_light_000.ogg", -8.0],   # the story: the guiding star cracks (soft glass)
+	&"glint": ["glass_002.ogg", -10.0],               # the story: a star piece appears / lands / arrives
+	&"piece_fly": ["maximize_004.ogg", -12.0],        # the story: a piece flies to the lookout, the star rises
+	&"finale": ["jingles_STEEL00.ogg", -6.0],         # the story: the star is back in the sky
 }
 const SFX_DIR := "res://audio/sfx/"
 const MUSIC_PATH := "res://audio/music/happy_clappy_loop.ogg"

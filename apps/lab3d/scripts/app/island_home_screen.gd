@@ -22,6 +22,14 @@ var cat: CatActor
 var dugi: DugiActor
 var puppy: PuppyActor
 var map: MapIsland
+var world: Node3D
+var env: WorldEnvironment
+## The story "별 조각 찾기" (StoryDirector, only when Story.enabled): the prologue, the found pieces'
+## flights to the lookout, the finale, the corner emblem. null in measurements and plain tests.
+var story: StoryDirector = null
+## App: play the prologue when the map opens (first launch, or 이야기 다시 보기).
+var play_prologue_on_open := false
+var _cinematic := false
 var _spots: Array[Dictionary] = []   # {id, definition, at (stage top), top, radius, stand, zone, marker}
 var _flags: Dictionary = {}          # spot id -> flag root (visible at 3 stamps)
 var _walking := false
@@ -87,10 +95,11 @@ func _ready() -> void:
 	view.single_pointer.connect(_on_pointer)
 
 	# The map's own world: environment + the map island (land, sea, landmarks) + the cat + the spots.
-	var world := Node3D.new()
+	world = Node3D.new()
 	world.name = "IslandHome"
 	view.set_world(world)
-	view.viewport.add_child(MapIsland.make_environment())
+	env = MapIsland.make_environment()
+	view.viewport.add_child(env)
 	map = MapIsland.new(ZONES, PATHS, Vector2(HOME[0], HOME[1]))
 	var spots := []
 	for zone in ZONES:
@@ -117,6 +126,12 @@ func _ready() -> void:
 	_build_top_bar()
 	_layout()
 	resized.connect(_layout)
+	if Story.enabled:
+		story = StoryDirector.new(self)
+		add_child(story)
+		story.refresh()
+		if play_prologue_on_open:
+			story.play_prologue()
 
 
 ## The map's camera definition (CameraRig.configure): a 3/4 view from above by default, then almost
@@ -208,6 +223,8 @@ func refresh_progress() -> void:
 	for spot in _spots:
 		_refresh_flag(spot)
 	_raise_queue.clear()
+	if story != null:
+		story.refresh()
 	for id in ProgressStore.pending_flags():
 		var flag: Node3D = _flags.get(id)
 		if flag != null and flag.visible:   # all its stamps: raise it once (else it stays pending)
@@ -252,7 +269,7 @@ static func raise_height(t: float) -> float:
 
 
 func _step_raise(delta: float) -> void:
-	if _raising.is_empty():
+	if _raising.is_empty() or _cinematic:   # the prologue first
 		return
 	var before: float = _raising.t
 	_raising.t += minf(delta, 0.05)   # a long frame never skips the grow
@@ -306,6 +323,8 @@ func _process(delta: float) -> void:
 	if _walking:
 		_step_walk(delta)
 	_step_raise(delta)
+	if _cinematic:
+		return
 	if view != null and view.rig != null and (view.size != _labels_for or view.rig.global_transform != _labels_camera):
 		_labels_for = view.size
 		_labels_camera = view.rig.global_transform
@@ -329,6 +348,33 @@ func _place_trio(yaw: float) -> void:
 		var at: Vector2 = home + right * TRIO_GAP * float(entry[1])
 		actor.position = Vector3(at.x, map.walk_height(at.x, at.y), at.y)
 		actor.rotation.y = yaw
+
+
+## The story's prologue or finale has the screen: the top bar and the spot names hide (the labels are
+## placed again when it ends), taps go to the story.
+func set_cinematic(on: bool) -> void:
+	_cinematic = on
+	var bar: Control = find_child("TopBar", true, false)
+	if bar != null:
+		bar.visible = not on
+	for id in _labels:
+		(_labels[id] as Control).visible = not on
+	if not on:
+		_label_frames = 3
+
+
+## The trio back on the square (after the story moved the cat).
+func reset_trio() -> void:
+	_place_trio(TRIO_YAW)
+
+
+## Where `actor` stands in the trio's row on the square.
+func trio_spot(actor: Node3D) -> Vector3:
+	var home := Vector2(HOME[0], HOME[1])
+	var right := Vector2(cos(TRIO_YAW), -sin(TRIO_YAW))
+	var place := {puppy: -1.0, cat: 0.0, dugi: 1.0}
+	var at: Vector2 = home + right * TRIO_GAP * float(place.get(actor, 0.0))
+	return Vector3(at.x, map.walk_height(at.x, at.y), at.y)
 
 
 ## Where the trio stands now: [Dugi, cat, Puppy] (tests).
@@ -439,8 +485,12 @@ func _spot_name(definition: Dictionary) -> String:
 func _on_pointer(kind: String, position: Vector2) -> void:
 	match kind:
 		"press":
-			if raising():
-				skip_raise()   # the tap only skips (it opens nothing)
+			if _cinematic:
+				return   # the story's shield takes the taps
+			if raising() or (story != null and story.flying()):
+				skip_raise()   # the tap only skips (it opens nothing): the flag and the pieces' flights
+				if story != null:
+					story.skip_flights()
 				_down[0] = Vector2.INF
 				return
 			_down[0] = position

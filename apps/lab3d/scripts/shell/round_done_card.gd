@@ -17,6 +17,8 @@ const STAMP_GAP := 22.0
 const POP_S := 0.35
 
 var stamps := 3
+## The story: the round's star piece is drawn after the stamps (the piece the child just found).
+var piece := false
 var dim: ColorRect
 var card: PanelContainer
 var stamp_row: Control
@@ -25,9 +27,10 @@ var stay_button: Button
 var closed := false
 
 
-func _init(stamp_count: int) -> void:
+func _init(stamp_count: int, with_piece := false) -> void:
 	name = "RoundDoneCard"
 	stamps = stamp_count
+	piece = with_piece
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	dim = ColorRect.new()
@@ -51,7 +54,8 @@ func _init(stamp_count: int) -> void:
 	stamp_row = Control.new()
 	stamp_row.name = "Stamps"
 	stamp_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	stamp_row.custom_minimum_size = Vector2(stamps * STAMP_R * 2.0 + (stamps - 1) * STAMP_GAP, STAMP_R * 2.0 + 8.0)
+	var slots := stamps + (1 if piece else 0)
+	stamp_row.custom_minimum_size = Vector2(slots * STAMP_R * 2.0 + (slots - 1) * STAMP_GAP, STAMP_R * 2.0 + 8.0)
 	stamp_row.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	stamp_row.draw.connect(_draw_stamps)
 	stack.add_child(stamp_row)
@@ -92,6 +96,11 @@ func _draw_stamps() -> void:
 	for i in stamps:
 		var c := Vector2(STAMP_R + i * (STAMP_R * 2.0 + STAMP_GAP), STAMP_R + 4.0)
 		StampSlam.draw_stamp(stamp_row, c, STAMP_R, true)
+	if piece:   # the found star piece: a yellow star with the brown outline
+		var c := Vector2(STAMP_R + stamps * (STAMP_R * 2.0 + STAMP_GAP), STAMP_R + 4.0)
+		stamp_row.draw_colored_polygon(StarEmblem.star_points(c, STAMP_R + 4.0), ArtPalette.OUTLINE)
+		stamp_row.draw_colored_polygon(StarEmblem.star_points(c, STAMP_R - 1.0), StarEmblem.FILL)
+		stamp_row.draw_colored_polygon(StarEmblem.star_points(c + Vector2(-4.0, -5.0), STAMP_R * 0.45), StarEmblem.FILL_LIGHT)
 
 
 ## Closes now: the touch of this same frame already reaches what is behind (IGNORE before the free).

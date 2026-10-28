@@ -65,6 +65,7 @@
       { "conditions": {"mass": "heavy"}, "text": "무거운 상자도 밀어 움직이기!" }
     ]
   },
+  "story": { "clue": "조각이 상자 밑에 깔렸어! 무거운 상자도 밀어 보자." },
   "kid": {
     "card": "start_force",
     "place": "상자 밀기",

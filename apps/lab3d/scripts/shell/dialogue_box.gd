@@ -37,6 +37,8 @@ const MORE_ROOM := 30.0                     # right of the text: the ▼
 const PORTRAIT := preload("res://assets/characters/portraits/dugi_point.webp")
 
 var text := ""
+## Who speaks now (Story.SPEAKERS: "dugi" by default, "puppy" for his clues and story lines).
+var speaker := "dugi"
 ## The box's own words (the lab's observe text): every open without other words shows these.
 var words := ""
 ## A question is waiting for its answer: the last page stays (no read timer, a tap does not close).
@@ -191,6 +193,17 @@ func rects() -> Array[Rect2]:
 
 
 # --- acting -----------------------------------------------------------------------------------
+
+## Who speaks (Story.SPEAKERS id): the portrait and the name tag change, the box stays where it is
+## (the story "별 조각 찾기", 2026-10-28: Puppy tells his clues in the same box).
+func set_speaker(who: String) -> void:
+	if who == speaker or not Story.SPEAKERS.has(who):
+		return
+	speaker = who
+	name_label.text = Story.SPEAKERS[who][0]
+	portrait.texture = load(Story.SPEAKERS[who][1])
+	name_tag.size = name_tag.get_combined_minimum_size()
+
 
 ## Replaces the box's own words (the words of every later open without other words).
 func set_words(new_words: String) -> void:

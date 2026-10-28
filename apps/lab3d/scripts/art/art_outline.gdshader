@@ -22,6 +22,8 @@ uniform vec4 color = vec4(0.156, 0.061, 0.030, 1.0);   // LINEAR (#6e4630), a ve
 uniform float world_width = 0.010;                     // m
 uniform float screen_pixels = 1.5;                     // render-target pixels
 
+// The story's night (StoryDirector, 2026-10-28): a global multiplier, (1, 1, 1) except while the story's night plays.
+global uniform vec3 story_tint;
 void vertex() {
 	vec3 view_pos = (MODELVIEW_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	vec3 n = normalize(MODELVIEW_NORMAL_MATRIX * NORMAL);
@@ -37,7 +39,7 @@ void vertex() {
 }
 
 void fragment() {
-	vec3 c = color.rgb;
+	vec3 c = color.rgb * story_tint;
 	if (OUTPUT_IS_SRGB) {
 		c = mix(1.055 * pow(max(c, vec3(0.0)), vec3(1.0 / 2.4)) - 0.055, c * 12.92, lessThan(c, vec3(0.0031308)));
 	}

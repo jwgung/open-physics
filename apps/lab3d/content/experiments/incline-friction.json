@@ -62,6 +62,7 @@
       { "threshold": 3.0, "conditions": {"material": "rubber", "angle": {"min": 40, "max": 45}}, "text": "고무 미끄럼틀을 많이 기울여 쌩 내려가기!" }
     ]
   },
+  "story": { "clue": "조각이 미끄럼틀 아래 숨었어. 상자를 쭉 미끄러뜨려 보자!" },
   "kid": {
     "card": "state",
     "title": "미끄럼틀에서 상자를 미끄러뜨려 보자!",

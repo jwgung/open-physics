@@ -59,6 +59,7 @@
       { "conditions": {"volume": "small", "mass": 45.0}, "text": "작은 통을 45킬로그램으로 띄우기!" }
     ]
   },
+  "story": { "clue": "조각이 물속에 있어! 통을 띄워서 건져 보자." },
   "kid": {
     "card": "state",
     "title": "통을 물에 띄워 보자!",

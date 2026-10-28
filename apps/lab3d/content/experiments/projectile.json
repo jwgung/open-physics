@@ -69,6 +69,7 @@
       { "threshold": 7.0, "change": ["angle"], "text": "각도를 바꿔 7미터 넘기기!" }
     ]
   },
+  "story": { "clue": "조각이 저 멀리 떨어졌어! 공을 멀리 던져 보자." },
   "kid": {
     "card": "range",
     "title": "공을 멀리 던져 보자!",

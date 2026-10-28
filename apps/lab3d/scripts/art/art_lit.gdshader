@@ -17,13 +17,15 @@ uniform float sky_fill = 0.1;      // upward faces get a little extra light
 // ramp is constant over a face and the fragment stage only copies the colour (cheap on low).
 varying vec3 shaded;
 
+// The story's night (StoryDirector, 2026-10-28): a global multiplier, (1, 1, 1) except while the story's night plays.
+global uniform vec3 story_tint;
 void vertex() {
 	// MODEL_NORMAL_MATRIX = inverse transpose: stays correct under non-uniform scale (box squash, post length).
 	vec3 n = normalize(MODEL_NORMAL_MATRIX * NORMAL);
 	float wrap = dot(n, normalize(sun_dir)) * 0.5 + 0.5;
 	float t = smoothstep(threshold - softness, threshold + softness, wrap);
 	vec3 light = mix(shade_color.rgb, lit_color.rgb, t) + sky_fill * max(n.y, 0.0);
-	shaded = COLOR.rgb * tint.rgb * light;
+	shaded = COLOR.rgb * tint.rgb * light * story_tint;
 }
 
 void fragment() {

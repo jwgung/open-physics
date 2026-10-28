@@ -21,6 +21,10 @@
 | `pepSound1.ogg` | Digital Audio | 위와 같음 | `spring` 용수철 공을 놓음(보잉) |
 | `jingles_PIZZI02.ogg` | Music Jingles (Pizzicato jingles) | <https://kenney.nl/assets/music-jingles> | `fanfare` 다 깼을 때(색종이와 함께) |
 | `jingles_PIZZI10.ogg` | Music Jingles (Pizzicato jingles) | 위와 같음 | `flag` 지도 깃발이 솟음 |
+| `impactGlass_light_000.ogg` | Impact Sounds 1.0 | <https://kenney.nl/assets/impact-sounds> | `star_break` 이야기: 길잡이 별이 깨짐 (2026-10-28) |
+| `glass_002.ogg` | Interface Sounds 1.0 | <https://kenney.nl/assets/interface-sounds> | `glint` 이야기: 별 조각이 나타남·떨어짐·전망대에 도착 |
+| `maximize_004.ogg` | Interface Sounds 1.0 | 위와 같음 | `piece_fly` 이야기: 조각이 날아감, 별이 하늘로 오름 |
+| `jingles_STEEL00.ogg` | Music Jingles (Steel jingles) | <https://kenney.nl/assets/music-jingles> | `finale` 이야기: 별이 하늘에 돌아감 |
 
 팩의 `License.txt`: "License: (Creative Commons Zero, CC0) http://creativecommons.org/publicdomain/zero/1.0/ … This content is free to use in personal, educational and commercial projects."(Interface Sounds, Impact Sounds), "License (Creative Commons Zero, CC0) … You may use these assets in personal and commercial projects."(Digital Audio, Music Jingles, Casino Audio).
 

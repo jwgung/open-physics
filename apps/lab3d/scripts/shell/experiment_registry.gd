@@ -185,6 +185,7 @@ static func validate(definition: Dictionary) -> PackedStringArray:
 	problems.append_array(_validate_series(definition.get("missions"), graph.get("series", [])))
 	problems.append_array(_validate_predict(definition.get("predict")))
 	problems.append_array(_validate_kid(definition.get("kid"), definition.observations.map(func(o: Dictionary) -> Variant: return o.get("id"))))
+	problems.append_array(_validate_story(definition.get("story")))
 	if definition.get("kid") is Dictionary:
 		problems.append_array(_validate_kid_cards(definition))
 		problems.append_array(ConditionPicks.validate(definition))
@@ -237,6 +238,23 @@ static func _validate_kid(kid: Variant, ids: Array) -> PackedStringArray:
 			problems.append("kid.%s unknown (title, place, say, tip, card, cards, states, minus, picks)" % key)
 		elif not (kid[key] is String and kid[key] != ""):
 			problems.append("kid.%s must be a text" % key)
+	return problems
+
+
+## The story's words for this lab (`story`, optional, 2026-10-28 "별 조각 찾기"): {"clue": <Puppy's
+## clue, told once on the first visit before Dugi's question>} (Story.clue).
+static func _validate_story(story: Variant) -> PackedStringArray:
+	var problems := PackedStringArray()
+	if story == null:
+		return problems
+	if not story is Dictionary:
+		problems.append("story must be an object")
+		return problems
+	for key in story:
+		if key != "clue":
+			problems.append("story.%s unknown (clue)" % key)
+		elif not (story[key] is String and story[key] != ""):
+			problems.append("story.clue must be a text")
 	return problems
 
 

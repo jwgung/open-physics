@@ -29,7 +29,8 @@ const QUESTION_DIM_FADE := 0.2
 const CHOICE_HOP := 7.0          # the picture buttons' hop while Dugi asks (UI units, upwards)
 const CHOICE_HOP_SPEED := 3.0    # rad/s of the hop's sine (a hop every ~1 s)
 ## The strip's words for a 7-year-old: all stages done, and the picked prediction before the run.
-const DONE_TEXT := "다 했어요! 섬에 깃발이 섰어요!"
+## (2026-10-28 user decision: no celebration words; a finished round shows its stamps only.)
+const DONE_TEXT := ""
 const PICK_PREFIX := "내 생각: "
 const PICK_SIZE := Vector2(132.0, 112.0)    # a condition picture button (UI units, at least)
 const PICK_GAP := 10.0                      # between the buttons of one condition
@@ -118,6 +119,19 @@ var _picks: Array = []                # [{"control": id, "preset": kid.picks ent
 var _picks_stage := -2                # the stage the row was built for
 var _picks_for := Vector4(NAN, 0, 0, 0)   # view width, height, talking, asking the row was laid out for (_fit_picks)
 var _picks_box := Rect2()             # Dugi's box it was laid out over
+## The celebrations (2026-10-28): the stamp flying into its slot (StampSlam), the strip's filled
+## stamps so far (a stamp in flight fills its slot when it lands), the whole-round confetti and the
+## card that follows it (RoundDoneCard), the bread cat of the lab (it hops on a stamp).
+var _slam: StampSlam = null
+var _stamps_landed := 0
+var _confetti: Confetti = null
+var _done_card: RoundDoneCard = null
+var _card_left := -1.0                 # s until the round-done card shows (after the confetti starts)
+var _cat: CatActor = null
+var _demo_left := -1.0                 # --demo-celebrate: s until the next demo stamp
+var _demo_stamps := 0
+const CARD_DELAY_S := 0.8
+const DEMO_STAMP_EVERY_S := 1.6
 
 
 ## `state` (optional): capture_state() of a previous screen of the same experiment (conditions
@@ -139,7 +153,8 @@ func capture_state() -> Dictionary:
 
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	if apply_launch_args and (Quality.cmdline_value("auto-drag") != "" or Quality.cmdline_value("auto-release") != ""):
+	if apply_launch_args and (Quality.cmdline_value("auto-drag") != "" or Quality.cmdline_value("auto-release") != ""
+			or Quality.cmdline_value("demo-celebrate") != ""):
 		ProgressStore.path = ProgressStore.BENCH_PATH   # a measurement's throws never earn the child's stamps
 	view = View3D.new()
 	add_child(view)
@@ -234,6 +249,9 @@ func _apply_launch_args() -> void:
 	if every.is_valid_float():
 		_auto_release_every = float(every)
 		_auto_release_left = 1.0
+	var demo := Quality.cmdline_value("demo-celebrate")
+	if demo.is_valid_float() and _missions != null:
+		_demo_left = float(demo)   # screenshots: the stamps and the round's end play (bench store only, nothing judged)
 	var drag_every := Quality.cmdline_value("auto-drag")
 	if drag_every.is_valid_float() and manipulator != null:
 		manipulator.start_demo(float(drag_every))
@@ -258,6 +276,7 @@ func _process(delta: float) -> void:
 		if _demo_release_left < 0.0:
 			_run_measured_action(manipulator.demo_action)
 	_run_dialogue()
+	_run_celebration(delta)
 
 
 ## Dugi's dialogue opens when he starts explaining and keeps him pointing until it closes (a tap
@@ -268,6 +287,9 @@ func _process(delta: float) -> void:
 func _run_dialogue() -> void:
 	_fit_picks()   # follows the dialogue (opened, closed) and the question
 	if dialogue == null or cast.dugi == null:
+		return
+	if _done_card != null:
+		_close_dialogue()   # the round-done card is up: nothing talks behind it
 		return
 	if _asking:
 		_run_question()
@@ -378,6 +400,10 @@ func _on_back_pressed() -> void:
 
 ## Back (Android back, Esc): closes an open sidebar first. Returns true if it did.
 func handle_back() -> bool:
+	if _done_card != null:
+		_done_card.close()   # back closes the round-done card first (the lab stays, like 더 해 보기)
+		_done_card = null
+		return true
 	if not is_sidebar_open():
 		return false
 	close_sidebar()
@@ -528,6 +554,7 @@ func _new_attempt() -> void:
 func _setup_game() -> void:
 	if _missions == null:
 		return
+	_stamps_landed = _missions.stamps
 	_make_mission_strip()
 	_show_stamps(_missions.stamps)
 	var predict := MissionTracker.predict(definition)
@@ -584,18 +611,22 @@ func _fit_mission_strip() -> void:
 	_mission_text.size.y = _mission_text.get_minimum_size().y
 	_mission_text.position = Vector2(x + _mission_strip.size.x + 8.0, y)
 	if _mission_pill != null:
-		var inner := Rect2(_mission_strip.position, _mission_strip.size).merge(_mission_text.get_rect())
+		_mission_text.visible = _mission_text.text != ""   # a finished round: the stamps only
+		var inner := Rect2(_mission_strip.position, _mission_strip.size)
+		if _mission_text.visible:
+			inner = inner.merge(_mission_text.get_rect())
 		_mission_pill.position = inner.position - pad
 		_mission_pill.size = inner.size + pad * 2.0
 
 
 func _show_stamps(count: int) -> void:
 	var stages: Array = MissionTracker.missions(definition).get("stages", [])
+	var filled := mini(count, _stamps_landed)   # a stamp still flying (StampSlam) fills its slot when it lands
 	for i in _stamp_labels.size():
 		var stamp := _stamp_labels[i] as Label
-		stamp.text = "●" if i < count else "○"
+		stamp.text = "●" if i < filled else "○"
 		stamp.add_theme_color_override("font_color",
-			Color("4d8f3f") if i < count else Color("c9b892"))
+			StampSlam.GREEN if i < filled else StampSlam.EMPTY)
 	if _mission_text == null:
 		return
 	if count >= stages.size():
@@ -722,12 +753,115 @@ func _predict_finish() -> void:
 	_show_stamps(_missions.stamps)
 
 
-## A stamp was saved (MissionTracker, more than was stored): the strip fills it in (the next
-## stage's text appears) and, on the last one, the puppy celebrates.
+## A stamp was saved (MissionTracker, more than was stored): the next stage's text appears at once;
+## the stamp drops in the middle of the view, lands with a thump and flies into its slot (StampSlam), which
+## then fills; the bread cat hops. On the last one the whole round celebrates when it lands. A stamp
+## still flying when the next one comes lands at once first.
 func _mission_progress(_id: String, stamps: int) -> void:
+	if _slam != null:
+		_slam.finish()
 	_show_stamps(stamps)
-	if cast != null and cast.puppy != null and MissionTracker.missions(definition).get("stages", []).size() == stamps:
+	_slam = StampSlam.new()
+	var slot := clampi(stamps - 1, 0, maxi(0, _stamp_labels.size() - 1))
+	_slam.slot = _stamp_slot_center.bind(slot)
+	_slam.slot_radius = _stamp_slot_radius(slot)
+	_slam.start = view.size * Vector2(0.5, 0.46)
+	_slam.landed.connect(_on_stamp_landed.bind(stamps))
+	view.add_child(_slam)
+	var cat := lab_cat()
+	if cat != null:
+		cat.cheer(cat.mode == "free")
+
+
+## The strip's slot `i` on the view (its centre), where a flying stamp lands.
+func _stamp_slot_center(i: int) -> Vector2:
+	if i >= _stamp_labels.size() or _mission_strip == null:
+		return view.size * 0.5
+	var label := _stamp_labels[i] as Label
+	return _mission_strip.position + label.position + label.size * 0.5
+
+
+func _stamp_slot_radius(i: int) -> float:
+	if i >= _stamp_labels.size():
+		return 14.0
+	return maxf(8.0, (_stamp_labels[i] as Label).size.y * 0.32)
+
+
+## A flying stamp is in its slot: the slot fills; the last one starts the round's celebration.
+func _on_stamp_landed(stamps: int) -> void:
+	_slam = null
+	_stamps_landed = maxi(_stamps_landed, stamps)
+	_show_stamps(_missions.stamps if _missions != null else stamps)
+	if stamps >= MissionTracker.missions(definition).get("stages", []).size():
+		_celebrate_round()
+
+
+## The whole round is done (in this visit): confetti, the puppy, Dugi and the bread cat cheer
+## together, then the round-done card. Pictures and motion only.
+func _celebrate_round() -> void:
+	if _confetti != null and is_instance_valid(_confetti):
+		_confetti.queue_free()
+	_confetti = Confetti.new()
+	view.add_child(_confetti)
+	if cast != null and cast.puppy != null:
 		cast.puppy.celebrate()
+	if cast != null and cast.dugi != null:
+		_close_dialogue()
+		cast.dugi.celebrate()
+	var cat := lab_cat()
+	if cat != null:
+		cat.cheer(cat.mode == "free", 4)
+	_card_left = CARD_DELAY_S
+
+
+## The bread cat acting in the lab (inside its props; null in a lab without it).
+func lab_cat() -> CatActor:
+	if _cat != null and is_instance_valid(_cat):
+		return _cat
+	if experiment == null:
+		return null
+	for node in experiment.find_children("*", "Node3D", true, false):
+		if node is CatActor:
+			_cat = node
+			return _cat
+	return null
+
+
+## Shows the round-done card (the stamps, 지도로, 더 해 보기); everything behind it waits.
+func _show_done_card() -> void:
+	if _done_card != null:
+		return
+	if is_sidebar_open():
+		close_sidebar(false)
+	_hide_tip()
+	_done_card = RoundDoneCard.new(_stamp_labels.size())
+	_done_card.to_map.connect(func() -> void:
+		_done_card = null
+		back_requested.emit())
+	_done_card.stay.connect(func() -> void: _done_card = null)
+	view.add_child(_done_card)
+
+
+## The card's timer and the screenshot demo (--demo-celebrate: one stamp every DEMO_STAMP_EVERY_S,
+## shown as earned, nothing judged or saved).
+func _run_celebration(delta: float) -> void:
+	if _card_left >= 0.0:
+		_card_left -= delta
+		if _card_left < 0.0:
+			_show_done_card()
+	if _demo_left >= 0.0 and _missions != null:
+		_demo_left -= delta
+		if _demo_left < 0.0:
+			var total: int = MissionTracker.missions(definition).get("stages", []).size()
+			if _demo_stamps == 0:
+				_predict_ended = true
+				_end_question()   # the demo answers nothing: Dugi's question goes
+				_stamps_landed = 0
+				_show_stamps(0)
+			_demo_stamps += 1
+			_missions.stamps = _demo_stamps   # in memory only: the strip's text
+			_mission_progress(str(definition.id), _demo_stamps)
+			_demo_left = DEMO_STAMP_EVERY_S if _demo_stamps < total else -1.0
 
 
 # --- game: the condition picture buttons (2026-10-27) ------------------------------------------

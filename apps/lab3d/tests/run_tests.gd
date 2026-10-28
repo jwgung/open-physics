@@ -234,6 +234,11 @@ func _run() -> void:
 	_expect(round != null and round.can_instantiate(), "game round checks compile", "")
 	if round != null and round.can_instantiate():
 		await round.new(self, _expect).run()
+	print("== celebrations (2026-10-28): the stamp slam, the round-done card, the map's flag raise ==")
+	var celebration: GDScript = load("res://tests/celebration_checks.gd")
+	_expect(celebration != null and celebration.can_instantiate(), "celebration checks compile", "")
+	if celebration != null and celebration.can_instantiate():
+		await celebration.new(self, _expect).run()
 	print("== game G2 (next): the other 10 labs' missions (stages reachable, one stamp per attempt, physics unchanged) ==")
 	var labs: GDScript = load("res://tests/lab_mission_checks.gd")
 	_expect(labs != null and labs.can_instantiate(), "lab mission checks compile", "")

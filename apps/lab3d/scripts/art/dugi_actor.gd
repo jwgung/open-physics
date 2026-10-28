@@ -61,6 +61,13 @@ var _point := Vector3.ZERO          # the last target point
 var _has_point := false
 var _head_rest := Transform3D()
 var _ear_rest: Array[Transform3D] = []
+## The celebration (2026-10-28: a whole round done): for CELEBRATE_S he hops CELEBRATE_HOPS times
+## and waves his free arm over his head (the stick stays hidden).
+var _celebrate_left := 0.0
+const CELEBRATE_S := 2.0
+const CELEBRATE_HOPS := 4
+const CELEBRATE_HOP := 0.3
+const CELEBRATE_WAVE_HZ := 2.5
 
 
 func _init() -> void:
@@ -165,6 +172,16 @@ func stop(instant := false) -> void:
 		state = "lower"
 
 
+## He hops and waves (a cleared round): any explanation stops at once first.
+func celebrate() -> void:
+	stop(true)
+	_celebrate_left = CELEBRATE_S
+
+
+func celebrating() -> bool:
+	return _celebrate_left > 0.0
+
+
 func _process(delta: float) -> void:
 	advance(delta)
 
@@ -172,6 +189,7 @@ func _process(delta: float) -> void:
 ## Moves the clock on by `delta` s and poses (tests call it with exact steps).
 func advance(delta: float) -> void:
 	_clock += delta
+	_celebrate_left = maxf(0.0, _celebrate_left - delta)
 	match state:
 		"raise":
 			_blend = minf(1.0, _blend + delta / RAISE_S)
@@ -204,7 +222,11 @@ func _pose() -> void:
 		var bearing := atan2(own.x, own.z)
 		turn = clampf(bearing * TURN_SHARE, -deg_to_rad(TURN_MAX_DEG), deg_to_rad(TURN_MAX_DEG)) * k
 	var bob := 0.5 + 0.5 * sin(_clock * TAU * BOB_HZ)
-	rig.transform = Transform3D(Basis(Vector3.UP, turn), Vector3(0.0, BOB_M * bob, 0.0))
+	var hop := 0.0
+	if celebrating():
+		var c := 1.0 - _celebrate_left / CELEBRATE_S   # whole hops, back down at the end
+		hop = CELEBRATE_HOP * absf(sin(c * PI * CELEBRATE_HOPS))
+	rig.transform = Transform3D(Basis(Vector3.UP, turn), Vector3(0.0, BOB_M * bob + hop, 0.0))
 	var look_yaw := 0.0
 	var look_pitch := 0.0
 	if aiming:
@@ -215,6 +237,12 @@ func _pose() -> void:
 		var h := local - _head_rest.origin
 		look_yaw = clampf(atan2(h.x, h.z), -HEAD_YAW_MAX, HEAD_YAW_MAX) * k
 		look_pitch = clampf(-atan2(h.y, Vector2(h.x, h.z).length()), -HEAD_PITCH_MAX, HEAD_PITCH_MAX) * k
+	elif celebrating():
+		# The arm up and out over his head, swaying: the shortest turn from rest (as when pointing).
+		var w := sin(_clock * TAU * CELEBRATE_WAVE_HZ) * 0.35
+		var up := Vector3(-0.55 + w, 0.85, 0.15).normalized()
+		var lift := minf(1.0, minf(_celebrate_left, CELEBRATE_S - _celebrate_left) / 0.2)
+		arm.basis = Basis(Quaternion.IDENTITY.slerp(Quaternion(tip_rest.normalized(), up), smoothstep(0.0, 1.0, lift)))
 	else:
 		arm.basis = Basis()
 	var nod := deg_to_rad(NOD_DEG) * sin(_clock * TAU * BOB_HZ * 0.5)

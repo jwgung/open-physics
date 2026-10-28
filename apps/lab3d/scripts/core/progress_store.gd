@@ -21,6 +21,10 @@ static var load_count := 0
 const SECTIONS := ["progress"]
 ## The control values of the run that cleared each spot's last stage (MissionTracker `change`).
 const CLEARED := "cleared"
+## The map's flag raise (2026-10-28): a spot whose round is completed now gets `false` here (its
+## flag still to be raised on the map); the map raises it once and writes `true`. A missing key
+## counts as raised: a save from before this section (a spot already at full stamps) never replays.
+const FLAGS := "flags"
 
 
 static func load() -> Dictionary:
@@ -89,3 +93,29 @@ static func _read() -> ConfigFile:
 ## The stamps of `id` (0 when it has none).
 static func stamps(progress: Dictionary, id: String) -> int:
 	return int(progress.get(id, 0))
+
+
+## A spot's round was completed now: its flag waits to be raised on the map (once).
+static func mark_flag_pending(id: String) -> void:
+	var config := _read()
+	config.set_value(FLAGS, id, false)
+	config.save(path)
+
+
+## The map raised `id`'s flag: it just stands from now on.
+static func mark_flag_raised(id: String) -> void:
+	var config := _read()
+	config.set_value(FLAGS, id, true)
+	config.save(path)
+
+
+## The spots whose flag waits to be raised (explicitly `false`; a missing key or any other value is
+## raised: an old save, a hand-edited file).
+static func pending_flags() -> Array:
+	var config := _read()
+	var out := []
+	if config.has_section(FLAGS):
+		for id in config.get_section_keys(FLAGS):
+			if config.get_value(FLAGS, id) is bool and config.get_value(FLAGS, id) == false:
+				out.append(id)
+	return out

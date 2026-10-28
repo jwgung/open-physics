@@ -36,6 +36,23 @@ var _progress: Dictionary = {}       # ProgressStore.load(), read on open (refre
 var _labels_for := Vector2.ZERO      # the view size the spot labels were placed for
 var _labels_camera := Transform3D()  # the camera they were placed for
 var _label_frames := 0               # frames the labels are placed again (their sizes settle)
+## The flag raise (2026-10-28): a spot whose round was completed since the map last showed it
+## (ProgressStore.pending_flags) gets its flag raised once: the camera eases over to frame the spot
+## (a timed close-up that ends exactly on the child's view), the flag grows out of the ground with a
+## bounce, then the camera is the child's again. A tap during it skips it (and opens nothing).
+var _raise_queue: Array = []         # spot ids still to raise
+var _raising: Dictionary = {}        # {id, flag, t} of the raise playing now
+var raised_count := 0                # flag raises played (tests)
+## Screenshots (--demo-flag=<id>): that spot's round counts as just completed, in the bench store only.
+static var _demo_flag_done := false
+
+const RAISE_DELAY_S := 0.5           # the map is on screen first (its slide-in, the first heavy frames)
+const RAISE_IN_S := 0.8              # the camera eases to the spot
+const RAISE_HOLD_S := 1.5            # it stays while the flag rises
+const RAISE_OUT_S := 0.8             # and eases back to the child's view
+const RAISE_START_S := 0.6           # the flag starts to grow (into the ease-in)
+const RAISE_GROW_S := 1.0            # the grow with its bounce
+const RAISE_FILL := 0.42             # share of the view height the spot (landmark + flag) takes
 
 const TAP_SLOP := 14.0               # UI units a press may move and still count as a tap
 const WALK_SPEED := 6.0              # m/s the cat hops
@@ -92,6 +109,8 @@ func _ready() -> void:
 			_add_spot(world, zone, spot[0], built[spot[0]])
 
 	view.rig.configure(_map_camera())
+	view.rig.focus_modes = ["three_quarter", "orbit", "front", "top", "side"]   # the flag raise frames the spot from any view
+	_demo_flag()
 	view.two_finger_pan = true   # one finger turns the map; two move it (and pinch zooms)
 	_place_trio(TRIO_YAW)
 	refresh_progress()
@@ -189,12 +208,102 @@ func refresh_progress() -> void:
 	_progress = ProgressStore.load()
 	for spot in _spots:
 		_refresh_flag(spot)
+	_raise_queue.clear()
+	for id in ProgressStore.pending_flags():
+		var flag: Node3D = _flags.get(id)
+		if flag != null and flag.visible:   # all its stamps: raise it once (else it stays pending)
+			flag.visible = false
+			_raise_queue.append(id)
+	_next_raise()
+
+
+## Starts the next queued flag raise: the store says "raised" at once (it never replays, even when
+## the app is closed during it).
+func _next_raise() -> void:
+	if not _raising.is_empty() or _raise_queue.is_empty():
+		return
+	var id: String = _raise_queue.pop_front()
+	var spot: Dictionary = {}
+	for s in _spots:
+		if s.id == id:
+			spot = s
+	ProgressStore.mark_flag_raised(id)
+	var flag: Node3D = _flags[id]
+	flag.visible = true
+	flag.scale = Vector3(1.0, 0.01, 1.0)
+	_raising = {"id": id, "flag": flag, "t": -RAISE_DELAY_S, "framed": false, "spot": spot}
+	raised_count += 1
+
+
+## The camera's timed close-up on the raising spot (ends exactly on the child's view).
+func _frame_raise(spot: Dictionary, flag: Node3D) -> void:
+	var top: Vector3 = spot.at + Vector3.UP * maxf(float(spot.top), 2.4)
+	var box := AABB(spot.at, Vector3.ZERO).expand(flag.global_position + Vector3.UP * 2.4).expand(top)
+	box = box.grow(1.0)
+	view.rig.focus({"box": box, "fill": RAISE_FILL, "anchor": Vector2(0.5, 0.55),
+		"in_s": RAISE_IN_S, "hold_s": RAISE_HOLD_S, "out_s": RAISE_OUT_S})
+
+
+## The flag's height share at `t` s into its grow: 0 -> past 1 (a bounce) -> 1.
+static func raise_height(t: float) -> float:
+	var k := clampf(t / RAISE_GROW_S, 0.0, 1.0)
+	if k >= 1.0:
+		return 1.0
+	return maxf(0.01, 1.0 - exp(-5.0 * k) * cos(2.5 * PI * k))
+
+
+func _step_raise(delta: float) -> void:
+	if _raising.is_empty():
+		return
+	_raising.t += minf(delta, 0.05)   # a long frame never skips the grow
+	var flag: Node3D = _raising.flag
+	if _raising.t >= 0.0 and not _raising.framed:
+		_raising.framed = true
+		_frame_raise(_raising.spot, flag)
+	var h := raise_height(_raising.t - RAISE_START_S)
+	flag.scale = Vector3(1.0 / sqrt(maxf(h, 0.3)), h, 1.0 / sqrt(maxf(h, 0.3)))   # thin as it shoots up, wide as it lands
+	if _raising.t >= RAISE_IN_S + RAISE_HOLD_S + RAISE_OUT_S and _raising.framed and not view.rig.is_framing():
+		flag.scale = Vector3.ONE
+		_raising = {}
+		_next_raise()
+
+
+## Ends every raise now (a tap): flags up, the camera at once on the child's view.
+func skip_raise() -> void:
+	if _raising.is_empty():
+		return
+	for id in [_raising.id] + _raise_queue:
+		ProgressStore.mark_flag_raised(id)
+		var flag: Node3D = _flags[id]
+		flag.visible = true
+		flag.scale = Vector3.ONE
+	_raise_queue.clear()
+	_raising = {}
+	view.rig.cut_focus()
+
+
+func raising() -> bool:
+	return not _raising.is_empty()
+
+
+## --demo-flag=<id> (screenshots): the bench store, that spot at all its stamps and its flag pending.
+func _demo_flag() -> void:
+	var id := Quality.cmdline_value("demo-flag")
+	if id == "" or _demo_flag_done or ExperimentRegistry.find(id).is_empty():
+		return
+	_demo_flag_done = true
+	ProgressStore.path = ProgressStore.BENCH_PATH   # never the child's progress
+	var store := ProgressStore.load()
+	store[id] = MissionTracker.missions(ExperimentRegistry.find(id)).get("stages", []).size()
+	ProgressStore.save(store)
+	ProgressStore.mark_flag_pending(id)
 
 
 ## The cat's hop, and the 2D spot labels placed over the map when the view size or the camera changed.
 func _process(delta: float) -> void:
 	if _walking:
 		_step_walk(delta)
+	_step_raise(delta)
 	if view != null and view.rig != null and (view.size != _labels_for or view.rig.global_transform != _labels_camera):
 		_labels_for = view.size
 		_labels_camera = view.rig.global_transform
@@ -325,6 +434,10 @@ func _spot_name(definition: Dictionary) -> String:
 func _on_pointer(kind: String, position: Vector2) -> void:
 	match kind:
 		"press":
+			if raising():
+				skip_raise()   # the tap only skips (it opens nothing)
+				_down[0] = Vector2.INF
+				return
 			_down[0] = position
 			_down[1] = false
 			_last = position

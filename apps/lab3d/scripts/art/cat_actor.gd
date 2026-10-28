@@ -143,6 +143,7 @@ var _pull_ball := 0.0               # radius of a ball the pull's paws are on (0
 var _grab_key := []                 # the input the lean was last solved for (solved again only on a change)
 ## Cheers so far (tests).
 var cheers := 0
+var _cheers_queued := 0
 # follow-through after a release (let_go, the throw's release)
 var _rel_arms: Array[bool] = [false, false]
 var _rel_from: Array[Vector3] = [Vector3.DOWN, Vector3.DOWN]
@@ -289,6 +290,7 @@ func hold(center: Vector3, radius: float, floor_y: float, grip := true, dir := V
 	_held_radius = radius
 	_floor_y = floor_y
 	_cheer = -1.0
+	_cheers_queued = 0
 	var u := (look.hold_dir if dir == Vector3.ZERO else dir).normalized()
 	_hold_arm = ARM_R if u.x < 0.0 else ARM_L
 	var reach := look.reach + radius
@@ -407,7 +409,9 @@ func pull(grip: Vector3, dir: Vector3, floor_y: float, effort := 0.0, ball := 0.
 
 
 ## A small happy hop (and both paws up, `arms_up`, unless the paws are busy: then only a nod).
-func cheer(arms_up := true) -> void:
+## `times` > 1: that many cheers in a row (a whole round done, 2026-10-28).
+func cheer(arms_up := true, times := 1) -> void:
+	_cheers_queued = maxi(0, times - 1)
 	_cheer = 0.0
 	_cheer_arms = arms_up
 	cheers += 1
@@ -435,6 +439,10 @@ func advance(delta: float) -> void:
 		_cheer += delta
 		if _cheer > CHEER_S:
 			_cheer = -1.0
+			if _cheers_queued > 0:
+				_cheers_queued -= 1
+				_cheer = 0.0
+				cheers += 1
 	match mode:
 		"throw":
 			_t += delta

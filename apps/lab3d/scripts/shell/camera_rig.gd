@@ -395,6 +395,9 @@ func _goal_distance() -> float:
 ## Close-ups only in these modes: the default front view the labs' framing is made for. A view the
 ## user chose (3/4, top, side, follow, turned) stays as it is.
 const FOCUS_MODES := ["front"]
+## The modes this rig frames close-ups in (the island map frames a spot from its own 3/4 view or
+## wherever the child turned it: its flag raise, 2026-10-28).
+var focus_modes: Array = FOCUS_MODES
 const FOCUS_FILL := 0.3                     # default share of the view height the subject takes
 const FOCUS_ANCHOR := Vector2(0.5, 0.55)    # default place of the subject's centre (view fractions, from the top left)
 
@@ -413,7 +416,7 @@ const FOCUS_ANCHOR := Vector2(0.5, 0.55)    # default place of the subject's cen
 ## still, after in_s + hold_s + out_s: a lab can have the camera at rest before something it must
 ## show from a still view (the throw's release, 2026-10-24 user decision).
 func focus(spec: Dictionary) -> bool:
-	if not focus_enabled or mode not in FOCUS_MODES:
+	if not focus_enabled or mode not in focus_modes:
 		return false
 	var box: AABB = spec.get("box", AABB())
 	var fill: float = clampf(float(spec.get("fill", FOCUS_FILL)), 0.05, 1.0)

@@ -6,6 +6,12 @@
 ##   white depth ticks on the back wall every 0.1 m (long every 0.5 m) from the tank floor,
 ## - the orange drum (the web's ball colour) with a white band, its ArtJuice (shadow, splash dust,
 ##   squash) and a light-blue water ring around it at the waterline while it is partly under water,
+## - its mass (set_mass, 2026-10-28 user request: the look follows the weight): the drum's size is its
+##   volume (큰 통 / 작은 통), so the mass is an iron weight on its lid, its width the cube root of the
+##   mass (WEIGHT_WIDTH for 150 kg, the slider's top, like the picture button's weight), and a number
+##   tag above the drum's right side, clear of the force arrows ("80킬로그램", the mission's words; ink
+##   on a white outline, drawn over the tank walls and the cat). Visual only: the drum body and the
+##   model do not see either,
 ## - two force arrows beside the drum: the weight m g (red, down) and the buoyant force rho g V_sub
 ##   (blue, up), both ARROW_PER_FULL m for the buoyant force of the whole drum,
 ## - reactions: entering the water fast = splash (dust) and squash; hitting the tank floor = bump;
@@ -29,6 +35,10 @@ const ARROW_GAP := 0.2           # m between the drum's side and an arrow
 const CAT_AT := Vector2(-0.66, -0.4)
 const CAT_TOP := 1.7
 const CAT_SPREAD := 0.45
+const WEIGHT_MASS := 150.0       # kg: the weight that is WEIGHT_WIDTH wide (the mass slider's top)
+const WEIGHT_WIDTH := 0.34       # m (fits on the small drum's 0.4 m lid)
+const WEIGHT_TALL := 0.85       # the weight mesh's height per metre of its width
+const TAG_AT := Vector2(0.55, 0.3)   # the number tag's bottom: right of the drum's axis, above its lid (m)
 
 var juice: ArtJuice
 var drum_visual: Node3D
@@ -40,6 +50,10 @@ var _height := 0.5
 var _waterline := 1.5
 var cat: CatActor
 var cat_stand: CatCrates
+## The iron weight on the lid (a 1 m wide mesh scaled to the mass) and the number tag above it.
+var weight: MeshInstance3D
+var tag: Label3D
+var _mass := 70.0
 
 
 ## The tank around x = 0, z = 0: base under `floor_y`, water to `waterline`, walls to `top`.
@@ -87,6 +101,20 @@ static func drum_mesh(radius: float, height: float) -> Mesh:
 	return b.commit()
 
 
+## An iron weight 1 m wide on its bottom face (the origin): a square block narrowing upwards with a
+## bar handle, like the picture button's weight.
+static func weight_mesh() -> Mesh:
+	var b := ArtKit.builder()
+	b.ao_height = 0.75
+	var turn := Basis(Vector3.UP, PI * 0.25)   # 4 sides: a square, faces along x and z
+	b.add_cylinder(Transform3D(turn, Vector3.ZERO), 0.5 * sqrt(2.0), 0.36 * sqrt(2.0), 0.6, 4, ArtPalette.IRON, true, ArtPalette.IRON_TOP)
+	b.ao_min = 1.0
+	for side in [-1.0, 1.0]:
+		b.add_rounded_box(Transform3D(Basis(), Vector3(side * 0.2, 0.68, 0.0)), Vector3(0.1, 0.18, 0.12), 0.0, 1, ArtPalette.IRON)
+	b.add_rounded_box(Transform3D(Basis(), Vector3(0.0, 0.8, 0.0)), Vector3(0.5, 0.1, 0.14), 0.03, 1, ArtPalette.IRON, ArtPalette.IRON_TOP)
+	return b.commit()
+
+
 ## The water ring: a thin level disk a little wider than the drum (the drum hides its middle).
 static func ring_mesh(radius: float) -> Mesh:
 	var b := ArtKit.builder()
@@ -126,6 +154,25 @@ func dress(experiment: Node3D, drum: RigidBody3D, radius: float, height: float, 
 	mesh.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	drum_visual.add_child(mesh)
 	juice.setup(drum, drum_visual, height, floor_y)
+	weight = ArtKit.instance(weight_mesh())
+	weight.name = "Weight"
+	drum_visual.add_child(weight)   # on the lid: squashed with the drum
+	tag = Label3D.new()
+	tag.name = "MassTag"
+	tag.font = UiTheme.bold_font()
+	tag.font_size = 72
+	tag.pixel_size = 0.004
+	tag.outline_size = 22
+	tag.modulate = ArtPalette.INK
+	tag.outline_modulate = ArtPalette.WHITE
+	tag.billboard = BaseMaterial3D.BILLBOARD_ENABLED
+	tag.no_depth_test = true   # over the tank's walls, the arrows and the cat
+	tag.render_priority = 2
+	tag.shaded = false
+	tag.double_sided = false
+	tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	tag.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+	drum.add_child(tag)
 	set_drum(radius, height)
 	cat = CatActor.new(BreadCat.new())
 	cat.look_target = drum
@@ -150,13 +197,29 @@ func update_cat(at: Vector3, waiting: bool) -> void:
 		cat.let_go(Vector3.DOWN)
 
 
-## The drum's size (a new volume): its mesh, the juice's size and the ring.
+## The drum's size (a new volume): its mesh, the juice's size, the ring and the weight on its lid.
 func set_drum(radius: float, height: float) -> void:
 	_radius = radius
 	_height = height
 	(drum_visual.get_node("Drum") as MeshInstance3D).mesh = drum_mesh(radius, height)
 	juice.size = height
 	ring.mesh = ring_mesh(radius)
+	set_mass(_mass)
+
+
+## The drum's mass `mass` (kg): the weight's width (cube root of the mass against WEIGHT_MASS) and the tag.
+func set_mass(mass: float) -> void:
+	_mass = mass
+	var w := weight_width(mass)
+	weight.scale = Vector3.ONE * w
+	weight.position = Vector3(0.0, _height * 0.5, 0.0)
+	tag.text = "%s킬로그램" % String.num(mass, 0 if is_equal_approx(mass, roundf(mass)) else 1)
+	tag.position = Vector3(TAG_AT.x, _height * 0.5 + TAG_AT.y, 0.0)
+
+
+## Width (m) of the weight for `mass` kg: one stuff, the cube root of the mass against WEIGHT_MASS.
+static func weight_width(mass: float) -> float:
+	return WEIGHT_WIDTH * MassLook.factor(mass, WEIGHT_MASS)
 
 
 ## The ring at the waterline while the drum crosses it; the two force arrows (N) beside the drum

@@ -10,6 +10,9 @@
 ## 2 px/s, wall bounces with the ball's e), stepped in 64 bit. CollisionRailDriver poses the engine
 ## balls on it every step (method "kinematic_model"), so the panel has no engine measurement: the
 ## balls stand where the formula puts them. See docs/formula-correction.md (Task 4c).
+## The balls look as heavy as they are (2026-10-28, CollisionProps.set_sizes): their meshes, knobs,
+## arrows and the cat follow the look radii; the model, its radii RADIUS_A / RADIUS_B and the bodies
+## do not change with the masses.
 extends ModelDrivenLab
 
 const RADIUS_A := 0.4
@@ -131,6 +134,8 @@ func _load_model() -> void:
 		model.restitution_b = restitution_override.y
 	model.wall = WALL
 	model.reset(start_a, start_b, velocity_a, velocity_b)
+	if props.juice_a != null:
+		props.set_sizes(mass_a, mass_b)
 
 
 ## Both balls back at their starts, waiting; the graph is cleared.
@@ -177,7 +182,9 @@ func _hit() -> void:
 		return
 	hit_reactions += 1
 	var strength := clampf(closing / HIT_CLOSING_MAX, HIT_STRENGTH_MIN, 1.0)
-	props.hit(model.xa + RADIUS_A if model.xa < model.xb else model.xa - RADIUS_A, strength)
+	# The looks touch where the line between their centres meets A's surface (A is left of B).
+	var look: Vector2 = props.look
+	props.hit(model.xa + (model.xb - model.xa) * look.x / (look.x + look.y), strength)
 	impact.emit(strength)
 
 
@@ -265,9 +272,10 @@ func _process(_delta: float) -> void:
 	if ball_a == null:
 		return
 	props.spin(ball_a.global_position.x - start_a, ball_b.global_position.x - start_b)
-	props.update_cat(ball_a.global_position, RADIUS_A, velocity_a, released)
+	var look: Vector2 = props.look
+	props.update_cat(props.look_centre(ball_a, true), look.x, velocity_a, released)
 	if released:
-		props.show_momentum(ball_a.global_position, RADIUS_A, model.momentum_a(), ball_b.global_position, RADIUS_B, model.momentum_b())
+		props.show_momentum(ball_a.global_position, look.x, model.momentum_a(), ball_b.global_position, look.y, model.momentum_b())
 		return
 	_show_arrows()
 
@@ -284,11 +292,12 @@ func _show_arrows() -> void:
 	var key := Vector4(ball_a.global_position.x, ball_b.global_position.x, knob_a.global_position.x, knob_b.global_position.x)
 	if key == _shown and holding == "":
 		return
+	var look: Vector2 = props.look
 	if holding != "arrow_a":
-		knob_a.global_position = Vector3(ball_a.global_position.x + va * ARROW_SCALE, CollisionProps.arrow_height(RADIUS_A), 0.0)
+		knob_a.global_position = Vector3(ball_a.global_position.x + va * ARROW_SCALE, CollisionProps.arrow_height(look.x), 0.0)
 	if holding != "arrow_b":
-		knob_b.global_position = Vector3(ball_b.global_position.x + vb * ARROW_SCALE, CollisionProps.arrow_height(RADIUS_B), 0.0)
-	props.show_velocity(ball_a.global_position, RADIUS_A, _arrow_length(va), ball_b.global_position, RADIUS_B, _arrow_length(vb))
+		knob_b.global_position = Vector3(ball_b.global_position.x + vb * ARROW_SCALE, CollisionProps.arrow_height(look.y), 0.0)
+	props.show_velocity(ball_a.global_position, look.x, _arrow_length(va), ball_b.global_position, look.y, _arrow_length(vb))
 	_shown = Vector4(ball_a.global_position.x, ball_b.global_position.x, knob_a.global_position.x, knob_b.global_position.x)
 
 
@@ -314,6 +323,7 @@ func _build_world() -> void:
 	driver.attach(model, ball_a, ball_b)
 	driver.reset()
 	props.dress(self, ball_a, RADIUS_A, ball_b, RADIUS_B, knob_a, knob_b, WALL)
+	props.set_sizes(mass_a, mass_b)
 
 
 ## A ball on the rail: a sphere the manipulator can pick (its own layer) that touches nothing.
@@ -352,7 +362,7 @@ func manipulation_surface(surface_id: String) -> ManipSurface:
 		"arrow_a", "arrow_b":
 			var a := surface_id == "arrow_a"
 			var ball := ball_a if a else ball_b
-			var height := CollisionProps.arrow_height(RADIUS_A if a else RADIUS_B) - KNOB_HALF
+			var height := CollisionProps.arrow_height(props.look.x if a else props.look.y) - KNOB_HALF
 			var reach := SPEED_MAX * ARROW_SCALE
 			surface = ManipSurface.new(Transform3D(Basis(), Vector3(ball.global_position.x, height, 0.0)),
 				Vector2(-reach, 0.0), Vector2(reach, 0.0), Vector2(ARROW_STEP * ARROW_SCALE, 0.0))

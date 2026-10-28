@@ -958,8 +958,9 @@ func check_collision_mesh_rolls() -> void:
 		lab._process(0.0)   # the props turn the meshes in _process (from the balls' positions now)
 		var da: float = lab.ball_a.global_position.x - lab.start_a
 		var db: float = lab.ball_b.global_position.x - lab.start_b
-		worst = maxf(worst, absf(wrapf(lab.props.spin_a.rotation.z + da / lab.RADIUS_A, -PI, PI)))
-		worst = maxf(worst, absf(wrapf(lab.props.spin_b.rotation.z + db / lab.RADIUS_B, -PI, PI)))
+		# The balls roll on their look radii (2026-10-28: the look follows the mass).
+		worst = maxf(worst, absf(wrapf(lab.props.spin_a.rotation.z + da / lab.props.look.x, -PI, PI)))
+		worst = maxf(worst, absf(wrapf(lab.props.spin_b.rotation.z + db / lab.props.look.y, -PI, PI)))
 		moved = maxf(moved, absf(da))
 	expect.call(worst <= 1e-5 and moved > 1.0,
 		"ball spin: the collision lab's balls (model driven) turn by travel / radius: rolling, v = omega r", "max %s rad over %.2f m" % [String.num_scientific(worst), moved])

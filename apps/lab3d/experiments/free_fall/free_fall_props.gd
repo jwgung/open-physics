@@ -5,6 +5,8 @@
 ##   reaction) and comes back with a pop when the balls are put back,
 ## - the island, the ruler's blob shadow and each ball's ArtJuice (squash, dust, shadow; dust kept
 ##   to 10 grains per ball so three landings at once stay under the 32-grain budget),
+## - each ball looks as heavy as it is (set_look, 2026-10-28): one stuff, its radius the cube root
+##   of its mass against the 1 kg violet ball's 0.25 m, grown from the body's bottom (ArtJuice.look_scale),
 ## - the bread cat (CatActor wearing the BreadCat look, 2026-10-27) behind and left of the leftmost
 ##   ball, holding it on its pad with its left paw, on a stack of bread crates as tall as the ball is
 ##   high (CatCrates); "공 놓기" lets go (the arm follows down), it cheers when all balls landed. A
@@ -28,7 +30,9 @@ var cat_stand: CatCrates
 var cat_ball := ""
 var finger := ""
 var _ball_nodes: Dictionary = {}   # ball id -> body
-var _radius := 0.25
+var _radius := 0.25                # the bodies' radius
+## Ball id -> the radius its look has (set_look).
+var look_radii: Dictionary = {}
 
 
 ## The ruler: a pole on a round foot, ticks on its front face (one static mesh).
@@ -79,6 +83,7 @@ func dress(experiment: Node3D, balls: Dictionary, ball_size: float) -> void:
 		juice.setup(ball, balls[id][1], ball_size, 0.0, ball.collision_mask)   # the shadow lands where the ball can
 		juices[id] = juice
 		_ball_nodes[id] = ball
+		look_radii[id] = ball_size * 0.5
 	_radius = ball_size * 0.5
 	cat = CatActor.new(BreadCat.new())
 	cat_stand = CatCrates.new(cat.look.footprint, CRATE_MAX)
@@ -86,8 +91,14 @@ func dress(experiment: Node3D, balls: Dictionary, ball_size: float) -> void:
 	experiment.add_child(cat)
 
 
-## The cat holds the leftmost waiting ball (centres = `starts` + the radius; id -> bottom point) on
-## its pad, or stands by while a finger holds that ball; its crates fit under it.
+## Ball `id` looks `radius` m round (its bottom stays the body's bottom).
+func set_look(id: String, radius: float) -> void:
+	look_radii[id] = radius
+	(juices[id] as ArtJuice).set_look_scale(radius / _radius)
+
+
+## The cat holds the leftmost waiting ball (its look's centre = `starts` + its look radius; id ->
+## bottom point) on its pad, or stands by while a finger holds that ball; its crates fit under it.
 func place_cat(starts: Dictionary) -> void:
 	if cat == null:
 		return
@@ -97,7 +108,8 @@ func place_cat(starts: Dictionary) -> void:
 			left = id
 	cat_ball = left
 	cat.look_target = _ball_nodes.get(left)
-	cat.hold(starts[left] + Vector3.UP * _radius, _radius, 0.0, finger != left, CAT_HOLD_DIR)
+	var r: float = look_radii.get(left, _radius)
+	cat.hold(starts[left] + Vector3.UP * r, r, 0.0, finger != left, CAT_HOLD_DIR)
 	cat_stand.fit(cat, 0.0)
 
 
@@ -107,13 +119,16 @@ func set_finger(id: String, starts: Dictionary) -> void:
 	place_cat(starts)
 
 
-## Puts the pad of a waiting ball under it (`bottom` = the ball's lowest point); no pad on the floor.
+## Puts the pad of a waiting ball under it (`bottom` = the ball's lowest point), as wide as the ball
+## looks (PAD_SIZE for the 0.25 m look); no pad on the floor.
 func place_pad(id: String, bottom: Vector3) -> void:
 	var pad: MeshInstance3D = pads.get(id)
 	if pad == null:
 		return
 	stop_flip(id)
-	pad.position = bottom + Vector3(0.0, 0.0, -PAD_SIZE.z * 0.5)
+	var k: float = look_radii.get(id, _radius) / _radius
+	pad.scale = Vector3(k, 1.0, k)
+	pad.position = bottom + Vector3(0.0, 0.0, -PAD_SIZE.z * 0.5 * k)
 	pad.rotation = Vector3.ZERO
 	pad.visible = bottom.y > PAD_MIN_HEIGHT
 

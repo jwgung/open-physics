@@ -11,6 +11,8 @@
 ## (method "kinematic_model"). See docs/formula-correction.md (Task 4e).
 ## The graph is the web's "지렛대에 필요한 힘": the force on the beam and the required force over the
 ## last 10 s of pressing (the clock runs while the handle is held; a changed condition adds a point).
+## The load looks as heavy as it is (2026-10-28, look_factor): its mesh grows from its bottom on the
+## beam; its body (a LOAD_SIZE cube), its place and the model do not change with the mass.
 extends PressHandleLab
 
 const BEAM_HALF := 3.0
@@ -18,6 +20,7 @@ const BEAM_THICK := 0.22
 const BEAM_DEPTH := 0.6
 const PIVOT_Y := 1.25              # the beam's axis (world y)
 const LOAD_SIZE := 0.7
+const LOOK_MASS := 20.0            # kg: the load that looks LOAD_SIZE big (the web's 20 kg)
 const PIVOT_MIN := -1.5            # fulcrum range (world x)
 const PIVOT_MAX := 1.5
 const LOAD_MIN := -2.75            # leftmost load centre
@@ -61,6 +64,7 @@ func set_control(id: String, value: Variant) -> void:
 			if is_nan(clamped):
 				return
 			model.mass = clamped
+			props.set_look(look_factor())
 		"effort":
 			var option := _find_option(id, str(value))
 			if option.is_empty():
@@ -71,6 +75,11 @@ func set_control(id: String, value: Variant) -> void:
 		_:
 			return
 	_changed()
+
+
+## The load look's size against its body's: one stuff, the cube root of the mass against LOOK_MASS.
+func look_factor() -> float:
+	return MassLook.factor(model.mass, LOOK_MASS)
 
 
 func control_value(id: String) -> Variant:
@@ -161,7 +170,7 @@ func _process(_delta: float) -> void:
 func _show() -> void:
 	var effort := Vector3(model.beam_x(model.effort_x(), BEAM_THICK * 0.5), model.beam_y(model.effort_x(), BEAM_THICK * 0.5), 0.0)
 	props.show_forces(handle.global_position - Vector3(0.0, HANDLE_SIZE.y * 0.5, 0.0), effort, model.applied(),
-		load_body.global_position, LOAD_SIZE * 0.5, model.weight())
+		props.look_centre(load_body), LOAD_SIZE * 0.5 * props.look, model.weight())
 	props.update_cat(model, beam, BEAM_THICK, clampf(model.applied() / model.required(), 0.0, 1.0) if model.required() > 0.0 else 0.0)
 
 

@@ -3,6 +3,8 @@
 ## moves a body.
 ## - the gantry (one mesh): a yellow board, two blue posts and the top beam with the guide wheel over
 ##   the pull side,
+## - the load (a parcel box) looks as heavy as it is (set_look, 2026-10-28: one stuff, the cube root
+##   of its mass against the 20 kg load's 0.8 m, grown from its bottom; the moving block on its top),
 ## - the fixed pulley block under the beam and the moving block on the load, each with its wheels
 ##   (n = 1: one fixed wheel; 2: one fixed + one moving; 4: two + two), rebuilt when n changes,
 ## - the rope (white): the n supporting strands from the fixed block down to the moving block (one
@@ -45,6 +47,11 @@ var _n := -1
 var _guide := Vector3.ZERO
 var _load_x := 0.0
 var _top_y := 0.0
+## The load look's size against its body's (set_look) and the hook above the body's centre for it.
+var look := 1.0
+var hook_up := 0.62
+var _hook_base := 0.62
+var _load_size := 0.8
 
 
 static func gantry_mesh(left: float, right: float, beam_y: float, guide: Vector3) -> Mesh:
@@ -130,6 +137,9 @@ func dress(experiment: Node3D, load_body: RigidBody3D, handle: StaticBody3D, siz
 	moving_block.name = "MovingBlock"
 	moving_block.material_override = ArtKit.lit_material()
 	moving_block.position = Vector3(0.0, sizes.hook_up, 0.0)
+	_hook_base = sizes.hook_up
+	hook_up = sizes.hook_up
+	_load_size = sizes.load_size
 	load_body.add_child(moving_block)
 	var load_visual := ArtKit.parcel_box(sizes.load_size)   # a parcel box (Task 4g)
 	load_visual.name = "Visual"
@@ -167,6 +177,19 @@ func dress(experiment: Node3D, load_body: RigidBody3D, handle: StaticBody3D, siz
 	cat.look_target = handle
 	cat.position = cat_spot(handle.global_position)
 	experiment.add_child(cat)
+
+
+## The load looks `k` times its body's size (from its bottom); the moving block stays on its top.
+func set_look(k: float) -> void:
+	look = k
+	juice.set_look_scale(k)
+	hook_up = _hook_base + (k - 1.0) * _load_size
+	moving_block.position.y = hook_up
+
+
+## Centre of the load's look on the load body `load` ((k - 1) half sides above the body's centre).
+func look_centre(load: Node3D) -> Vector3:
+	return load.global_position + Vector3.UP * (look - 1.0) * _load_size * 0.5
 
 
 ## The cat's spot on the floor under the grip at `grip` (when it does not hold it).

@@ -17,6 +17,9 @@
 ##                  (the collision lab's balls), with a small dust puff
 ##   set_carry(v)   a hand carries the mesh `v` (world) away from the body (the bread cat's
 ##                  throw, Task 4g); the body itself stays where it is
+##   set_look_scale(k)  the mesh is drawn k times the body's size, standing on the body's contact
+##                  point (its bottom along the surface normal): a body that looks as heavy as it is
+##                  (MassLook, 2026-10-28) while its shape and motion stay the body's
 ##   automatic      landing on the ground (fast downward speed stopping near ground_y): squash by
 ##                  the fall speed + dust + `landed(strength)`; coming to rest after that: wobble
 ## Springs closer to rest than SETTLED_VALUE / SETTLED_SPEED stop updating (set_process(false)).
@@ -58,6 +61,8 @@ var ground_y := 0.0             # world height of the ground the body lands on
 ## The body is a sphere of diameter `size` (its extent is the same in every direction, also when it
 ## rolls); otherwise a cube of `size`.
 var round_body := false
+## The mesh's size against the body's (set_look_scale): 1 = the body's own size.
+var look_scale := 1.0
 
 var _squash := 0.0              # +: taller/thinner, -: flatter/wider
 var _squash_v := 0.0
@@ -83,6 +88,7 @@ var _resting := false
 var _shadow: MeshInstance3D
 var _dust: CPUParticles3D
 var _ray := PhysicsRayQueryParameters3D.new()
+var _look_basis := Basis.IDENTITY   # body basis at the last mesh write (a scaled look follows a turn)
 
 
 ## `ground_mask`: the layers the shadow ray hits (the ground the body lands on; default the world's
@@ -134,6 +140,18 @@ func setup(target_body: RigidBody3D, target_mesh: Node3D, body_size: float, grou
 	_ray.exclude = [body.get_rid()]
 	_ray.collide_with_areas = false
 	_ray.collision_mask = ground_mask
+
+
+## Draws the mesh `k` times the body's size from the body's contact point (the bottom stays where
+## the body's bottom is, also squashed); its shadow and dust grow with it. The body is not touched.
+func set_look_scale(k: float) -> void:
+	look_scale = k
+	_dust.emission_ring_radius = size * 0.6 * k
+	_dust.emission_ring_inner_radius = size * 0.45 * k
+	set_process(true)   # one write of the new size, then it stops (settled)
+	if is_inside_tree():
+		_update_shadow()
+		_process(0.0)
 
 
 ## The next landing counts as a new one (squash, dust, landed signal), without any animation.
@@ -238,6 +256,10 @@ func _physics_process(_delta: float) -> void:
 	# A body that has not moved or turned since the last update keeps its shadow and normal.
 	if body.global_transform != _shadow_xf:
 		_update_shadow()
+	# A scaled look stands on the body's bottom along the surface normal: when the body turned (and
+	# no spring is writing the mesh), write it again so the offset stays along the normal.
+	if look_scale != 1.0 and not is_processing() and body.global_basis != _look_basis:
+		_process(0.0)
 
 
 func _process(delta: float) -> void:
@@ -292,6 +314,8 @@ func _process(delta: float) -> void:
 	var side := _normal.cross(Vector3.FORWARD)
 	if side.length_squared() < 0.01:
 		side = _normal.cross(Vector3.RIGHT)
+	# The look's size (1 = the body's) about the body's centre; the offset below puts its bottom back.
+	m = m * look_scale
 	# The bottom stays on the surface: the mesh is moved along `u` by how far the whole transform
 	# (also the bump's widening across the surface) pushed its lowest point below the unscaled one.
 	_m = m
@@ -312,6 +336,7 @@ func carry() -> Vector3:
 
 
 func _write_mesh() -> void:
+	_look_basis = body.global_basis
 	var offset := _offset
 	if _carry != Vector3.ZERO:
 		offset += body.global_basis.inverse() * _carry
@@ -348,7 +373,7 @@ func _update_shadow() -> void:
 		return
 	_shadow.visible = true
 	var height := maxf(0.0, from.y - (hit.position as Vector3).y - size * 0.5)
-	var radius := size * 0.85 * clampf(1.0 - height * 0.18, 0.45, 1.0)
+	var radius := size * look_scale * 0.85 * clampf(1.0 - height * 0.18, 0.45, 1.0)
 	var normal: Vector3 = hit.normal
 	_normal = normal
 	var basis := Basis(Quaternion(Vector3.UP, normal)) * Basis.from_scale(Vector3(radius, 1.0, radius))

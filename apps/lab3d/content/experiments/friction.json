@@ -72,8 +72,8 @@
     "tip": "빨간 손잡이를 옆으로 끌면 상자를 밀어요.",
     "picks": {
       "mass": [
-        {"value": "light", "label": "가벼운 상자", "picture": "box", "size": 0.0},
-        {"value": "normal", "label": "보통 상자", "picture": "box", "size": 0.5},
+        {"value": "light", "label": "가벼운 상자", "picture": "box", "size": 0.55},
+        {"value": "normal", "label": "보통 상자", "picture": "box", "size": 0.693},
         {"value": "heavy", "label": "무거운 상자", "picture": "box", "size": 1.0}
       ]
     },

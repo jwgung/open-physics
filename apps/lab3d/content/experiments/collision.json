@@ -88,13 +88,13 @@
     "tip": "노란 손잡이를 끌어서 세기를 정해요.",
     "picks": {
       "mass_a": [
-        {"value": 1.0, "label": "1킬로그램", "picture": "ball_blue", "size": 0.2},
-        {"value": 3.0, "label": "3킬로그램", "picture": "ball_blue", "size": 0.8}
+        {"value": 1.0, "label": "1킬로그램", "picture": "ball_blue", "size": 0.693},
+        {"value": 3.0, "label": "3킬로그램", "picture": "ball_blue", "size": 1.0}
       ],
       "mass_b": [
-        {"value": 0.5, "label": "0.5킬로그램", "picture": "ball_orange", "size": 0.0},
-        {"value": 1.0, "label": "1킬로그램", "picture": "ball_orange", "size": 0.3},
-        {"value": 2.0, "label": "2킬로그램", "picture": "ball_orange", "size": 0.7}
+        {"value": 0.5, "label": "0.5킬로그램", "picture": "ball_orange", "size": 0.55},
+        {"value": 1.0, "label": "1킬로그램", "picture": "ball_orange", "size": 0.693},
+        {"value": 2.0, "label": "2킬로그램", "picture": "ball_orange", "size": 0.874}
       ]
     },
     "cards": {"before_a": "부딪히기 전 파란 공", "after_a": "부딪힌 뒤 파란 공", "after_b": "부딪힌 뒤 주황 공"},

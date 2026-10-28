@@ -63,6 +63,10 @@
 ## 20. easy controls (tests/easy_controls_checks.gd, 2026-10-27): per lab the stage's condition picture
 ##    buttons (exactly its conditions, a tap = the sidebar's change, clear of the other overlays on
 ##    phone and tablet), one drag gesture per lab and its grab radius, the removed handles gone.
+## 21. condition looks (tests/condition_look_checks.gd, 2026-10-28): the bodies look as heavy as they
+##    are (MassLook: cube root, equal masses equal, standing where the body is, the collision balls
+##    touching at the model's contact), the gravity's signpost and the surface materials follow their
+##    controls, the picture buttons draw a mass like the lab; physics unchanged with or without them.
 ## Times are engine fixed steps (60 Hz), independent of rendering FPS.
 extends SceneTree
 
@@ -235,6 +239,11 @@ func _run() -> void:
 	_expect(labs != null and labs.can_instantiate(), "lab mission checks compile", "")
 	if labs != null and labs.can_instantiate():
 		await labs.new(self, _expect).run()
+	print("== condition looks (2026-10-28): mass looks, the gravity sign, surface materials, physics unchanged ==")
+	var looks: GDScript = load("res://tests/condition_look_checks.gd")
+	_expect(looks != null and looks.can_instantiate(), "condition look checks compile", "")
+	if looks != null and looks.can_instantiate():
+		await looks.new(self, _expect).run()
 	print("== easy controls: the condition picture buttons, one drag per lab, the grab radius ==")
 	var easy: GDScript = load("res://tests/easy_controls_checks.gd")
 	_expect(easy != null and easy.can_instantiate(), "easy controls checks compile", "")

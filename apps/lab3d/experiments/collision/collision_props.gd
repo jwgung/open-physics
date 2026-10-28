@@ -3,10 +3,17 @@
 ## touches a body (the balls' rolling turns a child mesh, the squash is ArtJuice's mesh transform).
 ## - the rail: a yellow lane (14 x 1.4 m) between two white guide rails, white metre ticks, a white
 ##   middle mark between the two start halves and blue bumpers at both walls (visual: the walls are
-##   the formula's),
+##   the formula's; each bumper's face is where its ball's look meets it, set_sizes),
 ## - ball A blue, ball B orange (the web's object colours, from the palette), yarn balls (Task 4g;
 ##   until then each with a white band)
 ##   that shows it rolling, its ArtJuice (shadow, dust, squash) and a yellow knob above it,
+## - the balls' look follows their masses (set_sizes, 2026-10-28 user request: two 1 kg balls looked
+##   different): one stuff, radii in the cube root of the mass ratio, chosen so that the two balls
+##   resting on the floor touch exactly at the model's contact (centres radius_a + radius_b apart
+##   along the rail, MassLook.touching_radii); each grows from its body's bottom (ArtJuice.look_scale).
+##   The model, its radii and the bodies stay as they are. Ball A only ever meets the left bumper and
+##   B the right one (A starts left of B and the model never lets them pass), so each bumper's face is
+##   put where its ball's look reaches at the model's wall bounce.
 ## - one arrow per ball above it: the purple velocity arrow to the knob while waiting (the web's
 ##   purple arrow), the momentum arrow p = mv in the ball's colour while it moves (the web's
 ##   momentum arrows; length 0.25 m per kg m/s),
@@ -37,6 +44,7 @@ const CAT_OFF_LEAN := 15.0       # deg: the most it leans over the rail
 const CAT_HALF := 0.42           # m: the cat's half width with a margin (it stays off the bumpers)
 const CAT_SPREAD := 0.55         # rad: the paws either side of the ball's side facing the cat
 const CAT_PAW_LIFT := 0.12       # m above the ball's centre
+const BUMPER_RUN := 0.5          # m of lane drawn under a bumper (it may move out by up to 0.34 m)
 
 var juice_a: ArtJuice
 var juice_b: ArtJuice
@@ -47,8 +55,12 @@ var arrow_b: VelocityArrow
 var force_pair: MeshInstance3D
 var knob_visual_a: MeshInstance3D
 var knob_visual_b: MeshInstance3D
-var _radius_a := 0.4
+var _radius_a := 0.4             # the model's (and the bodies') radii
 var _radius_b := 0.5
+## The balls' look radii now (set_sizes): x = A, y = B.
+var look := Vector2(0.4, 0.5)
+var bumper_left: MeshInstance3D
+var bumper_right: MeshInstance3D
 var _force_tween: Tween
 var _host: Node3D
 var cat: CatActor
@@ -67,10 +79,22 @@ func track_mesh(wall: float) -> Mesh:
 	for i in range(-half + 1, half):
 		b.add_rounded_box(Transform3D(Basis(), Vector3(i, 0.006, LANE_WIDTH * 0.5 - 0.25)), Vector3(0.05, 0.02, 0.26), 0.0, 1, ArtPalette.WHITE)
 	b.add_rounded_box(Transform3D(Basis(), Vector3(0.0, 0.006, 0.0)), Vector3(0.07, 0.02, LANE_WIDTH - 0.3), 0.0, 1, ArtPalette.WHITE)
+	return b.commit()
+
+
+## A bumper: a blue block whose face (toward the lane) is the node origin, `side` -1 left, +1 right.
+## The lane and the guide rails run on under it (a bumper moves with its ball's size).
+static func bumper_mesh(side: float) -> Mesh:
+	var b := ArtKit.builder()
+	b.ao_min = 0.9
+	# 1 mm under the rail's own lane and guide rails where they overlap (no z-fighting).
+	b.add_rounded_box(Transform3D(Basis(), Vector3(side * BUMPER_RUN * 0.5, -0.029, 0.0)), Vector3(BUMPER_RUN, 0.06, LANE_WIDTH), 0.02, 1, ArtPalette.YELLOW, ArtPalette.YELLOW_TOP)
+	b.ao_min = 1.0
+	for z in [-1.0, 1.0]:
+		b.add_rounded_box(Transform3D(Basis(), Vector3(side * BUMPER_RUN * 0.5, 0.029, z * (LANE_WIDTH * 0.5 - 0.04))), Vector3(BUMPER_RUN, 0.06, 0.08), 0.0, 1, ArtPalette.WHITE)
 	b.ao_min = 0.85
 	b.ao_height = 0.4
-	for side in [-1.0, 1.0]:
-		b.add_rounded_box(Transform3D(Basis(), Vector3(side * (wall + 0.15), 0.3, 0.0)), Vector3(0.3, 0.6, LANE_WIDTH + 0.2), 0.05, 1, ArtPalette.BLUE, ArtPalette.BLUE_DARK)
+	b.add_rounded_box(Transform3D(Basis(), Vector3(side * 0.15, 0.3, 0.0)), Vector3(0.3, 0.6, LANE_WIDTH + 0.2), 0.05, 1, ArtPalette.BLUE, ArtPalette.BLUE_DARK)
 	return b.commit()
 
 
@@ -93,6 +117,12 @@ func dress(experiment: Node3D, ball_a: RigidBody3D, radius_a: float, ball_b: Rig
 	var track := ArtKit.instance(track_mesh(wall))
 	track.name = "Rail"
 	experiment.add_child(track)
+	bumper_left = ArtKit.instance(bumper_mesh(-1.0))
+	bumper_left.name = "BumperLeft"
+	experiment.add_child(bumper_left)
+	bumper_right = ArtKit.instance(bumper_mesh(1.0))
+	bumper_right.name = "BumperRight"
+	experiment.add_child(bumper_right)
 	var a := _dress_ball(experiment, ball_a, radius_a, ArtPalette.BLUE)
 	juice_a = a[0]
 	spin_a = a[1]
@@ -114,6 +144,23 @@ func dress(experiment: Node3D, ball_a: RigidBody3D, radius_a: float, ball_b: Rig
 	cat = CatActor.new(BreadCat.new())
 	cat.look_target = ball_a
 	experiment.add_child(cat)
+	set_sizes(1.0, 1.0)
+
+
+## The balls' look for masses `mass_a` / `mass_b` (kg): look radii, the juices' look scale and the
+## bumper faces (visual only; nothing is rebuilt).
+func set_sizes(mass_a: float, mass_b: float) -> void:
+	look = MassLook.touching_radii(mass_a, mass_b, _radius_a + _radius_b)
+	juice_a.set_look_scale(look.x / _radius_a)
+	juice_b.set_look_scale(look.y / _radius_b)
+	# The model's wall bounce puts a centre radius from the wall: the look reaches look - radius further.
+	bumper_left.position = Vector3(-(_wall + look.x - _radius_a), 0.0, 0.0)
+	bumper_right.position = Vector3(_wall + look.y - _radius_b, 0.0, 0.0)
+
+
+## Centre of a ball's look: above its body's centre by look - radius (the look stands on the body's bottom).
+func look_centre(ball: Node3D, a: bool) -> Vector3:
+	return ball.global_position + Vector3.UP * ((look.x - _radius_a) if a else (look.y - _radius_b))
 
 
 ## Where the cat stands for ball A at `at` that will start with `velocity` (m/s) on a rail with its
@@ -154,12 +201,12 @@ func _dress_ball(experiment: Node3D, ball: RigidBody3D, radius: float, color: Co
 	return [juice, spin]
 
 
-## Rolling: each ball's mesh turned by its distance from the start over its radius (about z).
+## Rolling: each ball's mesh turned by its distance from the start over its look radius (about z).
 func spin(moved_a: float, moved_b: float) -> void:
 	if spin_a == null:
 		return
-	spin_a.rotation.z = -moved_a / _radius_a
-	spin_b.rotation.z = -moved_b / _radius_b
+	spin_a.rotation.z = -moved_a / look.x
+	spin_b.rotation.z = -moved_b / look.y
 
 
 ## Waiting: purple velocity arrows from above each ball to its knob, signed lengths `la` / `lb` (m,
@@ -200,7 +247,7 @@ func hit(contact_x: float, strength: float) -> void:
 		return
 	juice_a.bump(Vector3.RIGHT, strength)
 	juice_b.bump(Vector3.RIGHT, strength)
-	force_pair.position = Vector3(contact_x, 2.0 * maxf(_radius_a, _radius_b) + 0.75, 0.0)
+	force_pair.position = Vector3(contact_x, 2.0 * maxf(look.x, look.y) + 0.75, 0.0)
 	force_pair.visible = true
 	if _force_tween != null and _force_tween.is_valid():
 		_force_tween.kill()

@@ -5,7 +5,10 @@
 ##   white "제자리" (rest length) mark,
 ## - the purple coil (the spring energy's colour) from the post to the ball, one mesh stretched
 ##   along the rod to the ball,
-## - the orange ball (the hero) with its ArtJuice (shadow, squash, pop),
+## - the orange ball (the hero) with its ArtJuice (shadow, squash, pop); it looks as heavy as it is
+##   (set_look, 2026-10-28): one stuff, its radius the cube root of its mass against the 1 kg ball's
+##   0.35 m, grown about its centre on the rod (the coil, the cat's paws and the arrow go to its
+##   surface; the body, its pick sphere and the model stay),
 ## - the energy bar beside the rig: one stack, kinetic K (blue, bottom) and spring U (purple, on top)
 ##   of the formula model, and a white mark at the release energy: without damping the stack always
 ##   reaches the mark (K + U kept), with damping it sinks below it,
@@ -46,7 +49,8 @@ var bar_mark: MeshInstance3D
 var force_arrow: VelocityArrow
 var _coil_base := 1.0            # coil length the mesh was built for
 var _coil_from := 0.0            # x of the post face
-var _radius := 0.35
+var _radius := 0.35             # the ball look's radius (set_look)
+var _yarn: MeshInstance3D
 var cat: CatActor
 var _came_back := false
 
@@ -123,6 +127,7 @@ func dress(experiment: Node3D, ball: RigidBody3D, radius: float, anchor_x: float
 	var yarn := ArtKit.yarn_ball(radius, ArtPalette.ORANGE)
 	yarn.name = "Yarn"
 	visual.add_child(yarn)
+	_yarn = yarn
 	juice = ArtJuice.new()
 	juice.name = "BallJuice"
 	juice.round_body = true
@@ -144,6 +149,13 @@ func dress(experiment: Node3D, ball: RigidBody3D, radius: float, anchor_x: float
 	cat = CatActor.new(BreadCat.new())
 	cat.look_target = ball
 	experiment.add_child(cat)
+
+
+## The ball looks `radius` m round, about its centre on the rod (its juice squashes that size).
+func set_look(radius: float) -> void:
+	_radius = radius
+	_yarn.scale = Vector3.ONE * (radius / ArtKit.YARN_RADIUS)
+	juice.size = radius * 2.0
 
 
 ## The ball at `at` waits or is dragged (`extension` m of `extension_max`): the cat pulls it (or

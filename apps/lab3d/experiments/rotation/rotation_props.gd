@@ -6,7 +6,9 @@
 ## - the beam (yellow, white ticks every 0.5 m) under the beam body; the three effort points on it
 ##   (white pegs, the chosen one red, rebuilt when the fulcrum or the choice changes),
 ## - the fulcrum stand: a blue triangular prism with its blob shadow, under the stand body,
-## - the orange load box (the web's load colour) with its ArtJuice; the red handle grip, and a white
+## - the orange load box (the web's load colour) with its ArtJuice; it looks as heavy as it is
+##   (set_look, 2026-10-28: one stuff, the cube root of its mass against the 20 kg load's 0.7 m, grown
+##   from its bottom on the beam; the body, its place on the beam and the model stay); the red handle grip, and a white
 ##   rod from the grip down to the effort point on the beam (posed each frame),
 ## - arrows: the red force on the beam at the effort point (down) and the orange weight of the load,
 ##   FORCE_SCALE m per N (at most ARROW_MAX m),
@@ -36,6 +38,9 @@ const CAT_ABOVE := 0.08
 const CAT_LEAN_MAX := 20.0
 
 var juice: ArtJuice
+## The load look's size against its body's (set_look).
+var look := 1.0
+var _load_size := 0.7
 var markers: MeshInstance3D
 var rod: MeshInstance3D
 var force_arrow: VelocityArrow
@@ -135,6 +140,7 @@ func dress(experiment: Node3D, parts: Dictionary, sizes: Dictionary) -> void:
 	juice.dust_amount = 10
 	experiment.add_child(juice)
 	juice.setup(parts.load, load_visual, sizes.load_size)
+	_load_size = sizes.load_size
 	var grip := ArtKit.instance(grip_mesh(sizes.handle))
 	grip.name = "Visual"
 	parts.handle.add_child(grip)
@@ -151,6 +157,18 @@ func dress(experiment: Node3D, parts: Dictionary, sizes: Dictionary) -> void:
 	cat_stand = CatCrates.new(cat.look.footprint)
 	experiment.add_child(cat_stand)
 	experiment.add_child(cat)
+
+
+## The load looks `k` times its body's size (from its bottom on the beam).
+func set_look(k: float) -> void:
+	look = k
+	juice.set_look_scale(k)
+
+
+## Centre of the load's look on the load body `load`: (k - 1) half sides above the body's centre
+## along the body's up (it turns with the beam).
+func look_centre(load: Node3D) -> Vector3:
+	return load.global_transform * Vector3(0.0, (look - 1.0) * _load_size * 0.5, 0.0)
 
 
 ## The cat's paws on the beam body `beam` (`thick` m; its centre is x = 0 of the level beam) of

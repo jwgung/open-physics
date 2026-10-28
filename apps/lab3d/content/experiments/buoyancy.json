@@ -67,9 +67,9 @@
     "tip": "통을 위아래로 끌어 물에 넣어요.",
     "picks": {
       "mass": [
-        {"value": 45.0, "label": "45킬로그램", "picture": "weight", "size": 0.3},
-        {"value": 80.0, "label": "80킬로그램", "picture": "weight", "size": 0.7},
-        {"value": 95.0, "label": "95킬로그램", "picture": "weight", "size": 0.9}
+        {"value": 45.0, "label": "45킬로그램", "picture": "weight", "size": 0.78},
+        {"value": 80.0, "label": "80킬로그램", "picture": "weight", "size": 0.944},
+        {"value": 95.0, "label": "95킬로그램", "picture": "weight", "size": 1.0}
       ],
       "volume": [
         {"value": "big", "label": "큰 통", "picture": "drum_big"},

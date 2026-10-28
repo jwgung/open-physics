@@ -9,6 +9,8 @@
 ## finger no longer moves one ball sideways or raises one alone (definition: "drag": false).
 ## Motion: Jolt + UniformFieldCorrector (uniform_field_lab.gd). Displayed numbers: PhysicsLaws at the formula time (the landing at landing_time(0, -g, h0)); the engine is
 ## only the graph's "시뮬레이션" points and the measured landing times.
+## Each ball looks as heavy as it is (2026-10-28, look_radius): the red ball grows and shrinks with
+## its mass from its body's bottom; the bodies (BALL_RADIUS spheres), their fall and the landings stay.
 extends UniformFieldLab
 
 ## Left to right. mass: kg (the red one follows the "mass" control).
@@ -21,6 +23,8 @@ const ORDER := ["yellow", "purple", "red"]
 const LINE_X := 3.0              # the balls move along the floor line x = -3..3 m (z = 0)
 const DROP := "drop_"             # the finger's object of a ball: "drop_red" drags the red ball up and down
 const BOUNCE := 0.5               # the web's wood balls (restitution 0.5)
+const LOOK_MASS := 1.0            # kg: the ball that looks BALL_RADIUS round (the violet one)
+const SIGN_AT := Vector3(-5.0, 0.0, -2.2)   # the gravity's signpost (PlanetSign), left of the ruler
 
 var balls: Dictionary = {}        # id -> FormulaBody
 ## id -> start point of the ball's bottom (x, height above the floor, z).
@@ -28,6 +32,8 @@ var starts: Dictionary = {}
 ## The "height" control (all three balls); a height handle changes one ball only.
 var height := 5.0
 var mass_id := "heavy"
+## The signpost showing which world the gravity is (2026-10-28).
+var planet_sign: PlanetSign
 
 
 func _init() -> void:
@@ -42,6 +48,8 @@ func set_control(id: String, value: Variant) -> void:
 			set_red_mass(str(value))
 		_:
 			super(id, value)
+			if id == "gravity":
+				planet_sign.show_planet(gravity_id)
 
 
 func control_value(id: String) -> Variant:
@@ -71,6 +79,7 @@ func set_red_mass(option_id: String) -> void:
 		return
 	balls.red.mass = float(option.kg)
 	mass_id = option_id
+	fall_props().set_look("red", look_radius("red"))
 	reset_run()
 
 
@@ -80,6 +89,11 @@ func fall_props() -> FreeFallProps:
 
 func mass_of(id: String) -> float:
 	return balls[id].mass
+
+
+## Radius ball `id` looks (m): one stuff, the cube root of its mass against LOOK_MASS.
+func look_radius(id: String) -> float:
+	return BALL_RADIUS * MassLook.factor(mass_of(id), LOOK_MASS)
 
 
 func reset_run() -> void:
@@ -242,6 +256,11 @@ func _build_world() -> void:
 		visuals[id] = [ball, visual]
 		starts[id] = Vector3(spec.x, height, 0.0)
 	fall_props().dress(self, visuals, BALL_RADIUS * 2.0)
+	planet_sign = PlanetSign.new()
+	planet_sign.position = SIGN_AT
+	add_child(planet_sign)
+	for id in ORDER:
+		fall_props().set_look(id, look_radius(id))
 	for juice: ArtJuice in fall_props().juices.values():
 		juice.landed.connect(impact.emit)
 

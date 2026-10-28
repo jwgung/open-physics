@@ -8,6 +8,8 @@
 ## engine drum on it every step (method "kinematic_model"): the panel has no engine measurement. The
 ## floating depth and the judgement (floats / stays / sinks) come from the densities.
 ## See docs/formula-correction.md (Task 4d).
+## The drum's size is its volume; its mass is the iron weight and the number tag on its lid
+## (BuoyancyProps.set_mass, 2026-10-28), visual only.
 extends ModelDrivenLab
 
 const WATERLINE := 1.5
@@ -46,6 +48,7 @@ func set_control(id: String, value: Variant) -> void:
 			if is_nan(clamped):
 				return
 			mass = clamped
+			props.set_mass(mass)
 		"volume":
 			if _find_option(id, str(value)).is_empty():
 				push_warning("buoyancy: unknown volume %s" % value)

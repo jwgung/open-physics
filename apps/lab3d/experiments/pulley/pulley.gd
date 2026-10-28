@@ -9,10 +9,13 @@
 ## it every step (method "kinematic_model"). See docs/formula-correction.md (Task 4e).
 ## The graph is the web's "줄 수에 따른 필요한 힘": the hand's pull and the required force over the
 ## last 10 s with the grip held (a changed condition adds a point).
+## The load looks as heavy as it is (2026-10-28, look_factor): its mesh grows from its bottom and the
+## moving block rides on its top; its body (a LOAD_SIZE cube), its lift and the model stay.
 extends PressHandleLab
 
 const LOAD_X := -1.0
 const LOAD_SIZE := 0.8
+const LOOK_MASS := 20.0            # kg: the load that looks LOAD_SIZE big (the web's 20 kg)
 const MAX_LIFT := 2.4
 const TOP_Y := 4.4                 # bottom of the fixed block's wheels: the strands start here
 const BEAM_Y := 4.95               # the gantry's top beam
@@ -58,9 +61,15 @@ func set_control(id: String, value: Variant) -> void:
 			if is_nan(clamped):
 				return
 			model.mass = clamped
+			props.set_look(look_factor())
 		_:
 			return
 	_changed()
+
+
+## The load look's size against its body's: one stuff, the cube root of the mass against LOOK_MASS.
+func look_factor() -> float:
+	return MassLook.factor(model.mass, LOOK_MASS)
 
 
 func control_value(id: String) -> Variant:
@@ -167,8 +176,8 @@ func _process(_delta: float) -> void:
 
 func _show() -> void:
 	var grip_top := handle.global_position + Vector3(0.0, HANDLE_SIZE.y * 0.5, 0.0)
-	props.show_rope(TOP_Y, load_body.global_position.y + HOOK_UP, GUIDE, grip_top,
-		model.pulled(), load_body.global_position, LOAD_SIZE * 0.5, model.weight(), model.applied())
+	props.show_rope(TOP_Y, load_body.global_position.y + props.hook_up, GUIDE, grip_top,
+		model.pulled(), props.look_centre(load_body), LOAD_SIZE * 0.5 * props.look, model.weight(), model.applied())
 
 
 ## ground (on the floor), pulling (the hand holds it up), held (the ratchet holds it), top (at the

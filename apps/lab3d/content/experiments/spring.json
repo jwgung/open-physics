@@ -65,8 +65,8 @@
     "tip": "공을 끌었다가 놓아 봐요!",
     "picks": {
       "mass": [
-        {"value": 1.0, "label": "가벼운 공", "picture": "ball_orange", "size": 0.2},
-        {"value": 3.0, "label": "무거운 공", "picture": "ball_orange", "size": 0.8}
+        {"value": 1.0, "label": "가벼운 공", "picture": "ball_orange", "size": 0.693},
+        {"value": 3.0, "label": "무거운 공", "picture": "ball_orange", "size": 1.0}
       ]
     },
     "cards": {"extension": "얼마나 늘어났나", "speed": "빠르기"},

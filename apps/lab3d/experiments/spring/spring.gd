@@ -7,12 +7,15 @@
 ## (period 2 pi sqrt(m / k), K + U = k x0^2 / 2 without damping). BodyModelDriver poses the engine
 ## ball on it every step (method "kinematic_model"): the panel has no engine measurement, the ball
 ## stands where the formula puts it. See docs/formula-correction.md (Task 4d).
+## The ball looks as heavy as it is (2026-10-28, look_radius): its mesh grows about its centre; the
+## body, its pick sphere (BALL_RADIUS) and the model do not change with the mass.
 extends ModelDrivenLab
 
 const ANCHOR_X := -4.5
 const REST_LENGTH := 3.0
 const ROD_Y := 1.0
 const BALL_RADIUS := 0.35
+const LOOK_MASS := 1.0            # kg: the ball that looks BALL_RADIUS round
 const EXT_MIN := -1.5             # m: the most the ball may be pushed in / pulled out
 const EXT_MAX := 2.5
 const DEFAULT_PULL := 1.2
@@ -83,6 +86,13 @@ func _load_model() -> void:
 	model.mass = mass
 	model.damping = damping()
 	model.reset(pull, ROD_Y, 0.0)
+	if props.juice != null:
+		props.set_look(look_radius())
+
+
+## Radius the ball looks (m): one stuff, the cube root of its mass against LOOK_MASS.
+func look_radius() -> float:
+	return BALL_RADIUS * MassLook.factor(mass, LOOK_MASS)
 
 
 ## The ball waits at its pull; the graph is cleared.
@@ -211,6 +221,7 @@ func _build_world() -> void:
 	driver.bind(model, ball)
 	driver.reset()
 	props.dress(self, ball, BALL_RADIUS, ANCHOR_X, END_X, ROD_Y, ANCHOR_X + REST_LENGTH)
+	props.set_look(look_radius())
 
 
 # --- manipulation -------------------------------------------------------------------------------

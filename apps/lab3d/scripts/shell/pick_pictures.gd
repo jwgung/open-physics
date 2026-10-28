@@ -5,13 +5,17 @@
 ## from its star, a gentle or a steep slope, one, two or four ropes, the hand near or far on the lever, a small or a big ball,
 ## a big or a small drum, a weight, a short or a long string. `size` (0..1) and `count` say how much
 ## the drawing shows (kid.picks entries). The words under the picture say the same thing.
+## A mass's picture (a ball, a box, a weight) is drawn like the lab draws the body (2026-10-28,
+## MassLook): `size` is its share of the biggest one, the cube root of the mass over the lab's
+## heaviest button (tests/easy_controls_checks.gd checks the definitions), so equal masses draw equal
+## and a heavier one bigger in the same proportion as in 3D.
 class_name PickPictures
 extends RefCounted
 
 const KINDS := ["earth", "moon", "jupiter", "box", "slide_steel", "slide_wood", "slide_rubber", "orbit",
 	"slope", "pulley", "lever", "ball_blue", "ball_orange", "drum_big", "drum_small", "weight", "rope"]
 const OUTLINE := Color("8a6a46")   # PredictPictures.GROUND: the brown of the storybook lines
-const STEEL := Color("9aa7b0")
+const STEEL := ArtPalette.STEEL
 
 
 ## Draws `kind` filling `canvas` (an unknown kind draws nothing).
@@ -40,7 +44,7 @@ static func draw(canvas: Control, kind: String, size := 0.5, count := 1) -> void
 			canvas.draw_arc(c, radius, 0.0, TAU, 32, OUTLINE, 2.0, true)
 		"box":
 			_ground(canvas, r)
-			var side := lerpf(14.0, r.size.y - 4.0, size)
+			var side := (r.size.y - 4.0) * size
 			var box := Rect2(c.x - side * 0.5, r.end.y - side, side, side)
 			canvas.draw_rect(box, ArtPalette.ORANGE)
 			canvas.draw_rect(box, OUTLINE, false, 2.0)
@@ -85,7 +89,7 @@ static func draw(canvas: Control, kind: String, size := 0.5, count := 1) -> void
 			_arrow(canvas, Vector2(grip + 12.0, r.position.y + 4.0), Vector2(grip + 12.0, y - 10.0), ArtPalette.RED, 3.0)
 		"ball_blue", "ball_orange":
 			_ground(canvas, r)
-			var radius := lerpf(8.0, r.size.y * 0.5 - 2.0, size)
+			var radius := (r.size.y * 0.5 - 2.0) * size
 			var at := Vector2(c.x, r.end.y - radius - 1.0)
 			canvas.draw_circle(at, radius, ArtPalette.BLUE if kind == "ball_blue" else ArtPalette.ORANGE)
 			canvas.draw_arc(at, radius, 0.0, TAU, 24, OUTLINE, 2.0, true)
@@ -101,12 +105,12 @@ static func draw(canvas: Control, kind: String, size := 0.5, count := 1) -> void
 			canvas.draw_line(Vector2(r.position.x, water), Vector2(r.end.x, water), Color("4f86b3"), 2.0)
 		"weight":
 			_ground(canvas, r)
-			var w := lerpf(20.0, r.size.y * 0.95, size)
+			var w := r.size.y * 0.95 * size
 			var h := w * 0.75
 			var foot := r.end.y
 			canvas.draw_colored_polygon(PackedVector2Array([Vector2(c.x - w * 0.5, foot), Vector2(c.x + w * 0.5, foot),
-				Vector2(c.x + w * 0.35, foot - h), Vector2(c.x - w * 0.35, foot - h)]), Color("4a4f5c"))
-			canvas.draw_arc(Vector2(c.x, foot - h), w * 0.22, PI, TAU, 10, Color("4a4f5c"), 4.0, true)
+				Vector2(c.x + w * 0.35, foot - h), Vector2(c.x - w * 0.35, foot - h)]), ArtPalette.IRON)
+			canvas.draw_arc(Vector2(c.x, foot - h), w * 0.22, PI, TAU, 10, ArtPalette.IRON, 4.0, true)
 		"rope":
 			var top := Vector2(c.x, r.position.y + 2.0)
 			canvas.draw_line(top + Vector2(-26.0, 0.0), top + Vector2(26.0, 0.0), OUTLINE, 4.0)
@@ -133,7 +137,7 @@ static func _slide(canvas: Control, r: Rect2, kind: String) -> void:
 	_ground(canvas, r)
 	var top := Vector2(r.position.x + 6.0, r.position.y + 6.0)
 	var foot := Vector2(r.end.x - 4.0, r.end.y)
-	var color: Color = {"slide_steel": STEEL, "slide_wood": Color("c98d4f"), "slide_rubber": Color("4a3b31")}[kind]
+	var color: Color = {"slide_steel": STEEL, "slide_wood": ArtPalette.WOOD, "slide_rubber": ArtPalette.RUBBER}[kind]
 	canvas.draw_colored_polygon(PackedVector2Array([top, foot, Vector2(top.x, foot.y)]), color)
 	var down := (foot - top).normalized()
 	var normal := Vector2(down.y, -down.x)
@@ -145,12 +149,12 @@ static func _slide(canvas: Control, r: Rect2, kind: String) -> void:
 		"slide_wood":
 			for k in [0.35, 0.7]:
 				var a := Vector2(top.x + 4.0, top.lerp(foot, k).y)
-				canvas.draw_line(a, Vector2(top.lerp(foot, k).x - 4.0, a.y), Color("8f5a2c"), 2.0)
+				canvas.draw_line(a, Vector2(top.lerp(foot, k).x - 4.0, a.y), ArtPalette.WOOD_GRAIN, 2.0)
 		"slide_rubber":
 			var bumps := PackedVector2Array()
 			for i in 9:
 				bumps.append(top.lerp(foot, i / 8.0) + normal * (2.0 if i % 2 == 0 else -1.0))
-			canvas.draw_polyline(bumps, Color("2b211b"), 3.0, true)
+			canvas.draw_polyline(bumps, ArtPalette.RUBBER_RIDGE, 3.0, true)
 	canvas.draw_line(top, foot, OUTLINE, 2.0, true)
 	var box_at := top.lerp(foot, 0.3) + normal * 9.0
 	canvas.draw_set_transform(box_at, down.angle(), Vector2.ONE)

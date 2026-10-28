@@ -9,11 +9,13 @@
 ## injected along the floor, engine friction 0). Displayed numbers, the state ("버팀" / "움직임" /
 ## track end) and the graph come from PushFrictionModel (the same law stepped in 64 bit); the engine
 ## box is only the "이동 거리 (시뮬레이션)" readout. The box stops at the track ends (a formula
-## stop, the bumpers are visual).
+## stop, the bumpers are visual). The box looks as heavy as it is (2026-10-28, look_factor): its
+## mesh grows from its body's bottom; the body (a BOX cube), the law and the stops stay.
 extends Experiment
 
 const BOX := 0.7
 const START_X := -3.0
+const LOOK_MASS := 8.0        # kg: the box that looks BOX big (the web's start box)
 ## Box centres beyond these x stop the box (the yellow track ends at +-TRACK_HALF, bumpers outside).
 const TRACK_HALF := 6.0
 const FORCE_PER_M := 20.0     # N per metre of handle travel (1 N per 5 cm grid step)
@@ -100,6 +102,7 @@ func set_material(option_id: String) -> void:
 	model.mu_k = float(option.mu_k)
 	corrector.mu_s = model.mu_s
 	corrector.mu_k = model.mu_k
+	props.set_surface(material_id)
 	reset_box()
 
 
@@ -111,11 +114,17 @@ func set_mass(option_id: String) -> void:
 	mass_id = option_id
 	model.mass = float(option.kg)
 	box.mass = model.mass
+	props.set_look(look_factor())
 	reset_box()
 
 
 ## Applied force (N) without the handle: tests and the formula checks drive the lab with it (the
 ## handle, when held, wins).
+## The box look's size against its body's: one stuff, the cube root of the mass against LOOK_MASS.
+func look_factor() -> float:
+	return MassLook.factor(model.mass, LOOK_MASS)
+
+
 func set_applied_force(force: float) -> void:
 	_forced = force
 
@@ -324,9 +333,7 @@ func _build_world() -> void:
 	_track = Node3D.new()
 	_track.name = "Track"
 	add_child(_track)
-	var track_visual := ArtKit.instance(props.track_mesh(TRACK_HALF * 2.0, START_X))
-	track_visual.name = "TrackVisual"
-	_track.add_child(track_visual)
+	_track.add_child(props.make_track(TRACK_HALF * 2.0, START_X, material_id))
 
 	box = FormulaBody.new()
 	box.name = "Box"
@@ -360,7 +367,8 @@ func _build_world() -> void:
 	add_child(handle)
 	_place_handle()
 
-	props.dress(self, box, box_visual, BOX, handle_visual)
+	props.dress(self, box, box_visual, BOX, handle_visual, TRACK_HALF - BOX * 0.5 - END_PADDING)
+	props.set_look(look_factor())
 	props.juice.landed.connect(impact.emit)
 
 
@@ -405,7 +413,7 @@ func manipulation_started(_id: String) -> void:
 
 ## What the push's close-up frames: the cat, the box and the handle.
 func close_up_spec() -> Dictionary:
-	var frame := props.cat.bounds().merge(AABB(box.global_position - Vector3.ONE * BOX * 0.5, Vector3.ONE * BOX))
+	var frame := props.cat.bounds().merge(props.look_bounds(box.global_position))
 	frame = frame.merge(AABB(handle.global_position - HANDLE_SIZE * 0.5, HANDLE_SIZE))
 	return {"box": frame, "fill": CLOSE_UP_FILL, "anchor": CLOSE_UP_ANCHOR}
 

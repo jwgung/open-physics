@@ -17,6 +17,7 @@ const ANCHOR_X := 1.9            # string at -x, rod at +x
 const ANCHOR_Z := 0.35           # string at -z, rod at +z: the bobs pass each other without touching
 const BOB_RADIUS := 0.33
 const BOB_MASS := 1.0            # kg, the web's bobs
+const SIGN_AT := Vector3(-3.5, 0.0, -1.8)   # the gravity's signpost (PlanetSign), behind the string's side
 const MAX_DEG := 75.0            # drag range either side of straight down (a string stays taut below 90 deg)
 const BOB_LAYER := 3             # pickable; the bobs touch nothing in the engine (mask 0)
 const IDS: Array[String] = ["rope", "rod"]
@@ -29,6 +30,8 @@ var bobs: Array[RigidBody3D] = []
 ## Conditions (64-bit).
 var g := 9.81
 var gravity_id := "earth"
+## The signpost showing which world the gravity is (2026-10-28).
+var planet_sign: PlanetSign
 var length := 2.0
 var damping_id := "web"
 ## Release angles (rad) of the string and the rod bob.
@@ -50,6 +53,7 @@ func set_control(id: String, value: Variant) -> void:
 				return
 			gravity_id = str(value)
 			g = float(option.g)
+			planet_sign.show_planet(gravity_id)
 		"length":
 			var clamped := _clamp_to_control(id, float(value))
 			if is_nan(clamped):
@@ -241,6 +245,9 @@ func _build_world() -> void:
 	driver.reset()
 	props.dress(self, bobs, anchors, colors, BOB_RADIUS)
 	props.show_paths(length, MAX_DEG)
+	planet_sign = PlanetSign.new()
+	planet_sign.position = SIGN_AT
+	add_child(planet_sign)
 
 
 # --- manipulation -------------------------------------------------------------------------------

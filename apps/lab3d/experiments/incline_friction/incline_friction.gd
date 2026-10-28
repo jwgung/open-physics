@@ -92,6 +92,7 @@ func set_material(option_id: String) -> void:
 		return
 	set_coefficients(float(option.mu_s), float(option.mu_k))
 	material_id = option_id
+	props.set_surface(material_id)
 	reset_box()
 
 
@@ -254,7 +255,7 @@ func _build_world() -> void:
 	_incline_body = incline
 	incline.physics_material_override = frictionless
 	_add_box_shape(incline, incline_size)
-	incline.add_child(ArtKit.instance(props.incline_mesh(incline_size)))
+	incline.add_child(props.make_incline(incline_size, material_id))
 	incline.position = Vector3(0.0, -0.15, 0.0)
 	_pivot.add_child(incline)
 	# Start line where the box is released (visual only).

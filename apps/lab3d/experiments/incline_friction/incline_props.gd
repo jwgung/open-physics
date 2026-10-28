@@ -1,8 +1,11 @@
 ## Grass island props of the incline experiment (apps/lab3d/docs/art-direction.md, section 9).
 ## Meshes only: the collision boxes of the incline, floor and box are built by incline_friction.gd
 ## and are not changed here. Yellow incline (thicker than its collision box, growing downwards so
-## the top face stays on the collision surface), blue stand, red box, white start line, the island
-## and the blob shadows, and the box's reactions (ArtJuice) driven by the experiment's status.
+## the top face stays on the collision surface) made of the chosen surface material (set_surface,
+## 2026-10-28: the whole slide is steel grey, wood brown, rubber dark or clay red, its top and its
+## front face patterned like that stuff, SurfaceSkin: the front view sees the slide from the side),
+## blue stand, red box, white start line, the island and the blob shadows, and the box's reactions
+## (ArtJuice) driven by the experiment's status.
 ## The bread cat (CatActor wearing the BreadCat look, 2026-10-27) stands on the incline beside the
 ## waiting box (behind it, clear of its way down, a little below it), level on a wooden wedge cut to the slope, and
 ## holds the box with both paws on its top; "상자 놓기" lets go (the paws follow down the slope); a
@@ -38,14 +41,26 @@ var wedge: MeshInstance3D
 var _ramp_shadow: MeshInstance3D
 var _incline_length := 8.0
 var _wedge_angle := NAN             # the slope the wedge mesh was cut for (deg)
+## The incline's mesh node and the surface material it shows (set_surface).
+var incline_visual: MeshInstance3D
+var surface := ""
+var _incline_size := Vector3.ZERO
+var _incline_meshes := {}           # material id -> mesh
 
 
-func incline_mesh(size: Vector3) -> Mesh:
+## The incline (mesh origin = the collision box's centre, its top face at size.y / 2) made of
+## surface material `material`: its colour, and its pattern on the top and the front (+z) face.
+func incline_mesh(size: Vector3, material := "wood") -> Mesh:
 	_incline_length = size.x
 	var b := ArtKit.builder()
 	b.ao_min = 0.85
+	var stuff := SurfaceSkin.colour(material)
 	b.add_rounded_box(Transform3D(Basis(), Vector3(0.0, (size.y - INCLINE_THICKNESS) * 0.5, 0.0)),
-		Vector3(size.x, INCLINE_THICKNESS, size.z), 0.06, 1, ArtPalette.YELLOW, ArtPalette.YELLOW_TOP)
+		Vector3(size.x, INCLINE_THICKNESS, size.z), 0.06, 1, stuff, stuff.lerp(Color.WHITE, 0.12))
+	SurfaceSkin.add_to(b, Transform3D(Basis(), Vector3(0.0, size.y * 0.5, 0.0)), material, size.x - 0.2, size.z - 0.2)
+	# The front face: the skin turned to face +z (its "up"), across the incline's thickness.
+	var front := Transform3D(Basis(Vector3.RIGHT, PI * 0.5), Vector3(0.0, size.y * 0.5 - INCLINE_THICKNESS * 0.5, size.z * 0.5))
+	SurfaceSkin.add_to(b, front, material, size.x - 0.2, INCLINE_THICKNESS - 0.12)
 	# Hinge: two lugs from the underside to a white axle, all tilting with the incline. The post top
 	# ends inside the axle's circle, so there is no gap and no crossing at any angle.
 	var axle_y := -AXLE_DEPTH + size.y * 0.5          # mesh space: the node sits size.y / 2 under the pivot
@@ -57,6 +72,25 @@ func incline_mesh(size: Vector3) -> Mesh:
 	b.add_cylinder(Transform3D(Basis(Vector3.RIGHT, PI * 0.5), Vector3(0.0, axle_y, STAND_Z + AXLE_LENGTH * 0.5)),
 		AXLE_RADIUS, AXLE_RADIUS, AXLE_LENGTH, 8, ArtPalette.WHITE)
 	return b.commit()
+
+
+## The incline's node (its mesh) for an incline of `size`; set_surface swaps its mesh.
+func make_incline(size: Vector3, material: String) -> MeshInstance3D:
+	_incline_size = size
+	incline_visual = ArtKit.instance(null)
+	incline_visual.name = "InclineVisual"
+	set_surface(material)
+	return incline_visual
+
+
+## The incline's top shows surface material `material` (one mesh per material, cached).
+func set_surface(material: String) -> void:
+	surface = material
+	if incline_visual == null:
+		return
+	if not _incline_meshes.has(material):
+		_incline_meshes[material] = incline_mesh(_incline_size, material)
+	incline_visual.mesh = _incline_meshes[material]
 
 
 func start_line_mesh(width: float) -> Mesh:

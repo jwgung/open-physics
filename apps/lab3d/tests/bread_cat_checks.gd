@@ -774,12 +774,15 @@ static func _contact_gap(id: String, lab: Experiment, cat: CatActor) -> float:
 		"free-fall", "constraints", "orbit":
 			# (the pendulum's model: its bob body is posed on the next step after a condition change)
 			var at: Vector3 = lab.props._ball_nodes[lab.props.cat_ball].global_position if id == "free-fall" else (lab.models[0].position() if id == "constraints" else lab.planet.global_position)
+			if id == "free-fall":   # the ball as it looks (2026-10-28): its centre its look radius above its bottom
+				at += Vector3.UP * (lab.look_radius(lab.props.cat_ball) - lab.BALL_RADIUS)
 			gap = cat.held_point().distance_to(at)
 		"collision", "spring":
-			var ball: Node3D = lab.ball_a if id == "collision" else lab.ball
-			var r: float = lab.RADIUS_A if id == "collision" else lab.BALL_RADIUS
+			# The ball as it looks (2026-10-28: its size follows its mass).
+			var centre: Vector3 = lab.props.look_centre(lab.ball_a, true) if id == "collision" else lab.ball.global_position
+			var r: float = lab.props.look.x if id == "collision" else lab.look_radius()
 			for i in 2:
-				gap = maxf(gap, absf(cat.hand_point(i).distance_to(ball.global_position) - r))
+				gap = maxf(gap, absf(cat.hand_point(i).distance_to(centre) - r))
 		"buoyancy":
 			for i in 2:
 				var p: Vector3 = cat.hand_point(i) - lab.drum.global_position

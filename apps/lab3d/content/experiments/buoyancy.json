@@ -41,6 +41,7 @@
   "key_observations": ["depth", "floating_depth", "state"],
   "predict": {
     "question": "무게가 같으면 어느 통이 잘 뜰까?",
+    "question_face": "thinking",
     "choices": [
       { "id": "big", "label": "큰 통", "picture": "drum_big" },
       { "id": "small", "label": "작은 통", "picture": "drum_small" }
@@ -54,17 +55,18 @@
     "hidden_until_end": ["judgement", "density", "floating_depth"],
     "hidden_series_until_end": ["floating"],
     "stages": [
-      { "conditions": {"volume": "big", "mass": 80.0}, "text": "80킬로그램 통을 둥둥 띄우기!" },
-      { "conditions": {"volume": "big", "mass": 95.0}, "text": "95킬로그램 통도 둥둥 띄우기!" },
-      { "conditions": {"volume": "small", "mass": 45.0}, "text": "작은 통을 45킬로그램으로 띄우기!" }
+      { "conditions": {"volume": "big", "mass": 80.0}, "text": "80킬로그램 통을 둥둥 띄우기!", "say": "통이 물을 밀어내면 물이 통을 밀어 올려요. 큰 통은 물을 많이 밀어내서 떠요.", "say_face": "explain" },
+      { "conditions": {"volume": "big", "mass": 95.0}, "text": "95킬로그램 통도 둥둥 띄우기!", "say": "무거워도 큰 통은 물에 더 잠기면서 물을 더 밀어내요. 그래서 떠요.", "say_face": "explain" },
+      { "conditions": {"volume": "small", "mass": 45.0}, "text": "작은 통을 45킬로그램으로 띄우기!", "say": "작은 통은 물을 조금만 밀어내요. 그래서 가벼워야 뜰 수 있어요.", "say_face": "thinking" }
     ]
   },
-  "story": { "clue": "조각이 물속에 있어! 통을 띄워서 건져 보자.", "map_clue": "연못 물속에서 반짝여!" },
+  "story": { "clue": "조각이 물속에 있어! 통을 띄워서 건져 보자.", "clue_face": "surprised", "map_clue": "연못 물속에서 반짝여!", "map_clue_face": "explain" },
   "kid": {
     "card": "state",
     "title": "통을 물에 띄워 보자!",
     "place": "물에 띄우기",
     "say": "물에 많이 잠길수록 물이 통을 더 세게 밀어 올려요. 큰 통은 물을 많이 밀어내서 무거워도 떠요.",
+    "say_face": "explain",
     "tip": "통을 위아래로 끌어 물에 넣어요.",
     "picks": {
       "mass": [

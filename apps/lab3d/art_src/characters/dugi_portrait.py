@@ -1,20 +1,32 @@
-"""Dugi's dialogue portraits (Phase 1 Task 4h): transparent bust renders of the approved model in the
-storybook look, for the retro game dialogue box (apps/lab3d/scripts/shell/dialogue_box.gd).
+"""Dugi's dialogue portraits (Phase 1 Task 4h; expressions 2026-10-29): transparent bust renders of
+the approved model in the storybook look, for the retro game dialogue box
+(apps/lab3d/scripts/shell/dialogue_box.gd).
 
 Run (headless, Blender 4.5):
     blender -b --factory-startup -P apps/lab3d/art_src/characters/dugi_portrait.py -- \
-        [--out apps/lab3d/assets/characters/portraits] [--size 512]
+        [--out apps/lab3d/assets/characters/portraits] [--size 512] [--only happy,thinking]
 
-Writes dugi_talk.webp, dugi_smile.webp and dugi_point.webp (RGBA, size x size, lossless WebP):
-  talk   the model as exported (open smile), head tilted a little, listening ears
-  smile  the calm mouth (dugi.py --mouth calm), a happy tilt the other way
-  point  the open smile, the left arm (viewer's right) raised so the pointer stick's red tip is up
-         beside the head, towards the words: the portrait always stands on the box's left end
-The model is built by dugi.py in this process (the same code as assets/characters/dugi.glb, arm
-variant A, monocle on) and rendered like the user-approved trio picture: a two-step cel ramp under a
-warm key sun and a cool sky fill, a faint rim on the lit side, and the brown inverted-hull outline
-(#6e4630) grown along the mesh normals, the app's outline. Transparent background (film
-transparent); Eevee, so the pixels are not guaranteed bit-identical between machines.
+Writes dugi_<face>.webp (RGBA, size x size, lossless WebP), one per expression (2026-10-29 user
+request "대화시 표정을 좀 더 다양하게"; the dialogue picks one per line, Story.FACES):
+  explain    the open smile, the left arm (viewer's right) raised so the pointer stick's red tip is up
+             beside the head, towards the words (the portrait always stands on the box's left end);
+             the one picture of every explanation before 2026-10-29
+  happy      closed ^ ^ eyes, a wide open smile, more blush, small brows, the free paw up in a wave
+  surprised  wide round eyes with two highlights, raised brows, a small "o" mouth, ears straight up,
+             both paws up a little
+  thinking   eyes glancing up to the side, one brow raised, a short flat mouth, the paw at the chin,
+             the head tilted
+  worried    smaller, lower eyes, brows with the inner ends up, a wobbly mouth, drooping ears, the
+             head down a little
+The model has no face rig (no shape keys or bones: the face is painted into the texture atlas by
+dugi.paint_head), so an expression is a repainted copy of the face (face_kit: eyes, brows, mouth,
+blush, the same SDF painter, colours and stroke widths) plus a pose of the nodes the model has (head
+tilt / nod, ears, arms). The in-game model (dugi.glb) is not rebuilt: without a face the atlas is
+painted exactly as before. The model is built by dugi.py in this process (arm variant A, monocle on)
+and rendered like the user-approved trio picture: a two-step cel ramp under a warm key sun and a cool
+sky fill, a faint rim on the lit side, and the brown inverted-hull outline (#6e4630) grown along the
+mesh normals, the app's outline. Transparent background (film transparent); Eevee, so the pixels are
+not guaranteed bit-identical between machines.
 """
 import math
 import os
@@ -37,10 +49,21 @@ TOON_T = 0.30
 CAM_POS = Vector((0.55, -3.55, 1.02))
 CAM_TGT = Vector((0.0, 0.0, 1.02))
 LENS = 85.0
+# mouth: the model's ("open") or a face_kit mouth; head: (tilt about y, turn about z) deg; nod: about x
+# (+ = chin down); ears: (left, right) deg about x (+ = back); ears_out: (left, right) deg sideways
+# (+ = tips fall outwards); point: the stick tip's target;
+# arm_l / arm_r: the paw's target (no stick). Positions are Blender metres (Dugi faces -Y).
 EXPRESSIONS = {
-    "talk": {"mouth": "open", "head": (-6.0, 4.0), "ears": (8.0, 4.0), "point": None},
-    "smile": {"mouth": "calm", "head": (7.0, -5.0), "ears": (4.0, 10.0), "point": None},
-    "point": {"mouth": "open", "head": (-4.0, 6.0), "ears": (10.0, 6.0), "point": (1.05, -0.55, 1.30)},
+    "explain": {"mouth": "open", "head": (-4.0, 6.0), "ears": (10.0, 6.0), "point": (1.05, -0.55, 1.30)},
+    "happy": {"mouth": "big", "face": {"eyes": "happy", "brows": "happy", "blush": 1.5},
+              "head": (8.0, -4.0), "nod": -4.0, "ears": (2.0, -2.0), "arm_l": (0.62, -0.42, 0.98)},
+    "surprised": {"mouth": "o", "face": {"eyes": "wide", "brows": "raised"},
+                  "head": (0.0, 3.0), "nod": -7.0, "ears": (-6.0, -6.0),
+                  "arm_l": (0.48, -0.40, 0.80), "arm_r": (-0.48, -0.40, 0.80)},
+    "thinking": {"mouth": "hmm", "face": {"eyes": "look", "brows": "think"},
+                 "head": (-9.0, 8.0), "ears": (4.0, 14.0), "arm_r": (-0.05, -0.36, 0.62)},
+    "worried": {"mouth": "wavy", "face": {"eyes": "soft", "brows": "worried", "blush": 0.8},
+                "head": (4.0, 4.0), "nod": 8.0, "ears": (8.0, 8.0), "ears_out": (28.0, 24.0)},
 }
 
 
@@ -221,16 +244,24 @@ def setup_scene(size):
 def render(name, spec, out_dir, size):
     bc.clear_scene()
     dugi.set_arm_variant("A")
-    dugi.build(True, spec["mouth"], True, 1 if spec["point"] is not None else -1)
+    point = spec.get("point")
+    dugi.build(True, spec["mouth"], True, 1 if point is not None else -1, spec.get("face"))
     objs = {o.name: o for o in bpy.data.objects}
+    rot_local(objs["Head"], (1, 0, 0), spec.get("nod", 0.0))
     rot_local(objs["Head"], (0, 1, 0), spec["head"][0])
     rot_local(objs["Head"], (0, 0, 1), spec["head"][1])
     rot_local(objs["EarL"], (1, 0, 0), spec["ears"][0])
     rot_local(objs["EarR"], (1, 0, 0), spec["ears"][1])
-    if spec["point"] is None:
-        objs["Pointer"].hide_render = True   # resting arm: no stick (as in the app)
+    out_l, out_r = spec.get("ears_out", (0.0, 0.0))   # + = the ear tips fall outwards (droop)
+    rot_local(objs["EarL"], (0, 1, 0), out_l)
+    rot_local(objs["EarR"], (0, 1, 0), -out_r)
+    if point is None:
+        objs["Pointer"].hide_render = True   # no stick (as in the app at rest)
     else:
-        dugi.pose_point(objs["ArmL"], objs["PointerTip"], spec["point"])
+        dugi.pose_point(objs["ArmL"], objs["PointerTip"], point)
+    for side in ("l", "r"):
+        if spec.get("arm_" + side) is not None:
+            dugi.pose_point(objs["Arm" + side.upper()], objs["Hand" + side.upper()], spec["arm_" + side])
     bpy.context.view_layer.update()
     scene = setup_scene(size)
     outline_mat = make_outline_material()
@@ -251,13 +282,18 @@ def main():
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     out_dir = "apps/lab3d/assets/characters/portraits"
     size = 512
+    only = None
     for i, a in enumerate(argv):
         if a == "--out":
             out_dir = argv[i + 1]
         elif a == "--size":
             size = int(argv[i + 1])
+        elif a == "--only":
+            only = argv[i + 1].split(",")
     os.makedirs(out_dir, exist_ok=True)
     for name, spec in EXPRESSIONS.items():
+        if only and name not in only:
+            continue
         bpy.ops.wm.read_factory_settings(use_empty=True)
         render(name, spec, os.path.abspath(out_dir), size)
 

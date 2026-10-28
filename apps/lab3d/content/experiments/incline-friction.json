@@ -43,6 +43,7 @@
   "key_observations": ["critical_angle", "state", "distance"],
   "predict": {
     "question": "더 기울이면 더 빨리 미끄러질까?",
+    "question_face": "thinking",
     "choices": [
       { "id": "faster", "label": "더 빨리", "picture": "slope_steep" },
       { "id": "same", "label": "똑같이", "picture": "slope_same" }
@@ -57,17 +58,18 @@
     "hidden_until_end": ["acceleration", "critical_angle", "tangential", "max_static"],
     "hidden_series_until_end": ["formula"],
     "stages": [
-      { "threshold": 1.0, "conditions": {"material": "steel"}, "text": "강철 미끄럼틀에서 상자 미끄러뜨리기!" },
-      { "threshold": 2.0, "conditions": {"material": "wood", "angle": {"min": 25, "max": 45}}, "text": "나무 미끄럼틀을 더 기울여 쌩 내려가기!" },
-      { "threshold": 3.0, "conditions": {"material": "rubber", "angle": {"min": 40, "max": 45}}, "text": "고무 미끄럼틀을 많이 기울여 쌩 내려가기!" }
+      { "threshold": 1.0, "conditions": {"material": "steel"}, "text": "강철 미끄럼틀에서 상자 미끄러뜨리기!", "say": "강철은 미끄러워서 상자를 조금만 붙잡아요. 그래서 쉽게 미끄러져요.", "say_face": "explain" },
+      { "threshold": 2.0, "conditions": {"material": "wood", "angle": {"min": 25, "max": 45}}, "text": "나무 미끄럼틀을 더 기울여 쌩 내려가기!", "say": "나무는 상자를 더 붙잡아요. 더 기울이면 아래로 끄는 힘이 커져서 빨라져요.", "say_face": "thinking" },
+      { "threshold": 3.0, "conditions": {"material": "rubber", "angle": {"min": 40, "max": 45}}, "text": "고무 미끄럼틀을 많이 기울여 쌩 내려가기!", "say": "고무는 상자를 꽉 붙잡아요. 그래도 많이 기울이면 끄는 힘이 이겨서 쌩 내려가요.", "say_face": "explain" }
     ]
   },
-  "story": { "clue": "조각이 미끄럼틀 아래 숨었어. 상자를 쭉 미끄러뜨려 보자!", "map_clue": "노란 비탈 아래를 봐!" },
+  "story": { "clue": "조각이 미끄럼틀 아래 숨었어. 상자를 쭉 미끄러뜨려 보자!", "clue_face": "explain", "map_clue": "노란 비탈 아래를 봐!", "map_clue_face": "explain" },
   "kid": {
     "card": "state",
     "title": "미끄럼틀에서 상자를 미끄러뜨려 보자!",
     "place": "미끄럼틀",
     "say": "많이 기울이면 상자가 미끄러져요. 더 기울일수록 더 빨라져요.",
+    "say_face": "explain",
     "tip": "상자를 끌어서 옮겨 봐요.",
     "picks": {
       "material": [

@@ -197,7 +197,7 @@ static func validate(definition: Dictionary) -> PackedStringArray:
 ## formula's names. Content shared with the web (content/mechanics-labs.json) keeps its own texts;
 ## the 3D experiment file puts the child-facing ones here and the screen shows them in place of the
 ## shared ones (the "자세히" sidebar keeps the shared texts and the formula labels):
-##   "kid": {"title": <the title bar>, "place": <the map's spot name>, "say": <Dugi's dialogue>,
+##   "kid": {"title": <the title bar>, "place": <the map's spot name>, "say": <Dugi's dialogue>, "say_face": <its face>,
 ##           "tip": <the short gesture hint>, "card": <the one key observation shown as a card>,
 ##           "cards": {<observation id>: <its key card's caption>},
 ##           "states": {<a status text of the lab>: <its key card words>},
@@ -235,6 +235,9 @@ static func _validate_kid(kid: Variant, ids: Array) -> PackedStringArray:
 		elif key == "card":
 			if not kid.card in ids:
 				problems.append("kid.card must name an observation")
+		elif key == "say_face":
+			if not kid.say_face in Story.FACES:
+				problems.append("kid.say_face must be one of Story.FACES")
 		elif key == "picks":
 			pass   # ConditionPicks.validate (it needs the controls and the missions)
 		elif key == "bars":
@@ -251,7 +254,8 @@ static func _validate_kid(kid: Variant, ids: Array) -> PackedStringArray:
 
 ## The story's words for this lab (`story`, optional, 2026-10-28 "별 조각 찾기"): {"clue": <Puppy's
 ## clue, told once on the first visit before Dugi's question>, "map_clue": <Puppy's riddle on the
-## night map while this spot is the next to find>} (Story.clue, Story.map_clue).
+## night map while this spot is the next to find>, "clue_face"?, "map_clue_face"?: <Story.FACES>}
+## (Story.clue, Story.map_clue, their portraits' faces).
 static func _validate_story(story: Variant) -> PackedStringArray:
 	var problems := PackedStringArray()
 	if story == null:
@@ -260,8 +264,11 @@ static func _validate_story(story: Variant) -> PackedStringArray:
 		problems.append("story must be an object")
 		return problems
 	for key in story:
-		if not key in ["clue", "map_clue"]:
-			problems.append("story.%s unknown (clue, map_clue)" % key)
+		if key in ["clue_face", "map_clue_face"]:
+			if not story[key] in Story.FACES:
+				problems.append("story.%s must be one of Story.FACES" % key)
+		elif not key in ["clue", "map_clue"]:
+			problems.append("story.%s unknown (clue, map_clue, clue_face, map_clue_face)" % key)
 		elif not (story[key] is String and story[key] != ""):
 			problems.append("story.%s must be a text" % key)
 	return problems
@@ -346,7 +353,7 @@ static func _validate_series(missions: Variant, series: Array) -> PackedStringAr
 
 
 ## `missions` (Plan G1, G2, optional): the stages and how a run is judged (MissionTracker's header) —
-## {"stages": [{"text": <non-empty>, "threshold"?: <number > 0>, "conditions"?: {...},
+## {"stages": [{"text": <non-empty>, "say"?: <Dugi's explanation of the stage>, "say_face"?: <Story.FACES>, "threshold"?: <number > 0>, "conditions"?: {...},
 ##              "change"?: [<control id>, ...], "observe"?: <an observation id> | "",
 ##              "compare"?: ..., "judge_on"?: [...]}, ...],
 ##  "observe"?: <an observation id>, "compare"?: "greater" | "less",
@@ -390,6 +397,11 @@ static func _validate_missions(missions: Variant, observations: Array, controls:
 		var stage: Variant = stages[i]
 		var threshold: Variant = stage.get("threshold") if stage is Dictionary else null
 		var text: Variant = stage.get("text") if stage is Dictionary else null
+		# Dugi's explanation of this stage (2026-10-29, optional): a text and its face.
+		if stage is Dictionary and stage.has("say") and not (stage.say is String and stage.say != ""):
+			problems.append("missions.stages[%d].say must be a text" % i)
+		if stage is Dictionary and stage.has("say_face") and not stage.say_face in Story.FACES:
+			problems.append("missions.stages[%d].say_face must be one of Story.FACES" % i)
 		# A stage's own rule (MissionTracker.rule): observe "" (a state goal) or an id, compare, judge_on.
 		var own: Variant = stage.get("observe") if stage is Dictionary else null
 		var observed: bool = (own != "") if stage is Dictionary and stage.has("observe") else missions.has("observe")
@@ -455,6 +467,8 @@ static func _validate_predict(predict: Variant) -> PackedStringArray:
 	for key in ["question", "reason"]:
 		if not (predict.get(key) is String and predict.get(key) != ""):
 			problems.append("predict.%s must be a text" % key)
+	if predict.has("question_face") and not predict.question_face in Story.FACES:
+		problems.append("predict.question_face must be one of Story.FACES")
 	var choices: Variant = predict.get("choices")
 	var ids := []
 	if not (choices is Array and choices.size() == 2):

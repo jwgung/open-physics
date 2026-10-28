@@ -27,6 +27,8 @@ const CODE_TEXT := ArtPalette.BLUE_DARK
 ## the SM-P200 in landscape.
 const DIALOGUE_PAPER := Color("fff6e6")
 const DIALOGUE_LINE := ArtPalette.OUTLINE
+## The logo ribbon's red (assets/icon/splash.png, splash_banner.py RED) for the title's start button.
+const TITLE_RED := Color("e2483c")
 const SIZE_DIALOGUE := 24
 ## Bottom "lip" of buttons and cards (units): the darker edge that makes them look pressable.
 const LIP := 5
@@ -160,6 +162,35 @@ static func build() -> Theme:
 	theme.set_stylebox("hover", "ChoiceButton", _box(Color("fffaf0"), DIALOGUE_LINE, 18, 10, 10, Color.TRANSPARENT, CHOICE_LINE, CHOICE_LIP))
 	theme.set_stylebox("pressed", "ChoiceButton", choice_down)
 	theme.set_stylebox("hover_pressed", "ChoiceButton", choice_down)
+
+	# The title screen (2026-10-29): 시작하기 is the logo's red ribbon (cream bold letters, the brown
+	# outline and lip), 이야기 다시 보기 / 설정 the dialogue's cream paper like Dugi's choices.
+	theme.set_type_variation("TitleStartButton", "Button")
+	theme.set_font_size("font_size", "TitleStartButton", 36)
+	theme.set_font("font", "TitleStartButton", bold)
+	for state in ["font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color", "font_focus_color"]:
+		theme.set_color(state, "TitleStartButton", DIALOGUE_PAPER)
+	var start_down := _box(TITLE_RED.darkened(0.08), DIALOGUE_LINE, 22, 40, 12, Color.TRANSPARENT, CHOICE_LINE, CHOICE_LINE)
+	start_down.content_margin_top += CHOICE_LIP - CHOICE_LINE
+	start_down.expand_margin_top = -(CHOICE_LIP - CHOICE_LINE)
+	theme.set_stylebox("normal", "TitleStartButton", _box(TITLE_RED, DIALOGUE_LINE, 22, 40, 12, Color.TRANSPARENT, CHOICE_LINE, CHOICE_LIP))
+	theme.set_stylebox("hover", "TitleStartButton", _box(TITLE_RED.lightened(0.06), DIALOGUE_LINE, 22, 40, 12, Color.TRANSPARENT, CHOICE_LINE, CHOICE_LIP))
+	theme.set_stylebox("pressed", "TitleStartButton", start_down)
+	theme.set_stylebox("hover_pressed", "TitleStartButton", start_down)
+	theme.set_stylebox("focus", "TitleStartButton", StyleBoxEmpty.new())
+	theme.set_type_variation("TitleButton", "Button")
+	theme.set_font_size("font_size", "TitleButton", 20)
+	theme.set_font("font", "TitleButton", bold)
+	for state in ["font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color", "font_focus_color"]:
+		theme.set_color(state, "TitleButton", INK)
+	var small_down := _box(DIALOGUE_PAPER.darkened(0.06), DIALOGUE_LINE, 16, 18, 6, Color.TRANSPARENT, 3, 3)
+	small_down.content_margin_top += 3
+	small_down.expand_margin_top = -3
+	theme.set_stylebox("normal", "TitleButton", _box(DIALOGUE_PAPER, DIALOGUE_LINE, 16, 18, 6, Color.TRANSPARENT, 3, 6))
+	theme.set_stylebox("hover", "TitleButton", _box(Color("fffaf0"), DIALOGUE_LINE, 16, 18, 6, Color.TRANSPARENT, 3, 6))
+	theme.set_stylebox("pressed", "TitleButton", small_down)
+	theme.set_stylebox("hover_pressed", "TitleButton", small_down)
+	theme.set_stylebox("focus", "TitleButton", StyleBoxEmpty.new())
 
 	# The mission's picture buttons (ConditionPicks, 2026-10-27): the same cream paper, outline and lip
 	# as Dugi's choices; the chosen setting turns yellow (the style's selection colour).

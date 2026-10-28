@@ -3,9 +3,12 @@
 ## outline runs along the bottom of the 3D view from the left margin up to the action buttons (or to
 ## Dugi on the view, whichever is nearer); a bust portrait of Dugi always stands on its left end and
 ## overlaps the top edge (assets/characters/portraits, rendered from the model by
-## art_src/characters/dugi_portrait.py; one picture, the pointing bust, for the whole talk: a face
-## changing every page was too busy, 2026-10-27), the name tag "두기두기" sits on the top edge beside it,
-## and a blinking ▼ shows when the page is fully shown.
+## art_src/characters/dugi_portrait.py), the name tag "두기두기" sits on the top edge beside it,
+## and a blinking ▼ shows when the page is fully shown. The portrait's expression follows the line
+## (2026-10-29 user request "대화시 표정을 좀 더 다양하게": Story.FACES, set_speaker / open with a face,
+## the content tags each line); it never changes within one line (2026-10-27: a face changing every
+## page was too busy), a line with the same face keeps the picture as it is (no re-pop), and a new face
+## swaps in with a short soft pop (SWAP_S) that changes neither the box nor the portrait's rect.
 ##
 ## The words are the lab's observe text exactly (or, for one open, other words of Dugi's: the
 ## mission's question or the prediction's reason — Plan G4), only split into pages of at most
@@ -37,12 +40,22 @@ const PORTRAIT_INSET := 6.0                 # from the box's left end
 const PORTRAIT_SHARE := 0.94                # of the portrait's width the words keep clear of (the stick)
 const MIN_TEXT_WIDTH := 300.0
 const MORE_ROOM := 30.0                     # right of the text: the ▼
-## The pointing bust holds the stick out to the right: towards the words and the scene.
-const PORTRAIT := preload("res://assets/characters/portraits/dugi_point.webp")
+## A new face settles in over SWAP_S s: the portrait grows from SWAP_SCALE and fades in from
+## SWAP_ALPHA about its bottom middle (drawing only: its rect and the box stay where they are).
+const SWAP_S := 0.16
+const SWAP_SCALE := 0.94
+const SWAP_ALPHA := 0.55
+static var _textures := {}
 
 var text := ""
 ## Who speaks now (Story.SPEAKERS: "dugi" by default, "puppy" for his clues and story lines).
 var speaker := "dugi"
+## The face shown now (Story.FACES) and the face of the box's own words (set_words).
+var face := Story.DEFAULT_FACE
+var words_face := ""
+## Portrait pictures swapped in (a new speaker or face; tests: a same-face line swaps nothing).
+var swaps := 0
+var _swap_t := -1.0
 ## The box's own words (the lab's observe text): every open without other words shows these.
 var words := ""
 ## A question is waiting for its answer: the last page stays (no read timer, a tap does not close).
@@ -84,7 +97,7 @@ func _init(own_words: String) -> void:
 	portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	portrait.texture = PORTRAIT
+	portrait.texture = portrait_texture(speaker, face)
 	add_child(portrait)
 	name_tag = Ui.panel("DialogueNameTag")
 	name_tag.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -198,27 +211,49 @@ func rects() -> Array[Rect2]:
 
 # --- acting -----------------------------------------------------------------------------------
 
-## Who speaks (Story.SPEAKERS id): the portrait and the name tag change, the box stays where it is
-## (the story "별 조각 찾기", 2026-10-28: Puppy tells his clues in the same box).
-func set_speaker(who: String) -> void:
-	if who == speaker or not Story.SPEAKERS.has(who):
+## The portrait picture of `who` with `face` (loaded once).
+static func portrait_texture(who: String, with_face: String) -> Texture2D:
+	var path := Story.portrait_path(who, with_face)
+	if not _textures.has(path):
+		_textures[path] = load(path)
+	return _textures[path]
+
+
+## Who speaks (Story.SPEAKERS id) and with which face (Story.FACES; "" or unknown = the default): the
+## portrait and the name tag change, the box stays where it is (the story "별 조각 찾기", 2026-10-28:
+## Puppy tells his clues in the same box). The same speaker and face change nothing.
+func set_speaker(who: String, new_face := "") -> void:
+	if not Story.SPEAKERS.has(who):
+		return
+	var f := Story.face_or_default(new_face)
+	if who == speaker and f == face:
 		return
 	speaker = who
+	face = f
 	name_label.text = Story.SPEAKERS[who][0]
-	portrait.texture = load(Story.SPEAKERS[who][1])
+	portrait.texture = portrait_texture(who, f)
 	name_tag.size = name_tag.get_combined_minimum_size()
+	swaps += 1
+	if active:
+		_swap_t = 0.0   # the soft pop (a closed box just shows the new face when it opens)
+		_draw_swap()
 
 
-## Replaces the box's own words (the words of every later open without other words).
-func set_words(new_words: String) -> void:
+## Replaces the box's own words (the words of every later open without other words) and their face.
+func set_words(new_words: String, new_face := "") -> void:
 	words = new_words
+	words_face = new_face
 	_set_text(new_words)
 
 
 ## Opens at the first page (laid out by the caller first). `once` (optional): other words for this
-## open only (the prediction's question or reason, Plan G4); the next open shows the box's own
-## words again.
-func open(once := "") -> void:
+## open only (the prediction's question or reason, Plan G4), with `once_face` (optional: else the
+## face set before, set_speaker); the next open shows the box's own words (and their face) again.
+func open(once := "", once_face := "") -> void:
+	if once == "":
+		set_speaker(speaker, words_face)
+	elif once_face != "":
+		set_speaker(speaker, once_face)
 	_set_text(once if once != "" else words)
 	active = true
 	page = 0
@@ -240,6 +275,8 @@ func close(quiet := false) -> void:
 		return
 	active = false
 	visible = false
+	_swap_t = -1.0
+	_draw_swap()   # a pop cut short ends on the whole picture
 	if not quiet:
 		closed.emit()
 
@@ -294,6 +331,9 @@ func step(delta: float) -> void:
 	if not active:
 		return
 	_clock += delta
+	if _swap_t >= 0.0:
+		_swap_t += delta
+		_draw_swap()
 	if not typed():
 		_shown += CHARS_PER_S * delta
 	elif auto_turn and (not hold or page < _pages.size() - 1):
@@ -302,6 +342,17 @@ func step(delta: float) -> void:
 			advance()
 			return
 	_refresh()
+
+
+## The swap's pop now (the portrait's scale and alpha only).
+func _draw_swap() -> void:
+	var k := clampf(_swap_t / SWAP_S, 0.0, 1.0) if _swap_t >= 0.0 else 1.0
+	if k >= 1.0:
+		_swap_t = -1.0
+	var e := 1.0 - (1.0 - k) * (1.0 - k)
+	portrait.pivot_offset = Vector2(PORTRAIT_SIZE * 0.5, PORTRAIT_SIZE)
+	portrait.scale = Vector2.ONE * lerpf(SWAP_SCALE, 1.0, e)
+	portrait.modulate.a = lerpf(SWAP_ALPHA, 1.0, e)
 
 
 ## Takes input only where it is drawn: the box and the portrait's lower two thirds (the bust; the

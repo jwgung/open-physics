@@ -64,6 +64,7 @@
   "key_observations": ["before_a", "after_a", "after_b"],
   "predict": {
     "question": "무거운 공이 가벼운 공을 치면?",
+    "question_face": "thinking",
     "choices": [
       { "id": "light_fast", "label": "가벼운 공이 쌩", "picture": "light_flies" },
       { "id": "both_stop", "label": "둘 다 멈춰요", "picture": "both_stop" }
@@ -75,17 +76,18 @@
     "observe": "after_b",
     "judge_on": ["collided", "rest"],
     "stages": [
-      { "threshold": 2.0, "conditions": {"mass_a": 1.0, "mass_b": 1.0}, "text": "두 공을 같은 무게로 하고 세게 부딪히기!" },
-      { "threshold": 4.0, "conditions": {"mass_a": {"min": 3.0}, "mass_b": {"min": 1.0}}, "text": "파란 공을 무겁게 해서 세게 치기!" },
-      { "threshold": 5.0, "conditions": {"mass_b": 0.5}, "text": "주황 공을 제일 가볍게 해서 쌩 날리기!" }
+      { "threshold": 2.0, "conditions": {"mass_a": 1.0, "mass_b": 1.0}, "text": "두 공을 같은 무게로 하고 세게 부딪히기!", "say": "같은 무게 공끼리 부딪히면 파란 공의 움직임이 주황 공으로 거의 다 넘어가요.", "say_face": "explain" },
+      { "threshold": 4.0, "conditions": {"mass_a": {"min": 3.0}, "mass_b": {"min": 1.0}}, "text": "파란 공을 무겁게 해서 세게 치기!", "say": "무거운 공은 움직임이 많아요. 그 움직임을 받은 주황 공이 더 빨리 나가요.", "say_face": "explain" },
+      { "threshold": 5.0, "conditions": {"mass_b": 0.5}, "text": "주황 공을 제일 가볍게 해서 쌩 날리기!", "say": "받는 공이 가벼울수록 같은 움직임을 받아도 더 빨리 쌩 날아가요.", "say_face": "happy" }
     ]
   },
-  "story": { "clue": "조각이 레일 끝에 있어. 공끼리 부딪혀서 쌩 보내 보자!", "map_clue": "공 두 개가 놓인 길쭉한 레일 쪽이야!" },
+  "story": { "clue": "조각이 레일 끝에 있어. 공끼리 부딪혀서 쌩 보내 보자!", "clue_face": "explain", "map_clue": "공 두 개가 놓인 길쭉한 레일 쪽이야!", "map_clue_face": "explain" },
   "kid": {
     "card": "after_b",
     "title": "공끼리 부딪히면 어떻게 될까?",
     "place": "공 부딪히기",
     "say": "부딪히면 두 공이 서로 밀어요. 파란 공의 움직임이 주황 공으로 넘어가요.",
+    "say_face": "explain",
     "tip": "파란 공을 뒤로 쭉 당겼다 놓아 봐요!",
     "picks": {
       "mass_a": [

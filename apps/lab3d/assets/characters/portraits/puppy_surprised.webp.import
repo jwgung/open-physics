@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bgrvfa36lnrcs"
-path="res://.godot/imported/dugi_point.webp-11acd0476c44dd6c186875f858813cc6.ctex"
+uid="uid://b5ktufonwhhrm"
+path="res://.godot/imported/puppy_surprised.webp-576125ace337c4bd41dea6cbc96d5ed2.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/characters/portraits/dugi_point.webp"
-dest_files=["res://.godot/imported/dugi_point.webp-11acd0476c44dd6c186875f858813cc6.ctex"]
+source_file="res://assets/characters/portraits/puppy_surprised.webp"
+dest_files=["res://.godot/imported/puppy_surprised.webp-576125ace337c4bd41dea6cbc96d5ed2.ctex"]
 
 [params]
 

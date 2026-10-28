@@ -50,6 +50,7 @@
   "key_observations": ["red_time", "fall_time", "speed"],
   "predict": {
     "question": "무거운 공이 먼저 떨어질까?",
+    "question_face": "thinking",
     "choices": [
       { "id": "together", "label": "같이 닿아요", "picture": "fall_together" },
       { "id": "heavy", "label": "무거운 공 먼저", "picture": "fall_heavy_first" }
@@ -63,17 +64,18 @@
     "hidden_until_end": ["fall_time"],
     "hidden_series_until_end": ["yellow", "purple", "red"],
     "stages": [
-      { "conditions": {"gravity": "earth", "mass": "light"}, "text": "빨간 공을 가볍게 바꿔 떨어뜨리기!" },
-      { "observe": "red_time", "threshold": 3.0, "conditions": {"gravity": "moon"}, "text": "달에서 빨간 공이 3초 넘게 떨어지게 하기!" },
-      { "observe": "red_time", "compare": "less", "threshold": 1.0, "conditions": {"gravity": "jupiter"}, "text": "목성에서 빨간 공이 1초 안에 땅에 닿게 하기!" }
+      { "conditions": {"gravity": "earth", "mass": "light"}, "text": "빨간 공을 가볍게 바꿔 떨어뜨리기!", "say": "가벼운 공도 무거운 공도 똑같이 빨라지며 떨어져요. 그래서 같이 닿아요.", "say_face": "happy" },
+      { "observe": "red_time", "threshold": 3.0, "conditions": {"gravity": "moon"}, "text": "달에서 빨간 공이 3초 넘게 떨어지게 하기!", "say": "달은 지구보다 살살 끌어당겨요. 그래서 공이 천천히 떨어져요.", "say_face": "explain" },
+      { "observe": "red_time", "compare": "less", "threshold": 1.0, "conditions": {"gravity": "jupiter"}, "text": "목성에서 빨간 공이 1초 안에 땅에 닿게 하기!", "say": "목성은 지구보다 훨씬 세게 끌어당겨요. 그래서 공이 아주 빨리 떨어져요.", "say_face": "surprised" }
     ]
   },
-  "story": { "clue": "조각이 탑 위에 걸렸어! 달에서는 공이 천천히 떨어진대.", "map_clue": "파란 탑 꼭대기에서 반짝했어!" },
+  "story": { "clue": "조각이 탑 위에 걸렸어! 공을 떨어뜨려서 맞혀 보자.", "clue_face": "surprised", "map_clue": "파란 탑 꼭대기에서 반짝했어!", "map_clue_face": "surprised" },
   "kid": {
     "card": "red_time",
     "title": "공을 높은 곳에서 떨어뜨려 보자!",
     "place": "공 떨어뜨리기",
     "say": "무거운 공도 가벼운 공도 같은 높이에서 놓으면 같이 닿아요. 달에서는 천천히, 목성에서는 빨리 떨어져요.",
+    "say_face": "explain",
     "tip": "공을 위로 끌어 올려 봐요. 두 손가락으로 돌려 봐요.",
     "picks": {
       "gravity": [

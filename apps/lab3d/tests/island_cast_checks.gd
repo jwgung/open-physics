@@ -406,9 +406,9 @@ func check_projectile_explains() -> void:
 	expect.call(cast.explain_count == 1 and status in ["landed", "fence"] and lab.explain_point().distance_to(landing) < 1e-4 and aim < POINT_TOL_DEG,
 		"cast (projectile): after the throw lands Dugi points at the formula landing point (the end of the formula path)",
 		"status %s, %d explanations, point %s vs %s, aim %.3f deg" % [status, cast.explain_count, lab.explain_point(), landing, aim])
-	expect.call(box.visible and box.active and box.joined() == ExperimentRegistry.kid_text(screen.definition, "say") and box.name_label.text == "두기두기"
+	expect.call(box.visible and box.active and box.joined() == str(screen.explain_say()[0]) and box.name_label.text == "두기두기"
 		and box.label.text == box.page_text(0),
-		"cast (projectile): the dialogue opens with the lab's kid say text exactly (only split into pages)", box.label.text)
+		"cast (projectile): the dialogue opens with Dugi's say for the stage exactly (only split into pages)", box.label.text)
 	screen.experiment_action("reset")
 	await tree.process_frame
 	expect.call(cast.dugi.state == "rest" and not box.visible and not box.active and not cast.dugi.pointer.visible,
@@ -619,7 +619,10 @@ func check_dialogue() -> void:
 	var cast: IslandCast = screen.cast
 	var box: DialogueBox = screen.dialogue
 	box.set_process(false)
-	box.words = screen.definition.observe   # a long text (the shared one: two pages on a tablet) to turn pages
+	# A long text (the shared one: two pages on a tablet) to turn pages: the round done (in memory), so
+	# Dugi says the lab's own words, here the long shared text.
+	screen._missions.stamps = MissionTracker.missions(screen.definition).stages.size()
+	cast.text = screen.definition.observe
 	cast.dugi.explain(screen.experiment.explain_point)
 	for k in 3:
 		await tree.process_frame

@@ -84,6 +84,10 @@
 ##    and day, skip, replay, the child's camera and a clean map afterwards), Puppy's clue once per spot
 ##    before the question, the piece only on a completed round, its flight once and the emblem's count,
 ##    old saves, the finale once at 11 (the sky star), no story in measurements.
+## 23a. title and faces (tests/title_checks.gd, tests/faces_checks.gd, 2026-10-29): the title on every
+##    child's launch (skipped by measurements, --experiment, --screen, resume), its buttons' ways
+##    (prologue first time, map later, replay, settings and back), its layout; the dialogue's faces
+##    per line (files, tags, no re-pop, stable box), Dugi's explanation per stage, Puppy's words.
 ## 23b. the night map (tests/explore_checks.gd, 2026-10-28 "explore the night map in a fixed order"): the
 ##    order and the next spot, only the next and found spots open (a locked tap: Puppy's line, a shake),
 ##    names hidden until found, Puppy's riddle on open / after a flight / on a tap on him or 단서, the
@@ -127,6 +131,8 @@ func _run() -> void:
 	# other checks build never start it.
 	Story.app_may_enable = false
 	Story.enabled = false
+	# Likewise the title: only the title checks build it (loaded by path: TitleScreen needs the autoloads).
+	(load("res://scripts/app/title_screen.gd") as GDScript).set("app_may_show", false)
 	_vectors = JSON.parse_string(FileAccess.get_file_as_string(VECTORS_PATH))
 	print("== parity: GDScript PhysicsLaws vs TS core vectors ==")
 	_check_parity()
@@ -313,6 +319,15 @@ func _run() -> void:
 	_expect(story != null and story.can_instantiate(), "story checks compile", "")
 	if story != null and story.can_instantiate():
 		await story.new(self, _expect).run()
+	print("== title screen and dialogue faces (2026-10-29): launch, buttons, skips, layout; faces, stage says, Puppy's words ==")
+	var title_checks: GDScript = load("res://tests/title_checks.gd")
+	_expect(title_checks != null and title_checks.can_instantiate(), "title checks compile", "")
+	if title_checks != null and title_checks.can_instantiate():
+		await title_checks.new(self, _expect).run()
+	var faces: GDScript = load("res://tests/faces_checks.gd")
+	_expect(faces != null and faces.can_instantiate(), "faces checks compile", "")
+	if faces != null and faces.can_instantiate():
+		await faces.new(self, _expect).run()
 	print("== the night map (2026-10-28): fixed order, locks, Puppy's riddle, hint, night by pieces, old saves, launches ==")
 	var explore: GDScript = load("res://tests/explore_checks.gd")
 	_expect(explore != null and explore.can_instantiate(), "explore checks compile", "")

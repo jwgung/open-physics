@@ -41,6 +41,7 @@
   "key_observations": ["effort_arm", "advantage", "state"],
   "predict": {
     "question": "멀리 누르면 힘이 덜 들까?",
+    "question_face": "thinking",
     "choices": [
       { "id": "less", "label": "덜 들어요", "picture": "lever_far" },
       { "id": "same", "label": "똑같아요", "picture": "lever_same" }
@@ -55,17 +56,18 @@
     "hidden_until_end": ["required", "advantage", "load_torque", "net_torque"],
     "hidden_series_until_end": ["required"],
     "stages": [
-      { "threshold": 350.0, "conditions": {"mass": 20.0, "effort": "near"}, "text": "막대를 가까이 눌러 짐 들기!" },
-      { "threshold": 200.0, "conditions": {"mass": 20.0, "effort": "mid"}, "text": "막대를 중간에 눌러 짐 들기!" },
-      { "threshold": 130.0, "conditions": {"mass": 20.0, "effort": "far"}, "text": "막대를 멀리 눌러 살살 들기!" }
+      { "threshold": 350.0, "conditions": {"mass": 20.0, "effort": "near"}, "text": "막대를 가까이 눌러 짐 들기!", "say": "받침 가까이 누르면 짐을 들기 힘들어요. 아주 세게 눌러야 해요.", "say_face": "worried" },
+      { "threshold": 200.0, "conditions": {"mass": 20.0, "effort": "mid"}, "text": "막대를 중간에 눌러 짐 들기!", "say": "받침에서 조금 멀리 누르면 힘이 덜 들어요.", "say_face": "explain" },
+      { "threshold": 130.0, "conditions": {"mass": 20.0, "effort": "far"}, "text": "막대를 멀리 눌러 살살 들기!", "say": "받침에서 멀리 누를수록 막대가 짐을 쉽게 들어 올려요. 살살 눌러도 돼요.", "say_face": "happy" }
     ]
   },
-  "story": { "clue": "무거운 짐 밑에 조각이 있어! 막대로 짐을 들어 보자.", "map_clue": "빨간 시소 밑에 뭔가 있어!" },
+  "story": { "clue": "무거운 짐 밑에 조각이 있어! 막대로 짐을 들어 보자.", "clue_face": "explain", "map_clue": "빨간 시소 밑에 뭔가 있어!", "map_clue_face": "surprised" },
   "kid": {
     "card": "state",
     "title": "긴 막대로 무거운 짐을 들어 보자!",
     "place": "시소 들기",
     "say": "받침에서 멀리 누를수록 힘이 덜 들어요. 그래서 무거운 짐도 살살 들 수 있어요.",
+    "say_face": "explain",
     "tip": "막대의 빨간 힘점을 꾹 누르고 있어 봐요.",
     "picks": {
       "effort": [

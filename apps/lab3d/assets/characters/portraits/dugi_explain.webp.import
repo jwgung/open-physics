@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://bab3xjpr35f07"
-path="res://.godot/imported/dugi_smile.webp-577cf817b5cfd9a892a300f5ef314ed3.ctex"
+uid="uid://b8hwibvbf48ih"
+path="res://.godot/imported/dugi_explain.webp-b14489c5f83131204d0a11577f38dd4d.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/characters/portraits/dugi_smile.webp"
-dest_files=["res://.godot/imported/dugi_smile.webp-577cf817b5cfd9a892a300f5ef314ed3.ctex"]
+source_file="res://assets/characters/portraits/dugi_explain.webp"
+dest_files=["res://.godot/imported/dugi_explain.webp-b14489c5f83131204d0a11577f38dd4d.ctex"]
 
 [params]
 

@@ -145,7 +145,7 @@ func check_round() -> void:
 	expect.call(ProgressStore.stamps(ProgressStore.load(), "projectile") == 2, "round: the second throw (no 처음으로 between) earns the second stamp",
 		"stamps %d" % ProgressStore.stamps(ProgressStore.load(), "projectile"))
 	said = await _next_explanation(screen)
-	expect.call(said == ExperimentRegistry.kid_text(lab.definition, "say"), "round: later explanations are the lab's kid say text again (the reason was told once)", said)
+	expect.call(said == str(stages[1].say), "round: later explanations are Dugi's say for the stage (here the one just cleared; the reason was told once)", said)
 	expect.call(not screen.cast.puppy.celebrating(), "round: no celebration before the last stamp", "")
 	# The third stage wants another angle: 45° again, even thrown harder past 7 m, earns nothing.
 	await _throw(screen, lab, 45.0, 9.0)

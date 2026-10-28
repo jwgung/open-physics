@@ -47,6 +47,7 @@
   "key_observations": ["state", "start_force", "distance"],
   "predict": {
     "question": "무거운 상자는 더 세게 밀어야 할까?",
+    "question_face": "thinking",
     "choices": [
       { "id": "harder", "label": "더 세게", "picture": "push_harder" },
       { "id": "same", "label": "똑같이", "picture": "push_same" }
@@ -60,16 +61,17 @@
     "hidden_until_end": ["max_static", "kinetic"],
     "hidden_series_until_end": ["max_static"],
     "stages": [
-      { "conditions": {"mass": "light"}, "text": "가벼운 상자를 밀어 움직이기!" },
-      { "conditions": {"mass": "normal"}, "text": "보통 상자를 밀어 움직이기!" },
-      { "conditions": {"mass": "heavy"}, "text": "무거운 상자도 밀어 움직이기!" }
+      { "conditions": {"mass": "light"}, "text": "가벼운 상자를 밀어 움직이기!", "say": "바닥이 상자를 붙잡고 버텨요. 그보다 세게 밀면 상자가 움직여요.", "say_face": "explain" },
+      { "conditions": {"mass": "normal"}, "text": "보통 상자를 밀어 움직이기!", "say": "상자가 무거우면 바닥이 더 꽉 붙잡아요. 조금 더 오래 꾹 눌러 봐요.", "say_face": "thinking" },
+      { "conditions": {"mass": "heavy"}, "text": "무거운 상자도 밀어 움직이기!", "say": "제일 무거운 상자는 바닥이 제일 꽉 붙잡아요. 그래서 제일 세게 밀어야 해요.", "say_face": "explain" }
     ]
   },
-  "story": { "clue": "조각이 상자 밑에 깔렸어! 무거운 상자도 밀어 보자.", "map_clue": "빨간 화살표가 상자를 미는 곳이야!" },
+  "story": { "clue": "조각이 상자 밑에 깔렸어! 무거운 상자도 밀어 보자.", "clue_face": "surprised", "map_clue": "빨간 화살표가 상자를 미는 곳이야!", "map_clue_face": "explain" },
   "kid": {
     "card": "start_force",
     "place": "상자 밀기",
     "say": "바닥이 상자를 붙잡고 버텨요. 무거운 상자일수록 꽉 붙잡아서 더 세게 밀어야 움직여요.",
+    "say_face": "explain",
     "tip": "상자를 꾹 누르고 있으면 밀어요!",
     "picks": {
       "mass": [

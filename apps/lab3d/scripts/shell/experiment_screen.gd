@@ -136,13 +136,14 @@ var _dialogue_right_for := Vector2.ZERO  # the view size it was found for
 var _predict_pick: String = ""        # the picked choice ("farther" / "same")
 var _predict_ended: bool = false      # the first throw has ended (or there is no question)
 var _reason_pending := ""             # the prediction's reason, told at Dugi's next explanation
+var _reason_face := Story.DEFAULT_FACE  # its face: happy after a right guess, thinking after a wrong one
+var _question_face := Story.DEFAULT_FACE  # the question's face (predict.question_face)
 ## The current stage's condition picture buttons (ConditionPicks, 2026-10-27): a row at the bottom
 ## of the view, lifted over Dugi's box while he talks, hidden while he asks or when it has no room.
 var _picks_row: HBoxContainer = null
 var _picks: Array = []                # [{"control": id, "preset": kid.picks entry, "button": Button}]
 var _picks_stage := -2                # the stage the row was built for
 var _picks_for := Vector4(NAN, 0, 0, 0)   # view width, height, talking, asking the row was laid out for (_fit_picks)
-var _picks_box := Rect2()             # Dugi's box it was laid out over
 ## The celebrations (2026-10-28): the stamp flying into its slot (StampSlam), the strip's filled
 ## stamps so far (a stamp in flight fills its slot when it lands), the whole-round confetti and the
 ## card that follows it (RoundDoneCard), the bread cat of the lab (it hops on a stamp).
@@ -344,7 +345,12 @@ func _run_dialogue() -> void:
 		_hide_tip()
 		# Dugi explains only after a throw has ended (cast explain_on): the first explanation tells the
 		# prediction's reason once, whether or not the stamp was judged yet.
-		dialogue.open(_reason_pending)
+		if _reason_pending != "":
+			dialogue.open(_reason_pending, _reason_face)
+		else:
+			var say := explain_say()
+			dialogue.set_words(say[0], say[1])
+			dialogue.open()
 		_reason_pending = ""
 		dialogue.visible = true
 	elif not dugi.speaking():
@@ -365,20 +371,44 @@ func _run_question() -> void:
 				return
 		elif not _clue_open and not dialogue.active and not is_sidebar_open() and _layout_dialogue():
 			_hide_tip()
-			dialogue.set_speaker("puppy")
+			dialogue.set_speaker("puppy", Story.clue_face(definition))
 			dialogue.hold = false   # a tap or the read timer closes it
 			dialogue.open(_clue)
 			_clue_open = true
 			ProgressStore.set_mark(ProgressStore.CLUES, str(definition.id), true)   # told once
 	if _clue == "" and not dialogue.active and not is_sidebar_open() and _layout_dialogue():
 		_hide_tip()
-		dialogue.open(_question)
+		dialogue.set_speaker("dugi")
+		dialogue.open(_question, _question_face)
 	var shown := dialogue.active and not is_sidebar_open() and _layout_dialogue()
 	dialogue.visible = shown
 	if _choices != null:
 		_choices.visible = shown and _clue == ""
 		if _choices.visible:
 			_fit_choices()
+
+
+## Dugi's explanation now [words, face] (2026-10-29 user "목표마다 두기두기의 설명이 달라지면 좋겠어"):
+## the say of the stage it explains (missions.stages[i].say: the stage this attempt just cleared,
+## else the stage being played), the lab's kid.say once every stage is done or without missions.
+func explain_say() -> Array:
+	var stage := say_stage()
+	if stage >= 0:
+		var entry: Dictionary = MissionTracker.missions(definition).get("stages", [])[stage]
+		if str(entry.get("say", "")) != "":
+			return [str(entry.say), Story.face_or_default(entry.get("say_face"))]
+	var kid: Variant = definition.get("kid")
+	return [cast.text if cast != null else "", Story.face_or_default(kid.get("say_face") if kid is Dictionary else null)]
+
+
+## The stage Dugi's explanation is about: the one this attempt cleared (its stamp just came), else the
+## one being played; -1 when every stage is done (or there are no missions).
+func say_stage() -> int:
+	if _missions == null:
+		return -1
+	if _judged_run and _missions.stamps > 0:
+		return _missions.stamps - 1
+	return _missions.stage()
 
 
 ## Closes an open dialogue now; Dugi lowers his arm.
@@ -656,6 +686,7 @@ func _setup_game() -> void:
 			_ask("", [])
 		return
 	_reason_pending = str(predict.get("reason", ""))
+	_question_face = Story.face_or_default(predict.get("question_face"))
 	_ask(str(predict.get("question", "")), predict.get("choices", []))
 
 
@@ -813,6 +844,7 @@ func _predict_pick_choice(choice_id: String) -> void:
 	if not _asking:
 		return
 	_predict_pick = choice_id
+	_reason_face = Story.REASON_FACE[choice_id == str(MissionTracker.predict(definition).get("answer", ""))]
 	var picked := ""
 	for choice in MissionTracker.predict(definition).get("choices", []):
 		if str(choice.get("id", "")) == choice_id:
@@ -1093,30 +1125,26 @@ func _sync_picks(id: String) -> void:
 			(pick.button as Button).set_pressed_no_signal(ConditionPicks.selected(pick.preset, have))
 
 
-## The row's place: the bottom left of the view; over Dugi's box (beside his portrait) while it is
-## open; hidden while he asks (his picture buttons are the question's), or when it would reach the
-## action buttons (a narrow view beside the open sidebar: the same settings are in it).
+## The row's place: the bottom left of the view. Hidden while a dialogue is open (an explanation, a
+## clue, a question: 2026-10-29 user "좌측 버튼이 딸려 오네", before it rose over Dugi's box beside his
+## portrait), while he asks (his picture buttons are the question's), or when it would reach the
+## action buttons (a narrow view beside the open sidebar: the same settings are in it). It comes back
+## where it was when the box closes; the box itself never moves for it.
 func _fit_picks() -> void:
 	if _picks_row == null:
 		return
-	var talking := dialogue != null and dialogue.active and dialogue.visible
+	var talking := dialogue != null and dialogue.active
 	# Every frame (it follows the dialogue): only scalars compared, nothing allocated until a change.
 	var key := Vector4(view.size.x, view.size.y, 1.0 if talking else 0.0, 1.0 if _asking else 0.0)
-	var box := Rect2(dialogue.position + dialogue.box.position, dialogue.box.size) if talking else Rect2()
-	if key == _picks_for and box == _picks_box:
+	if key == _picks_for:
 		return
 	_picks_for = key
-	_picks_box = box
 	var m := OVERLAY_MARGIN
 	_picks_row.size = _picks_row.get_combined_minimum_size()
 	var at := Vector2(m, view.size.y - m - _picks_row.size.y)
 	var right := _action_row.position.x - m
-	if talking:
-		var rects := dialogue.rects()
-		at = Vector2(rects[1].end.x + m, rects[0].position.y - DialogueBox.NAME_LIFT - m - _picks_row.size.y)
-		right = view.size.x - m
 	_picks_row.position = at
-	_picks_row.visible = not _asking and at.x + _picks_row.size.x <= right
+	_picks_row.visible = not _asking and not talking and at.x + _picks_row.size.x <= right
 	_fit_tip()   # the tip stands over the row
 
 

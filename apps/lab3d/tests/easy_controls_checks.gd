@@ -8,7 +8,7 @@
 ##   the matching button.
 ## - layout, phone and tablet: the row stays in the view and clear of the title bar, the top button,
 ##   the key card, the mission strip and the action buttons (다시 and the main one); while Dugi talks
-##   it sits over his box, clear of the box, his portrait and his name tag; beside the open sidebar it
+##   it hides while his box is open and comes back in its place (2026-10-29); beside the open sidebar it
 ##   never reaches the actions.
 ## - one drag per lab: the objects a finger picks up are the lab's one gesture (KEPT: a drag, a
 ##   slingshot pull or, since 2026-10-28, a press and hold); the others are never picked up (a press
@@ -255,31 +255,28 @@ func check_layout(id: String, size: Vector2) -> void:
 	for button in screen._action_row.get_children():
 		if row.intersects(Rect2(screen._action_row.position + button.position, button.size)):
 			problems.append("row over %s" % button.text)
-	# Dugi talks: the row over his box, clear of the box, the portrait and the name tag.
+	# Dugi talks (2026-10-29 user "좌측 버튼이 딸려 오네"): the row hides while his box is open and comes
+	# back where it was when it closes; the box never moves for it.
 	if screen.cast != null and screen.cast.dugi != null:
+		var before_row: Rect2 = screen._picks_row.get_rect()
 		screen.cast.dugi.explain(lab.explain_point)
 		for k in int(DugiActor.RAISE_S * 60.0) + 4:
 			await tree.process_frame
 		var box: DialogueBox = screen.dialogue
 		if not (box.active and box.visible):
 			problems.append("no dialogue to test")
-		row = screen._picks_row.get_rect()
-		var tag := Rect2(box.position + box.name_tag.position, box.name_tag.size)
 		if screen.picks_shown():
-			for r in box.rects() + [tag]:
-				if row.intersects(r):
-					problems.append("row %s over the dialogue %s" % [row, r])
-			if not view_rect.encloses(row):
-				problems.append("row %s outside the view while Dugi talks" % row)
-			for name in chrome:
-				if chrome[name] != null and chrome[name].visible and row.intersects(chrome[name].get_rect()):
-					problems.append("row over the %s while Dugi talks" % name)
-		else:
-			problems.append("row hidden while Dugi talks")
+			problems.append("row shown while Dugi talks")
+		var rects_open := str(box.rects())
+		await tree.process_frame
+		if str(box.rects()) != rects_open:
+			problems.append("the box moved while the row hid")
 		box.close(true)
 		screen.cast.dugi.stop()
 		for k in 2:
 			await tree.process_frame
+		if not screen.picks_shown() or screen._picks_row.get_rect() != before_row:
+			problems.append("row not back in its place after the box closed (%s, was %s)" % [screen._picks_row.get_rect(), before_row])
 	await _close(screen)
 	# Beside the open sidebar: shown only where it does not reach the actions.
 	var side := await _open(id, size, true)
@@ -290,7 +287,7 @@ func check_layout(id: String, size: Vector2) -> void:
 	if side.picks_shown() and side._picks_row.get_rect().intersects(side._action_row.get_rect().grow(4.0)):
 		problems.append("row over the actions beside the open sidebar")
 	await _close(side)
-	expect.call(problems.is_empty(), "easy controls (%s, %s): the picture buttons stay in the view, clear of the title, key card, mission strip, 다시 and main buttons, Dugi's question, box, portrait and name tag (and of the actions beside the open sidebar)" % [id, "phone" if size == PHONE else "tablet"],
+	expect.call(problems.is_empty(), "easy controls (%s, %s): the picture buttons stay in the view, clear of the title, key card, mission strip, 다시 and main buttons, Dugi's question; hidden while his box is open, back in place after (and clear of the actions beside the open sidebar)" % [id, "phone" if size == PHONE else "tablet"],
 		"; ".join(problems))
 
 

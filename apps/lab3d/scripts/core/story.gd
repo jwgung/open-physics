@@ -16,11 +16,30 @@ class_name Story
 extends RefCounted
 
 const CONTENT_PATH := "res://content/story.json"
-## Who speaks: [name tag, portrait] (DialogueBox.set_speaker).
+## Who speaks: [name tag, portrait path pattern (%s = the face)] (DialogueBox.set_speaker).
 const SPEAKERS := {
-	"dugi": ["두기두기", "res://assets/characters/portraits/dugi_point.webp"],
-	"puppy": ["퍼피", "res://assets/characters/portraits/puppy_talk.webp"],
+	"dugi": ["두기두기", "res://assets/characters/portraits/dugi_%s.webp"],
+	"puppy": ["퍼피", "res://assets/characters/portraits/puppy_%s.webp"],
 }
+## The portraits' expressions (2026-10-29 user request "대화시 표정을 좀 더 다양하게"), one picture per
+## speaker and face (art_src/characters/*_portrait.py). Each line of the content may name its face
+## (`face`, `say_face`, `clue_face`, `map_clue_face`, `question_face`, `map_wrong_face`); an untagged
+## line shows DEFAULT_FACE. explain = Dugi's pointing stick / Puppy's raised paw (telling).
+const FACES := ["explain", "happy", "surprised", "thinking", "worried"]
+const DEFAULT_FACE := "explain"
+## Dugi's face for the prediction's reason (told after the first run): a right guess is a happy
+## reason, a wrong one a thinking one (nothing is a failure).
+const REASON_FACE := {true: "happy", false: "thinking"}
+
+
+## The face of a tagged line: `face` when it is one of FACES, else DEFAULT_FACE.
+static func face_or_default(face: Variant) -> String:
+	return str(face) if face is String and face in FACES else DEFAULT_FACE
+
+
+## The portrait of `who` with `face` (an unknown face: the default).
+static func portrait_path(who: String, face: String) -> String:
+	return str(SPEAKERS[who][1]) % face_or_default(face)
 
 ## The story plays (App: the child's app; off for measurements, screenshots without --demo-story
 ## and tests that build screens directly).
@@ -31,7 +50,7 @@ static var app_may_enable := true
 static var _content: Dictionary = {}
 
 
-## The story's pages: "prologue" or "finale" -> [{who, text}, ...].
+## The story's pages: "prologue" or "finale" -> [{who, face, text}, ...] (face optional).
 static func pages(part: String) -> Array:
 	return _load().get(part, [])
 
@@ -57,6 +76,15 @@ static func clue(definition: Dictionary) -> String:
 ## Puppy's riddle on the night map while this spot is the next to find ("" when it has none).
 static func map_clue(definition: Dictionary) -> String:
 	return _story_text(definition, "map_clue")
+
+
+## The faces of the clue and the riddle (`story.clue_face`, `story.map_clue_face`).
+static func clue_face(definition: Dictionary) -> String:
+	return face_or_default(_story_text(definition, "clue_face"))
+
+
+static func map_clue_face(definition: Dictionary) -> String:
+	return face_or_default(_story_text(definition, "map_clue_face"))
 
 
 static func _story_text(definition: Dictionary, key: String) -> String:
@@ -94,6 +122,33 @@ static func enterable(progress: Dictionary, id: String) -> bool:
 ## Puppy's line when a locked spot is tapped.
 static func wrong_line() -> String:
 	return str(_load().get("map_wrong", ""))
+
+
+static func wrong_face() -> String:
+	return face_or_default(_load().get("map_wrong_face"))
+
+
+# --- who says what (2026-10-29 user: Puppy never explains science, that is Dugi's job) -----------
+## Words that explain science (why / how fast / which force). Puppy's lines (clues, riddles, the
+## wrong-spot line, his story pages) never use them; Dugi's are exempt. A content test reads it.
+const SCIENCE_WORDS := ["천천히", "빨리", "빨라", "느리", "느려", "중력", "무거운 공은", "가벼운 공은", "힘이",
+	"때문", "그래서", "왜냐하면", "끌어당", "밀어 올", "밀어내", "마찰", "속도", "빠르기", "무게가", "떨어진대"]
+
+
+## Every line Puppy says: his story pages, every lab's clue and riddle, the wrong-spot line.
+static func puppy_lines() -> Array:
+	var out := []
+	for part in ["prologue", "finale"]:
+		for entry in pages(part):
+			if str(entry.get("who", "")) == "puppy":
+				out.append(str(entry.get("text", "")))
+	for definition in ExperimentRegistry.load_all():
+		for key in ["clue", "map_clue"]:
+			var line := _story_text(definition, key)
+			if line != "":
+				out.append(line)
+	out.append(wrong_line())
+	return out
 
 
 ## The map's night (StoryDirector: 2 = the dark night after the star broke, 1 = the story's night,

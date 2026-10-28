@@ -201,7 +201,8 @@ func say_riddle() -> void:
 	_riddle_due = false
 	_hint_t = 0.0
 	_hide_hint()
-	_say(Story.map_clue(ExperimentRegistry.find(next_id)))
+	var spot := ExperimentRegistry.find(next_id)
+	_say(Story.map_clue(spot), Story.map_clue_face(spot))
 	riddles_told += 1
 
 
@@ -210,7 +211,7 @@ func say_wrong() -> void:
 	if cinematic():
 		return
 	_riddle_due = false
-	_say(Story.wrong_line())
+	_say(Story.wrong_line(), Story.wrong_face())
 	wrongs_told += 1
 
 
@@ -221,12 +222,12 @@ func hush() -> void:
 		riddle.close(true)
 
 
-func _say(words: String) -> void:
+func _say(words: String, face := "") -> void:
 	if riddle == null:
 		riddle = DialogueBox.new("")
 		riddle.name = "PuppyRiddle"
 		home.add_child(riddle)
-	riddle.set_speaker("puppy")
+	riddle.set_speaker("puppy", face)
 	riddle.open(words)
 	_layout()
 
@@ -284,7 +285,7 @@ func _open_page(i: int) -> void:
 		_finale_page(i)
 	if i < pages.size():
 		var entry: Dictionary = pages[i]
-		dialogue.set_speaker(str(entry.get("who", "dugi")))
+		dialogue.set_speaker(str(entry.get("who", "dugi")), Story.face_or_default(entry.get("face")))
 		dialogue.open(str(entry.get("text", "")))
 		_layout()
 

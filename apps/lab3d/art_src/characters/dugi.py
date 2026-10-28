@@ -53,6 +53,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import bread_cat as bc  # noqa: E402  (generic helpers only; no cat geometry is built)
 from bread_cat import (add_face, bezier, blend, build_sphere, build_tube, hexc, new_bm, paint_volume,  # noqa: E402
                        sd_ellipse, sd_segment, smooth_fill, sph_dir)
+import face_kit as fk  # noqa: E402  (portrait expressions only)
 
 TEX = 1024
 PAD = 3
@@ -131,7 +132,9 @@ def body_point(d):
 # Texture painting (numpy, sRGB)
 # --------------------------------------------------------------------------------------------
 
-def paint_head(mouth="open", monocle=True):
+def paint_head(mouth="open", monocle=True, face=None):
+    """face (portraits only, face_kit): an expression; None paints the model's own face."""
+    face = face or {}
     u, v = region_grid(R_HEAD)
     lon = (u - 0.5) * 2 * math.pi
     lat = (v - 0.5) * math.pi
@@ -148,13 +151,17 @@ def paint_head(mouth="open", monocle=True):
     # painted volume (soft warm shading low on the face and under the muzzle, a brighter muzzle)
     paint_volume(img, qx, qz, front, HEAD_R * HEAD_SX, HEAD_R * HEAD_SZ, (0.0, -0.100), (0.090, 0.050),
                  np.ones(3), (0.96, 0.88, 0.86))
+    bk = float(face.get("blush", 1.0))
     for s in (-1, 1):  # blush ovals, outside and below the eyes
-        blend(img, smooth_fill(sd_ellipse(qx, qz, s * 0.192, -0.095, 0.046, 0.028), 0.012) * front,
-              hexc(P["blush"]), 0.85)
-    for s in (-1, 1):  # small dark bean eyes with one small highlight dot
-        ex, ez = s * EYE_X, EYE_Z
-        blend(img, smooth_fill(sd_ellipse(qx, qz, ex, ez, EYE_RX, EYE_RZ), aa) * front, hexc(P["eye"]))
-        blend(img, smooth_fill(sd_ellipse(qx, qz, ex - 0.009, ez + 0.011, 0.0085, 0.0090), aa) * front, np.ones(3))
+        blend(img, smooth_fill(sd_ellipse(qx, qz, s * 0.192, -0.095, 0.046 * bk ** 0.5, 0.028 * bk ** 0.5), 0.012) * front,
+              hexc(P["blush"]), min(1.0, 0.85 * bk))
+    if face.get("eyes", "dot") != "dot":
+        fk.eyes(img, qx, qz, front, aa, EYE_X, EYE_Z, EYE_RX, EYE_RZ, face["eyes"], hexc(P["eye"]))
+    else:
+        for s in (-1, 1):  # small dark bean eyes with one small highlight dot
+            ex, ez = s * EYE_X, EYE_Z
+            blend(img, smooth_fill(sd_ellipse(qx, qz, ex, ez, EYE_RX, EYE_RZ), aa) * front, hexc(P["eye"]))
+            blend(img, smooth_fill(sd_ellipse(qx, qz, ex - 0.009, ez + 0.011, 0.0085, 0.0090), aa) * front, np.ones(3))
     if monocle:
         # a monocle on the eye at the viewer's right (Dugi's left, +X), like the reference dog's: a
         # round gold rim edged in the outline brown, a faint glint on the lens
@@ -165,13 +172,16 @@ def paint_head(mouth="open", monocle=True):
         blend(img, smooth_fill(glint, 0.002) * front, np.ones(3), 0.9)
         blend(img, smooth_fill(np.abs(d - rr) - 0.0085, 0.002) * front, hexc(P["frame"]))  # brown edge
         blend(img, smooth_fill(np.abs(d - rr) - 0.0050, 0.002) * front, hexc(P["gold"]))   # gold rim
+    fk.brows(img, qx, qz, front, aa, EYE_X, EYE_Z + MONO_R + 0.020, face.get("brows"), hexc(P["frame"]))
     nz = NOSE_Z  # small pink nose: a soft rounded triangle
     from bread_cat import sd_triangle
     nose = sd_triangle(qx, qz, (-0.015, nz + 0.008), (0.015, nz + 0.008), (0.0, nz - 0.009)) - 0.003
     blend(img, smooth_fill(nose, aa) * front, hexc(P["pink_deep"]))
     mcol = hexc(P["mouth"]); stroke = 0.0040
     sdf = sd_segment(qx, qz, 0.0, nz - 0.009, 0.0, nz - 0.017) - stroke * 0.8
-    if mouth == "open":  # small open smile with a pink tongue and two little front teeth
+    if mouth not in ("open", "calm"):   # a portrait expression's mouth (face_kit)
+        fk.mouth(img, qx, qz, front, aa, nz - 0.019, mouth, mcol, hexc(P["tongue"]), sdf)
+    elif mouth == "open":  # small open smile with a pink tongue and two little front teeth
         cz = nz - 0.019
         half = np.where(qz < cz, sd_ellipse(qx, qz, 0.0, cz, 0.044, 0.054), 1.0)
         blend(img, smooth_fill(np.minimum(sdf, half), aa) * front, mcol)
@@ -218,9 +228,9 @@ def paint_arm():
     return img
 
 
-def build_atlas(mouth="open", monocle=True):
+def build_atlas(mouth="open", monocle=True, face=None):
     canvas = np.zeros((TEX, TEX, 3)); canvas[...] = hexc(P["fur"])
-    for rect, fn in ((R_HEAD, lambda: paint_head(mouth, monocle)), (R_EAR, paint_ear), (R_BODY, paint_body), (R_ARM, paint_arm)):
+    for rect, fn in ((R_HEAD, lambda: paint_head(mouth, monocle, face)), (R_EAR, paint_ear), (R_BODY, paint_body), (R_ARM, paint_arm)):
         x0, y0, x1, y1 = rect
         canvas[y0:y1, x0:x1] = fn()
     for i, name in enumerate(SWATCHES):
@@ -519,8 +529,8 @@ def empty(name, loc_world, parent, parent_pivot, size=0.03):
     return ob
 
 
-def build(monocle=True, mouth="open", pointer=True, pointer_side=-1):
-    img = build_atlas(mouth, monocle)
+def build(monocle=True, mouth="open", pointer=True, pointer_side=-1, face=None):
+    img = build_atlas(mouth, monocle, face)
     mat = make_material(img)
     origin = Vector((0, 0, 0))
     root = empty("Dugi", origin, None, origin, 0.2)

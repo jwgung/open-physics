@@ -50,6 +50,7 @@
   "key_observations": ["rope_distance", "rope_half_swing", "small_period"],
   "predict": {
     "question": "줄이 길면 더 천천히 흔들릴까?",
+    "question_face": "thinking",
     "choices": [
       { "id": "slower", "label": "천천히", "picture": "swing_slow" },
       { "id": "same", "label": "똑같이", "picture": "swing_same" }
@@ -62,17 +63,18 @@
     "judge_on": ["swinging"],
     "hidden_until_end": ["small_period"],
     "stages": [
-      { "threshold": 3.0, "conditions": {"gravity": "earth", "length": {"min": 2.25}}, "text": "지구에서 긴 줄로 3초 넘게 흔들기!" },
-      { "threshold": 5.0, "conditions": {"gravity": "moon"}, "text": "달에서 5초 넘게 흔들기!" },
-      { "threshold": 8.0, "conditions": {"gravity": "moon", "length": {"min": 2.75}}, "change": ["length"], "text": "달에서 아주 긴 줄로 8초 넘게 흔들기!" }
+      { "threshold": 3.0, "conditions": {"gravity": "earth", "length": {"min": 2.25}}, "text": "지구에서 긴 줄로 3초 넘게 흔들기!", "say": "줄이 길면 공이 더 큰 원을 그리며 움직여요. 그래서 천천히 흔들려요.", "say_face": "explain" },
+      { "threshold": 5.0, "conditions": {"gravity": "moon"}, "text": "달에서 5초 넘게 흔들기!", "say": "달은 살살 끌어당겨서 공이 천천히 내려와요. 그래서 더 천천히 흔들려요.", "say_face": "explain" },
+      { "threshold": 8.0, "conditions": {"gravity": "moon", "length": {"min": 2.75}}, "change": ["length"], "text": "달에서 아주 긴 줄로 8초 넘게 흔들기!", "say": "달에서 아주 긴 줄을 쓰면 둘이 합쳐져서 아주아주 천천히 흔들려요.", "say_face": "surprised" }
     ]
   },
-  "story": { "clue": "매달린 공이 아주 천천히 흔들리면 조각이 떨어진대!", "map_clue": "기둥에 큰 노란 공이 매달린 곳이야!" },
+  "story": { "clue": "조각이 매달린 공 근처에 있어. 공을 흔들어 보자!", "clue_face": "explain", "map_clue": "기둥에 큰 노란 공이 매달린 곳이야!", "map_clue_face": "explain" },
   "kid": {
     "card": "rope_half_swing",
     "title": "줄에 매단 공을 흔들어 보자!",
     "place": "흔들 추",
     "say": "줄과 막대는 길이가 그대로라 공이 동그랗게 흔들려요. 줄이 길수록, 달에서는 더 천천히 흔들려요.",
+    "say_face": "explain",
     "tip": "공을 옆으로 끌었다가 놓아요.",
     "picks": {
       "gravity": [

@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://p2d67hn7742v"
-path="res://.godot/imported/dugi_talk.webp-e30e79d3b69ed4839344eaa05d2ffd42.ctex"
+uid="uid://bk8dwa2n2qqtc"
+path="res://.godot/imported/dugi_worried.webp-6ecdbe413dc35aa56622198ff6ecbb2b.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/characters/portraits/dugi_talk.webp"
-dest_files=["res://.godot/imported/dugi_talk.webp-e30e79d3b69ed4839344eaa05d2ffd42.ctex"]
+source_file="res://assets/characters/portraits/dugi_worried.webp"
+dest_files=["res://.godot/imported/dugi_worried.webp-6ecdbe413dc35aa56622198ff6ecbb2b.ctex"]
 
 [params]
 

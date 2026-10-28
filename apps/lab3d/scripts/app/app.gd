@@ -1,11 +1,14 @@
-## App root: theme, screen navigation (island map -> experiment, settings from the map; back always
-## returns to the map, back on the map quits) and the fps overlay.
+## App root: theme, screen navigation (the title on launch -> island map -> experiment, settings from
+## the title or the map; back returns to the map, or to the title from settings opened there; back on
+## the title or the map quits) and the fps overlay.
 ## Landscape only (Task 2d): project.godot locks the screen to sensor landscape on Android and iOS.
 ## Launch args (command line or Android `opargs`, see Quality.all_args):
 ##   --experiment=<id>   open that experiment directly (measurements, screenshots)
 ##   --screen=settings   open the settings screen
 ##   --fps=1             show the fps overlay
 ##   --sound=0|1         0 = no sound and no sound setting written (SoundBoard; measurements default to 0)
+##   --demo-title        the title screen even in a measurement (screenshots, its fps): the bench store,
+##                       never the child's progress
 ##   --demo-story=<part> screenshots of the story in the bench store only (never the child's progress):
 ##                       prologue | clue:<id> | found:<id> | flight:<id> | finale | map[:<n>] (Story, _demo_story)
 ## plus the experiment screen's --camera / --ctl-<id> / --sidebar / --scroll-to / --auto-release / --auto-drag.
@@ -23,6 +26,9 @@ var _definitions: Array[Dictionary] = []
 var _screen: Control
 var _fps_label: Label
 var _show_fps := false
+var _settings_from_title := false
+## Back on the title or the map (tests replace it: quitting would end their run).
+var quit := func() -> void: get_tree().quit()
 
 
 func _ready() -> void:
@@ -47,7 +53,7 @@ func _ready() -> void:
 	config.load(SETTINGS_PATH)
 	_set_fps(Quality.cmdline_value("fps") == "1" or bool(config.get_value("ui", "show_fps", false)))
 	_definitions = ExperimentRegistry.load_all()
-	if Quality.cmdline_value("progress") == "bench":
+	if Quality.cmdline_value("progress") == "bench" or demo_title(Quality.all_args()):
 		ProgressStore.path = ProgressStore.BENCH_PATH   # a measured map never raises the child's flags
 	# The story plays in the child's app only: never in a measurement (bench store, auto runs, silent).
 	Story.enabled = Story.app_may_enable and not Story.measurement_run(Quality.all_args())
@@ -64,8 +70,40 @@ func _ready() -> void:
 		show_settings()
 	elif not requested.is_empty():
 		show_experiment(requested, {}, true)  # the launch args (--ctl-*, --camera) apply to this screen
+	elif title_on_launch(Quality.all_args()):
+		show_title()
 	else:
 		show_list()
+
+
+## The title shows on every launch of the child's app (2026-10-29 user decision). A measurement
+## (Story.measurement_run: bench store, auto runs, silent), a --demo-story screenshot, a direct
+## --experiment / --screen launch and the settings' renderer restart (resume, handled before) open
+## their screen as before. --demo-title shows it anyway (in the bench store).
+static func title_on_launch(args: PackedStringArray) -> bool:
+	if not TitleScreen.app_may_show:
+		return false
+	if demo_title(args):
+		return true
+	for arg in args:
+		for prefix in ["--demo-story=", "--experiment=", "--screen="]:
+			if arg.begins_with(prefix):
+				return false
+	return not Story.measurement_run(args)
+
+
+static func demo_title(args: PackedStringArray) -> bool:
+	return Array(args).any(func(arg: String) -> bool: return arg.begins_with("--demo-title"))
+
+
+## The title (on launch): 시작하기 = the prologue the first time (the map plays it), else the map;
+## 이야기 다시 보기 = the prologue again (as the settings' entry); 설정 = the settings, back to the title.
+func show_title() -> void:
+	var screen := TitleScreen.new()
+	screen.start_requested.connect(func() -> void: show_list())
+	screen.story_requested.connect(func() -> void: show_list(true))
+	screen.settings_requested.connect(func() -> void: show_settings(true))
+	_swap(screen, "title")
 
 
 func _notification(what: int) -> void:
@@ -78,9 +116,12 @@ func _go_back() -> void:
 		if not (_screen as ExperimentScreen).handle_back():   # an open sidebar closes first
 			show_list()
 	elif _screen is SettingsScreen:
-		show_list()
+		if _settings_from_title:
+			show_title()
+		else:
+			show_list()
 	else:
-		get_tree().quit()   # the map is the home
+		quit.call()   # the title and the map quit
 
 
 ## The home is the 3D island (Plan G2): tap a spot, the cat hops over, the experiment opens. The
@@ -101,10 +142,16 @@ func show_experiment(definition: Dictionary, state := {}, launch_args := false) 
 	_swap(screen, "")  # the screen resets Bench with the experiment's bench id
 
 
-func show_settings() -> void:
+func show_settings(from_title := false) -> void:
+	_settings_from_title = from_title
 	var screen := SettingsScreen.new()
 	screen.show_fps = _show_fps
-	screen.back_requested.connect(show_list)   # settings opens from the map (Plan G2) and goes back to it
+	# Settings opens from the map (Plan G2) or the title and goes back to where it opened.
+	screen.back_requested.connect(func() -> void:
+		if from_title:
+			show_title()
+		else:
+			show_list())
 	screen.story_requested.connect(func() -> void: show_list(true))   # 이야기 다시 보기
 	screen.fps_toggled.connect(func(on: bool) -> void:
 		_set_fps(on)

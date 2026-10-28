@@ -41,6 +41,7 @@
   "key_observations": ["extension", "pull", "swing_period"],
   "predict": {
     "question": "무거운 공은 더 천천히 흔들릴까?",
+    "question_face": "thinking",
     "choices": [
       { "id": "slower", "label": "천천히", "picture": "spring_slow" },
       { "id": "same", "label": "똑같이", "picture": "spring_even" }
@@ -52,17 +53,18 @@
     "observe": "swing_period",
     "judge_on": ["moving", "rest"],
     "stages": [
-      { "observe": "pull", "threshold": 2.0, "card": "pull", "conditions": {"mass": {"max": 1.0}}, "text": "가벼운 공을 2미터 넘게 당겼다 놓기!" },
-      { "threshold": 4.0, "conditions": {"mass": {"min": 2.5}}, "text": "무거운 공으로 4초 넘게 천천히 흔들기!" },
-      { "compare": "less", "threshold": 3.0, "conditions": {"mass": {"max": 1.0}}, "text": "가벼운 공으로 3초 안에 빨리 흔들기!" }
+      { "observe": "pull", "threshold": 2.0, "card": "pull", "conditions": {"mass": {"max": 1.0}}, "text": "가벼운 공을 2미터 넘게 당겼다 놓기!", "say": "많이 당길수록 용수철이 공을 더 세게 다시 당겨요.", "say_face": "explain" },
+      { "threshold": 4.0, "conditions": {"mass": {"min": 2.5}}, "text": "무거운 공으로 4초 넘게 천천히 흔들기!", "say": "무거운 공은 잘 안 움직여요. 그래서 천천히 왔다 갔다 해요.", "say_face": "explain" },
+      { "compare": "less", "threshold": 3.0, "conditions": {"mass": {"max": 1.0}}, "text": "가벼운 공으로 3초 안에 빨리 흔들기!", "say": "가벼운 공은 용수철이 금방 당겨 와요. 그래서 빨리 왔다 갔다 해요.", "say_face": "happy" }
     ]
   },
-  "story": { "clue": "용수철이 조각을 물고 있어. 무거운 공은 어떻게 흔들릴까?", "map_clue": "울타리 안, 통통 튀는 용수철 쪽이야!" },
+  "story": { "clue": "용수철이 조각을 물고 있어. 공을 당겼다 놓아 보자!", "clue_face": "explain", "map_clue": "울타리 안, 통통 튀는 용수철 쪽이야!", "map_clue_face": "explain" },
   "kid": {
     "card": "swing_period",
     "title": "용수철을 당겼다 놓아 보자!",
     "place": "용수철",
     "say": "당긴 만큼 용수철이 공을 다시 당겨요. 그래서 공이 왔다 갔다 해요. 무거운 공은 더 천천히 흔들려요.",
+    "say_face": "explain",
     "tip": "공을 끌었다가 놓아 봐요!",
     "picks": {
       "mass": [

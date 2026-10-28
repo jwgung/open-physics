@@ -147,7 +147,7 @@ func check_content_lint() -> void:
 	var want := {
 		"pulley": [ExperimentRegistry.kid_text(ExperimentRegistry.find("pulley"), "title"), "줄이 많으면 힘이 덜 들까?"],
 		"buoyancy": [MissionTracker.missions(ExperimentRegistry.find("buoyancy")).stages[0].text, "80킬로그램 통을 둥둥 띄우기!"],
-		"constraints": [ExperimentRegistry.find("constraints").story.clue, "매달린 공이 아주 천천히 흔들리면 조각이 떨어진대!"],
+		"constraints": [ExperimentRegistry.find("constraints").story.clue, "조각이 매달린 공 근처에 있어. 공을 흔들어 보자!"],
 		"spring": [MissionTracker.missions(ExperimentRegistry.find("spring")).stages[0].text, "가벼운 공을 2미터 넘게 당겼다 놓기!"],
 		"free-fall": [MissionTracker.missions(ExperimentRegistry.find("free-fall")).stages[1].text, "달에서 빨간 공이 3초 넘게 떨어지게 하기!"],
 		"collision": [MissionTracker.missions(ExperimentRegistry.find("collision")).stages.map(func(s: Dictionary) -> String: return s.text),

@@ -69,6 +69,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import bread_cat as bc  # noqa: E402  (generic helpers only; no cat geometry is built)
 from bread_cat import (add_face, blend, build_sphere, build_tube, hexc, new_bm, paint_volume,  # noqa: E402
                        sd_ellipse, sd_segment, sd_triangle, smooth_fill, sph_dir)
+import face_kit as fk  # noqa: E402  (portrait expressions only)
 
 TEX = 1024
 PAD = 3
@@ -160,7 +161,9 @@ def body_point(d):
 # Texture painting (numpy, sRGB)
 # --------------------------------------------------------------------------------------------
 
-def paint_head(monocle=False):
+def paint_head(monocle=False, face=None):
+    """face (portraits only, face_kit): an expression; None paints the model's own face."""
+    face = face or {}
     u, v = region_grid(R_HEAD)
     lon = (u - 0.5) * 2 * math.pi
     lat = (v - 0.5) * math.pi
@@ -182,13 +185,18 @@ def paint_head(monocle=False):
     # painted volume (soft warm shading low on the face and under the snout, a brighter snout)
     paint_volume(img, qx, qz, front, HEAD_R * HEAD_SX, HEAD_R * HEAD_SZ, (0.0, -0.110), (0.110, 0.075),
                  hexc("#fffbf3"), (0.94, 0.84, 0.78))
+    bk = float(face.get("blush", 1.0))
     for s in (-1, 1):  # blush ovals, outside and below the eyes
-        blend(img, smooth_fill(sd_ellipse(qx, qz, s * 0.190, -0.085, 0.040, 0.024), 0.012) * front,
-              hexc(P["blush"]), 0.7)
-    for s in (-1, 1):  # small dark bean eyes with one small highlight dot
-        ex, ez = s * EYE_X, EYE_Z
-        blend(img, smooth_fill(sd_ellipse(qx, qz, ex, ez, EYE_RX, EYE_RZ), aa) * front, hexc(P["eye"]))
-        blend(img, smooth_fill(sd_ellipse(qx, qz, ex - 0.008, ez + 0.010, 0.0080, 0.0085), aa) * front, np.ones(3))
+        blend(img, smooth_fill(sd_ellipse(qx, qz, s * 0.190, -0.085, 0.040 * bk ** 0.5, 0.024 * bk ** 0.5), 0.012) * front,
+              hexc(P["blush"]), min(1.0, 0.7 * bk))
+    if face.get("eyes", "dot") != "dot":
+        fk.eyes(img, qx, qz, front, aa, EYE_X, EYE_Z, EYE_RX, EYE_RZ, face["eyes"], hexc(P["eye"]))
+    else:
+        for s in (-1, 1):  # small dark bean eyes with one small highlight dot
+            ex, ez = s * EYE_X, EYE_Z
+            blend(img, smooth_fill(sd_ellipse(qx, qz, ex, ez, EYE_RX, EYE_RZ), aa) * front, hexc(P["eye"]))
+            blend(img, smooth_fill(sd_ellipse(qx, qz, ex - 0.008, ez + 0.010, 0.0080, 0.0085), aa) * front, np.ones(3))
+    fk.brows(img, qx, qz, front, aa, EYE_X, EYE_Z + 0.058, face.get("brows"), hexc(P["ear_tip"]) * 0.75)
     if monocle:
         mx, mz, rr = MONO_X, EYE_Z, MONO_R
         d = np.sqrt((qx - mx) ** 2 + (qz - mz) ** 2)
@@ -203,6 +211,9 @@ def paint_head(monocle=False):
     blend(img, smooth_fill(sd_ellipse(qx, qz, -0.010, nz + 0.010, 0.009, 0.005), aa) * front, np.ones(3), 0.85)
     mcol = hexc(P["mouth"]); stroke = 0.0040
     sdf = sd_segment(qx, qz, 0.0, nz - 0.018, 0.0, nz - 0.030) - stroke * 0.8
+    if face.get("mouth", "open") != "open":   # a portrait expression's mouth (face_kit)
+        fk.mouth(img, qx, qz, front, aa, nz - 0.030, face["mouth"], mcol, hexc(P["tongue"]), sdf, 0.92)
+        return img
     cz = nz - 0.030   # small open smile with a pink tongue, the corners curling up
     half = np.where(qz < cz, sd_ellipse(qx, qz, 0.0, cz, 0.040, 0.044), 1.0)
     for s in (-1, 1):
@@ -334,9 +345,9 @@ def paint_flag(rect, aspect):
     return img
 
 
-def build_atlas(monocle=False):
+def build_atlas(monocle=False, face=None):
     canvas = np.zeros((TEX, TEX, 3)); canvas[...] = hexc(P["fur"])
-    for rect, fn in ((R_HEAD, lambda: paint_head(monocle)), (R_EAR, paint_ear), (R_TAIL, paint_tail),
+    for rect, fn in ((R_HEAD, lambda: paint_head(monocle, face)), (R_EAR, paint_ear), (R_TAIL, paint_tail),
                      (R_BODY, paint_body), (R_HAT, paint_hat),
                      (R_FLAG_F, lambda: paint_flag(R_FLAG_F, CLOTH_L / CLOTH_H)),
                      (R_FLAG_B, lambda: paint_flag(R_FLAG_B, CLOTH_L / CLOTH_H))):
@@ -729,8 +740,8 @@ def empty(name, loc_world, parent, parent_pivot, size=0.03):
     return ob
 
 
-def build(monocle=False, flag=True, hat=True):
-    img = build_atlas(monocle)
+def build(monocle=False, flag=True, hat=True, face=None):
+    img = build_atlas(monocle, face)
     mat = make_material(img)
     origin = Vector((0, 0, 0))
     root = empty("Puppy", origin, None, origin, 0.2)

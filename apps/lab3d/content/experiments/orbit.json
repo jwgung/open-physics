@@ -42,6 +42,7 @@
   "key_observations": ["state", "launch_speed", "escape_speed"],
   "predict": {
     "question": "더 세게 쏘면 별을 떠날까?",
+    "question_face": "thinking",
     "choices": [
       { "id": "leave", "label": "떠나요", "picture": "orbit_leave" },
       { "id": "stay", "label": "계속 돌아요", "picture": "orbit_stay" }
@@ -55,17 +56,18 @@
     "reveal_on": ["orbiting", "leaving", "crash", "far"],
     "hidden_until_end": ["predicted", "escape_speed"],
     "stages": [
-      { "threshold": 1.0, "conditions": {"radius": 4.0}, "text": "별에서 4미터 떨어져 한 바퀴 돌기!" },
-      { "threshold": 2.0, "conditions": {"radius": 2.0}, "text": "별 가까이 2미터에서 두 바퀴 돌기!" },
-      { "observe": "launch_speed", "threshold": 3.67, "judge_on": ["far"], "conditions": {"radius": 4.0}, "text": "4미터에서 아주 세게 쏴서 별을 떠나기!" }
+      { "threshold": 1.0, "conditions": {"radius": 4.0}, "text": "별에서 4미터 떨어져 한 바퀴 돌기!", "say": "별이 행성을 끌어당겨요. 알맞게 쏘면 떨어지지 않고 별 둘레를 빙글 돌아요.", "say_face": "explain" },
+      { "threshold": 2.0, "conditions": {"radius": 2.0}, "text": "별 가까이 2미터에서 두 바퀴 돌기!", "say": "별 가까이에서는 끌어당기는 힘이 세요. 그래서 더 빨리 돌아요.", "say_face": "explain" },
+      { "observe": "launch_speed", "threshold": 3.67, "judge_on": ["far"], "conditions": {"radius": 4.0}, "text": "4미터에서 아주 세게 쏴서 별을 떠나기!", "say": "아주 빠르면 별이 붙잡지 못해요. 그러면 행성이 별을 떠나 멀리 가요.", "say_face": "surprised" }
     ]
   },
-  "story": { "clue": "조각 하나가 하늘로 날아갔어! 별 둘레를 돌며 찾아보자.", "map_clue": "마지막은 섬에서 제일 높은 전망대야!" },
+  "story": { "clue": "조각 하나가 하늘로 날아갔어! 별 둘레를 돌며 찾아보자.", "clue_face": "surprised", "map_clue": "마지막은 섬에서 제일 높은 전망대야!", "map_clue_face": "happy" },
   "kid": {
     "card": "state",
     "title": "별 둘레를 빙글빙글 돌아 보자!",
     "place": "별 돌기",
     "say": "별이 행성을 끌어당겨서 빙글빙글 돌게 해요. 가까우면 더 빨리 돌고, 너무 빠르면 별을 떠나요.",
+    "say_face": "explain",
     "tip": "행성을 뒤로 당겼다 놓으면 반대쪽으로 날아가요!",
     "picks": {
       "radius": [

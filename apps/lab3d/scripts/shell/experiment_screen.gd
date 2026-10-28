@@ -51,6 +51,8 @@ var cast: IslandCast
 var dialogue: DialogueBox
 ## Tests: false opens the same screen without the cast (the lab must run the same).
 var show_cast := true
+## The lab's sounds (SoundBoard): reads its status and impacts only, beside the lab like the cast.
+var sounds: LabSounds
 var _dialogue_started := false          # the dialogue of the current explanation was opened
 
 # 3D overlays (children of the view, placed by _fit_overlays).
@@ -173,6 +175,8 @@ func _ready() -> void:
 		cast = IslandCast.create(definition, experiment)
 	if cast != null:
 		view.viewport.add_child(cast)
+	sounds = LabSounds.create(experiment)
+	add_child(sounds)
 	if cast != null and cast.dugi != null:
 		dialogue = DialogueBox.new(cast.text)
 		view.add_child(dialogue)
@@ -643,6 +647,7 @@ func _show_stamps(count: int) -> void:
 ## view dims them (it fades in), and the box is lifted above it.
 func _ask(question: String, choices: Array) -> void:
 	_asking = true
+	SoundBoard.play(&"question")
 	dialogue.hold = true
 	_question_shield = ColorRect.new()
 	_question_shield.name = "QuestionShield"
@@ -803,6 +808,7 @@ func _celebrate_round() -> void:
 		_confetti.queue_free()
 	_confetti = Confetti.new()
 	view.add_child(_confetti)
+	SoundBoard.play(&"fanfare")
 	if cast != null and cast.puppy != null:
 		cast.puppy.celebrate()
 	if cast != null and cast.dugi != null:

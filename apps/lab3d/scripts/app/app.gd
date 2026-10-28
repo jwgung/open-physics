@@ -5,6 +5,7 @@
 ##   --experiment=<id>   open that experiment directly (measurements, screenshots)
 ##   --screen=settings   open the settings screen
 ##   --fps=1             show the fps overlay
+##   --sound=0|1         0 = no sound and no sound setting written (SoundBoard; measurements default to 0)
 ## plus the experiment screen's --camera / --ctl-<id> / --sidebar / --scroll-to / --auto-release / --auto-drag.
 class_name App
 extends Control
@@ -106,6 +107,9 @@ func _swap(screen: Control, bench_scene: String) -> void:
 	if _screen:
 		remove_child(_screen)
 		_screen.queue_free()
+		SoundBoard.play(&"whoosh")   # a change of screen (not the first one)
+	# The music: the map's loop, quieter in a lab (SoundBoard.MUSIC_DB).
+	SoundBoard.music_for(&"lab" if screen is ExperimentScreen else &"map")
 	_screen = screen
 	add_child(screen)
 	_slide_in(screen)

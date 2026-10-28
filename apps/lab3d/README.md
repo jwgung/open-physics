@@ -12,7 +12,7 @@
 apps/lab3d/
   project.godot, export_presets.cfg   Jolt, 60 Hz 고정 스텝, 짧은 변 720 UI 단위, 방향 sensor, Android export
   scenes/main.tscn                    App(루트 Control)
-  scripts/core/                       autoload Quality(품질 단계)·Bench(OPBENCH/OPPERF), PhysicsLaws(TS 공식 포트, 10개 실험)
+  scripts/core/                       autoload Quality(품질 단계)·Bench(OPBENCH/OPPERF)·Sound(SoundBoard: 효과음·배경 음악), PhysicsLaws(TS 공식 포트, 10개 실험)
   scripts/formula/                    공식 보정 계층: FormulaCorrector(공통)·FormulaBody·FormulaDriver, 방식별 보정기
   scripts/app/                        App(화면 전환·fps 표시), 섬 지도 홈(IslandHomeScreen)·목록·설정 화면, UiTheme(섬 스타일 2D), Ui(위젯 헬퍼),
                                       IslandBanner(목록 머리 그림)
@@ -25,7 +25,8 @@ apps/lab3d/
                                       View3D(3D 뷰·제스처), CameraRig(카메라 6모드·보조 시점), GraphView,
                                       Manipulator(물체 조작), ManipSurface(조작 평면), PressLineSurface(아래로 누르는·당기는 손잡이 선),
                                       RollingGraph(손잡이를 잡은 동안만 흐르는 10초 창 그래프), DialogueBox(두기두기 게임식 대화창),
-                                      StampSlam·Confetti·RoundDoneCard(도장 쾅, 색종이, 다 깼을 때 카드: 아래 "축하")
+                                      StampSlam·Confetti·RoundDoneCard(도장 쾅, 색종이, 다 깼을 때 카드: 아래 "축하"),
+                                      LabSounds(실험의 상태·충격을 읽어 소리를 고름: 아래 "소리")
   experiments/incline_friction/       빗면 마찰 실험(장면, InclineFrictionCorrector = 접촉 힘 보정 설정, InclineProps 소품)
   experiments/uniform_field/          균일장 실험 공용 기반 UniformFieldLab(중력 선택, 공, 바닥, 보정기 연결, 실행 상태·그래프 샘플·release/reset 공통)
   experiments/free_fall/              자유 낙하 실험(장면, FreeFallProps 소품)
@@ -45,6 +46,7 @@ apps/lab3d/
   assets/props/                       털실 공·택배 박스 glb + 텍스처(소스: art_src/props/yarn_ball.py, parcel_box.py)
   art_src/                            캐릭터·소품 생성 Blender 스크립트(외부 .blend 없음)
   assets/fonts/                       Noto Sans CJK KR 서브셋(Regular·Bold, SIL OFL 1.1), 기호 대체 글꼴
+  audio/sfx/, audio/music/            효과음 15개·배경 음악 1개(모두 CC0 ogg, 출처: audio/CREDITS.md)
                                       DejaVu Sans 서브셋(Lab3dSymbols, Bitstream Vera 라이선스)
   tests/                              헤드리스 테스트, TS 생성 parity 벡터
   tools/                              빌드·글꼴·벡터 생성·실기기 측정·제스처 도구
@@ -53,7 +55,7 @@ apps/lab3d/
   docs/formula-correction.md          공식 보정: Jolt 조사, 보정 방식, 실험 10개 표, 테스트 파이프라인
 ```
 
-화면 흐름은 섬 지도(홈) → 실험 화면이고, 지도 위쪽 `목록`이 예전 카드 목록, `설정`이 품질 설정 화면이다(실험 화면에는 설정 단추가 없다, Plan G2). Android 뒤로 가기는 실험·목록·설정 → 지도, 지도 → 종료다(실험 화면에서 사이드바가 열려 있으면 먼저 사이드바를 닫는다). 설정을 닫으면 새로 만든 지도로 돌아오므로 품질을 바꾸면 3D 뷰도 새 품질로 만든다. 렌더러가 바뀌는 재시작은 앱이 다시 뜨고 설정 화면으로 돌아온다. 실행 인자(`--ctl-*`, `--camera` 등)는 `--experiment`로 연 실험 화면에만 적용한다.
+화면 흐름은 섬 지도(홈) → 실험 화면이고, 지도 위쪽 `목록`이 예전 카드 목록, `설정`이 품질·소리 설정 화면이다(실험 화면에는 설정 단추가 없다, Plan G2). Android 뒤로 가기는 실험·목록·설정 → 지도, 지도 → 종료다(실험 화면에서 사이드바가 열려 있으면 먼저 사이드바를 닫는다). 설정을 닫으면 새로 만든 지도로 돌아오므로 품질을 바꾸면 3D 뷰도 새 품질로 만든다. 렌더러가 바뀌는 재시작은 앱이 다시 뜨고 설정 화면으로 돌아온다. 실행 인자(`--ctl-*`, `--camera` 등)는 `--experiment`로 연 실험 화면에만 적용한다.
 
 ### 셸과 실험의 경계
 
@@ -270,6 +272,33 @@ apps/lab3d/
 - **지도 깃발 올리기** (`IslandHomeScreen`): 다 깬 순간 `MissionTracker`가 `ProgressStore.mark_flag_pending(id)`(`[flags]` 구역에 `false`)를 쓴다. 지도를 열면 그런 장소마다 한 번: 0.5초 뒤 카메라가 그 장소로 다가가고(`CameraRig.focus` 정해진 당기기 0.8 + 1.5 + 0.8초, 지도는 `focus_modes`로 모든 시점에서 허용), 깃발이 땅에서 자라 통통 튄 뒤(1초), 카메라는 정확히 아이가 보던 시점으로 돌아온다. 시작할 때 `mark_flag_raised`(`true`)를 써서 다시 하지 않는다. 그동안 탭하면 바로 끝나고(깃발 서고 카메라 제자리, 장소는 열리지 않음), 두 손가락 제스처는 카메라를 돌려준다. 옛 파일(`[flags]` 없음)은 키가 없으면 "올림"으로 보므로 이미 다 깬 장소는 다시 하지 않는다.
 - 시험: `tests/celebration_checks.gd`(도장이 날아가는 동안 칸은 ○·실제 터치가 공에 닿음·끝나면 ● + 노드 해제·연달아 와도 하나, 다 깼을 때 색종이·셋의 축하·글 없는 카드·뒤 터치 막힘·두 단추·뒤로 가기·다시 열면 없음, 저장 호환, 깃발 한 번·두 번째 없음·옛 파일 없음·탭으로 건너뛰기·카메라 복귀).
 
+### 소리 (2026-10-28)
+
+앱에 처음으로 소리를 넣었다(사용자 결정 2026-10-28: CC0 효과음 + 잔잔한 배경 음악, 설정에서 따로 끄기). 파일은 모두 CC0이고 출처·라이선스는 [소리 출처](audio/CREDITS.md)에 있다(Kenney 팩 5개, 음악은 OpenGameArt "Happy Clappy Loop"). 합계 약 350 KB(효과음 15개 약 117 KB + 음악 234 KB), APK는 HEAD보다 약 352 KiB 커졌다.
+
+- **SoundBoard** (`scripts/core/sound_board.gd`, autoload `Sound`): 부르는 쪽은 사건 이름만 말한다(`SoundBoard.play(&"tap")`). 파일·음량은 `SFX` 표, 재생은 `AudioStreamPlayer` 6개 풀(모두 바쁘면 가장 오래된 것을 끊음), 같은 소리를 0.08초 안에 또 부르면 하나만 낸다. 매 프레임 하는 일은 없다(`_process` 없음).
+- **버스**: Master ← SFX, Master ← Music(실행 중에 만듦). 설정 화면 `소리` 카드의 `효과음`·`배경 음악` 스위치가 각각 자기 버스를 음소거하고 `user://settings.cfg`의 `[sound]`(`sfx`, `music`, 기본 둘 다 켬)에 남는다. 파일의 다른 키(`[ui] show_fps`)는 그대로 둔다.
+- **배경 음악**: 17.4초 피아노 고리 하나(import `loop=true`). 지도에서 −10 dB, 실험 화면에서 −19 dB로 0.6초에 낮춘다(교실에서 조용하게, 실험 소리가 잘 들리게). 설정 화면은 지도와 같다.
+- **어디서 나는가** (모두 이미 있는 사건·상태를 읽기만 한다):
+
+| 사건 | id | 부르는 곳 |
+|---|---|---|
+| 단추 누름 / 그림 단추(조건, 두기두기 답) | `tap` / `pick` | `Ui.button`(테마 변형 `PickButton`·`ChoiceButton`이면 `pick`) |
+| 화면 바뀜(첫 화면 제외) | `whoosh` | `App._swap` |
+| 지도 장소 누름, 빵고양이 깡충(한 번 뛸 때마다, 초당 4번) | `spot`, `hop` | `IslandHomeScreen._walk_to_spot` / `_step_walk` |
+| 지도 깃발이 솟기 시작 | `flag` | `IslandHomeScreen._step_raise` |
+| 두기두기가 물음 | `question` | `ExperimentScreen._ask` |
+| 도장이 닿음(쾅) / 다 깼을 때 색종이 | `stamp` / `fanfare` | `StampSlam.advance`(떨어짐 0.16초 지점 한 번) / `ExperimentScreen._celebrate_round` |
+| 놓기·던지기·쏘기·밀기 시작 | `launch` | `LabSounds`: 상태 `ready`·`held` → 움직임(실험별 `RULES`), 시소 들림, 도르래는 꼭대기에서 `stop` |
+| 용수철 공을 놓음 | `spring` | `LabSounds`: 용수철 `ready`·`held` → `moving` |
+| 상자가 멈춤(마찰) / 끝 범퍼 | `stop` | `LabSounds`: `sliding` → `holding`, 상자 밀기 `end`의 충격 |
+| 땅에 떨어짐·궤도 충돌 | `land` | `LabSounds`: 실험의 `impact` 신호(카메라 흔들림과 같은 것) |
+| 두 공이 부딪힘 / 통이 물에 들어감 | `bump` / `splash` | `LabSounds`: `impact` 때 실험의 `hit_reactions` / `splashes` 수가 늘었으면 |
+
+- `LabSounds`(`scripts/shell/lab_sounds.gd`)는 `IslandCast`처럼 실험 옆(화면의 자식)에 있고 `status()`를 한 프레임에 한 번 읽어 바뀐 순간만 본다. 통이 뜬 깊이 근처에서 흔들리는 것(`floating` ↔ `moving`), 착지 상태, 처음으로 같은 변화는 소리가 없다. 실험 코드·물리·표시 값은 바꾸지 않았다.
+- **측정은 조용히**: `--sound=0`(`tools/bench_device.sh`가 늘 넘김) 또는 `--auto-drag`·`--auto-release`·`--demo-celebrate`가 있으면 아무 소리도 내지 않고 설정 파일도 쓰지 않는다. `--sound=1`이 이긴다(`OPBENCH_SOUND=1`로 소리를 켜고 잴 수 있음). 헤드리스 시험은 Godot의 더미 오디오 드라이버를 쓴다(장치 필요 없음).
+- 시험: `tests/sound_checks.gd`(사건마다 id, 상태 규칙과 조용한 변화, 실제 자유 낙하·충돌의 놓기→착지·부딪힘, 질문·답·도장 한 번·팡파르, 지도 장소·깡충 수·깃발 한 번, 화면 바뀜과 음악 자리, 스위치가 자기 버스만 끄고 설정 파일에 남음, 측정은 무음·무기록, 가만히 2초 동안 소리 없음, 풀 크기, 진짜 `settings.cfg` 그대로). 테스트 실행 끝에 소리를 멈춰 종료 때 쓰는 중인 스트림이 남지 않게 한다.
+
 ### 나머지 10개 실험 미션 (게임 G2)
 
 던지기와 같은 틀(두기두기 예측 질문과 그림 단추 2개, 3단계 도장, 공식 답 가리기)을 나머지 10개 실험에 붙였다. 2026-10-27부터 조건은 화면 아래 그림 단추로 바꾸고, 끄는 동작은 실험마다 하나다(아래 "조건 그림 단추", 위 "조작" 표). 지도에서는 11곳 모두 `도전` 배지를 달고, 도장 3개면 깃발이 선다.
@@ -388,6 +417,7 @@ adb shell am start -n org.openphysics.lab3d/com.godot.game.GodotAppLauncher \
 | `--screen=settings` | 설정 화면으로 시작 |
 | `--quality=<low\|medium\|high>` | 품질 단계(저장된다) |
 | `--fps=1` | fps 표시 |
+| `--sound=<0\|1>` | 0 = 소리 없이(효과음·음악 없음, 소리 설정을 쓰지 않음). `--auto-drag`·`--auto-release`·`--demo-celebrate`는 기본 0, 1이면 켬 |
 | `--camera=<front\|three_quarter\|top\|side\|follow\|orbit>` | 카메라 모드 |
 | `--ctl-<조건 id>=<값>` | 조건 값(예: `--ctl-angle=30`, `--ctl-material=rubber`) |
 | `--sidebar=open` | 사이드바를 연 채 시작 |
@@ -465,6 +495,7 @@ python3 -I apps/lab3d/tools/device_gesture.py orbit  # orbit | pinch | pinch-fix
 ```
 
 - 다른 실험: `OPBENCH_EXPERIMENT=free-fall OPBENCH_SUSTAINED=0 apps/lab3d/tools/bench_device.sh low 3 90 60`(던지기는 `projectile`, 마찰 밀기는 `friction`, 충돌은 `collision`, 용수철·부력·궤도는 `spring`·`buoyancy`·`orbit`, 진자·지렛대·도르래는 `constraints`·`rotation`·`pulley`). 장면 이름은 실험 정의의 `bench_id`(`FF`·`PJ`·`FR`·`CO`·`S3`, 앱이 기록하는 이름)에서 읽고, 빗면 전용 `--ctl-angle=30`은 `incline-friction`일 때만 기본으로 붙는다(`OPBENCH_CTL`로 바꿈). 기본 결과 폴더는 실험·조작 방식별 `spikes/bench/results/lab3d-<실험>-<drag|release>`이고, 이미 같은 등급·장면 결과가 있는 폴더(기록된 기준선 `phase1-task*` 포함)에는 쓰지 않는다(`OPBENCH_OVERWRITE=1`일 때만 덮어씀). `--auto-drag=4`가 실험의 첫 조작 물체(자유 낙하 빨간 공, 던지기 공, 마찰 밀기 손잡이, 충돌 공 A)를 4초마다 끌어 놓고 0.4초 뒤 `demo_action`(공 놓기, 마찰 밀기는 `처음으로`)을 누른다. 마찰 밀기는 손잡이를 끝(+4 m, 80 N: 상자가 미끄러짐)과 40% 지점(−0.8 m, −16 N: 버팀)으로 번갈아 끈다. 충돌은 공 A를 자기 구간 끝(x −0.5 m)과 40% 지점(−4 m)으로 번갈아 옮기고 `출발`을 눌러 4초마다 충돌·벽 튐을 되풀이한다. 진자는 줄 추를 원 위 두 각도로 옮겨 놓고(두 추가 출발), 지렛대는 손잡이를 끝까지(250 N, 들림)와 40 %(100 N)로 번갈아 누르고, 도르래는 손잡이를 끝까지와 40 %로 당긴 뒤 `처음으로`를 누른다. Task 4a 결과는 [phase1-task4a](../../spikes/bench/results/phase1-task4a/README.md).
+- 측정은 소리 없이 한다: `bench_device.sh`가 `--sound=0`을 넘긴다(효과음·음악 없음, 설정 파일 그대로). `OPBENCH_SOUND=1`이면 소리를 켜고 잰다(위 "소리").
 - `bench_device.sh`는 가로 기본 화면(사이드바 닫힘)에서 잰다. `OPBENCH_SIDEBAR=open`이면 사이드바를 열어 관찰값·그래프 위치로 스크롤하고(`--scroll-to=observations`, 기본 결과 폴더에 `-sidebar`), Task 2d 이전(세로, 패널 스크롤)과 비교할 때 쓴다. 각도 30°에서 4초마다 상자를 손가락 입력 경로로 끌어 새 출발 위치에 놓고 0.4초 뒤 놓기를 눌러(`--auto-drag=4`) 끌기·보조 시점·물리·관찰값·그래프가 계속 바뀌는 상태로 잰다. Task 2a·2c는 `OPBENCH_PLAY=--auto-release=4`(4초마다 다시 놓기만)로 쟀다. 빗면의 OPBENCH 장면 이름은 `S3`(측정 기준의 안내형 빗면)다.
 - 한 손가락 끌기는 `adb shell input swipe x1 y1 x2 y2 <ms>`로 재생한다. `device_gesture.py drag-cancel`은 빗면 상자(20°, 기본 정면 시점)를 끄는 중 두 번째 손가락을 대 취소를 재생한다.
 - `device_gesture.py`는 Android `hid` 명령으로 2점 가상 멀티터치 화면을 등록해 두 손가락 제스처를 재생한다. `adb shell input`은 한 손가락만 되고, 실제 터치스크린 노드 쓰기는 SELinux가 막는다. 좌표는 가로 기준 SM-P200 화면 픽셀(1920×1200)이고, 가상 화면은 자연 방향(세로) 좌표로 보고하므로 `dumpsys input`의 현재 회전으로 바꿔 보낸다. `tap --at X,Y`는 그 점을 한 번 누른다.

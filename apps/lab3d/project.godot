@@ -19,6 +19,7 @@ config/project_settings_override="user://renderer_override.cfg"
 
 Quality="*res://scripts/core/quality.gd"
 Bench="*res://scripts/core/bench.gd"
+Sound="*res://scripts/core/sound_board.gd"
 
 [display]
 

@@ -67,6 +67,9 @@
 ##    are (MassLook: cube root, equal masses equal, standing where the body is, the collision balls
 ##    touching at the model's contact), the gravity's signpost and the surface materials follow their
 ##    controls, the picture buttons draw a mass like the lab; physics unchanged with or without them.
+## 22. sound (tests/sound_checks.gd, 2026-10-28): every event asks SoundBoard for its sound id, the
+##    효과음 / 배경 음악 switches mute their bus and are kept in the settings file (the real one untouched),
+##    the music loops, a measurement plays nothing and writes nothing, nothing sounds while idle.
 ## Times are engine fixed steps (60 Hz), independent of rendering FPS.
 extends SceneTree
 
@@ -239,6 +242,11 @@ func _run() -> void:
 	_expect(celebration != null and celebration.can_instantiate(), "celebration checks compile", "")
 	if celebration != null and celebration.can_instantiate():
 		await celebration.new(self, _expect).run()
+	print("== sound (2026-10-28): event -> sound id, the switches and buses, the music loop, silent measurements, idle ==")
+	var sound: GDScript = load("res://tests/sound_checks.gd")
+	_expect(sound != null and sound.can_instantiate(), "sound checks compile", "")
+	if sound != null and sound.can_instantiate():
+		await sound.new(self, _expect).run()
 	print("== game G2 (next): the other 10 labs' missions (stages reachable, one stamp per attempt, physics unchanged) ==")
 	var labs: GDScript = load("res://tests/lab_mission_checks.gd")
 	_expect(labs != null and labs.can_instantiate(), "lab mission checks compile", "")
@@ -266,6 +274,14 @@ func _run() -> void:
 	await _check_back_button()
 	await _check_small_window_title()
 	DirAccess.remove_absolute(ProgressStore.path)
+	# The last screens' sounds and the music stop before quitting (no stream still in use at exit).
+	var sound_board: Node = root.get_node_or_null("Sound")
+	if sound_board != null:
+		sound_board.stop_all()
+		await process_frame
+		OS.delay_msec(250)   # real time for the mixer thread (--fixed-fps frames take almost none)
+		for i in 3:
+			await process_frame
 	_expect(_file_state(ProgressStore.PATH) == real_progress, "the tests never touch the real progress file (user://progress.cfg)", "")
 	print("RESULT: %s (%d failure(s))" % ["PASS" if _failures == 0 else "FAIL", _failures])
 	quit(1 if _failures > 0 else 0)

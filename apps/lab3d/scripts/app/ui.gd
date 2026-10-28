@@ -43,7 +43,14 @@ static func button(text: String, variation := "", min_height := 64.0) -> Button:
 		node.theme_type_variation = variation
 	node.custom_minimum_size = Vector2(0, min_height)
 	add_press_bounce(node)
+	node.pressed.connect(func() -> void: SoundBoard.play(press_sound(node)))
 	return node
+
+
+## The sound of a press (SoundBoard): the big picture buttons (a condition, Dugi's answer) "pick",
+## every other button "tap".
+static func press_sound(node: Control) -> StringName:
+	return &"pick" if node.theme_type_variation in [&"PickButton", &"ChoiceButton"] else &"tap"
 
 
 ## Press feedback (art direction "button"): the face shrinks by PRESS_SHRINK per side while held and

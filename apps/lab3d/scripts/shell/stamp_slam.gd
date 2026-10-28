@@ -51,7 +51,10 @@ func _process(delta: float) -> void:
 func advance(delta: float) -> void:
 	if _done:
 		return
+	var before := t
 	t += delta
+	if before < DROP_S and t >= DROP_S:
+		SoundBoard.play(&"stamp")   # it lands: 쾅
 	queue_redraw()
 	if t >= TOTAL_S:
 		finish()

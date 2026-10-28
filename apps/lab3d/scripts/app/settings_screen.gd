@@ -1,4 +1,5 @@
-## Settings: quality tier (ported from the spike's "Q" button) and the performance overlay.
+## Settings: quality tier (ported from the spike's "Q" button), sound (효과음 / 배경 음악, SoundBoard)
+## and the performance overlay.
 ## Switching between low (Compatibility renderer) and medium/high (Mobile renderer) restarts the app.
 class_name SettingsScreen
 extends Control
@@ -19,6 +20,9 @@ var _selected := ""
 var _buttons: Dictionary = {}
 var _apply: Button
 var _notice: Label
+## The sound switches (tests press them): effects and music, each mutes its own bus.
+var sfx_switch: CheckButton
+var music_switch: CheckButton
 
 
 func _ready() -> void:
@@ -83,6 +87,7 @@ func _ready() -> void:
 	_apply.pressed.connect(_apply_tier)
 	quality.add_child(_apply)
 	column.add_child(quality_card)
+	column.add_child(_build_sound_card())
 
 	var debug_card := Ui.panel()
 	var debug := Ui.vbox(8)
@@ -96,6 +101,29 @@ func _ready() -> void:
 	debug.add_child(Ui.label("현재 렌더러: %s · 품질: %s" % [RenderingServer.get_current_rendering_method(), Quality.label()], "MutedLabel", true))
 	column.add_child(debug_card)
 	_select(_selected)
+
+
+## 소리: two switches, both on by default (kept in user://settings.cfg by SoundBoard).
+func _build_sound_card() -> Control:
+	var card := Ui.panel()
+	var box := Ui.vbox(8)
+	card.add_child(box)
+	box.add_child(Ui.label("소리", "SectionLabel"))
+	var board := SoundBoard.instance()
+	sfx_switch = CheckButton.new()
+	sfx_switch.name = "SfxSwitch"
+	sfx_switch.text = "효과음"
+	music_switch = CheckButton.new()
+	music_switch.name = "MusicSwitch"
+	music_switch.text = "배경 음악"
+	for entry in [[sfx_switch, "sfx_on", "set_sfx_on"], [music_switch, "music_on", "set_music_on"]]:
+		var check: CheckButton = entry[0]
+		check.button_pressed = board == null or bool(board.get(entry[1]))
+		check.disabled = board == null
+		if board != null:
+			check.toggled.connect(Callable(board, entry[2]))
+		box.add_child(check)
+	return card
 
 
 func _select(tier: String) -> void:

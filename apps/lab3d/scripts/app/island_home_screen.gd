@@ -255,7 +255,10 @@ static func raise_height(t: float) -> float:
 func _step_raise(delta: float) -> void:
 	if _raising.is_empty():
 		return
+	var before: float = _raising.t
 	_raising.t += minf(delta, 0.05)   # a long frame never skips the grow
+	if before < RAISE_START_S and _raising.t >= RAISE_START_S:
+		SoundBoard.play(&"flag")   # the flag starts to grow
 	var flag: Node3D = _raising.flag
 	if _raising.t >= 0.0 and not _raising.framed:
 		_raising.framed = true
@@ -335,7 +338,10 @@ func trio() -> Array:
 
 
 func _step_walk(delta: float) -> void:
+	var hops := floori(_walk_t * HOP_HZ)
 	_walk_t += delta
+	if floori(_walk_t * HOP_HZ) > hops:
+		SoundBoard.play(&"hop")   # each hop's landing (HOP_HZ a second while it walks)
 	var k := clampf(_walk_t / _walk_total, 0.0, 1.0)
 	var eased := k * k * (3.0 - 2.0 * k)
 	var pos := _walk_from.lerp(_walk_to, eased)
@@ -518,4 +524,5 @@ func _walk_to_spot(index: int) -> void:
 	_walk_total = maxf(0.25, _walk_from.distance_to(_walk_to) / WALK_SPEED)
 	_walk_t = 0.0
 	_walking = true
+	SoundBoard.play(&"spot")
 	cat.rotation.y = atan2(_walk_to.x - _walk_from.x, _walk_to.z - _walk_from.z)

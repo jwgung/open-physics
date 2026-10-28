@@ -13,7 +13,8 @@
 # when it has none). OPBENCH_CTL=<comma-separated launch args> (default: --ctl-angle=30, the
 # incline's measured angle, for incline-friction only; none for the others; "" for the defaults);
 # OPBENCH_SUSTAINED=0 skips the 600 s sustained capture. OPBENCH_EXPERIMENT=home measures the island
-# map home (Plan G2; scene "home", no experiment, nothing played).
+# map home (Plan G2; scene "home", no experiment, nothing played). Measurements are silent
+# (--sound=0: no effect or music, the settings untouched); OPBENCH_SOUND=1 measures with sound.
 # Usage: apps/lab3d/tools/bench_device.sh <tier> [runs] [seconds] [rest_s]   e.g. low 3 90 60
 # Output: $OPBENCH_RESULTS_DIR/lab3d-<tier>-<scene>-*.jsonl, plus gpu-clock-<tier>.log ("<unix s>
 # <Mali kHz> <AP °C>" every 5 s). The default folder is per experiment and play mode,
@@ -62,10 +63,11 @@ if [[ ${OPBENCH_OVERWRITE:-0} != 1 ]] && compgen -G "$OPBENCH_RESULTS_DIR/lab3d-
   echo "bench_device: $OPBENCH_RESULTS_DIR already holds lab3d-$tier-$scene-* results (OPBENCH_OVERWRITE=1 replaces them)" >&2
   exit 2
 fi
+sound="--sound=${OPBENCH_SOUND:-0}"
 if [[ $experiment == home ]]; then
-  args="--quality=$tier"
+  args="--quality=$tier,$sound"
 else
-  args="--experiment=$experiment,--quality=$tier${sidebar:+,$sidebar},$play${ctl:+,$ctl}"
+  args="--experiment=$experiment,--quality=$tier${sidebar:+,$sidebar},$play${ctl:+,$ctl},$sound"
 fi
 mkdir -p "$OPBENCH_RESULTS_DIR"
 

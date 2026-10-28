@@ -20,7 +20,7 @@ extends Node
 
 ## Event id -> [file under SFX_DIR, volume dB]. The file names are the packs' own (CREDITS.md).
 const SFX := {
-	&"tap": ["click_002.ogg", -8.0],                  # a button
+	&"tap": ["drop_002.ogg", -8.0],                   # a button
 	&"pick": ["select_002.ogg", -6.0],                # a picture button: a condition, Dugi's answer
 	&"whoosh": ["card-slide-1.ogg", -6.0],            # the screen changes (soft)
 	&"spot": ["confirmation_001.ogg", -10.0],         # a spot on the map is tapped

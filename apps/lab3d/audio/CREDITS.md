@@ -6,7 +6,7 @@
 
 | 파일(`audio/sfx/`) | 팩 | 받은 곳 | 쓰는 곳(`SoundBoard` id) |
 |---|---|---|---|
-| `click_002.ogg` | Interface Sounds 1.0 | <https://kenney.nl/assets/interface-sounds> | `tap` 단추 |
+| `drop_002.ogg` | Interface Sounds 1.0 | <https://kenney.nl/assets/interface-sounds> | `tap` 단추 (2026-10-28 사용자가 후보 중 고름) |
 | `select_002.ogg` | Interface Sounds 1.0 | 위와 같음 | `pick` 그림 단추(조건, 두기두기 질문의 답) |
 | `confirmation_001.ogg` | Interface Sounds 1.0 | 위와 같음 | `spot` 지도에서 장소 누르기 |
 | `drop_003.ogg` | Interface Sounds 1.0 | 위와 같음 | `splash` 통이 물에 퐁당 |

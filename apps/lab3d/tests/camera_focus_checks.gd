@@ -5,12 +5,8 @@
 ##    in, ends now or after a delay and eases back to exactly the user's view; a two-finger gesture
 ##    ends it, a mode change or set_state (처음으로) drops it at once (snap), only the front view
 ##    takes one, focus_enabled false takes none.
-## 2. throw (projectile screen): "공 놓기" eases the view in (the cat at least CAT_GROWTH times as
-##    tall on screen as in the front view) and back to the front view before the ball leaves the paw
-##    (2026-10-24 user decision): from the release frame (THROW_FRAMES, as before) until the landing
-##    the camera transform does not change, the ball leaves the paw inside the view and clear of the
-##    2D overlays, the whole formula path is on screen; the engine ball every step and the panel are
-##    the same as with close-ups off; 처음으로 during the close-up is the front view on the same frame.
+## 2. throw (projectile screen): no close-up (2026-10-28 user): the camera does not move from
+##    "공 놓기" to the landing, the ball leaves the paw inside the view, the formula path on screen.
 ## 3. push (friction screen): picking up the handle of a box at rest frames the cat, box and handle
 ##    closer; while the camera moves a still finger changes neither the handle nor the force; the
 ##    first force starts the return; from the first step the box slides (a hard pull: cut) or from a
@@ -39,8 +35,6 @@ func run() -> void:
 	await check_state_machine()
 	for size in [[TABLET, "tablet"], [PHONE, "phone"]]:
 		await check_throw(size[0], size[1])
-	await check_throw_timeline()
-	await check_throw_reset()
 	await check_push()
 
 
@@ -197,28 +191,29 @@ func check_state_machine() -> void:
 
 # --- 2. throw ---------------------------------------------------------------------------------
 
+## No close-up on the throw (2026-10-28 user): from the press through the windup, the release and
+## the flight to the landing the camera transform does not change, the ball leaves the paw inside the
+## view and clear of the overlays, the whole formula path is on screen.
 func check_throw(size: Vector2, label: String) -> void:
 	var screen: Control = await _open("projectile", size)
 	var rig: CameraRig = screen.view.rig
 	var lab: Experiment = screen.experiment
 	var home := rig.get_state()
-	var front_fill := _cat_fill(screen)
 	var release_frame := {}
 	lab.props.cat.threw.connect(func() -> void:
-		release_frame.merge({"ball": _at(screen, lab.ball.global_position), "framing": rig.is_framing()}), CONNECT_ONE_SHOT)
+		release_frame.merge({"ball": _at(screen, lab.ball.global_position)}), CONNECT_ONE_SHOT)
+	var still := rig.global_transform
+	var moved := 0
 	screen.experiment_action("release")
 	var frames := 0
-	var peak := 0.0
 	while not lab.released and frames < 120:
 		await tree.process_frame
 		if lab.released:
 			break
 		frames += 1
-		peak = maxf(peak, _cat_fill(screen))
+		if rig.global_transform != still or rig.is_framing():
+			moved += 1
 	var ball_ok: bool = not release_frame.is_empty() and _clear_of_overlays(screen, release_frame.ball)
-	# From the release on (the frame after it is drawn) to the landing: one camera transform.
-	var still := rig.global_transform
-	var moved := 0
 	var flight := 0
 	while lab.status() == "flying" and flight < 240:
 		await tree.process_frame
@@ -227,78 +222,12 @@ func check_throw(size: Vector2, label: String) -> void:
 		flight += 1
 		if rig.global_transform != still:
 			moved += 1
-	var back := _at_home(rig, home)
 	var path_ok := true
 	for p in lab.formula_path():
 		path_ok = path_ok and Rect2(Vector2.ZERO, screen.view.size).has_point(_at(screen, p))
-	var growth := peak / front_fill
-	expect.call(frames == THROW_FRAMES and growth >= CAT_GROWTH and not release_frame.get("framing", true) and ball_ok,
-		"close-up (throw, %s): 공 놓기 pulls in (cat >= %.0fx as tall as in the front view) and is back on the front view before the ball leaves the paw %d frames after the press, inside the view, clear of the overlays" % [label, CAT_GROWTH, THROW_FRAMES],
-		"frames %d, cat %.1f %% -> peak %.1f %% (x%.2f), framing at the release %s, ball %s" % [frames, front_fill * 100.0, peak * 100.0, growth, str(release_frame.get("framing")), str(release_frame.get("ball"))])
-	expect.call(moved == 0 and flight > 30 and back and path_ok,
-		"close-up (throw, %s): from the release to the landing the camera does not move (the flight is seen from a still front view, the whole formula path in it)" % label,
-		"%d of %d flight frames moved, home %s, path on screen %s" % [moved, flight, back, path_ok])
-	await _close(screen)
-
-
-## The physics timeline does not depend on the close-up: the same throw with close-ups off releases
-## on the same frame and the engine ball (every fixed step for 2 s) and the panel are the same.
-func check_throw_timeline() -> void:
-	var runs := []
-	for enabled in [true, false]:
-		var screen: Control = await _open("projectile", TABLET)
-		screen.view.rig.focus_enabled = enabled
-		var lab: Experiment = screen.experiment
-		screen.experiment_action("release")
-		var frames := 0
-		while not lab.released and frames < 120:
-			await tree.process_frame
-			frames += 1
-		var rec := {}
-		var guard := 0
-		while lab.clock() < 2.0 and guard < 200:
-			guard += 1
-			await tree.physics_frame
-			rec["%d/%.6f" % [lab.corrector().steps, lab.clock()]] = [lab.ball.global_position, str(lab.observations())]
-		runs.append({"frames": frames, "rec": rec, "focused": screen.view.rig.is_framing() or enabled == false})
-		await _close(screen)
-	var common := 0
-	var same: bool = runs[0].frames == runs[1].frames
-	var detail := ""
-	for key in runs[0].rec:
-		if runs[1].rec.has(key):
-			common += 1
-			if runs[1].rec[key] != runs[0].rec[key]:
-				same = false
-				detail = "differs at %s" % key
-				break
-	expect.call(same and common >= 110,
-		"close-up (throw): the release frame, the engine ball every step and the panel (2 s) are the same as with close-ups off",
-		"release after %d / %d frames, %d common steps %s" % [runs[0].frames, runs[1].frames, common, detail])
-
-
-## 처음으로 during the close-up: the front view on the same frame (no easing), the throw stopped.
-func check_throw_reset() -> void:
-	var screen: Control = await _open("projectile", TABLET)
-	var rig: CameraRig = screen.view.rig
-	var home := rig.get_state()
-	screen.experiment_action("release")
-	for i in 12:
-		await tree.process_frame
-	var was: bool = rig.is_focused() and rig.cur_distance < home.distance - 1.0
-	screen.experiment_action("reset")
-	var now := _at_home(rig, home)
-	for i in THROW_FRAMES + 5:
-		await tree.process_frame
-	expect.call(was and now and not screen.experiment.released and _at_home(rig, home),
-		"close-up (throw): 처음으로 during the close-up is the front view on the same frame, no late release or close-up",
-		"focused %s, home at once %s, released %s" % [was, now, screen.experiment.released])
-	# A rebuild during the close-up (App keeps the camera state): the user's view, not the close-up.
-	screen.experiment_action("release")
-	for i in 12:
-		await tree.process_frame
-	var state: Dictionary = screen.capture_state()
-	expect.call(_same_view(state.camera, home), "close-up (throw): the saved camera state during a close-up is the user's view", str(state.camera))
+	expect.call(frames == THROW_FRAMES and moved == 0 and flight > 30 and ball_ok and path_ok and _at_home(rig, home),
+		"no close-up (throw, %s): from 공 놓기 to the landing the camera does not move; the ball leaves the paw %d frames after the press inside the view, clear of the overlays; the whole formula path on screen" % [label, THROW_FRAMES],
+		"frames %d, %d moved of %d, ball %s, path on screen %s" % [frames, moved, frames + flight, str(release_frame.get("ball")), path_ok])
 	await _close(screen)
 
 

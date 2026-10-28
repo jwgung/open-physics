@@ -96,22 +96,33 @@ func _draw_stamps() -> void:
 	for i in stamps:
 		var c := Vector2(STAMP_R + i * (STAMP_R * 2.0 + STAMP_GAP), STAMP_R + 4.0)
 		StampSlam.draw_stamp(stamp_row, c, STAMP_R, true)
-	if piece:   # the found star piece: a yellow star with the brown outline
+	if piece:   # the found star piece, drawn like the 3D one (StarArt, 2026-10-29 user): chubby, round tips, a face
 		var c := Vector2(STAMP_R + stamps * (STAMP_R * 2.0 + STAMP_GAP), STAMP_R + 4.0)
-		stamp_row.draw_colored_polygon(StarEmblem.star_points(c, STAMP_R + 4.0), ArtPalette.OUTLINE)
-		stamp_row.draw_colored_polygon(StarEmblem.star_points(c, STAMP_R - 1.0), StarEmblem.FILL)
-		stamp_row.draw_colored_polygon(StarEmblem.star_points(c + Vector2(-4.0, -5.0), STAMP_R * 0.45), StarEmblem.FILL_LIGHT)
-		_draw_face(c, STAMP_R)
+		var r := STAMP_R * 1.1
+		stamp_row.draw_colored_polygon(_chubby_star(c, r + 4.0, 1.0), ArtPalette.OUTLINE)
+		stamp_row.draw_colored_polygon(_chubby_star(c, r, 1.0), StarArt.DEEP)
+		stamp_row.draw_colored_polygon(_chubby_star(c + Vector2(-1.0, -1.5), r, 0.9), StarArt.MID)
+		stamp_row.draw_colored_polygon(_chubby_star(c, r, StarArt.FACE_SHRINK), StarArt.MID.lerp(StarArt.LIGHT, 0.55))
+		_draw_face(c, r)
+
+
+## StarArt's round-tipped star rim (radius `r`, scaled by `k`) in the card's 2D (y down).
+static func _chubby_star(c: Vector2, r: float, k: float) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	for p: Vector3 in StarArt.round_rim():
+		out.append(c + Vector2(p.x, -p.y) * r * k)
+	return out
 
 
 ## The star piece's face, as on the 3D piece (StarArt): two shiny eyes, pink cheeks, a smile.
 func _draw_face(c: Vector2, r: float) -> void:
 	for x in [-1.0, 1.0]:
-		var eye := c + Vector2(x * r * 0.2, -r * 0.02)
-		stamp_row.draw_circle(c + Vector2(x * r * 0.33, r * 0.14), r * 0.08, StarArt.CHEEK)
-		stamp_row.draw_circle(eye, r * 0.085, StarArt.FACE_INK)
-		stamp_row.draw_circle(eye + Vector2(-r * 0.025, -r * 0.03), r * 0.032, Color.WHITE)
-	stamp_row.draw_arc(c + Vector2(0.0, r * 0.08), r * 0.08, PI * 0.15, PI * 0.85, 8, StarArt.FACE_INK, maxf(2.0, r * 0.04), true)
+		var eye := c + Vector2(x * StarArt.EYE_X, -StarArt.EYE_Y) * r
+		stamp_row.draw_circle(c + Vector2(x * StarArt.EYE_X * 1.75, -(StarArt.EYE_Y - 0.13)) * r, StarArt.CHEEK_R * r, StarArt.CHEEK)
+		stamp_row.draw_circle(eye, StarArt.EYE_R * r, StarArt.FACE_INK)
+		stamp_row.draw_circle(eye + Vector2(-StarArt.EYE_R * 0.3, -StarArt.EYE_R * 0.35) * r, StarArt.EYE_R * 0.38 * r, Color.WHITE)
+	var mouth := c + Vector2(0.0, -(StarArt.MOUTH_Y + StarArt.MOUTH_R)) * r
+	stamp_row.draw_arc(mouth, (StarArt.MOUTH_R + StarArt.MOUTH_W * 0.5) * r, PI * 0.15, PI * 0.85, 10, StarArt.FACE_INK, maxf(2.0, StarArt.MOUTH_W * r), true)
 
 
 ## Closes now: the touch of this same frame already reaches what is behind (IGNORE before the free).

@@ -60,7 +60,7 @@ static func outline_material() -> StandardMaterial3D:
 ## face on both sides.
 static func star_meshes() -> Array:
 	if not _meshes.has("star"):
-		var rim := _round_rim()
+		var rim := round_rim()
 		_meshes["star"] = [_pillow(rim, DEPTH, 1.0, true), _pillow(rim, DEPTH, 1.0 + OUTLINE_GROW, false)]
 	return _meshes["star"]
 
@@ -71,7 +71,7 @@ static func piece_meshes() -> Array:
 
 
 ## The rim of a five-point star with round tips and soft inner corners (Chaikin corner cutting).
-static func _round_rim() -> Array:
+static func round_rim() -> Array:
 	var rim: Array = []
 	for i in POINTS * 2:
 		var a := PI * 0.5 + TAU * i / (POINTS * 2)

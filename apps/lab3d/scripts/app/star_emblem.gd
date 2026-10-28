@@ -1,5 +1,7 @@
-## The map corner's star emblem (the story "별 조각 찾기", 2026-10-28): a big five-point star cut into
-## one wedge per piece (11). A piece at the lookout fills its wedge (yellow); the others are pale
+## The map corner's star emblem (the story "별 조각 찾기", 2026-10-28): a big chubby star (StarArt's
+## round-tipped rim, with a face like the 3D star: 2026-10-29 user wanted it cute) cut into one wedge
+## per piece (11). The face sleeps (eyes shut) with no piece, looks up once pieces come, and beams
+## (cheeks, a big smile) when the star is whole. A piece at the lookout fills its wedge (yellow); the others are pale
 ## paper. A newly filled wedge pops (a short bounce of the whole emblem). Pictures only, no number
 ## and no words. 2D shapes only (one canvas item); it takes no touch.
 class_name StarEmblem
@@ -48,12 +50,11 @@ func _process(delta: float) -> void:
 		set_process(false)
 
 
-## The star's outline points (10, starting at the top), radius r about c.
+## The star's outline points (StarArt's chubby rim, starting at the top), radius r about c.
 static func star_points(c: Vector2, r: float) -> PackedVector2Array:
 	var out := PackedVector2Array()
-	for i in 10:
-		var a := -PI * 0.5 + PI * i / 5.0
-		out.append(c + Vector2(cos(a), sin(a)) * (r if i % 2 == 0 else r * 0.48))
+	for p: Vector3 in StarArt.round_rim():
+		out.append(c + Vector2(p.x, -p.y) * r)
 	return out
 
 
@@ -93,3 +94,23 @@ func _draw() -> void:
 	var outline := star_points(c, r)
 	outline.append(outline[0])
 	draw_polyline(outline, line, 3.0, true)
+	_draw_face(c, r * 1.5)   # a bigger face than the 3D star: the emblem is small on screen
+
+
+## The star's face (StarArt's proportions): asleep with no piece, awake with some, beaming when whole.
+func _draw_face(c: Vector2, r: float) -> void:
+	var ink := StarArt.FACE_INK
+	var whole := filled >= total
+	for x in [-1.0, 1.0]:
+		var eye := c + Vector2(x * StarArt.EYE_X, -StarArt.EYE_Y) * r
+		if filled == 0:   # asleep: closed eyes, little arcs
+			draw_arc(eye + Vector2(0.0, -StarArt.EYE_R * 0.4 * r), StarArt.EYE_R * r, PI * 0.2, PI * 0.8, 8, ink, 2.0, true)
+		else:
+			draw_circle(eye, StarArt.EYE_R * r, ink)
+			draw_circle(eye + Vector2(-StarArt.EYE_R * 0.3, -StarArt.EYE_R * 0.35) * r, StarArt.EYE_R * 0.38 * r, Color.WHITE)
+		if whole or filled > 0:
+			var cheek := Color(StarArt.CHEEK, 1.0 if whole else 0.6)
+			draw_circle(c + Vector2(x * StarArt.EYE_X * 1.75, -(StarArt.EYE_Y - 0.13)) * r, StarArt.CHEEK_R * r, cheek)
+	var mouth_r := (StarArt.MOUTH_R * (1.5 if whole else 1.0) + StarArt.MOUTH_W * 0.5) * r
+	var mouth := c + Vector2(0.0, -(StarArt.MOUTH_Y + StarArt.MOUTH_R)) * r
+	draw_arc(mouth, mouth_r, PI * 0.15, PI * 0.85, 10, ink, maxf(2.0, StarArt.MOUTH_W * r), true)

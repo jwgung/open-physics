@@ -36,6 +36,7 @@ func run() -> void:
 	await check_follows_run()
 	await check_one_tap()
 	await check_desktop_copy()
+	await check_web_link()
 	await check_measurement()
 
 
@@ -236,4 +237,22 @@ func check_measurement() -> void:
 	var none: bool = not screen._sections.has("ask") and screen._ask_button == null and calls.is_empty()
 	expect.call(none and Story.measurement_run(PackedStringArray(["--progress=bench"])),
 		"ask AI: a measurement (--progress=bench, auto runs, --sound=0) shows no button and hands nothing over", "")
+	await _close(screen)
+
+
+## A device with no AI app (the chooser then has nothing): the link under the button copies this
+## run's question and opens the web AI once per tap, and the line says to paste it (2026-10-29).
+func check_web_link() -> void:
+	var calls: Array = []
+	var screen := await _open_asking("projectile", [])
+	screen.web_handler = func(text: String) -> void: calls.append(text)
+	var link: Button = screen._web_button
+	var below: bool = link != null and link.get_global_rect().position.y > screen._ask_button.get_global_rect().position.y
+	await _tap(link)
+	var want := _question(screen)
+	expect.call(below and calls.size() == 1 and calls[0] == want and screen._ask_status.visible
+		and screen._ask_status.text == ScienceNote.COPIED_WEB and link.text == ScienceNote.WEB_LINK
+		and ScienceNote.ai_web().begins_with("https://"),
+		"ask AI: the web link under the button copies this run's question and opens the web AI once (no AI app is not stuck)",
+		"below %s, %d calls, status %s" % [below, calls.size(), screen._ask_status.text])
 	await _close(screen)

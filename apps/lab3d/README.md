@@ -532,6 +532,8 @@ apps/lab3d/
 - low 값은 2026-10-24에 0.45·MSAA 없음(540 px)에서 0.75·MSAA 2x(900 px)로 바꿨다. 태블릿에서 구름·나무·고양이가 계단처럼 깨져 보였다. SM-P200에서 원본 해상도(1.0)는 MSAA 유무와 상관없이 던지기 59.4–59.5 fps·33 ms 넘는 프레임 28–46개로 기준 미달, 0.85 + MSAA는 던지기는 통과지만 GPU 712 MHz로 여유가 거의 없고 궤도가 58.6 fps였다. [low 선명도 결과](../../spikes/bench/results/phase1-low-sharp/README.md)
 - 측정용 단일 항목 덮어쓰기: `--q-<항목>=<값>`(저장하지 않음). 예: `--q-ui_mode=root`(Task 1 방식, UI까지 `root_short`), `--q-ui_mode=scale3d`, `--q-view_scale=0.6`, `--q-msaa=0`.
 
+- **AI 앱이 없을 때** (2026-10-29 사용자 결정): 단추 아래 "AI 앱이 없다면 웹에서 열기" 링크가 질문을 복사하고 `content/ai_apps.json`의 `web`(https://gemini.google.com/app)을 연다(`OS.shell_open`: 브라우저, 또는 Gemini 앱이 있으면 그 앱). 공유 화면에 브라우저 항목을 넣는 방법(EXTRA_INITIAL_INTENTS에 VIEW 인텐트)은 SM-X115에서 보이지 않아 쓰지 않는다. 아이에게는 "질문을 복사했어요. 웹 화면에 붙여 넣어 보세요." 줄이 보인다.
+
 ## 2. 실행
 
 Godot 바이너리·export 템플릿은 스파이크와 같은 것을 쓴다(`spikes/godot/tools/setup_editor.sh`, `~/.local/share/godot-spike/`). `GODOT` 환경변수로 바꿀 수 있다.

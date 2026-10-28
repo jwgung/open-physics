@@ -1,5 +1,7 @@
 {
   "about": "\"AI에게 더 물어보기\"(2026-10-29 사용자 결정)에서 Android 공유 화면에 보일 AI 앱 목록(EXTRA_INITIAL_INTENTS: 깔린 앱만 Android가 앱 자신의 이름·아이콘으로 보인다). 3D 앱(apps/lab3d ScienceNote.ai_apps)만 읽는다. name = 앱 이름, package = Google Play 패키지 이름(2026-10-29 확인). 순서 = 넘기는 순서. 앱을 더하거나 빼려면 이 목록만 고친다.",
+  "web": "https://gemini.google.com/app",
+  "web_about": "AI 앱이 하나도 없는 기기에서도 막히지 않게(2026-10-29 사용자 결정): 'AI에게 더 물어보기' 아래 'AI 앱이 없다면 웹에서 열기' 링크가 질문을 복사하고 이 주소를 연다(공유 화면에 브라우저 항목을 넣는 방법은 SM-X115에서 보이지 않아 쓰지 않음).",
   "apps": [
     { "name": "Gemini", "package": "com.google.android.apps.bard" },
     { "name": "ChatGPT", "package": "com.openai.chatgpt" },

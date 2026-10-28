@@ -18,6 +18,18 @@ const CHOOSER_TITLE := "질문할 AI 앱 고르기"
 ## The chooser's own target: a package no app has, so only the AI apps (EXTRA_INITIAL_INTENTS) show.
 const NO_APP := "invalid.open_physics.no_app"
 const COPIED := "질문을 복사했어요. AI 앱에 붙여 넣어 보세요."
+## The web link under the button (a device with no AI app is not stuck, 2026-10-29) and its line.
+const WEB_LINK := "AI 앱이 없다면 웹에서 열기"
+const COPIED_WEB := "질문을 복사했어요. 웹 화면에 붙여 넣어 보세요."
+
+
+## The web way: the question on the clipboard and the web AI opened (a browser, or its app).
+static func open_web_ai(text: String) -> void:
+	if DisplayServer.has_feature(DisplayServer.FEATURE_CLIPBOARD):
+		DisplayServer.clipboard_set(text)
+	var web := ai_web()
+	if web != "" and DisplayServer.get_name() != "headless":
+		OS.shell_open(web)
 const APPS_PATH := "res://content/ai_apps.json"
 
 
@@ -100,6 +112,12 @@ static func condition_text(control: Dictionary, value: Variant) -> String:
 
 
 ## The AI apps of the chooser in their order: {name, package} (content/ai_apps.json).
+## The web address the chooser also offers (a browser opens it), "" when none.
+static func ai_web() -> String:
+	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(APPS_PATH))
+	return str(parsed.get("web", "")) if parsed is Dictionary else ""
+
+
 static func ai_apps() -> Array:
 	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(APPS_PATH))
 	var apps: Array = []

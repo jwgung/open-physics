@@ -95,6 +95,9 @@ var _more_button: Button
 ## this handler ((packages, text) -> "chooser" | "clipboard"); tests put a recorder here. The
 ## default is ScienceNote.send_to_ai.
 var ask_handler: Callable = func(packages: Array, text: String) -> String: return ScienceNote.send_to_ai(packages, text)
+## The web link's tap (tests record it): copy the question and open the web AI (2026-10-29).
+var web_handler: Callable = func(text: String) -> void: ScienceNote.open_web_ai(text)
+var _web_button: Button = null
 ## A measurement or a device check (Story.measurement_run): the note has no ask button, unless the
 ## device check of the button itself asks for it (--ask=show, with --progress=bench,--sound=0).
 var measurement := Story.measurement_run(Quality.all_args()) and Quality.cmdline_value("ask") != "show"
@@ -1488,6 +1491,12 @@ func _build_ask() -> Control:
 	_ask_button.pressed.connect(ask_ai)
 	box.add_child(_ask_button)
 	box.add_child(Ui.label(ASK_CAPTION, "MutedLabel", true))
+	# No AI app on the device (the chooser then has nothing): copy and open the web AI instead.
+	_web_button = Ui.button(ScienceNote.WEB_LINK, "", 48)
+	_web_button.name = "AskWeb"
+	_web_button.flat = true
+	_web_button.pressed.connect(ask_web)
+	box.add_child(_web_button)
 	_ask_status = Ui.label(ScienceNote.COPIED, "MutedLabel", true)
 	_ask_status.name = "AskStatus"
 	_ask_status.visible = false
@@ -1503,7 +1512,17 @@ func ask_ai() -> void:
 		return
 	var packages := ScienceNote.ai_apps().map(func(app: Dictionary) -> String: return app.package)
 	var text := ScienceNote.question(definition, experiment, _hidden_answers(experiment.observations()))
+	_ask_status.text = ScienceNote.COPIED
 	_ask_status.visible = str(ask_handler.call(packages, text)) == "clipboard"
+
+
+## The web link's tap: the same question, copied, and the web AI opened (a browser or its app).
+func ask_web() -> void:
+	if measurement or experiment == null:
+		return
+	web_handler.call(ScienceNote.question(definition, experiment, _hidden_answers(experiment.observations())))
+	_ask_status.text = ScienceNote.COPIED_WEB
+	_ask_status.visible = true
 
 
 ## Opens or folds 더 보기 (closed when the screen opens).

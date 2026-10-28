@@ -247,7 +247,7 @@ func check_free_fall_physics() -> void:
 
 ## The control values of a box lab's mass, light to heavy.
 static func _box_masses(id: String) -> Array:
-	return ["light", "normal", "heavy", "start"] if id == "friction" else [1.0, 5.0, 12.0, 20.0]
+	return ["light", "normal", "start", "heavy"] if id == "friction" else [1.0, 5.0, 12.0, 20.0]
 
 
 func _set_box_mass(lab: Experiment, id: String, value: Variant) -> void:

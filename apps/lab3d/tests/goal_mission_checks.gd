@@ -31,6 +31,8 @@ func run() -> void:
 	await check_free_fall()
 	await check_spring()
 	check_pendulum()
+	check_pendulum_half()
+	await check_pendulum_card()
 	check_orbit()
 	await check_push()
 	check_invariants()
@@ -231,9 +233,10 @@ func check_spring() -> void:
 
 # --- pendulum: a longer rope and the Moon swing slower (T = 2π√(L/g)) -------------------------------
 
-## The period the lab measures (two same-way zero crossings) of a rope of `length` in `g`, let go
-## from the lab's start angle with its rope damping `b`.
-static func measured_period(length: float, g: float, b: float) -> float:
+## A rope of `length` in `g` let go from the lab's start angle with its rope damping `b`, stepped
+## until both periods are known: [the half swing x 2 (the mission's value), the seconds it was known
+## after, the measured period (two same-way zero crossings), the seconds that was known after].
+static func swing(length: float, g: float, b: float) -> Array:
 	var start: float = load("res://experiments/constraints/constraints.gd").get_script_constant_map().WEB_ANGLES[0]
 	var model := PendulumLabModel.new()
 	model.length = length
@@ -241,9 +244,20 @@ static func measured_period(length: float, g: float, b: float) -> float:
 	model.damping = b
 	model.reset(start)
 	var dt := 1.0 / float(Engine.physics_ticks_per_second)
-	while model.period <= 0.0 and model.steps < 6000:
+	var half_at := -1.0
+	var period_at := -1.0
+	while (model.period <= 0.0 or model.half_swing_period <= 0.0) and model.steps < 6000:
 		model.step(dt)
-	return model.period
+		if half_at < 0.0 and model.half_swing_period > 0.0:
+			half_at = model.time()
+		if period_at < 0.0 and model.period > 0.0:
+			period_at = model.time()
+	return [model.half_swing_period, half_at, model.period, period_at]
+
+
+## The period the mission judges (the half swing x 2, 2026-10-28) of a rope of `length` in `g`.
+static func measured_period(length: float, g: float, b: float) -> float:
+	return swing(length, g, b)[0]
 
 
 func check_pendulum() -> void:
@@ -273,7 +287,62 @@ func check_pendulum() -> void:
 	if beats(definition, 0, measured_period(2.0, 9.81, float(option(definition, "damping", "web").rope_b))):
 		problems.append("the default 2 m rope clears stage 1")
 	expect.call(problems.is_empty() and (stages[2].get("change", []) as Array).has("length"),
-		"goal (pendulum): the earth's long rope past 3 s (2.25 m 3.07 s, 2 m 2.90 s not), the Moon past 5 s with any rope (1 m 5.03 s) and the earth never (3.5 m 3.83 s), the Moon's very long rope past 8 s (2.75 m 8.33 s) and the long 2.5 m never (7.94 s); the last stage wants another rope",
+		"goal (pendulum): judged on the half swing x 2: the earth's long rope past 3 s (2.25 m 3.08 s, 2 m 2.90 s not), the Moon past 5 s with any rope (1 m 5.05 s) and the earth never (3.5 m 3.84 s), the Moon's very long rope past 8 s (2.75 m 8.37 s) and the long 2.5 m never (7.98 s, undamped 7.997 s); the last stage wants another rope",
+		"; ".join(problems))
+
+
+## The half swing x 2 against the measured period (2026-10-28): every rope of the grid, the Moon and
+## the earth, with and without damping. Undamped they are the same period (a symmetric swing; 1e-5:
+## the two in-step interpolations); with
+## the web's damping the half swing is the first, widest one, so it is longer but by under 0.6 %.
+## It is known at the turning point, half a period after the release (the measured one 1.25 later).
+func check_pendulum_half() -> void:
+	var definition := ExperimentRegistry.find("constraints")
+	var problems := []
+	var worst := {"web": 0.0, "none": 0.0}
+	for damping in ["web", "none"]:
+		var b := float(option(definition, "damping", damping).rope_b)
+		for world in ["earth", "moon"]:
+			var g := float(option(definition, "gravity", world).g)
+			for length in grid(definition, "length"):
+				var r := swing(length, g, b)
+				var rel: float = (r[0] - r[2]) / r[2]
+				worst[damping] = maxf(worst[damping], absf(rel))
+				var agrees: bool = absf(rel) <= 1e-5 if damping == "none" else (rel >= 0.0 and rel <= 0.006)
+				# Known within one step of half its own value after the release.
+				var early: bool = absf(r[1] - 0.5 * r[0]) <= 1.0 / float(Engine.physics_ticks_per_second) + 1e-9
+				if not agrees or not early or r[1] >= r[3]:
+					problems.append("%s %s %s m: half x 2 %.4f s at %.2f s, period %.4f s at %.2f s" % [damping, world, length, r[0], r[1], r[2], r[3]])
+	var moon := swing(2.75, 1.62, float(option(definition, "damping", "web").rope_b))
+	expect.call(problems.is_empty(),
+		"goal (pendulum): the half swing x 2 = the measured period (undamped to 1e-5, the web's damping 0-0.6 %% longer), known half a period after the release (the Moon's 2.75 m rope: %.2f s, not %.2f s)" % [moon[1], moon[3]],
+		"worst rel %s (web), %s (none); %s" % [String.num_scientific(worst.web), String.num_scientific(worst.none), "; ".join(problems)])
+
+
+## The key card and the judged value in the lab: waiting text until the first turning point on the
+## other side, then the half swing x 2; the measured rope_period still waits then.
+func check_pendulum_card() -> void:
+	var lab: Experiment = await _lab("constraints")
+	lab.set_control("gravity", "moon")
+	lab.set_control("length", 2.75)
+	lab.release()
+	var problems := []
+	var shown_at := -1.0
+	var period_then: Variant = null
+	var before: Variant = null
+	for i in 12 * Engine.physics_ticks_per_second:
+		await tree.physics_frame
+		var values: Dictionary = lab.observations()
+		if values.rope_half_swing is float:
+			shown_at = lab.models[0].time()
+			period_then = values.rope_period
+			break
+		before = values.rope_half_swing
+	var want: float = lab.models[0].half_swing_period
+	if before != "한 번 왕복하면 보여요" or shown_at < 4.0 or shown_at > 4.4 or not (period_then is String) or absf(want - measured_period(2.75, 1.62, lab.models[0].damping)) > 1e-9:
+		problems.append("before %s, shown at %.2f s (%.4f s), rope_period then %s" % [before, shown_at, want, period_then])
+	lab.queue_free()
+	expect.call(problems.is_empty(), "goal (pendulum): the card waits (\"한 번 왕복하면 보여요\") until the turning point, then shows the half swing x 2 at about T/2 (Moon 2.75 m: about 4.2 s) while the measured period still waits",
 		"; ".join(problems))
 
 
@@ -347,11 +416,42 @@ func check_push() -> void:
 			problems.append("%s: before %s, held %s, moved %s (μs m g %.3f), stopped %s (%s)" % [mass, before, held, moved, want, after, lab.status()])
 		shown.append(moved)
 		cards.append(ExperimentScreen.card_text(definition, observation, moved))
-	lab.queue_free()
-	expect.call(problems.is_empty() and shown[0] < shown[1] and shown[1] < shown[2] and cards == ["2.0뉴턴", "3.9뉴턴", "11.8뉴턴"]
+	expect.call(problems.is_empty() and shown[0] < shown[1] and shown[1] < shown[2] and cards == ["7.8뉴턴", "19.6뉴턴", "39.2뉴턴"]
 		and ExperimentRegistry.shown_cards(definition) == ["start_force"],
-		"goal (push): the key card shows the push that started the box (μs·m·g: 2.0 -> 3.9 -> 11.8뉴턴 light -> normal -> heavy), from the moment it moves, kept after it stops, cleared by a new box",
+		"goal (push): the key card shows the push that started the box (μs·m·g: 7.8 -> 19.6 -> 39.2뉴턴 light -> normal -> heavy 2 / 5 / 10 kg), from the moment it moves, kept after it stops, cleared by a new box",
 		"%s %s; %s" % [str(shown), str(cards), "; ".join(problems)])
+	# Heavier kid boxes (2026-10-28 "너무 쉽게 밀려"): wood takes about 0.4 / 1 / 2 m of handle, and
+	# every material moves every box within the handle's reach (the first grid force past μs·m·g);
+	# pushed with it for 1 s and let go, the box slides and friction stops it on the track.
+	problems = []
+	var travel := []
+	var reach: float = lab.REACH * lab.FORCE_PER_M
+	for material in ["rubber", "wood", "steel", "clay"]:
+		for mass in ["light", "normal", "heavy"]:
+			lab.set_control("material", material)
+			lab.set_control("mass", mass)
+			await _frames(2)
+			var limit: float = lab.model.max_static()
+			var push := ceilf(limit + 1e-9)
+			if material == "wood":
+				travel.append(snappedf(limit / lab.FORCE_PER_M, 0.01))
+			if push > reach:
+				problems.append("%s %s: %.2f N past the reach %.0f N" % [material, mass, limit, reach])
+				continue
+			lab.set_applied_force(push)
+			await _frames(60)
+			var moving: bool = lab.status() == "sliding"
+			lab.set_applied_force(0.0)
+			var k := 0
+			while lab.status() == "sliding" and k < 900:
+				await _frames(1)
+				k += 1
+			if not moving or lab.status() != "holding" or lab.model.displacement <= 0.0:
+				problems.append("%s %s: %.0f N moving %s, then %s at %.2f m" % [material, mass, push, moving, lab.status(), lab.model.displacement])
+	lab.queue_free()
+	expect.call(problems.is_empty() and travel == [0.39, 0.98, 1.96],
+		"goal (push): the kid boxes 2 / 5 / 10 kg take 0.39 / 0.98 / 1.96 m of handle on wood; every material moves every box within the reach (clay 10 kg 74.6 < 80 N), slides and stops on the track",
+		"wood travel %s m; %s" % [str(travel), "; ".join(problems)])
 
 
 # --- (d) the round's invariants ---------------------------------------------------------------------

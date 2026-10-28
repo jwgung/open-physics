@@ -362,8 +362,8 @@ func _check_judge_kinds() -> void:
 	var third := state.on_run_ended("moving", lab, {})
 	expect.call(not first and second and not third and state.stamps == 1,
 		"tracker: a state goal clears on its judge_on status with its conditions (no observe)", "%s %s %s" % [first, second, third])
-	expect.call(MissionTracker.result_in(ExperimentRegistry.find("constraints"), "swinging", {"rope_period": "한 번 왕복하면 보여요"}) == false
-		and MissionTracker.result_in(ExperimentRegistry.find("constraints"), "swinging", {"rope_period": 2.9})
+	expect.call(MissionTracker.result_in(ExperimentRegistry.find("constraints"), "swinging", {"rope_half_swing": "한 번 왕복하면 보여요"}) == false
+		and MissionTracker.result_in(ExperimentRegistry.find("constraints"), "swinging", {"rope_half_swing": 2.9})
 		and MissionTracker.result_in(ExperimentRegistry.find("projectile"), "fence", {"range": 9.0})
 		and not MissionTracker.result_in(ExperimentRegistry.find("projectile"), "flying", {"range": 9.0}),
 		"tracker: the result is in on a reveal_on status once the observed value is a number", "")

@@ -47,7 +47,7 @@
     { "id": "release", "label": "놓기", "style": "primary" },
     { "id": "reset", "label": "처음으로" }
   ],
-  "key_observations": ["rope_distance", "rope_period", "small_period"],
+  "key_observations": ["rope_distance", "rope_half_swing", "small_period"],
   "predict": {
     "question": "줄이 길면 더 천천히 흔들릴까?",
     "choices": [
@@ -58,7 +58,7 @@
     "reason": "줄이 길면 공이 더 먼 길을 돌아요. 그래서 한 번 왔다 갔다 하는 데 오래 걸려요."
   },
   "missions": {
-    "observe": "rope_period",
+    "observe": "rope_half_swing",
     "judge_on": ["swinging"],
     "hidden_until_end": ["small_period"],
     "stages": [
@@ -68,7 +68,7 @@
     ]
   },
   "kid": {
-    "card": "rope_period",
+    "card": "rope_half_swing",
     "title": "줄에 매단 공을 흔들어 보자!",
     "place": "흔들 추",
     "say": "줄과 막대는 길이가 그대로라 공이 동그랗게 흔들려요. 줄이 길수록, 달에서는 더 천천히 흔들려요.",
@@ -84,7 +84,7 @@
         {"value": 3.0, "label": "아주 긴 줄", "picture": "rope", "size": 0.9}
       ]
     },
-    "cards": {"rope_distance": "줄 길이", "rope_period": "한 번 왔다 갔다", "small_period": "조금 흔들 때 왔다 갔다"},
+    "cards": {"rope_distance": "줄 길이", "rope_half_swing": "한 번 왔다 갔다", "small_period": "조금 흔들 때 왔다 갔다"},
     "states": {"한 번 왕복하면 보여요": "흔들면 보여요"}
   },
   "cast": {
@@ -100,6 +100,7 @@
     { "id": "rod_angle", "label": "막대 진자 각도 θ (오른쪽 +)", "unit": "°", "digits": 1 },
     { "id": "small_period", "label": "작은 각도 주기 T ≈ 2π√(L/g)", "unit": "s", "digits": 2 },
     { "id": "rope_period", "label": "줄 진자 한 번 왕복한 시간 (공식 모델)", "unit": "s", "digits": 2 },
+    { "id": "rope_half_swing", "label": "줄 진자 한 번 왕복한 시간 (놓고 반대쪽 끝까지 간 시간 × 2, 공식 모델)", "unit": "s", "digits": 2 },
     { "id": "rod_period", "label": "막대 진자 한 번 왕복한 시간 (공식 모델)", "unit": "s", "digits": 2 },
     { "id": "rope_tension", "label": "줄이 추를 당기는 힘 T = mg cosθ + mv²/L", "unit": "N", "digits": 2 },
     { "id": "rod_tension", "label": "막대가 추를 당기는 힘 mg cosθ + mv²/L", "unit": "N", "digits": 2 }

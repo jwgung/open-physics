@@ -34,9 +34,9 @@
     {
       "id": "mass", "type": "choice", "label": "무게", "default": "start",
       "options": [
-        { "id": "light", "label": "가벼움", "kg": 0.5, "note": "0.5 kg" },
-        { "id": "normal", "label": "보통", "kg": 1.0, "note": "1 kg" },
-        { "id": "heavy", "label": "무거움", "kg": 3.0, "note": "3 kg" },
+        { "id": "light", "label": "가벼움", "kg": 2.0, "note": "2 kg" },
+        { "id": "normal", "label": "보통", "kg": 5.0, "note": "5 kg" },
+        { "id": "heavy", "label": "무거움", "kg": 10.0, "note": "10 kg" },
         { "id": "start", "label": "처음 상자", "kg": 8.0, "note": "8 kg · 처음에 놓인 상자" }
       ]
     }
@@ -72,8 +72,8 @@
     "tip": "빨간 손잡이를 옆으로 끌면 상자를 밀어요.",
     "picks": {
       "mass": [
-        {"value": "light", "label": "가벼운 상자", "picture": "box", "size": 0.55},
-        {"value": "normal", "label": "보통 상자", "picture": "box", "size": 0.693},
+        {"value": "light", "label": "가벼운 상자", "picture": "box", "size": 0.585},
+        {"value": "normal", "label": "보통 상자", "picture": "box", "size": 0.794},
         {"value": "heavy", "label": "무거운 상자", "picture": "box", "size": 1.0}
       ]
     },

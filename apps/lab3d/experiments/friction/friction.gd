@@ -4,7 +4,10 @@
 ## from where it was picked up (the web: 0.9 N per px from the grab point), on the 1 N grid of the
 ## handle's `snap` rule, up to +-REACH m (+-80 N); letting go sets it back to 0 and the box slides
 ## on until friction stops it (the web's handle). Conditions: material (the web's four, mu_s =
-## friction + 0.18, mu_k = friction) and mass (the web's mass buttons and its 8 kg start box).
+## friction + 0.18, mu_k = friction) and mass (the kid boxes 2 / 5 / 10 kg and the web's 8 kg start
+## box; 2026-10-28 user decision "너무 쉽게 밀려": the web's 0.5 / 1 / 3 kg buttons broke loose with
+## 10-60 cm of handle on wood, now about 0.4 / 1 / 2 m. The law is the web's: its vectors drive the
+## lab with the web's masses through set_box_mass).
 ## Motion: Jolt + ContactFrictionCorrector (method "contact_force", law "push": PushFrictionLaw
 ## injected along the floor, engine friction 0). Displayed numbers, the state ("버팀" / "움직임" /
 ## track end) and the graph come from PushFrictionModel (the same law stepped in 64 bit); the engine
@@ -115,7 +118,13 @@ func set_mass(option_id: String) -> void:
 		push_warning("friction: unknown mass %s" % option_id)
 		return
 	mass_id = option_id
-	model.mass = float(option.kg)
+	set_box_mass(float(option.kg))
+
+
+## A box of `kg` (the mass option's, or any mass: the web-parity tests drive the law with the web's
+## 0.5 / 1 / 3 kg boxes): the formula, the body and the look; the box goes back to the start.
+func set_box_mass(kg: float) -> void:
+	model.mass = kg
 	box.mass = model.mass
 	props.set_look(look_factor())
 	reset_box()

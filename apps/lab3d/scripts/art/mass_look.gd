@@ -3,7 +3,7 @@
 ## the drawn size follows the cube root of the mass: twice the size is 8 times the mass, and equal
 ## masses look equal. Visual only: the labs keep their bodies, collision shapes and formula models
 ## (the mesh grows from the body's contact point, ArtJuice.look_scale). No lab needs a clamp: their
-## mass ranges stay within a size ratio of 2.8 (0.5-10 kg collision, 0.5-8 kg friction, 1-20 kg
+## mass ranges stay within a size ratio of 2.8 (0.5-10 kg collision, 2-10 kg friction, 1-20 kg
 ## lever and pulley), so every order and equality is the cube root's own.
 ## The buoyancy drum is not here: its size is its volume (큰 통 / 작은 통); its mass is the weight on
 ## its lid (BuoyancyProps).

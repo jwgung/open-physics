@@ -2,7 +2,8 @@
 ## are the TS-core vectors in tests/friction_lab_vectors.json (tools/friction-lab-vectors.test.ts:
 ## PushFrictionLaw in the web's px units, the app's stepping rule); motion is measured from the
 ## engine box.
-## 1. definition: valid, listed, texts from the shared content, materials / masses = the TS vectors.
+## 1. definition: valid, listed, texts from the shared content, materials and the start box = the TS
+##    vectors (the kid boxes are heavier than the web's, KID_MASSES; the law runs on the web's masses).
 ## 2. force schedules (4 materials x masses): the panel (state, F, friction, v, distance, heat, K)
 ##    after fixed steps = TS (1e-9); the engine box follows the formula displacement (1e-4 m); heat =
 ##    mu_k m g x distance slid, and the applied force's work = K + heat (within the step error).
@@ -22,6 +23,8 @@ const VECTORS_PATH := "res://tests/friction_lab_vectors.json"
 const EXPERIMENT_SCREEN := "res://scripts/shell/experiment_screen.gd"
 const UI_THEME := "res://scripts/app/ui_theme.gd"
 const STEP_HZ := 60
+## The kid boxes (2026-10-28 user decision "너무 쉽게 밀려"): heavier than the web's 0.5 / 1 / 3 kg.
+const KID_MASSES := {"light": 2.0, "normal": 5.0, "heavy": 10.0}
 
 var tree: SceneTree
 var expect: Callable   # (ok: bool, label: String, detail: String)
@@ -141,8 +144,11 @@ func check_definition() -> void:
 				var want: Array = materials.get(option.id, [NAN, NAN])
 				ok = ok and absf(float(option.mu_s) - float(want[0])) < 1e-9 and absf(float(option.mu_k) - float(want[1])) < 1e-9
 			elif control.id == "mass":
-				ok = ok and masses.has(option.id) and float(option.kg) == float(masses[option.id])
-	expect.call(ok and materials.size() == 4 and masses.size() == 4, "friction: material and mass options = the TS vectors (web MATERIALS, mass buttons, 8 kg start box)", str(materials))
+				# The start box is the web's; the kid boxes are heavier than the web's mass buttons
+				# (2026-10-28 user decision "너무 쉽게 밀려"): the law's parity runs on the web's masses
+				# (set_box_mass), not on these presets.
+				ok = ok and float(option.kg) == float(KID_MASSES.get(option.id, masses.get(option.id, NAN)))
+	expect.call(ok and materials.size() == 4 and masses.size() == 4, "friction: material options = the TS vectors (web MATERIALS); the start box = the web's 8 kg, the kid boxes 2 / 5 / 10 kg (not the web's 0.5 / 1 / 3 kg buttons)", str(materials))
 
 
 # --- 2. force schedules -----------------------------------------------------------------------
@@ -157,7 +163,7 @@ func check_push_cases() -> void:
 	var details := []
 	for case in vectors.push:
 		lab.set_control("material", case.material)
-		lab.set_control("mass", case.mass_id)
+		lab.set_box_mass(float(case.mass) if case.has("mass") else float(vectors.masses[case.mass_id]))
 		await _until(lab, 0)
 		var samples := {}
 		for sample in case.samples:
@@ -207,7 +213,7 @@ func check_thresholds() -> void:
 	for case in vectors.thresholds:
 		for i in 3:
 			lab.set_control("material", case.material)
-			lab.set_control("mass", case.mass_id)
+			lab.set_box_mass(float(case.mass) if case.has("mass") else float(vectors.masses[case.mass_id]))
 			await _until(lab, 0)
 			var force := float(case.forces[i])
 			lab.set_applied_force(force)
@@ -252,11 +258,11 @@ func check_conditions() -> void:
 	lab.set_control("mass", "nope")
 	lab.set_control("material", "glass")
 	var want_material := PhysicsLaws.push_max_static_force(0.76, 8.0, 9.81)
-	var want_mass := PhysicsLaws.push_max_static_force(0.76, 3.0, 9.81)
+	var want_mass := PhysicsLaws.push_max_static_force(0.76, 10.0, 9.81)
 	expect.call(back and float(after_material.max_static) == want_material and float(after_material.heat) == 0.0 and float(after_mass.max_static) == want_mass
-		and lab.box.mass == 3.0 and lab.mass_id == "heavy" and lab.material_id == "clay" and lab.graph_series().applied.is_empty(),
+		and lab.box.mass == 10.0 and lab.mass_id == "heavy" and lab.material_id == "clay" and lab.graph_series().applied.is_empty(),
 		"friction: material and mass change the limit and the box mass, put the box back and clear the run; unknown ids are ignored",
-		"clay 8 kg %.3f N, clay 3 kg %.3f N" % [float(after_material.max_static), float(after_mass.max_static)])
+		"clay 8 kg %.3f N, clay 10 kg %.3f N" % [float(after_material.max_static), float(after_mass.max_static)])
 	await _free(lab)
 
 
@@ -309,7 +315,7 @@ func check_track_end() -> void:
 	lab.manipulation_started("handle")
 	var freed: bool = not lab.ended and not lab.box.freeze and lab.status() == "holding"
 	lab.manipulation_placed("handle", Transform3D())
-	lab.set_applied_force(-3.0)
+	lab.set_applied_force(-8.0)   # past the 2 kg steel box's 5.1 N
 	var start: int = lab.frames
 	await _until(lab, start + 30)
 	expect.call(freed and lab.status() == "sliding" and lab.box.global_position.x < engine_x - 0.01,
@@ -329,7 +335,7 @@ func check_track_end() -> void:
 	var pending: bool = lab.ended and lab._freeze_next
 	lab.manipulation_started("handle")
 	lab.manipulation_placed("handle", Transform3D())
-	lab.set_applied_force(-3.0)
+	lab.set_applied_force(-8.0)
 	start = lab.frames
 	await _until(lab, start + 30)
 	expect.call(pending and not lab._freeze_next and not lab.box.freeze and lab.status() == "sliding"

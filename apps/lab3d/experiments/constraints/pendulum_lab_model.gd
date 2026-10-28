@@ -10,6 +10,11 @@
 ## exact spring motion for the same reason).
 ## The period shown is measured on the model: the time between two zero crossings in the same
 ## direction (linear interpolation within the step), 0 until a full swing was seen.
+## The half swing (2026-10-28, read only: nothing in the motion reads it): twice the time from the
+## release to the first turning point on the other side (omega back to 0, linear interpolation
+## within the step), so a period is known after half a swing. Undamped it is the measured period
+## (a symmetric swing's half period); with the web's damping it is 0.15-0.55 % longer (the first half
+## swing is the widest: a wider swing is slower), tests/goal_mission_checks.gd check_pendulum_half.
 class_name PendulumLabModel
 extends BodyModel
 
@@ -28,6 +33,8 @@ var angle := 0.0
 var omega := 0.0            # rad/s
 ## Time between the last two same-direction zero crossings (s; 0 until a full swing was seen).
 var period := 0.0
+## Twice the time from the release to the first turning point on the other side (s; 0 until then).
+var half_swing_period := 0.0
 var _last_up := -1.0
 var _last_down := -1.0
 
@@ -40,6 +47,7 @@ func reset(start: float) -> void:
 	angle = start
 	omega = 0.0
 	period = 0.0
+	half_swing_period = 0.0
 	_last_up = -1.0
 	_last_down = -1.0
 	_place()
@@ -51,9 +59,15 @@ func acceleration(a: float, w: float) -> float:
 
 func advance(step_dt: float) -> void:
 	var before := angle
+	var omega_before := omega
 	var h := step_dt / SUBSTEPS
 	for i in SUBSTEPS:
 		_rk4(h)
+	# Released at rest at start_angle it swings towards -sign(start_angle): the first time omega
+	# comes back to 0 the bob is at the other turning point.
+	var way := -signf(start_angle)
+	if half_swing_period <= 0.0 and way != 0.0 and omega_before * way > 0.0 and omega * way <= 0.0:
+		half_swing_period = 2.0 * (steps - 1 + omega_before / (omega_before - omega)) * step_dt
 	var up := before < 0.0 and angle >= 0.0
 	var down := before > 0.0 and angle <= 0.0
 	if up or down:

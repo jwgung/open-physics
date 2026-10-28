@@ -200,6 +200,8 @@ func observations() -> Dictionary:
 		values[id + "_angle"] = rad_to_deg(m.angle)
 		values[id + "_period"] = m.period if m.period > 0.0 else "한 번 왕복하면 보여요"
 		values[id + "_tension"] = m.tension()
+	# The mission's period (2026-10-28): known at the first turning point on the other side.
+	values["rope_half_swing"] = models[0].half_swing_period if models[0].half_swing_period > 0.0 else "한 번 왕복하면 보여요"
 	return values
 
 

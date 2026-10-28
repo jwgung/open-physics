@@ -52,11 +52,12 @@ const ROUNDS := {
 	],
 	"friction": [
 		["the 8 kg start box pushed loose: not the light box", [["force", 40.0]], 90, 0],
-		["the light box pushed loose", [["force", 0.0], ["ctl", "mass", "light"], ["force", 5.0]], 90, 1],
-		["the light box pushed again: nothing", [["force", 0.0], ["ctl", "mass", "light"], ["force", 5.0]], 90, 1],
-		["the normal box pushed loose", [["force", 0.0], ["ctl", "mass", "normal"], ["force", 10.0]], 90, 2],
-		["the heavy box held by friction (10 N < 11.8 N)", [["force", 0.0], ["ctl", "mass", "heavy"], ["force", 10.0]], 90, 2],
-		["the heavy box pushed loose (20 N)", [["force", 20.0]], 90, 3],
+		["the light box pushed loose (9 N > 7.8 N)", [["force", 0.0], ["ctl", "mass", "light"], ["force", 9.0]], 90, 1],
+		["the light box pushed again: nothing", [["force", 0.0], ["ctl", "mass", "light"], ["force", 9.0]], 90, 1],
+		["the normal box held by friction (15 N < 19.6 N)", [["force", 0.0], ["ctl", "mass", "normal"], ["force", 15.0]], 90, 1],
+		["the normal box pushed loose (21 N)", [["force", 21.0]], 90, 2],
+		["the heavy box held by friction (30 N < 39.2 N)", [["force", 0.0], ["ctl", "mass", "heavy"], ["force", 30.0]], 90, 2],
+		["the heavy box pushed loose (41 N)", [["force", 41.0]], 90, 3],
 	],
 	"rotation": [
 		["the middle point lifts with 186.9 N: not the near point", [["cells", 50]], 20, 0],

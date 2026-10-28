@@ -45,6 +45,8 @@ func _ready() -> void:
 	config.load(SETTINGS_PATH)
 	_set_fps(Quality.cmdline_value("fps") == "1" or bool(config.get_value("ui", "show_fps", false)))
 	_definitions = ExperimentRegistry.load_all()
+	if Quality.cmdline_value("progress") == "bench":
+		ProgressStore.path = ProgressStore.BENCH_PATH   # a measured map never raises the child's flags
 
 	var resume := ""
 	if FileAccess.file_exists(RESUME_PATH):

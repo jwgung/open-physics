@@ -417,6 +417,7 @@ adb shell am start -n org.openphysics.lab3d/com.godot.game.GodotAppLauncher \
 | `--screen=settings` | 설정 화면으로 시작 |
 | `--quality=<low\|medium\|high>` | 품질 단계(저장된다) |
 | `--fps=1` | fps 표시 |
+| `--progress=bench` | 진행(도장·깃발)을 `progress-bench.cfg`에만 읽고 쓴다. `tools/bench_device.sh`가 늘 넘긴다(지도 측정이 아이의 깃발 올리기를 써 버리지 않게) |
 | `--sound=<0\|1>` | 0 = 소리 없이(효과음·음악 없음, 소리 설정을 쓰지 않음). `--auto-drag`·`--auto-release`·`--demo-celebrate`는 기본 0, 1이면 켬 |
 | `--camera=<front\|three_quarter\|top\|side\|follow\|orbit>` | 카메라 모드 |
 | `--ctl-<조건 id>=<값>` | 조건 값(예: `--ctl-angle=30`, `--ctl-material=rubber`) |

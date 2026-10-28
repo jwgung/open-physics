@@ -63,7 +63,7 @@ if [[ ${OPBENCH_OVERWRITE:-0} != 1 ]] && compgen -G "$OPBENCH_RESULTS_DIR/lab3d-
   echo "bench_device: $OPBENCH_RESULTS_DIR already holds lab3d-$tier-$scene-* results (OPBENCH_OVERWRITE=1 replaces them)" >&2
   exit 2
 fi
-sound="--sound=${OPBENCH_SOUND:-0}"
+sound="--sound=${OPBENCH_SOUND:-0},--progress=bench"   # never the child's progress (map flag raises)
 if [[ $experiment == home ]]; then
   args="--quality=$tier,$sound"
 else

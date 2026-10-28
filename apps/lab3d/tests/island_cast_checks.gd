@@ -671,24 +671,26 @@ func check_dialogue() -> void:
 		expect.call(widths.size() > 60 and not grew, "dialogue (rotation, %s): the box never widens again while open (Dugi's arm moving)" % ("phone" if screen_size == PHONE else "tablet"),
 			"%d frames, widened %.2f in all, widths %s .. %s" % [widths.size(), grown, str(widths.slice(0, 3)), str(widths.slice(-3))])
 		await _close(wide)
-	# Untouched: it reads itself through and closes; Dugi points all the while.
+	# Untouched: it waits on its first page, typed out, for a tap (2026-10-28 user: pages turn only
+	# on a tap); Dugi points all the while.
 	cast.dugi.explain(screen.experiment.explain_point)
 	for k in 3:
 		await tree.process_frame
 	var pointing := true
 	var t := 0.0
-	while box.active and t < 60.0:
+	while t < 20.0:
 		box.step(0.1)
 		t += 0.1
 		await tree.process_frame
-		pointing = pointing and (cast.dugi.state == "point" or cast.dugi.state == "raise" or not box.active)
-	var expected := 0.0
-	for k in pages:
-		var n := box.page_text(k).length()
-		expected += n / DialogueBox.CHARS_PER_S + DialogueBox.READ_S + DialogueBox.READ_PER_CHAR_S * n
-	expect.call(not box.active and pointing and t > expected - 1.0 and t < expected + 1.0 and t > DugiActor.POINT_S,
-		"dialogue: untouched it closes after reading every page (Dugi pointing until then, longer than his own %.0f s)" % DugiActor.POINT_S,
-		"closed after %.1f s (expected %.1f s)" % [t, expected])
+		pointing = pointing and (cast.dugi.state == "point" or cast.dugi.state == "raise")
+	expect.call(box.active and box.page == 0 and box.typed() and pointing,
+		"dialogue: untouched it stays on its first page, typed out, and waits for a tap (Dugi pointing all the while)",
+		"active %s page %d typed %s pointing %s" % [box.active, box.page, box.typed(), pointing])
+	for k in 40:   # taps read it through and close it
+		if not box.active:
+			break
+		box.advance()
+		await tree.process_frame
 	# The sidebar closes it.
 	cast.dugi.stop(true)
 	await tree.process_frame

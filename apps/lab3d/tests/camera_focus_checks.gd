@@ -7,7 +7,8 @@
 ##    takes one, focus_enabled false takes none.
 ## 2. throw (projectile screen): no close-up (2026-10-28 user): the camera does not move from
 ##    "공 놓기" to the landing, the ball leaves the paw inside the view, the formula path on screen.
-## 3. push (friction screen): picking up the handle of a box at rest frames the cat, box and handle
+## 3. push (friction screen): no close-up (2026-10-28 user): picking up the handle keeps the view;
+##    (before: picking up the handle of a box at rest framed the cat, box and handle
 ##    closer; while the camera moves a still finger changes neither the handle nor the force; the
 ##    first force starts the return; from the first step the box slides (a hard pull: cut) or from a
 ##    gentle push's slide, the camera transform does not change while the handle is held.
@@ -250,7 +251,9 @@ func _push_case(kind: String, far: float) -> void:
 	var front_fill := _cat_fill(screen)
 	var finger := _at(screen, lab.handle.global_position)
 	manipulator.handle_pointer("press", finger)
-	var picked: bool = manipulator.mode == "drag" and rig.is_focused()
+	var picked: bool = manipulator.mode == "drag" and not rig.is_focused()
+	var grab_view := rig.global_transform
+	var moved_holding := 0
 	var handle_at: Vector3 = lab.handle.global_position
 	var still := true
 	var forces := {}
@@ -259,6 +262,8 @@ func _push_case(kind: String, far: float) -> void:
 		await tree.physics_frame
 		still = still and lab.handle.global_position.is_equal_approx(handle_at)
 		forces[lab.applied_force()] = true
+		if rig.global_transform != grab_view:
+			moved_holding += 1
 	var close_fill := _cat_fill(screen)
 	var slid := false
 	var moved_sliding := 0
@@ -287,10 +292,10 @@ func _push_case(kind: String, far: float) -> void:
 	manipulator.handle_pointer("release", pulled)
 	await tree.process_frame
 	if kind == "hard":
-		expect.call(picked and still and forces.size() == 1 and forces.has(0.0) and close_fill >= front_fill * CAT_GROWTH * 0.9,
-			"close-up (push): picking up the handle of a box at rest frames the cat, box and handle closer; a still finger moves neither the handle nor the force while the camera moves",
-			"picked %s, handle still %s, forces %s, cat %.1f %% -> %.1f %%" % [picked, still, str(forces.keys()), front_fill * 100.0, close_fill * 100.0])
+		expect.call(picked and still and forces.size() == 1 and forces.has(0.0) and moved_holding == 0,
+			"no close-up (push, 2026-10-28 user): picking up the handle keeps the child's view; a still finger moves neither the handle nor the force",
+			"picked %s, handle still %s, forces %s, moved %d, cat %.1f %% -> %.1f %%" % [picked, still, str(forces.keys()), moved_holding, front_fill * 100.0, close_fill * 100.0])
 	expect.call(slid and moved_sliding == 0 and back,
-		"close-up (push, %s pull): the force starts the return; from the step the box slides the camera does not move (the user's view, handle still held)" % kind,
+		"push (%s pull): from the step the box slides the camera does not move (the user's view, handle still held)" % kind,
 		"slid %s, moved %d of %d sliding frames, home %s" % [slid, moved_sliding, sliding_frames, back])
 	await _close(screen)

@@ -11,8 +11,10 @@
 ## mission's question or the prediction's reason — Plan G4), only split into pages of at most
 ## LINES lines at the spaces (joined() is the text again). Each page types out at
 ## CHARS_PER_S; a tap shows the whole page, the next tap turns the page, and after the last page
-## it closes. Untouched, a full page turns after READ_S + READ_PER_CHAR_S per character; a box that
-## holds (`hold`: a question waiting for its answer) stays on its last page instead. UI only:
+## it closes. Pages never turn by themselves (2026-10-28 user: only a tap turns a page; before, an
+## untouched page turned after READ_S + READ_PER_CHAR_S per character — `auto_turn` keeps that for
+## anyone who sets it); a box that holds (`hold`: a question waiting for its answer) stays on its
+## last page. UI only:
 ## no full-screen layer; it takes taps only on the box and the bust (_has_point), the rest of its
 ## rect passes them to the 3D view.
 class_name DialogueBox
@@ -25,6 +27,8 @@ const LINES := 2
 const CHARS_PER_S := 28.0
 const READ_S := 3.0
 const READ_PER_CHAR_S := 0.06
+## Whether an untouched page turns after its read time (off: only a tap turns a page).
+static var auto_turn := false
 const BLINK_HZ := 2.0
 const BOX_PAD := Vector2(22.0, 14.0)        # inner padding (x, y)
 const NAME_LIFT := 18.0                     # the name tag rises this far above the box
@@ -292,7 +296,7 @@ func step(delta: float) -> void:
 	_clock += delta
 	if not typed():
 		_shown += CHARS_PER_S * delta
-	elif not hold or page < _pages.size() - 1:
+	elif auto_turn and (not hold or page < _pages.size() - 1):
 		_read_left -= delta
 		if _read_left <= 0.0:
 			advance()

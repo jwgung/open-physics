@@ -1,0 +1,375 @@
+## The learning goals of the missions (2026-10-28 user decision): each lab's stages make the child
+## see the goal of a high-school law (the README's "목표 · 공식"), judged on the formula's own value.
+## For the five labs whose stages were rewritten for it (free fall, spring, pendulum, orbit, push):
+## (a) every stage's threshold is reachable under its fitting conditions through the real formula /
+##     model the lab shows (PhysicsLaws, SpringModel, PendulumLabModel, OrbitModel, the push lab),
+## (b) not under the non-fitting picture button where the rule is the lesson (Earth never falls for
+##     3 s, a light ball never swings for 4 s, a short rope on the Moon never takes 8 s, a bound
+##     shot never counts as leaving),
+## (c) a stage's own observe / compare / judge_on override the block's (MissionTracker.rule) and the
+##     registry checks them,
+## (d) the round's invariants still hold: the definitions validate, consecutive stages ask for other
+##     conditions (or a `change`), every stage's buttons hold one that fits and one that does not,
+##     and the defaults never clear stage 1 by themselves.
+## Read only: no lab script or model is changed here.
+extends RefCounted
+
+var tree: SceneTree
+var expect: Callable
+const GOAL_LABS := ["free-fall", "spring", "constraints", "orbit", "friction"]
+const LAB_MISSIONS := "res://tests/lab_mission_checks.gd"
+
+
+func _init(scene_tree: SceneTree, expect_fn: Callable) -> void:
+	tree = scene_tree
+	expect = expect_fn
+
+
+func run() -> void:
+	check_rule_overrides()
+	check_registry_stage_keys()
+	await check_free_fall()
+	await check_spring()
+	check_pendulum()
+	check_orbit()
+	await check_push()
+	check_invariants()
+
+
+# --- helpers ---------------------------------------------------------------------------------------
+
+## The stage's threshold is beaten by `value` under its rule (strictly, like MissionTracker.judge).
+static func beats(definition: Dictionary, stage: int, value: float) -> bool:
+	var threshold := float(MissionTracker.missions(definition).stages[stage].threshold)
+	return value < threshold if MissionTracker.rule(definition, stage).compare == "less" else value > threshold
+
+
+## The grid values of a slider control (min..max on its step).
+static func grid(definition: Dictionary, id: String) -> Array:
+	for control in definition.controls:
+		if control.id == id:
+			var out := []
+			var v := float(control.min)
+			while v <= float(control.max) + 1e-9:
+				out.append(snappedf(v, 1e-6))
+				v += float(control.step)
+			return out
+	return []
+
+
+## The option `option` of choice control `id` (its dictionary: "g", "kg", "b", ...).
+static func option(definition: Dictionary, id: String, option_id: String) -> Dictionary:
+	for control in definition.controls:
+		if control.id == id:
+			for o in control.options:
+				if o.id == option_id:
+					return o
+	return {}
+
+
+## The picture buttons of stage `stage` for control `id` that fit (`fits`) or do not fit its condition.
+static func picked(definition: Dictionary, stage: int, id: String, fits: bool) -> Array:
+	for group in ConditionPicks.groups(definition, stage):
+		if group.control == id:
+			return group.presets.filter(func(p: Dictionary) -> bool: return MissionTracker.condition_holds(group.want, p.value) == fits).map(func(p: Dictionary) -> Variant: return p.value)
+	return []
+
+
+func _lab(id: String) -> Experiment:
+	var lab := ExperimentRegistry.instantiate(ExperimentRegistry.find(id))
+	tree.root.add_child(lab)
+	await tree.process_frame
+	await tree.physics_frame
+	return lab
+
+
+func _frames(n: int) -> void:
+	for i in n:
+		await tree.physics_frame
+
+
+# --- (c) the stage's own rule ---------------------------------------------------------------------
+
+## MissionTracker.rule: a stage's keys over the block's; judge() uses the stage's rule.
+func check_rule_overrides() -> void:
+	DirAccess.remove_absolute(ProgressStore.path)
+	var definition := {"id": "rules", "missions": {"observe": "t", "judge_on": ["landed"], "stages": [
+		{"threshold": 2.0, "text": "a"},
+		{"compare": "less", "threshold": 1.0, "text": "b"},
+		{"observe": "", "judge_on": ["far"], "text": "c"}]}}
+	var rules := [0, 1, 2, -1].map(func(i: int) -> Dictionary: return MissionTracker.rule(definition, i))
+	expect.call(rules == [
+		{"observe": "t", "compare": "greater", "judge_on": ["landed"]},
+		{"observe": "t", "compare": "less", "judge_on": ["landed"]},
+		{"observe": "", "compare": "greater", "judge_on": ["far"]},
+		{"observe": "t", "compare": "greater", "judge_on": ["landed"]}]
+		and MissionTracker.judge_on(definition, 2) == ["far"] and MissionTracker.judge_on(definition) == ["landed"],
+		"goal rules: a stage's observe / compare / judge_on replace the block's, the rest is the block's", str(rules))
+	var lab := Experiment.new()
+	tree.root.add_child(lab)
+	var tracker := MissionTracker.new()
+	tracker.definition = definition
+	var seen := []
+	seen.append(tracker.on_run_ended("landed", lab, {"t": 1.5}))   # stage 1: greater 2 -> no
+	seen.append(tracker.on_run_ended("landed", lab, {"t": 2.5}))   # stage 1 cleared
+	seen.append(tracker.on_run_ended("landed", lab, {"t": 2.5}))   # stage 2 is less 1 -> no
+	seen.append(tracker.on_run_ended("landed", lab, {"t": 0.8}))   # stage 2 cleared (less)
+	seen.append(tracker.on_run_ended("landed", lab, {"t": 0.8}))   # stage 3 judges "far" only
+	seen.append(tracker.on_run_ended("far", lab, {}))              # a state goal: no number needed
+	expect.call(seen == [false, true, false, true, false, true] and tracker.stamps == 3,
+		"goal rules: the tracker judges each stage by its own rule (greater, then less, then the state far without a number)", str(seen))
+	lab.free()
+	DirAccess.remove_absolute(ProgressStore.path)
+
+
+## The registry checks a stage's own keys: observe "" or an id, compare, judge_on, and a threshold
+## exactly where the stage's rule has a number.
+func check_registry_stage_keys() -> void:
+	var base := ExperimentRegistry.find("free-fall").duplicate(true)
+	expect.call(ExperimentRegistry.validate(base).is_empty(), "goal registry: the free fall's stage rules validate", ", ".join(ExperimentRegistry.validate(base)))
+	var bad := [
+		["an unknown stage observe", func(d: Dictionary) -> void: d.missions.stages[1].observe = "nope", "observe"],
+		["a stage compare", func(d: Dictionary) -> void: d.missions.stages[2].compare = "more", "compare"],
+		["an empty stage judge_on", func(d: Dictionary) -> void: d.missions.stages[0]["judge_on"] = [], "judge_on"],
+		["a stage observe without its threshold", func(d: Dictionary) -> void: d.missions.stages[1].erase("threshold"), "threshold"],
+		["a threshold on a state goal stage", func(d: Dictionary) -> void: d.missions.stages[0]["threshold"] = 1.0, "needs missions.observe"],
+	]
+	for case in bad:
+		var changed := base.duplicate(true)
+		case[1].call(changed)
+		var found := ExperimentRegistry.validate(changed)
+		expect.call(not found.is_empty() and Array(found).all(func(p: String) -> bool: return case[2] in p),
+			"goal registry rejects %s" % case[0], ", ".join(found))
+
+
+# --- free fall: heavy and light land together; slower on the Moon (h = ½gt², t = √(2h/g)) ----------
+
+func check_free_fall() -> void:
+	var definition := ExperimentRegistry.find("free-fall")
+	var heights := grid(definition, "height")
+	var fall := func(g_id: String, h: float) -> float:
+		return PhysicsLaws.landing_time(0.0, -float(option(definition, "gravity", g_id).g), h)
+	var problems := []
+	# Stage 1: a state goal on the earth with the light red ball (all three land together whatever
+	# their mass: the landing time has no mass in it). The start (the heavy red ball) is not it.
+	var start: Experiment = await _lab("free-fall")
+	var start_fits := MissionTracker.conditions_met(MissionTracker.missions(definition).stages[0].conditions, start)
+	start.queue_free()
+	if MissionTracker.rule(definition, 0).observe != "" or not picked(definition, 0, "mass", true).has("light") or start_fits:
+		problems.append("stage 1: the light red ball on the earth, not the start")
+	# Stage 2: the Moon beats 3 s only from a high drop; the other worlds never.
+	var moon: Array = heights.filter(func(h: float) -> bool: return beats(definition, 1, fall.call("moon", h)))
+	if moon.is_empty() or moon.min() < 7.0 or beats(definition, 1, fall.call("moon", 5.0)):
+		problems.append("stage 2: the Moon beats 3 s from %s m (want a high drop only)" % str(moon))
+	for world in picked(definition, 1, "gravity", false):
+		if heights.any(func(h: float) -> bool: return beats(definition, 1, fall.call(world, h))):
+			problems.append("stage 2: %s beats it" % world)
+	# Stage 3: Jupiter beats 1 s from any height; the earth not from the default height up (the 7.5 m
+	# of stage 2 falls in 1.24 s there).
+	if not heights.all(func(h: float) -> bool: return beats(definition, 2, fall.call("jupiter", h))):
+		problems.append("stage 3: Jupiter misses 1 s from some height")
+	for world in picked(definition, 2, "gravity", false):
+		if heights.filter(func(h: float) -> bool: return h >= 5.0).any(func(h: float) -> bool: return beats(definition, 2, fall.call(world, h))):
+			problems.append("stage 3: %s beats it from 5 m up" % world)
+	# The lab's judged value is the formula's: fall_time = √(2h/g) on the real lab.
+	var lab: Experiment = await _lab("free-fall")
+	lab.set_control("gravity", "moon")
+	lab.set_control("height", 7.5)
+	var shown: Variant = lab.observations().fall_time
+	if not (shown is float and absf(shown - sqrt(2.0 * 7.5 / 1.62)) < 1e-9):
+		problems.append("the lab's fall_time %s is not √(2h/g)" % str(shown))
+	lab.queue_free()
+	expect.call(problems.is_empty(),
+		"goal (free fall): light and heavy together on the earth; the Moon past 3 s only from 7.5 m up (3.04 s, max 3.14 s), never on the earth or Jupiter; Jupiter under 1 s from any height, the earth not from 5 m up",
+		"; ".join(problems))
+
+
+# --- spring: pulls back as much as you pulled; the heavier ball swings slower (T = 2π√(m/k)) -------
+
+func check_spring() -> void:
+	var definition := ExperimentRegistry.find("spring")
+	var masses := grid(definition, "mass")
+	var dampings := ["none", "web"].map(func(id: String) -> float: return float(option(definition, "damping", id).b))
+	var period := func(m: float, b: float) -> float:
+		var model := SpringModel.new()
+		model.mass = m
+		model.damping = b
+		return model.period()
+	var problems := []
+	var stages: Array = MissionTracker.missions(definition).stages
+	# Stage 1: the pull (an extension), reachable on the rod (2.5 m), not from the start pull 1.2 m.
+	var spring_script: GDScript = load("res://experiments/spring/spring.gd")
+	var constants := spring_script.get_script_constant_map()
+	if MissionTracker.rule(definition, 0).observe != "pull" or not (beats(definition, 0, constants.EXT_MAX) and not beats(definition, 0, constants.DEFAULT_PULL)):
+		problems.append("stage 1: the pull past 1.5 m is not reachable / the start pull clears it")
+	# Stages 2 and 3: every mass the stage allows beats it (either damping); the other button never.
+	for stage in [1, 2]:
+		var want: Variant = stages[stage].conditions.mass
+		for m in masses:
+			for b in dampings:
+				var hit := beats(definition, stage, period.call(m, b))
+				if MissionTracker.condition_holds(want, m) and not hit:
+					problems.append("stage %d: %s kg (b %s) misses at %.2f s" % [stage + 1, m, b, period.call(m, b)])
+		for m in picked(definition, stage, "mass", false):
+			if dampings.any(func(b: float) -> bool: return beats(definition, stage, period.call(m, b))):
+				problems.append("stage %d: the other button %s kg beats it" % [stage + 1, m])
+	# The lab's swing reads the formula period once the ball has been back once, not before.
+	var lab: Experiment = await _lab("spring")
+	lab.set_control("mass", 3.0)
+	lab.run_action("release")
+	await _frames(240)
+	var early: Variant = lab.observations().swing_period
+	await _frames(70)
+	var late: Variant = lab.observations().swing_period
+	if not (early is String and late is float and absf(late - TAU * sqrt(3.0 / 5.0)) < 1e-9):
+		problems.append("the swing reads %s after 4 s, %s after 5.2 s (want text, then 2π√(3/5))" % [str(early), str(late)])
+	lab.queue_free()
+	expect.call(problems.is_empty(),
+		"goal (spring): pull 1.5 m (rod 2.5 m, start 1.2 m); a 2.5 kg+ ball swings past 4 s (3 kg 4.87 s), a 1 kg one never; a 1 kg- ball under 3 s (2.81 s), a 3 kg one never; the swing shows after one return",
+		"; ".join(problems))
+
+
+# --- pendulum: a longer rope and the Moon swing slower (T = 2π√(L/g)) -------------------------------
+
+## The period the lab measures (two same-way zero crossings) of a rope of `length` in `g`, let go
+## from the lab's start angle with its rope damping `b`.
+static func measured_period(length: float, g: float, b: float) -> float:
+	var start: float = load("res://experiments/constraints/constraints.gd").get_script_constant_map().WEB_ANGLES[0]
+	var model := PendulumLabModel.new()
+	model.length = length
+	model.g = g
+	model.damping = b
+	model.reset(start)
+	var dt := 1.0 / float(Engine.physics_ticks_per_second)
+	while model.period <= 0.0 and model.steps < 6000:
+		model.step(dt)
+	return model.period
+
+
+func check_pendulum() -> void:
+	var definition := ExperimentRegistry.find("constraints")
+	var lengths := grid(definition, "length")
+	var stages: Array = MissionTracker.missions(definition).stages
+	var problems := []
+	for damping in ["web", "none"]:
+		var b := float(option(definition, "damping", damping).rope_b)
+		for stage in stages.size():
+			var want: Dictionary = stages[stage].conditions
+			var world := str(want.gravity)
+			var g := float(option(definition, "gravity", world).g)
+			for length in lengths:
+				var t := measured_period(length, g, b)
+				if MissionTracker.condition_holds(want.get("length", {}), length) and not beats(definition, stage, t):
+					problems.append("stage %d (%s): %s m misses at %.2f s" % [stage + 1, damping, length, t])
+			# Stage 1's lesson is the rope (on the Moon every rope is slow: stage 2's lesson).
+			for other in picked(definition, stage, "gravity", false) if stage > 0 else []:
+				var og := float(option(definition, "gravity", other).g)
+				if lengths.any(func(l: float) -> bool: return beats(definition, stage, measured_period(l, og, b))):
+					problems.append("stage %d (%s): %s beats it" % [stage + 1, damping, other])
+			for length in picked(definition, stage, "length", false):
+				if beats(definition, stage, measured_period(length, g, b)):
+					problems.append("stage %d (%s): the other rope %s m beats it" % [stage + 1, damping, length])
+	# The default rope (2 m on the earth) does not clear stage 1.
+	if beats(definition, 0, measured_period(2.0, 9.81, float(option(definition, "damping", "web").rope_b))):
+		problems.append("the default 2 m rope clears stage 1")
+	expect.call(problems.is_empty() and (stages[2].get("change", []) as Array).has("length"),
+		"goal (pendulum): the earth's long rope past 3 s (2.25 m 3.07 s, 2 m 2.90 s not), the Moon past 5 s with any rope (1 m 5.03 s) and the earth never (3.5 m 3.83 s), the Moon's very long rope past 8 s (2.75 m 8.33 s) and the long 2.5 m never (7.94 s); the last stage wants another rope",
+		"; ".join(problems))
+
+
+# --- orbit: the star pulls the planet round; too fast and it leaves (√(GM/r), √(2GM/r)) -----------
+
+func check_orbit() -> void:
+	var definition := ExperimentRegistry.find("orbit")
+	var stages: Array = MissionTracker.missions(definition).stages
+	var speeds := grid(definition, "speed")
+	var problems := []
+	var model := OrbitModel.new()
+	var dt := 1.0 / float(Engine.physics_ticks_per_second)
+	# Stages 1 and 2: the laps at the circular speed of the stage's radius are reachable, and the
+	# closer orbit goes round faster.
+	var laps := func(radius: float, steps: int) -> float:
+		model.reset(radius, 0.0, -sqrt(model.mu / radius))
+		for k in steps:
+			model.step(dt)
+		return absf(model.swept) / TAU
+	var periods := [4.0, 2.0].map(func(r: float) -> float: return TAU * sqrt(pow(r, 3.0) / model.mu))
+	if not (beats(definition, 0, laps.call(float(stages[0].conditions.radius), ceili(periods[0] * 1.05 / dt)))
+			and beats(definition, 1, laps.call(float(stages[1].conditions.radius), ceili(periods[1] * 2.05 / dt)))
+			and periods[1] < periods[0]):
+		problems.append("the laps are not reachable at the circular speed (periods %s)" % str(periods))
+	# Stage 3: judged when the planet is far away (the lab's "far") on a launch past the escape speed
+	# of 4 m: on the speed grid the threshold splits exactly the unbound shots from the bound ones.
+	var rule := MissionTracker.rule(definition, 2)
+	var radius := float(stages[2].conditions.radius)
+	var escape := sqrt(2.0 * model.mu / radius)
+	for s in speeds:
+		var unbound: bool = 0.5 * s * s - model.mu / radius >= 0.0
+		if beats(definition, 2, s) != unbound:
+			problems.append("%s m/s: past the threshold %s, unbound %s" % [s, beats(definition, 2, s), unbound])
+	# A shot just under it (3.6 m/s) still flies past 12 m (bound, far apoapsis): "far" alone would
+	# not be the law, the speed past √(2GM/r) is.
+	var reach := func(speed: float) -> String:
+		model.reset(radius, 0.0, -speed)
+		while model.outcome == "" and model.steps < 60 * 120:
+			model.step(dt)
+		return model.outcome
+	if rule.observe != "launch_speed" or rule.judge_on != ["far"] or reach.call(3.7) != "far" or reach.call(3.6) != "far" or absf(escape - 3.674) > 1e-3:
+		problems.append("stage 3: rule %s, 3.7 m/s %s, 3.6 m/s %s, escape %.3f" % [str(rule), reach.call(3.7), reach.call(3.6), escape])
+	expect.call(problems.is_empty(),
+		"goal (orbit): one lap at 4 m (9.7 s) and two at 2 m (2 x 3.4 s, closer is faster); leaving from 4 m counts past 3.67 m/s (√(2GM/r) = 3.674: 3.7 leaves, 3.6 is bound though it flies past 12 m)",
+		"; ".join(problems))
+
+
+# --- push: the floor holds the box; heavier holds tighter (f_max = μs·m·g) --------------------------
+
+func check_push() -> void:
+	var definition := ExperimentRegistry.find("friction")
+	var observation: Dictionary = definition.observations.filter(func(o: Dictionary) -> bool: return o.id == "start_force")[0]
+	var lab: Experiment = await _lab("friction")
+	var problems := []
+	var shown := []
+	var cards := []
+	for mass in ["light", "normal", "heavy"]:
+		lab.set_control("mass", mass)
+		var want := float(option(definition, "material", "wood").mu_s) * float(option(definition, "mass", mass).kg) * float(lab.model.g)
+		var before: Variant = lab.observations().start_force
+		lab.set_applied_force(0.5)    # under every limit: the box holds, nothing to show yet
+		await _frames(10)
+		var held: Variant = lab.observations().start_force
+		lab.set_applied_force(ceilf(want) + 1.0)   # a newton past the limit: it breaks loose
+		await _frames(10)
+		var moved: Variant = lab.observations().start_force
+		lab.set_applied_force(0.0)
+		await _frames(240)
+		var after: Variant = lab.observations().start_force
+		if not (before is String and held is String and moved is float and absf(moved - want) < 1e-9 and after == moved and lab.status() == "holding"):
+			problems.append("%s: before %s, held %s, moved %s (μs m g %.3f), stopped %s (%s)" % [mass, before, held, moved, want, after, lab.status()])
+		shown.append(moved)
+		cards.append(ExperimentScreen.card_text(definition, observation, moved))
+	lab.queue_free()
+	expect.call(problems.is_empty() and shown[0] < shown[1] and shown[1] < shown[2] and cards == ["2.0뉴턴", "3.9뉴턴", "11.8뉴턴"]
+		and ExperimentRegistry.shown_cards(definition) == ["start_force"],
+		"goal (push): the key card shows the push that started the box (μs·m·g: 2.0 -> 3.9 -> 11.8뉴턴 light -> normal -> heavy), from the moment it moves, kept after it stops, cleared by a new box",
+		"%s %s; %s" % [str(shown), str(cards), "; ".join(problems)])
+
+
+# --- (d) the round's invariants ---------------------------------------------------------------------
+
+func check_invariants() -> void:
+	var disjoint: GDScript = load(LAB_MISSIONS)
+	var problems := []
+	for id in GOAL_LABS:
+		var definition := ExperimentRegistry.find(id)
+		problems.append_array(Array(ExperimentRegistry.validate(definition)).map(func(p: String) -> String: return "%s: %s" % [id, p]))
+		var stages: Array = MissionTracker.missions(definition).stages
+		for i in stages.size():
+			if i > 0 and (stages[i].get("change", []) as Array).is_empty() and not disjoint.call("_disjoint", stages[i - 1].get("conditions", {}), stages[i].get("conditions", {})):
+				problems.append("%s: stages %d and %d share a setup" % [id, i, i + 1])
+			for group in ConditionPicks.groups(definition, i):
+				var holds: Array = group.presets.map(func(p: Dictionary) -> bool: return MissionTracker.condition_holds(group.want, p.value))
+				if not (holds.has(true) and holds.has(false)):
+					problems.append("%s stage %d: %s needs one fitting and one other button" % [id, i + 1, group.control])
+	expect.call(problems.is_empty(),
+		"goal labs: the definitions validate, consecutive stages want another setup (or a change), each stage's buttons hold one that fits and one that does not",
+		"; ".join(problems))

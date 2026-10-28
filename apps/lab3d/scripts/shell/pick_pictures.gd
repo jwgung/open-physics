@@ -2,7 +2,7 @@
 ## drawn with the canvas's 2D calls (no textures, nothing downloaded), in the storybook colours of
 ## the prediction pictures (PredictPictures) and the labs' own toy colours (ArtPalette): the earth,
 ## the moon and Jupiter, a light or a heavy box, a steel, wooden or rubber slide, a planet near or far
-## from its star, a gentle or a steep slope, one, two or four ropes, the hand near or far on the lever, a small or a big ball,
+## from its star, a gentle or a steep slope, one, two or four ropes, the hand near or far on the lever, a small or a big ball (blue, orange, the free fall's red),
 ## a big or a small drum, a weight, a short or a long string. `size` (0..1) and `count` say how much
 ## the drawing shows (kid.picks entries). The words under the picture say the same thing.
 ## A mass's picture (a ball, a box, a weight) is drawn like the lab draws the body (2026-10-28,
@@ -13,7 +13,7 @@ class_name PickPictures
 extends RefCounted
 
 const KINDS := ["earth", "moon", "jupiter", "box", "slide_steel", "slide_wood", "slide_rubber", "orbit",
-	"slope", "pulley", "lever", "ball_blue", "ball_orange", "drum_big", "drum_small", "weight", "rope"]
+	"slope", "pulley", "lever", "ball_blue", "ball_orange", "ball_red", "drum_big", "drum_small", "weight", "rope"]
 const OUTLINE := Color("8a6a46")   # PredictPictures.GROUND: the brown of the storybook lines
 const STEEL := ArtPalette.STEEL
 
@@ -87,11 +87,11 @@ static func draw(canvas: Control, kind: String, size := 0.5, count := 1) -> void
 			canvas.draw_line(Vector2(grip, y - 4.0), Vector2(grip, r.position.y + 6.0), Color("ffffff"), 3.0)
 			canvas.draw_circle(Vector2(grip, r.position.y + 8.0), 7.0, ArtPalette.RED)
 			_arrow(canvas, Vector2(grip + 12.0, r.position.y + 4.0), Vector2(grip + 12.0, y - 10.0), ArtPalette.RED, 3.0)
-		"ball_blue", "ball_orange":
+		"ball_blue", "ball_orange", "ball_red":
 			_ground(canvas, r)
 			var radius := (r.size.y * 0.5 - 2.0) * size
 			var at := Vector2(c.x, r.end.y - radius - 1.0)
-			canvas.draw_circle(at, radius, ArtPalette.BLUE if kind == "ball_blue" else ArtPalette.ORANGE)
+			canvas.draw_circle(at, radius, {"ball_blue": ArtPalette.BLUE, "ball_orange": ArtPalette.ORANGE, "ball_red": ArtPalette.RED}[kind])
 			canvas.draw_arc(at, radius, 0.0, TAU, 24, OUTLINE, 2.0, true)
 			canvas.draw_arc(at, radius * 0.6, -2.4, -1.2, 8, Color("ffffff", 0.8), 2.0, true)
 		"drum_big", "drum_small":

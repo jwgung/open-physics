@@ -23,6 +23,8 @@ const END_X := ANCHOR_X + REST_LENGTH + EXT_MAX + 0.6   # the rod's end stand
 const BALL_LAYER := 3             # pickable; the ball touches nothing in the engine (mask 0)
 const REST_AMPLITUDE := 0.002     # m: a damped ball within this of the rest length, this slow, is at rest
 const REST_SPEED := 0.005         # m/s
+## The swing's readout until the ball has been back once (then the formula period, observations).
+const SWING_WAIT := "한 번 왕복하면 보여요"
 
 var model := SpringModel.new()
 var ball: RigidBody3D
@@ -185,6 +187,8 @@ func observations() -> Dictionary:
 		"total": model.total_energy(),
 		"natural_period": model.natural_period(),
 		"period": model.period(),
+		# The mission's swing (2026-10-28): the period once the ball has been back once (the cat's cheer).
+		"swing_period": model.period() if released and holding == "" and model.time() >= model.period() else SWING_WAIT,
 	}
 
 

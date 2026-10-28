@@ -252,6 +252,11 @@ func _run() -> void:
 	_expect(labs != null and labs.can_instantiate(), "lab mission checks compile", "")
 	if labs != null and labs.can_instantiate():
 		await labs.new(self, _expect).run()
+	print("== learning goals (2026-10-28): the five rewritten labs' stages reachable by the formula, not with the other button, stage rules ==")
+	var goals: GDScript = load("res://tests/goal_mission_checks.gd")
+	_expect(goals != null and goals.can_instantiate(), "goal mission checks compile", "")
+	if goals != null and goals.can_instantiate():
+		await goals.new(self, _expect).run()
 	print("== condition looks (2026-10-28): mass looks, the gravity sign, surface materials, physics unchanged ==")
 	var looks: GDScript = load("res://tests/condition_look_checks.gd")
 	_expect(looks != null and looks.can_instantiate(), "condition look checks compile", "")

@@ -203,14 +203,16 @@ static func validate(definition: Dictionary) -> PackedStringArray:
 ##           "picks": {<control id>: [the mission's picture buttons, ConditionPicks]}}
 ## Every key is optional; a missing one falls back to the shared text (kid_text, card_label).
 ## The key cards over the 3D view show a number with one decimal and its unit in words (KID_UNITS:
-## "1.3초", "초속 12.5미터"); a game lab's key observations have such a unit (a force, an energy, an
-## acceleration stays in "자세히"). States and minus words change the card's words only: the lab's
+## "1.3초", "초속 12.5미터"); a game lab's key observations have such a unit (an energy, an
+## acceleration stays in "자세히"; a force reads "11.8뉴턴" only where it is the lab's goal: the push
+## that started the box, 2026-10-28). States and minus words change the card's words only: the lab's
 ## text and the value (the sidebar's, full precision) stay the formula's (ExperimentScreen.card_text).
 const KID_TEXTS := {"title": "title", "place": "title", "say": "observe", "tip": "tip_short"}
 const KID_MAPS := ["cards", "states", "minus"]
 ## Observation unit -> [the words before the number, the words after it] on a key card.
 const KID_UNITS := {"": ["", ""], "m": ["", "미터"], "s": ["", "초"], "m/s": ["초속 ", "미터"],
-	"°": ["", "도"], "kg": ["", "킬로그램"], "바퀴": ["", "바퀴"], "줄": ["", "줄"], "배": ["", "배"]}
+	"°": ["", "도"], "kg": ["", "킬로그램"], "바퀴": ["", "바퀴"], "줄": ["", "줄"], "배": ["", "배"],
+	"N": ["", "뉴턴"]}
 
 
 static func _validate_kid(kid: Variant, ids: Array) -> PackedStringArray:
@@ -298,11 +300,13 @@ static func _validate_series(missions: Variant, series: Array) -> PackedStringAr
 
 ## `missions` (Plan G1, G2, optional): the stages and how a run is judged (MissionTracker's header) —
 ## {"stages": [{"text": <non-empty>, "threshold"?: <number > 0>, "conditions"?: {...},
-##              "change"?: [<control id>, ...]}, ...],
+##              "change"?: [<control id>, ...], "observe"?: <an observation id> | "",
+##              "compare"?: ..., "judge_on"?: [...]}, ...],
 ##  "observe"?: <an observation id>, "compare"?: "greater" | "less",
 ##  "judge_on"?: [<status>, ...], "reveal_on"?: [<status>, ...],
 ##  "hidden_until_end"?: [<observation id>, ...], "hidden_series_until_end"?: [<graph series id>, ...]}.
 ## With `observe` every stage has its threshold; without it a stage is a state goal (no threshold).
+## A stage's own observe / compare / judge_on replace the block's for that stage ("": no observe).
 ## A stage's `conditions` name the definition's controls: a choice wants one of its option ids, a
 ## slider a number or a {"min"?, "max"?} range inside its min..max. The tracker only reads (it never
 ## changes the run). The hidden_until_end values (the formula's answer) read "?" and the
@@ -339,12 +343,21 @@ static func _validate_missions(missions: Variant, observations: Array, controls:
 		var stage: Variant = stages[i]
 		var threshold: Variant = stage.get("threshold") if stage is Dictionary else null
 		var text: Variant = stage.get("text") if stage is Dictionary else null
+		# A stage's own rule (MissionTracker.rule): observe "" (a state goal) or an id, compare, judge_on.
+		var own: Variant = stage.get("observe") if stage is Dictionary else null
+		var observed: bool = (own != "") if stage is Dictionary and stage.has("observe") else missions.has("observe")
 		if not stage is Dictionary:
 			problems.append("missions.stages[%d] must be an object" % i)
-		elif missions.has("observe") and not ((threshold is int or threshold is float) and threshold > 0.0):
+		elif stage.has("observe") and not (own is String and (own == "" or ids.has(own))):
+			problems.append("missions.stages[%d].observe must be \"\" or one of the observation ids" % i)
+		elif stage.has("compare") and stage.compare not in MissionTracker.COMPARES:
+			problems.append("missions.stages[%d].compare must be greater or less" % i)
+		elif stage.has("judge_on") and not (stage.judge_on is Array and not stage.judge_on.is_empty() and stage.judge_on.all(func(v: Variant) -> bool: return v is String and v != "")):
+			problems.append("missions.stages[%d].judge_on must list statuses" % i)
+		elif observed and not ((threshold is int or threshold is float) and threshold > 0.0):
 			problems.append("missions.stages[%d].threshold must be a number > 0" % i)
-		elif not missions.has("observe") and stage.has("threshold"):
-			problems.append("missions.stages[%d].threshold needs missions.observe" % i)
+		elif not observed and stage.has("threshold"):
+			problems.append("missions.stages[%d].threshold needs missions.observe (or the stage's observe)" % i)
 		elif not (text is String and text != ""):
 			problems.append("missions.stages[%d].text must be a text" % i)
 		else:

@@ -7,7 +7,7 @@ class_name PredictPictures
 extends RefCounted
 
 const KINDS := ["long_arc", "same_arc", "fall_together", "fall_heavy_first", "light_flies", "both_stop",
-	"spring_longer", "spring_same", "rubber_floor", "steel_floor", "push_harder", "push_same", "lever_far", "lever_same",
+	"spring_slow", "spring_even", "rubber_floor", "steel_floor", "push_harder", "push_same", "lever_far", "lever_same",
 	"orbit_leave", "orbit_stay", "drum_big", "drum_small", "swing_slow", "swing_same",
 	"pulley_many", "pulley_same", "slope_steep", "slope_same"]
 const STRONG := Color("e2683c")
@@ -27,8 +27,8 @@ static func draw(canvas: Control, kind: String) -> void:
 			_fall(canvas, r, kind == "fall_heavy_first")
 		"light_flies", "both_stop":
 			_collide(canvas, r, kind == "light_flies")
-		"spring_longer", "spring_same":
-			_springs(canvas, r, kind == "spring_longer")
+		"spring_slow", "spring_even":
+			_springs(canvas, r, kind == "spring_slow")
 		"rubber_floor", "steel_floor":
 			_floor(canvas, r, kind == "rubber_floor")
 		"push_harder", "push_same":
@@ -110,14 +110,24 @@ static func _collide(canvas: Control, r: Rect2, flies: bool) -> void:
 			canvas.draw_line(Vector2(small.x + k * 5.0, y - 30.0), Vector2(small.x + k * 5.0, y - 22.0), STRONG, 3.0)
 
 
-## Two springs from a wall, a small ball (pale, top) and a big one (orange, bottom): the big one
-## pulls its spring longer ("spring_longer") or both are the same length ("spring_same").
-static func _springs(canvas: Control, r: Rect2, longer: bool) -> void:
+## Two springs from a wall pulled out as far and let go together, a small ball (pale, top) and a big
+## one (orange, bottom), a moment later: the small one is already back near the wall with a long
+## "fast" arrow while the big one is still out with a short one ("spring_slow"), or both are at the
+## same place with the same arrow ("spring_even").
+static func _springs(canvas: Control, r: Rect2, slow: bool) -> void:
 	var wall := r.position.x + 6.0
 	canvas.draw_line(Vector2(wall, r.position.y), Vector2(wall, r.end.y), GROUND, 4.0)
-	var short := r.size.x * 0.5
-	_spring(canvas, Vector2(wall, r.position.y + r.size.y * 0.28), short, PALE, 8.0)
-	_spring(canvas, Vector2(wall, r.position.y + r.size.y * 0.74), r.size.x * 0.8 if longer else short, STRONG, 13.0)
+	var top := r.position.y + r.size.y * 0.28
+	var bottom := r.position.y + r.size.y * 0.74
+	var back := r.size.x * 0.42
+	var out := r.size.x * 0.78 if slow else back
+	_spring(canvas, Vector2(wall, top), back, PALE, 8.0)
+	_spring(canvas, Vector2(wall, bottom), out, STRONG, 13.0)
+	# Each ball's speed back towards the wall: an arrow above it, the longer the faster.
+	var quick := r.size.x * (0.32 if slow else 0.2)
+	var steady := r.size.x * (0.12 if slow else 0.2)
+	_arrow(canvas, Vector2(wall + back + quick * 0.5, top - 15.0), Vector2(wall + back - quick * 0.5, top - 15.0), PALE, 3.0)
+	_arrow(canvas, Vector2(wall + out + steady * 0.5, bottom - 20.0), Vector2(wall + out - steady * 0.5, bottom - 20.0), STRONG, 3.0)
 
 
 ## A zigzag spring of `length` from `from` with a ball of `radius` at its end.

@@ -44,7 +44,7 @@
   "actions": [
     { "id": "reset", "label": "처음으로", "style": "primary" }
   ],
-  "key_observations": ["state", "speed", "distance"],
+  "key_observations": ["state", "start_force", "distance"],
   "predict": {
     "question": "무거운 상자는 더 세게 밀어야 할까?",
     "choices": [
@@ -66,9 +66,9 @@
     ]
   },
   "kid": {
-    "card": "state",
+    "card": "start_force",
     "place": "상자 밀기",
-    "say": "바닥이 상자를 붙잡고 버텨요. 그보다 세게 밀면 상자가 움직여요.",
+    "say": "바닥이 상자를 붙잡고 버텨요. 무거운 상자일수록 꽉 붙잡아서 더 세게 밀어야 움직여요.",
     "tip": "빨간 손잡이를 옆으로 끌면 상자를 밀어요.",
     "picks": {
       "mass": [
@@ -77,7 +77,7 @@
         {"value": "heavy", "label": "무거운 상자", "picture": "box", "size": 1.0}
       ]
     },
-    "cards": {"state": "상자는?", "speed": "상자 빠르기", "distance": "상자가 간 거리"},
+    "cards": {"state": "상자는?", "start_force": "움직이려면 필요한 힘", "distance": "상자가 간 거리"},
     "states": {"버티는 중 · 마찰이 막고 있어요": "꼼짝 안 해요", "움직여요 · 주는 힘이 마찰을 이겼어요": "움직여요!", "미끄러지다 멈추는 중": "천천히 멈추는 중", "바닥 끝에 닿았어요": "끝까지 갔어요"}
   },
   "cast": {
@@ -88,6 +88,7 @@
     { "id": "state", "label": "상자 상태" },
     { "id": "applied", "label": "내가 주는 힘 F", "unit": "N", "digits": 1 },
     { "id": "max_static", "label": "최대 정지 마찰력 μs·mg", "unit": "N", "digits": 2 },
+    { "id": "start_force", "label": "움직이기 시작할 때 민 힘 (최대 정지 마찰력 μs·mg, 움직인 뒤)", "unit": "N", "digits": 1 },
     { "id": "friction", "label": "지금 마찰력", "unit": "N", "digits": 2 },
     { "id": "kinetic", "label": "운동 마찰력 μk·mg", "unit": "N", "digits": 2 },
     { "id": "speed", "label": "속력 v", "unit": "m/s", "digits": 2 },

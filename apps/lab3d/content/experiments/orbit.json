@@ -55,16 +55,16 @@
     "reveal_on": ["orbiting", "leaving", "crash", "far"],
     "hidden_until_end": ["predicted", "escape_speed"],
     "stages": [
-      { "threshold": 0.5, "conditions": {"radius": 4.0}, "text": "별에서 4미터 떨어져 반 바퀴 돌기!" },
-      { "threshold": 1.0, "conditions": {"radius": 5.0}, "text": "별에서 5미터 떨어져 한 바퀴 돌기!" },
-      { "threshold": 2.0, "conditions": {"radius": 2.0}, "text": "별 가까이 2미터에서 두 바퀴 돌기!" }
+      { "threshold": 1.0, "conditions": {"radius": 4.0}, "text": "별에서 4미터 떨어져 한 바퀴 돌기!" },
+      { "threshold": 2.0, "conditions": {"radius": 2.0}, "text": "별 가까이 2미터에서 두 바퀴 돌기!" },
+      { "observe": "launch_speed", "threshold": 3.67, "judge_on": ["far"], "conditions": {"radius": 4.0}, "text": "4미터에서 아주 세게 쏴서 별을 떠나기!" }
     ]
   },
   "kid": {
     "card": "state",
     "title": "별 둘레를 빙글빙글 돌아 보자!",
     "place": "별 돌기",
-    "say": "별이 행성을 끌어당겨요. 빠르기에 따라 별을 돌기도 하고 떠나기도 해요.",
+    "say": "별이 행성을 끌어당겨서 빙글빙글 돌게 해요. 가까우면 더 빨리 돌고, 너무 빠르면 별을 떠나요.",
     "tip": "노란 손잡이를 끌어 쏠 방향과 세기를 정해요.",
     "picks": {
       "radius": [

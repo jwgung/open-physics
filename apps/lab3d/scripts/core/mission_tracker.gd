@@ -26,6 +26,9 @@
 ##   controls from the run that cleared the stage before ("세기나 각도를 바꿔"): throwing the same
 ##   throw again never earns the next stamp. The cleared run's control values are kept with the
 ##   stamps (ProgressStore.cleared); with none kept (a first stage, an older save) any run counts.
+## - a stage's `observe`, `compare`, `judge_on` (optional, 2026-10-28): that stage's own rule in
+##   place of the block's ("빨리 떨어지게" is "less", "별을 떠나기" is the state "far" with no number:
+##   `"observe": ""`). A key the stage leaves out is the block's (MissionTracker.rule).
 ## - `reveal_on` (default `judge_on`): the statuses where the run has its result: the
 ##   hidden_until_end values (the formula's answer) read "?" until then, and the prediction's question
 ##   is over. With `observe`, the result is in once that value is a number too (the pendulum's period
@@ -74,9 +77,24 @@ static func predict(definition: Dictionary) -> Dictionary:
 	return predict if predict is Dictionary else {}
 
 
-## The statuses a stage is judged on (the run's result states).
-static func judge_on(definition: Dictionary) -> Array:
-	return missions(definition).get("judge_on", DEFAULT_JUDGE_ON)
+## The statuses a stage is judged on (the run's result states): stage `stage`'s own judge_on, else
+## the block's (stage -1 or past the last: the block's).
+static func judge_on(definition: Dictionary, stage := -1) -> Array:
+	return rule(definition, stage).judge_on
+
+
+## Stage `stage`'s judging rule {"observe": id or "", "compare": "greater" | "less", "judge_on": [...]}:
+## the stage's own keys over the block's (stage -1 or past the last: the block's alone).
+static func rule(definition: Dictionary, stage := -1) -> Dictionary:
+	var block := missions(definition)
+	var out := {"observe": str(block.get("observe", "")), "compare": str(block.get("compare", "greater")),
+		"judge_on": block.get("judge_on", DEFAULT_JUDGE_ON)}
+	var stages: Array = block.get("stages", [])
+	if stage >= 0 and stage < stages.size() and stages[stage] is Dictionary:
+		for key in out:
+			if (stages[stage] as Dictionary).has(key):
+				out[key] = stages[stage][key] if key == "judge_on" else str(stages[stage][key])
+	return out
 
 
 ## The statuses where the run has its result (the hidden answers show, the question is over).
@@ -100,26 +118,28 @@ static func stamps_of(definition: Dictionary) -> int:
 
 
 ## The new stamp count after a run seen in `status` with `stamps` cleared so far: one more when the
-## status is a judge_on one, the lab is settled, the stage's conditions hold (the lab's control
-## values) and, with `observe`, its formula value beats the stage's threshold (`compare`). Anything
-## else keeps the count. The caller (the screen) passes the observations() the panels show.
+## status is one of the stage's judge_on, the lab is settled, the stage's conditions hold (the lab's
+## control values) and, with an `observe` (rule: the stage's or the block's), its formula value beats
+## the stage's threshold (`compare`). Anything else keeps the count. The caller (the screen) passes the observations() the panels show.
 ## `cleared`: the control values of the run that cleared the stage before (a stage's `change`).
 static func judge(definition: Dictionary, stamps: int, status: String, lab: Experiment,
 		observations: Dictionary, cleared := {}) -> int:
-	var block := missions(definition)
-	var stages: Array = block.get("stages", [])
-	if stamps >= stages.size() or status not in judge_on(definition) or not lab.settled():
+	var stages: Array = missions(definition).get("stages", [])
+	if stamps >= stages.size():
+		return stamps
+	var how := rule(definition, stamps)
+	if status not in how.judge_on or not lab.settled():
 		return stamps
 	var stage: Dictionary = stages[stamps]
 	if not conditions_met(stage.get("conditions", {}), lab) or not changed(stage.get("change", []), lab, cleared):
 		return stamps
-	var observe := str(block.get("observe", ""))
-	if observe != "":
-		var value: Variant = observations.get(observe)
+	if how.observe != "":
+		var value: Variant = observations.get(how.observe)
 		if not _number(value):
 			return stamps
-		var threshold := float(stage.get("threshold", INF if block.get("compare") == "less" else -INF))
-		var beaten := float(value) < threshold if block.get("compare", "greater") == "less" else float(value) > threshold
+		var less: bool = how.compare == "less"
+		var threshold := float(stage.get("threshold", INF if less else -INF))
+		var beaten := float(value) < threshold if less else float(value) > threshold
 		if not beaten:
 			return stamps
 	return mini(stamps + 1, ProgressStore.MAX_STAMPS)

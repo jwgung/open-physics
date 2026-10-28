@@ -58,31 +58,34 @@
     "reason": "무거운 공도 가벼운 공도 똑같이 빨라져요. 그래서 같이 땅에 닿아요."
   },
   "missions": {
-    "observe": "speed",
     "judge_on": ["landed"],
     "reveal_on": ["landed", "floating"],
     "hidden_until_end": ["fall_time"],
     "hidden_series_until_end": ["yellow", "purple", "red"],
     "stages": [
-      { "threshold": 10.0, "conditions": {"gravity": "earth"}, "text": "지구에서 공을 처음보다 더 높이 올려 떨어뜨리기!" },
-      { "threshold": 5.0, "conditions": {"gravity": "moon"}, "text": "달에서 공을 맨 위까지 올려 떨어뜨리기!" },
-      { "threshold": 15.0, "conditions": {"gravity": "jupiter"}, "text": "목성에서도 공을 높이 올려 떨어뜨리기!" }
+      { "conditions": {"gravity": "earth", "mass": "light"}, "text": "빨간 공을 가볍게 바꿔 떨어뜨리기!" },
+      { "observe": "fall_time", "threshold": 3.0, "conditions": {"gravity": "moon"}, "text": "달에서 3초 넘게 떨어지게 하기!" },
+      { "observe": "fall_time", "compare": "less", "threshold": 1.0, "conditions": {"gravity": "jupiter"}, "text": "목성에서 1초 안에 땅에 닿게 하기!" }
     ]
   },
   "kid": {
-    "card": "speed",
+    "card": "time",
     "title": "공을 높은 곳에서 떨어뜨려 보자!",
     "place": "공 떨어뜨리기",
-    "say": "무거운 공도 가벼운 공도 같이 땅에 닿아요. 달에서는 더 천천히 떨어져요.",
+    "say": "무거운 공도 가벼운 공도 같이 땅에 닿아요. 달에서는 천천히, 목성에서는 빨리 떨어져요.",
     "tip": "공을 위로 끌어 올려 봐요. 두 손가락으로 돌려 봐요.",
     "picks": {
       "gravity": [
         {"value": "earth", "label": "지구", "picture": "earth"},
         {"value": "moon", "label": "달", "picture": "moon"},
         {"value": "jupiter", "label": "목성", "picture": "jupiter"}
+      ],
+      "mass": [
+        {"value": "light", "label": "가벼운 공", "picture": "ball_red", "size": 0.55},
+        {"value": "heavy", "label": "무거운 공", "picture": "ball_red", "size": 1.0}
       ]
     },
-    "cards": {"time": "놓은 뒤 시간", "fall_time": "땅까지 걸리는 시간", "speed": "빨간 공 빠르기"}
+    "cards": {"time": "떨어진 시간", "fall_time": "땅까지 걸리는 시간", "speed": "빨간 공 빠르기"}
   },
   "cast": {
     "dugi": { "at": [2.75, 5.0], "explain_on": ["landed"], "delay_s": 0.6 },

@@ -536,7 +536,7 @@ func _missions_judge() -> void:
 	if status == "ready":
 		_judged_run = false
 		return
-	var judging := not _judged_run and _missions.stage() >= 0 and status in MissionTracker.judge_on(definition)
+	var judging := not _judged_run and _missions.stage() >= 0 and status in MissionTracker.judge_on(definition, _missions.stage())
 	if not (judging or (not _predict_ended and status in MissionTracker.reveal_on(definition))) or not experiment.settled():
 		return
 	var values := experiment.observations()

@@ -38,27 +38,27 @@
     { "id": "release", "label": "놓기", "style": "primary" },
     { "id": "reset", "label": "처음으로" }
   ],
-  "key_observations": ["extension", "speed"],
+  "key_observations": ["extension", "swing_period"],
   "predict": {
-    "question": "무거운 공을 달면 용수철이 더 늘어날까?",
+    "question": "무거운 공은 더 천천히 흔들릴까?",
     "choices": [
-      { "id": "longer", "label": "더 늘어나요", "picture": "spring_longer" },
-      { "id": "same", "label": "똑같아요", "picture": "spring_same" }
+      { "id": "slower", "label": "천천히", "picture": "spring_slow" },
+      { "id": "same", "label": "똑같이", "picture": "spring_even" }
     ],
-    "answer": "same",
-    "reason": "용수철은 내가 당긴 만큼만 늘어나요. 무거운 공도 똑같아요. 대신 더 천천히 흔들려요."
+    "answer": "slower",
+    "reason": "용수철이 당기는 힘은 똑같은데 무거운 공은 잘 안 움직여요. 그래서 천천히 왔다 갔다 해요."
   },
   "missions": {
-    "observe": "pull",
+    "observe": "swing_period",
     "judge_on": ["moving", "rest"],
     "stages": [
-      { "threshold": 1.5, "conditions": {"mass": {"min": 2.5}}, "text": "무거운 공을 1.5미터 넘게 당기기!" },
-      { "threshold": 2.0, "conditions": {"mass": {"max": 1.0}}, "text": "가벼운 공을 2미터 넘게 당기기!" },
-      { "threshold": 2.4, "conditions": {"mass": {"min": 2.5}}, "text": "무거운 공을 끝까지 당겼다 놓기!" }
+      { "observe": "pull", "threshold": 1.5, "conditions": {"mass": {"max": 1.0}}, "text": "가벼운 공을 1.5미터 넘게 당겼다 놓기!" },
+      { "threshold": 4.0, "conditions": {"mass": {"min": 2.5}}, "text": "무거운 공으로 4초 넘게 천천히 흔들기!" },
+      { "compare": "less", "threshold": 3.0, "conditions": {"mass": {"max": 1.0}}, "text": "가벼운 공으로 3초 안에 빨리 흔들기!" }
     ]
   },
   "kid": {
-    "card": "extension",
+    "card": "swing_period",
     "title": "용수철을 당겼다 놓아 보자!",
     "place": "용수철",
     "say": "당긴 만큼 용수철이 공을 다시 당겨요. 그래서 공이 왔다 갔다 해요. 무거운 공은 더 천천히 흔들려요.",
@@ -69,7 +69,8 @@
         {"value": 3.0, "label": "무거운 공", "picture": "ball_orange", "size": 1.0}
       ]
     },
-    "cards": {"extension": "얼마나 늘어났나", "speed": "빠르기"},
+    "cards": {"extension": "얼마나 늘어났나", "swing_period": "한 번 왔다 갔다"},
+    "states": {"한 번 왕복하면 보여요": "흔들면 보여요"},
     "minus": {"extension": "눌려서"}
   },
   "cast": {
@@ -87,7 +88,8 @@
     { "id": "spring", "label": "탄성 에너지 U = ½kx²", "unit": "J", "digits": 2 },
     { "id": "total", "label": "역학적 에너지 K + U", "unit": "J", "digits": 2 },
     { "id": "natural_period", "label": "고유 주기 T₀ = 2π√(m/k) (감쇠 없을 때)", "unit": "s", "digits": 2 },
-    { "id": "period", "label": "실제 왕복 주기 T = 2π/ω_d (감쇠 없으면 T₀)", "unit": "s", "digits": 2 }
+    { "id": "period", "label": "실제 왕복 주기 T = 2π/ω_d (감쇠 없으면 T₀)", "unit": "s", "digits": 2 },
+    { "id": "swing_period", "label": "한 번 왕복한 시간 T (공식, 한 번 돌아온 뒤)", "unit": "s", "digits": 2 }
   ],
   "manipulation": {
     "grab_radius": 72.0,

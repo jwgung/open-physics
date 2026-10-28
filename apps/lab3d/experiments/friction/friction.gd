@@ -61,6 +61,9 @@ var _clock_steps := 0           # steps with a force or a moving box since the r
 var _graph: Array[Vector4] = []  # (t, |F|, max static, |friction|) samples, the last graph window
 var _graph_revision := 0
 var _close_up_on := false        # the grab's close-up is on, no force given yet
+## The push that started the box this run (N, the formula's mu_s m g at the moment it broke loose;
+## -1 until it did): the mission's key card (2026-10-28). Read only: nothing reads it back.
+var start_force := -1.0
 
 
 func _ready() -> void:
@@ -155,6 +158,7 @@ func reset_box() -> void:
 	run_start_x = START_X
 	corrector.reset(box.global_position)
 	model.reset()
+	start_force = -1.0
 	frames = 0
 	_clock_steps = 0
 	_graph.clear()
@@ -223,6 +227,8 @@ func _physics_process(_delta: float) -> void:
 		model.friction = 0.0
 		return   # at rest with no force: nothing changes, the graph waits
 	model.step(force, dt)
+	if start_force < 0.0 and not model.holding:
+		start_force = model.max_static()   # the box broke loose: the push it took (mu_s m g)
 	_clock_steps += 1
 	var x := formula_x()
 	var low := -TRACK_HALF + BOX * 0.5 + END_PADDING
@@ -300,6 +306,7 @@ func observations() -> Dictionary:
 		"heat": model.heat,
 		"distance": absf(model.displacement),
 		"measured": absf(engine_displacement()),
+		"start_force": start_force if start_force >= 0.0 else "밀어 보면 보여요",
 	}
 
 

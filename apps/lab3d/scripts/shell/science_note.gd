@@ -1,19 +1,22 @@
-## "Gemini에게 더 물어보기" (2026-10-28 user decision): the science note's last button turns this run
-## of a lab into a Korean question and hands it to another app the user picks (Gemini, or any app
-## that takes text). The question holds the lab's content only — title, question, law and formula,
-## the conditions and the note's numbers of this run, Dugi's explanation — never a name, a device id
-## or the child's progress. The app itself calls no network: the share sheet (Android
-## Intent.ACTION_SEND + createChooser) hands the text over, and the user sends it or not.
-## Why a share sheet: Gemini has no official deep link that fills in a prompt, and the Gemini API
-## terms do not allow apps likely used by people under 18 (https://ai.google.dev/gemini-api/terms).
+## "AI에게 더 물어보기" (2026-10-28 user decision, an AI app picker since 2026-10-29): the science
+## note's last button turns this run of a lab into a Korean question and hands it to the AI app the
+## user picks in a small picker (content/ai_apps.json: names and Play package names), or to any app
+## through the share sheet. The question holds the lab's content only — title, question, law and
+## formula, the conditions and the note's numbers of this run, Dugi's explanation — never a name, a
+## device id or the child's progress. The app itself calls no network: an Android intent
+## (ACTION_SEND, text/plain, EXTRA_TEXT; setPackage for a picked app, createChooser for the share
+## sheet) hands the text over, and the user sends it or not in that app.
+## Why an intent: the AI apps have no official deep link that fills in a prompt, and an AI API called
+## from the app is not allowed for apps likely used by people under 18 (e.g. the Gemini API terms,
+## https://ai.google.dev/gemini-api/terms).
 class_name ScienceNote
 extends RefCounted
 
 const ROLE := "나는 '빵고양이 과학섬' 앱에서 물리 실험을 하고 있어. 초등학생도 이해하게 쉽게 설명해 줘."
 const ENDING := "이 실험에 대해 더 궁금한 걸 물어볼게:"
 const CHOOSER_TITLE := "질문을 보낼 앱 고르기"
-const COPIED := "질문을 복사했어요. Gemini에 붙여 넣어 보세요."
-const GEMINI_URL := "https://gemini.google.com/app"
+const COPIED := "질문을 복사했어요. AI 앱에 붙여 넣어 보세요."
+const APPS_PATH := "res://content/ai_apps.json"
 
 
 ## The question for `experiment` (a running lab of `definition`) as the science note shows it now:
@@ -94,37 +97,88 @@ static func condition_text(control: Dictionary, value: Variant) -> String:
 	return ""
 
 
-## Hands `text` to another app: on Android the share sheet (ACTION_SEND, text/plain, a chooser),
-## elsewhere (desktop, a failed intent) the clipboard and Gemini's page in the browser. Returns
-## "share" or "clipboard" (the screen shows COPIED for the latter).
-static func share(text: String) -> String:
-	if _android_share(text):
-		return "share"
+## The AI apps of the picker in their order: {name, package} (content/ai_apps.json).
+static func ai_apps() -> Array:
+	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(APPS_PATH))
+	var apps: Array = []
+	if parsed is Dictionary:
+		for app in parsed.get("apps", []):
+			if app is Dictionary and str(app.get("name", "")) != "" and str(app.get("package", "")) != "":
+				apps.append({"name": str(app.name), "package": str(app.package)})
+	return apps
+
+
+## Which of `packages` can take the question on this device, or null when that cannot be told
+## (desktop, or Android found none). Android 11+ hides other apps from this one unless the manifest
+## lists them (<queries>, a Gradle build): on SM-X115 (Android 16, 2026-10-29) resolveActivity,
+## queryIntentActivities and getLaunchIntentForPackage all came back empty even for the Gemini that
+## is installed. So "none found" means "unknown": the picker shows every app and a tap on a missing
+## one says so (send_to's "missing"). Where the apps can be seen (Android 10 and older, or a later
+## manifest with <queries>), only those found show.
+static func installed(packages: Array) -> Variant:
+	var android := _android()
+	if android.is_empty():
+		return null
+	var manager: Object = android.activity.getPackageManager()
+	if manager == null:
+		return null
+	var found: Array = []
+	for package in packages:
+		var intent := _send_intent(android.intent_class, "", package)
+		if intent == null:
+			return null
+		var target: Variant = intent.resolveActivity(manager)
+		if JavaClassWrapper.get_exception() != null:
+			return null
+		if target != null:
+			found.append(package)
+	return found if not found.is_empty() else null
+
+
+## Hands `text` to the app `package` (an AI app of the picker), or with "" to the share sheet.
+## Returns "sent" (the app opened), "missing" (no such app here; nothing was sent), "share" (the
+## share sheet opened) or "clipboard" (desktop or a failed intent: the text was copied, and the
+## screen shows COPIED).
+static func send_to(package: String, text: String) -> String:
+	var android := _android()
+	if not android.is_empty():
+		var intent := _send_intent(android.intent_class, text, package)
+		if intent != null:
+			if package != "":
+				# Straight from this thread (not runOnUiThread), so a missing app's
+				# ActivityNotFoundException comes back here (SM-X115, 2026-10-29).
+				android.activity.startActivity(intent)
+				return "sent" if JavaClassWrapper.get_exception() == null else "missing"
+			var chooser: Object = android.intent_class.createChooser(intent, CHOOSER_TITLE)
+			if chooser != null and JavaClassWrapper.get_exception() == null:
+				var activity: Object = android.activity
+				activity.runOnUiThread(android.runtime.createRunnableFromGodotCallable(func() -> void:
+					activity.startActivity(chooser)))
+				return "share"
 	DisplayServer.clipboard_set(text)
-	if DisplayServer.get_name() != "headless":
-		OS.shell_open(GEMINI_URL)
 	return "clipboard"
 
 
 ## Godot 4.4+ JNI from GDScript (no Gradle build, no plugin): AndroidRuntime's activity and
-## JavaClassWrapper build the intent; startActivity runs on the Android UI thread
-## (runOnUiThread with a Runnable made from a Godot Callable).
-static func _android_share(text: String) -> bool:
+## JavaClassWrapper's Intent class; {} when not on Android.
+static func _android() -> Dictionary:
 	if not Engine.has_singleton("AndroidRuntime"):
-		return false
+		return {}
 	var runtime: Object = Engine.get_singleton("AndroidRuntime")
 	var activity: Object = runtime.getActivity()
 	if activity == null:
-		return false
-	var intent_class: JavaClass = JavaClassWrapper.wrap("android.content.Intent")
+		return {}
+	return {"runtime": runtime, "activity": activity, "intent_class": JavaClassWrapper.wrap("android.content.Intent")}
+
+
+## Intent(ACTION_SEND), text/plain with `text` as EXTRA_TEXT, for `package` only when it is not "".
+static func _send_intent(intent_class: JavaClass, text: String, package: String) -> Object:
 	var intent: Object = intent_class.Intent(intent_class.ACTION_SEND)
-	if intent == null:
-		return false
+	if intent == null or JavaClassWrapper.get_exception() != null:
+		return null
 	intent.setType("text/plain")
-	intent.putExtra(intent_class.EXTRA_TEXT, text)
-	var chooser: Object = intent_class.createChooser(intent, CHOOSER_TITLE)
-	if chooser == null or JavaClassWrapper.get_exception() != null:
-		return false
-	activity.runOnUiThread(runtime.createRunnableFromGodotCallable(func() -> void:
-		activity.startActivity(chooser)))
-	return true
+	if text != "":
+		intent.putExtra(intent_class.EXTRA_TEXT, text)
+	if package != "":
+		intent.setPackage(package)
+	return intent

@@ -37,8 +37,8 @@ const PICK_GAP := 10.0                      # between the buttons of one conditi
 const PICK_GROUP_GAP := 22.0                # between two conditions' buttons
 const MORE_CLOSED := "더 보기"              # the science note's collapsed rest (_build_sidebar)
 const MORE_OPEN := "접기"
-const ASK_TEXT := "Gemini에게 더 물어보기"
-const ASK_CAPTION := "이 실험의 조건과 숫자로 질문을 만들어, 고른 앱에 보내요."
+const ASK_TEXT := "AI에게 더 물어보기"
+const ASK_CAPTION := "이 실험의 조건과 숫자로 질문을 만들어, 고른 AI 앱에 보내요."
 
 ## Set by App for the screen it opens from --experiment: then the launch args (--ctl-*, --camera,
 ## ...) apply to this screen only (a rebuilt screen with a saved state restores that state instead).
@@ -90,9 +90,14 @@ var _graph: GraphView
 var _sections: Dictionary = {}          # section id -> card (for --scroll-to)
 var _more: VBoxContainer                # 더 보기's contents (collapsed when the screen opens)
 var _more_button: Button
-## "Gemini에게 더 물어보기" (ScienceNote, 2026-10-28): a tap hands the question to this handler
-## (text -> "share" | "clipboard"); tests put a recorder here. The default is ScienceNote.share.
-var ask_handler: Callable = func(text: String) -> String: return ScienceNote.share(text)
+## "AI에게 더 물어보기" (ScienceNote, 2026-10-28; an AI app picker since 2026-10-29): a tap on an
+## app of the picker hands the question to this handler ((package, text) -> "sent" | "missing" |
+## "share" | "clipboard"; package "" = the share sheet); tests put a recorder here. The default is
+## ScienceNote.send_to.
+var ask_handler: Callable = func(package: String, text: String) -> String: return ScienceNote.send_to(package, text)
+## Which of the picker's packages are on this device (an Array), or null when unknown (every app shows).
+var ask_installed: Callable = func(packages: Array) -> Variant: return ScienceNote.installed(packages)
+var ask_picker: AiPicker = null         # the open AI app picker (null when closed)
 ## A measurement or a device check (Story.measurement_run): the note has no ask button, unless the
 ## device check of the button itself asks for it (--ask=show, with --progress=bench,--sound=0).
 var measurement := Story.measurement_run(Quality.all_args()) and Quality.cmdline_value("ask") != "show"
@@ -1406,8 +1411,8 @@ func _scroll_to(section: String) -> void:
 ##   their units, a "before → after" pair on one row), 조건 바꾸기 (the sliders and choices), 그래프
 ##   (only where it shows the law: note.graph), and 더 보기 (collapsed): every other observation, the
 ##   graph when it is not kept above, the steps, the observe card, the shared law and its terms.
-## Last comes "Gemini에게 더 물어보기" (ScienceNote: this run as a question for another app; not in a
-## measurement).
+## Last comes "AI에게 더 물어보기" (ScienceNote: this run as a question for an AI app the child picks
+## in AiPicker; not in a measurement).
 ## Every observation has one label (_observation_labels) wherever it sits, with format_observation's
 ## text, so nothing the panel showed before is lost (ExperimentRegistry.note).
 func _build_sidebar() -> void:
@@ -1470,20 +1475,20 @@ func _build_sidebar() -> void:
 		_more.add_child(graph)
 	_sections["more_explanation"] = _build_explanation()
 	_more.add_child(_sections.more_explanation)
-	# Last: the question for Gemini (or any app), never in a measurement.
+	# Last: the question for an AI app (or any app), never in a measurement.
 	if not measurement:
 		_sections["ask"] = _build_ask()
 		_sections.ask.name = "Note_ask"
 		column.add_child(_sections.ask)
 
 
-## The note's last card: one button that turns this run into a question (ScienceNote.question) and
-## hands it to ask_handler (the share sheet on Android), and a line when it was copied instead.
+## The note's last card: one button that opens the AI app picker (AiPicker), and a line when the
+## question was copied instead.
 func _build_ask() -> Control:
 	var box := Ui.vbox(6)
 	_ask_button = Ui.button(ASK_TEXT, "", 56)
-	_ask_button.name = "AskGemini"
-	_ask_button.pressed.connect(ask_gemini)
+	_ask_button.name = "AskAi"
+	_ask_button.pressed.connect(open_ask_picker)
 	box.add_child(_ask_button)
 	box.add_child(Ui.label(ASK_CAPTION, "MutedLabel", true))
 	_ask_status = Ui.label(ScienceNote.COPIED, "MutedLabel", true)
@@ -1493,13 +1498,20 @@ func _build_ask() -> Control:
 	return box
 
 
-## The ask button's tap: this run's question (the hidden answers left out) to ask_handler, once.
-func ask_gemini() -> void:
-	if measurement or experiment == null:
+## The ask button's tap: the AI app picker over the whole screen (the apps of content/ai_apps.json,
+## only those on the device when it can tell). A tap on an app hands this run's question (the
+## hidden answers left out, as at that tap) to ask_handler once.
+func open_ask_picker() -> void:
+	if measurement or experiment == null or (ask_picker != null and not ask_picker.closed):
 		return
-	var text := ScienceNote.question(definition, experiment, _hidden_answers(experiment.observations()))
-	var how: Variant = ask_handler.call(text)
-	_ask_status.visible = how == "clipboard"
+	var apps := ScienceNote.ai_apps()
+	var installed: Variant = ask_installed.call(apps.map(func(app: Dictionary) -> String: return app.package))
+	ask_picker = AiPicker.new(apps, installed, func(package: String) -> String:
+		var text := ScienceNote.question(definition, experiment, _hidden_answers(experiment.observations()))
+		return str(ask_handler.call(package, text)))
+	ask_picker.handed.connect(func(result: String) -> void: _ask_status.visible = result == "clipboard")
+	_ask_status.visible = false
+	add_child(ask_picker)
 
 
 ## Opens or folds 더 보기 (closed when the screen opens).
@@ -1826,7 +1838,7 @@ func _hidden_answers(values: Dictionary) -> Array:
 
 
 ## The sidebar's text of an observation value (ScienceNote.format_observation: the question for
-## Gemini reads the same text).
+## the AI app reads the same text).
 static func format_observation(observation: Dictionary, value: Variant) -> String:
 	return ScienceNote.format_observation(observation, value)
 

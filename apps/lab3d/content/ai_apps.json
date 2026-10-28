@@ -1,0 +1,14 @@
+{
+  "about": "\"AI에게 더 물어보기\"(2026-10-29 사용자 결정)의 앱 고르기 목록. 3D 앱(apps/lab3d ScienceNote.ai_apps)만 읽는다. name = 단추 글자(이름만, 상표 그림 없음), package = Google Play 패키지 이름(2026-10-29 확인). 순서 = 단추 순서. 앱을 더하거나 빼려면 이 목록만 고친다.",
+  "apps": [
+    { "name": "Gemini", "package": "com.google.android.apps.bard" },
+    { "name": "ChatGPT", "package": "com.openai.chatgpt" },
+    { "name": "Claude", "package": "com.anthropic.claude" },
+    { "name": "Grok", "package": "ai.x.grok" },
+    { "name": "Meta AI", "package": "com.facebook.stella" },
+    { "name": "Perplexity", "package": "ai.perplexity.app.android" },
+    { "name": "DeepSeek", "package": "com.deepseek.chat" },
+    { "name": "Le Chat", "package": "ai.mistral.chat" },
+    { "name": "뤼튼", "package": "com.wrtn.app" }
+  ]
+}

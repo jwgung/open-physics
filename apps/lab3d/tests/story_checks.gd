@@ -273,6 +273,7 @@ func check_piece_found() -> void:
 	expect.call(early, "piece: a cleared stage finds no piece", "")
 	expect.call(screen.found_piece() == null, "piece: none while the last stamp still flies", "")
 	screen._slam.advance(StampSlam.TOTAL_S)
+	screen.skip_round_wait()
 	stand_in.queue_free()
 	var piece: Node3D = screen.found_piece()
 	var cat: CatActor = screen.lab_cat()

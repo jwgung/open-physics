@@ -163,16 +163,26 @@ func check_round() -> void:
 	await _throw(screen, lab, 65.0, 8.0)
 	var rest_y: float = screen.cast.puppy.position.y
 	var hopped := false
+	var cheered_while_told := false
+	var told := false
 	for i in 900:
 		await tree.physics_frame
 		await tree.process_frame
 		if screen.cast.puppy.position.y > rest_y + 0.1:
 			hopped = true
+		if screen.dialogue.active and ProgressStore.stamps(ProgressStore.load(), "projectile") == 3:
+			# Dugi explains the last stage: nothing cheers until the child reads it (a tap).
+			told = true
+			cheered_while_told = cheered_while_told or screen.cast.puppy.celebrating()
+			if i % 60 == 59:
+				screen.dialogue.advance()
 		if hopped and ProgressStore.stamps(ProgressStore.load(), "projectile") == 3:
 			break
 	expect.call(ProgressStore.stamps(ProgressStore.load(), "projectile") == 3 and screen._mission_text.text == ExperimentScreen.DONE_TEXT,
 		"round: the third throw onto the high crate earns the last stamp; the done text shows", screen._mission_text.text)
 	expect.call(hopped and screen.cast.puppy.celebrating(), "round: on the last stamp the puppy hops and waves the flag fast", "hopped %s" % str(hopped))
+	expect.call(told and not cheered_while_told,
+		"round: Dugi's last explanation is read first (2026-10-30 user); the cheer waits for the tap", "told %s" % str(told))
 	await _free(screen)
 	# A reopened finished place: the stamps, no question, and no celebration on another long throw.
 	var again := await _lab()

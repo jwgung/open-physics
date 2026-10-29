@@ -1,23 +1,22 @@
 ## Puppy's short result line after an attempt (2026-10-29 user: "after each attempt … a short line in
 ## a small speech bubble near the game object / the cat for ~2.5 s"): a small white speech bubble with
-## Puppy's round face (the line's face, Story.FACES) and one short line, its tail pointing at Puppy on
+## one short line (no face: 2026-10-30 user, Puppy is right there behind), its tail pointing at Puppy on
 ## the island (ExperimentScreen.show_result). A win says what the stamp did ("딩! 종이 울렸어!"), a
 ## miss what to try next ("종까지 조금 모자라! 더 당겨 봐!"; Puppy gives hints, never science: the
 ## stage lines are checked against Story.SCIENCE_WORDS). These are not the removed celebration
 ## captions: one line, gone after SHOW_S, no touch taken (MOUSE_FILTER_IGNORE everywhere).
-## Drawing only: one panel, one label, one portrait and the tail; nothing in the lab changes.
+## Drawing only: one panel, one label and the tail; nothing in the lab changes.
 class_name ResultBubble
 extends Control
 
 const SHOW_S := 2.5
 const POP_S := 0.16
 const FADE_S := 0.3
-const FACE_SIZE := 52.0
 const MAX_TEXT_WIDTH := 330.0
 const TAIL := 18.0           # the tail's length below the bubble (UI units)
 const TAIL_HALF := 11.0      # its half width where it leaves the bubble
 ## The look (2026-10-29 user: "말풍선 좀 더 예쁘게"): warm paper tinted by the result, a soft drop
-## shadow, Puppy's face in a round badge, a rounded tail drawn over the bubble's edge, a bouncy pop.
+## shadow, a rounded tail drawn over the bubble's edge, a bouncy pop.
 const WIN_PAPER := Color("f1fbf3")
 const MISS_PAPER := Color("fff6ea")
 const WIN_EDGE := Color("39a862")
@@ -37,7 +36,6 @@ var anchor := Vector2.ZERO
 var age := 0.0
 var panel: PanelContainer
 var label: Label
-var portrait: TextureRect
 var _tail: Control
 
 
@@ -59,7 +57,7 @@ func _init(words: String, with_face: String, did_win: bool) -> void:
 	box.shadow_color = SHADOW
 	box.shadow_size = 8
 	box.shadow_offset = Vector2(0, 4)
-	box.content_margin_left = 8
+	box.content_margin_left = 18
 	box.content_margin_right = 18
 	box.content_margin_top = 7
 	box.content_margin_bottom = 7
@@ -69,29 +67,6 @@ func _init(words: String, with_face: String, did_win: bool) -> void:
 	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_theme_constant_override("separation", 10)
 	panel.add_child(row)
-	# Puppy's face in a round badge: a circle in the result's color that clips the portrait.
-	var badge := Panel.new()
-	badge.name = "Badge"
-	badge.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	badge.custom_minimum_size = Vector2(FACE_SIZE, FACE_SIZE)
-	badge.clip_children = CanvasItem.CLIP_CHILDREN_AND_DRAW
-	var round := StyleBoxFlat.new()
-	round.bg_color = edge().lerp(Color.WHITE, 0.72)
-	round.border_color = edge()
-	round.set_border_width_all(2)
-	round.set_corner_radius_all(int(FACE_SIZE * 0.5))
-	round.corner_detail = 12
-	badge.add_theme_stylebox_override("panel", round)
-	row.add_child(badge)
-	portrait = TextureRect.new()
-	portrait.name = "Face"
-	portrait.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	portrait.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	portrait.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
-	portrait.position = Vector2(-FACE_SIZE * 0.12, -FACE_SIZE * 0.02)
-	portrait.size = Vector2(FACE_SIZE * 1.24, FACE_SIZE * 1.24)
-	portrait.texture = DialogueBox.portrait_texture("puppy", face)
-	badge.add_child(portrait)
 	label = Ui.label(text, "KeyValueLabel")
 	label.name = "Line"
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE

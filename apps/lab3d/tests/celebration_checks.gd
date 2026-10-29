@@ -109,6 +109,7 @@ func check_round_done() -> void:
 		screen._slam.advance(StampSlam.TOTAL_S)
 	stand_in.queue_free()
 	await tree.process_frame
+	screen.skip_round_wait()
 	expect.call(ProgressStore.stamps(ProgressStore.load(), "projectile") == 3 and ProgressStore.pending_flags() == ["projectile"],
 		"round done: the third stamp is saved and the spot's flag waits to be raised on the map", str(ProgressStore.pending_flags()))
 	var confetti: Confetti = screen._confetti

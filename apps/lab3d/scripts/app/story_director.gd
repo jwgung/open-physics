@@ -665,6 +665,7 @@ func _finish() -> void:
 	page = -1
 	emblem.visible = true
 	home.set_cinematic(false)
+	_layout()   # the top bar is back: the emblem goes under it
 	ended.emit(which)
 
 
@@ -686,7 +687,10 @@ func tap_page() -> void:
 func _layout() -> void:
 	var view_size := home.view.size if home.view != null else home.size
 	if emblem != null:
-		emblem.position = Vector2(DIALOGUE_MARGIN + 6.0, view_size.y - StarEmblem.SIZE - DIALOGUE_MARGIN - 6.0)
+		# Top left (2026-10-30 user), under the top bar when it shows; the finale's 건너뛰기 is top right.
+		var bar: Control = home.find_child("TopBar", true, false)
+		var top := maxf(bar.size.y, bar.get_combined_minimum_size().y) if bar != null and bar.visible else 0.0
+		emblem.position = Vector2(DIALOGUE_MARGIN + 6.0, top + DIALOGUE_MARGIN + 6.0)
 	if skip_button != null:
 		skip_button.size = skip_button.get_combined_minimum_size()
 		skip_button.position = Vector2(view_size.x - skip_button.size.x - DIALOGUE_MARGIN, DIALOGUE_MARGIN)
@@ -694,9 +698,7 @@ func _layout() -> void:
 	if dialogue != null and dialogue.active:
 		dialogue.visible = dialogue.layout(Rect2(Vector2.ZERO, view_size), right, DIALOGUE_MARGIN)
 	if riddle != null and riddle.active:
-		# Right of the emblem (bottom left), so the pieces' star stays in view while Puppy talks.
-		var left := StarEmblem.SIZE + DIALOGUE_MARGIN
-		riddle.visible = riddle.layout(Rect2(Vector2(left, 0.0), view_size - Vector2(left, 0.0)), right, DIALOGUE_MARGIN)
+		riddle.visible = riddle.layout(Rect2(Vector2.ZERO, view_size), right, DIALOGUE_MARGIN)
 
 
 # --- camera ------------------------------------------------------------------------------------

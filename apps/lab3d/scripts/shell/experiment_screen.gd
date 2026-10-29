@@ -156,12 +156,14 @@ var _slam: StampSlam = null
 var _stamps_landed := 0
 var _confetti: Confetti = null
 var _done_card: RoundDoneCard = null
+var _round_wait := -1.0               # >= 0: the round is done, the cheer waits for Dugi (_run_round_wait)
 var _piece_wait := -1.0                # s left waiting for the piece game's last step (< 0: not waiting)
 var _card_left := -1.0                 # s until the round-done card shows (after the confetti starts)
 var _cat: CatActor = null
 var _demo_left := -1.0                 # --demo-celebrate: s until the next demo stamp
 var _demo_stamps := 0
 const CARD_DELAY_S := 0.8
+const ROUND_WAIT_MIN_S := 0.4          # after the last stamp, before the cheer (Dugi starts explaining)
 ## The story (2026-10-28 "별 조각 찾기"): Puppy's clue on the first visit (before Dugi's question) and,
 ## when the round is completed, the star piece the bread cat lifts before the card comes.
 var _clue := ""                        # Puppy's clue still to tell ("" when none)
@@ -353,6 +355,7 @@ func _process(delta: float) -> void:
 			_run_measured_action(manipulator.demo_action)
 	_watch_touch()
 	_run_dialogue()
+	_run_round_wait(delta)
 	_run_celebration(delta)
 	_run_result_bubble(delta)
 	_run_strip_pulse(delta)
@@ -1217,7 +1220,32 @@ func _on_stamp_landed(stamps: int) -> void:
 	_stamps_landed = maxi(_stamps_landed, stamps)
 	_show_stamps(_missions.stamps if _missions != null else stamps)
 	if stamps >= MissionTracker.missions(definition).get("stages", []).size():
+		_round_wait = ROUND_WAIT_MIN_S   # Dugi's last explanation first (2026-10-30 user), then the cheer
+
+
+## The last stamp is in: the celebration waits until Dugi's explanation of that stage is read (his
+## box closes on a tap) and his arm is down; without him, after ROUND_WAIT_MIN_S.
+func _run_round_wait(delta: float) -> void:
+	if _round_wait < 0.0:
+		return
+	_round_wait = maxf(0.0, _round_wait - delta)
+	if _round_wait > 0.0:
+		return
+	var talking := cast != null and cast.dugi != null and (cast.dugi.speaking() or (dialogue != null and dialogue.active))
+	if not talking:
+		_round_wait = -1.0
 		_celebrate_round()
+
+
+## Tests: Dugi's box read and his arm down now, so a waiting round cheers at once.
+func skip_round_wait() -> void:
+	if _round_wait < 0.0:
+		return
+	_close_dialogue()
+	if cast != null and cast.dugi != null:
+		cast.dugi.stop(true)
+	_round_wait = 0.0
+	_run_round_wait(0.0)
 
 
 ## The whole round is done (in this visit): confetti, the puppy, Dugi and the bread cat cheer

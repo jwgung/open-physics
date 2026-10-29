@@ -1219,7 +1219,10 @@ func check_found_piece_flies() -> void:
 		screen._missions.stamps = stamps
 		screen._mission_progress("free-fall", stamps)
 		await _frames(30)
-	var lab_piece_at := Vector3.INF
+	screen._slam.advance(StampSlam.TOTAL_S)   # the last stamp lands
+	await _frames(60)                          # the piece hops out of the house
+	var lab_piece_at: Vector3 = game.piece.global_position
+	screen.skip_round_wait()
 	var first := Vector3.INF
 	for k in 200:
 		await tree.process_frame

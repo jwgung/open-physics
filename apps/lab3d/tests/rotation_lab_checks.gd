@@ -60,6 +60,7 @@ func run() -> void:
 	check_rolling_graph()
 	await check_review_fixes()
 	await check_review_fixes_2()
+	await check_cat_at_effort()
 
 
 # --- helpers ----------------------------------------------------------------------------------
@@ -607,3 +608,45 @@ func check_review_fixes_2() -> void:
 		"rotation: steps while the finger holds the load are not measured as engine deviation (worst position %s m)" % String.num_scientific(held_worst), "")
 	await _free(rebuilt)
 
+
+
+## The bread cat presses where the child presses (2026-10-29 user: the cat pressed at the same place in
+## stages 2 and 3): for 가까이 / 중간 / 멀리 (and with the fulcrum moved fully right) its paws' middle is on
+## the chosen (red) effort point along the beam, both paws on the beam's top either side of it, the
+## hold gauge GAUGE_LEFT left of the same point, and the three places differ by the points' spacing.
+func check_cat_at_effort() -> void:
+	var lab: Experiment = await _lab()
+	var cat: CatActor = lab.props.cat
+	var problems := []
+	var places := []
+	for layout in [[lab.DEFAULT_PIVOT, lab.DEFAULT_LOAD], [lab.PIVOT_MAX, lab.DEFAULT_LOAD]]:
+		lab.set_layout(layout[0], layout[1])
+		for id in ["near", "mid", "far"]:
+			lab.set_control("effort", id)
+			lab.hold_started("effort")
+			for k in 20:
+				await tree.physics_frame
+				await tree.process_frame
+			var inv: Transform3D = lab.beam.global_transform.affine_inverse()
+			var paws := [inv * cat.hand_point(0), inv * cat.hand_point(1)]
+			var middle: float = (paws[0].x + paws[1].x) * 0.5
+			var want: float = minf(lab.model.effort_x(), lab.BEAM_HALF - 0.05 - RotationProps.CAT_PAW_HALF)
+			var gauge_x: float = lab.gauge.global_position.x
+			if absf(middle - want) > 0.02 or absf(want - lab.model.effort_x()) > 0.06 or not (paws[0].x - want) * (paws[1].x - want) < 0.0:
+				problems.append("pivot %.1f %s: paws at %.3f / %.3f, the effort point %.3f" % [layout[0], id, paws[0].x, paws[1].x, lab.model.effort_x()])
+			for paw: Vector3 in paws:
+				if absf(paw.y - lab.BEAM_THICK * 0.5) > 0.02:
+					problems.append("pivot %.1f %s: a paw %.3f m off the beam's top" % [layout[0], id, paw.y - lab.BEAM_THICK * 0.5])
+			if not lab.gauge.visible or absf(gauge_x - (lab.model.effort_x() - lab.GAUGE_LEFT)) > 1e-6:
+				problems.append("pivot %.1f %s: the gauge at %.3f" % [layout[0], id, gauge_x])
+			places.append(snappedf(middle, 0.01))
+			lab.hold_ended("effort")
+			await tree.process_frame
+	for i in [0, 1]:
+		if places[i + 1] - places[i] < 0.8:
+			problems.append("the cat's places %s do not follow the points" % str(places))
+			break
+	await _free(lab)
+	expect.call(problems.is_empty(),
+		"rotation: the bread cat's paws are on the chosen effort point (가까이 / 중간 / 멀리 at %s m; fulcrum moved right: kept inside the beam's end), on the beam's top either side of the red peg, the hold gauge beside the same point" % str(places),
+		"; ".join(problems))

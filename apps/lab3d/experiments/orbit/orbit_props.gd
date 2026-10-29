@@ -11,7 +11,9 @@
 ##   pulled, the planet's velocity in flight) and the red gravity arrow towards the star in flight
 ##   (0.15 m per m/s^2),
 ## - the slingshot's pull line (PullDots, 2026-10-28): white dots from the planet back to where the
-##   finger pulls it, only while a pull is held,
+##   finger pulls it, only while a pull is held, and the pull's path ahead (2026-10-29, show_preview:
+##   white dots along the model's conic, the whole ellipse, the way to the star or out of the
+##   scene; the predicted path waits hidden meanwhile),
 ## - reactions: launch = stretch; crash = bump towards the star; reset = pop.
 ## - the bread cat (CatActor wearing the BreadCat look, 2026-10-27) on a bread crate under the waiting
 ##   planet, holding it up over its shoulder (its arm stretches up: the whole cat stays under the
@@ -24,6 +26,11 @@ extends RefCounted
 
 const STAGE_RADIUS := 7.5
 const PATH_DOTS := 90
+## The slingshot's preview (2026-10-29): white dots PREVIEW_STEP m apart along the pull's path, at
+## most PREVIEW_DOTS (a longer path keeps every k-th).
+const PREVIEW_DOTS := 200
+const PREVIEW_STEP := 0.16
+const PREVIEW_DOT := 0.05
 const DOT_RADIUS := 0.06
 const GRAVITY_SCALE := 0.15      # m of arrow per m/s^2
 const GRAVITY_MAX := 2.5
@@ -36,6 +43,9 @@ const CAT_CLEAR := 0.08
 var juice: ArtJuice
 var guide: MultiMeshInstance3D
 var path: MultiMeshInstance3D
+var preview: MultiMeshInstance3D
+## World positions of the shown preview dots.
+var preview_dots := PackedVector3Array()
 var velocity_arrow: VelocityArrow
 var gravity_arrow: VelocityArrow
 var pull_dots: PullDots
@@ -143,6 +153,20 @@ func dress(experiment: Node3D, planet: RigidBody3D, planet_radius: float, star_y
 	path.material_override = ArtKit.lit_material()
 	path.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	experiment.add_child(path)
+	var preview_multimesh := MultiMesh.new()
+	preview_multimesh.transform_format = MultiMesh.TRANSFORM_3D
+	var dot := ArtKit.builder()
+	dot.ao_min = 1.0
+	dot.add_sphere(Transform3D.IDENTITY, PREVIEW_DOT, 3, 5, ArtPalette.WHITE)
+	preview_multimesh.mesh = dot.commit()
+	preview_multimesh.instance_count = PREVIEW_DOTS
+	preview_multimesh.visible_instance_count = 0
+	preview = MultiMeshInstance3D.new()
+	preview.name = "PullPreview"
+	preview.multimesh = preview_multimesh
+	preview.material_override = ArtKit.lit_material()
+	preview.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	experiment.add_child(preview)
 	velocity_arrow = VelocityArrow.new()
 	velocity_arrow.name = "VelocityArrow"
 	experiment.add_child(velocity_arrow)
@@ -217,6 +241,32 @@ func set_path(points: PackedFloat64Array, outcome: String) -> void:
 		dots[i] = Vector3(points[2 * k], _plane_y, points[2 * k + 1])
 		multimesh.set_instance_transform(i, Transform3D(Basis(), dots[i]))
 	multimesh.visible_instance_count = count
+
+
+## While a finger pulls the planet: the pull's path (orbit-plane points [(x, z) …], OrbitModel.
+## conic_path) as white dots in the orbit plane; the predicted path is hidden meanwhile.
+func show_preview(points: PackedVector2Array) -> void:
+	if preview == null:
+		return
+	var every := ceili(points.size() / float(PREVIEW_DOTS))
+	var count := mini(PREVIEW_DOTS, ceili(points.size() / float(every)))
+	preview_dots.resize(count)
+	for i in count:
+		var p := points[mini(i * every, points.size() - 1)]
+		preview_dots[i] = Vector3(p.x, _plane_y, p.y)
+		preview.multimesh.set_instance_transform(i, Transform3D(Basis(), preview_dots[i]))
+	preview.multimesh.visible_instance_count = count
+	if path != null:
+		path.visible = false
+
+
+func hide_preview() -> void:
+	if preview == null:
+		return
+	preview_dots.clear()
+	preview.multimesh.visible_instance_count = 0
+	if path != null:
+		path.visible = true
 
 
 ## The velocity arrow from the planet centre `at` along (vx, vz) with `length` m; hidden when 0.

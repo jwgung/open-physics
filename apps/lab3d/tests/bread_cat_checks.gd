@@ -640,8 +640,10 @@ const BODY_CLEAR := 0.01        # m: a body sample this far inside a cat mesh's 
 const SETTLE_STEPS := 40        # after a let-go (0.44 s follow-through and settle, and a margin)
 ## The most the arms stretch while their paws are on something (2026-10-27: the lever's far effort
 ## point once lifted with the fulcrum moved fully left, about 2.4, is the longest reach; the lever
-## lifted, the orbit's planet held over the head and the ball by a bumper about 1.9-2.0).
-const STRETCH_MAX := 2.5
+## lifted, the orbit's planet held over the head and the ball by a bumper about 1.9-2.0). 2026-10-29:
+## the cat presses on the effort point itself (no longer 0.55 m nearer the fulcrum), where the lifted
+## beam is lowest: about 2.7 there.
+const STRETCH_MAX := 2.75
 
 
 func run_roles() -> void:

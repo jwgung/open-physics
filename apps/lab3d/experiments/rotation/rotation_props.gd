@@ -15,8 +15,8 @@
 ##   FORCE_SCALE m per N (at most ARROW_MAX m),
 ## - reactions: lifted = the load stretches; back down = a small squash; reset = pop.
 ## - the bread cat (CatActor wearing the BreadCat look, 2026-10-27) on a stack of bread crates behind
-##   the beam just right of the effort point (left of it near the beam's end): both paws on the
-##   beam's top there, pressing it down with the held press (the bag squashes a little with the force's
+##   the beam at the chosen effort point (2026-10-29: it follows 가까이 / 중간 / 멀리): both paws on
+##   the beam's top either side of the red peg, pressing it down with the held press (the bag squashes a little with the force's
 ##   share of the required force; as the effort side goes down it leans after it, at most
 ##   CAT_LEAN_MAX, and its arms reach the rest); a nod when the load lifts. Only meshes: the beam
 ##   turns as the lever model says.
@@ -26,10 +26,9 @@ extends RefCounted
 const BEAM_COLOR := ArtPalette.YELLOW
 const FORCE_SCALE := 0.006        # m of arrow per N
 const ARROW_MAX := 2.4
-## The cat: its base right of the effort point (CAT_RIGHT along the beam) and behind the beam
-## (CAT_Z), its paws' z on the beam top and their distance either side of that point, its
-## shoulders' height above the level beam's top, its lean limit (deg).
-const CAT_RIGHT := 0.55
+## The cat: its base at the effort point (cat_x) behind the beam (CAT_Z), its paws' z on the beam
+## top and their distance either side of that point, its shoulders' height above the level beam's
+## top, its lean limit (deg).
 const CAT_Z := -0.84
 const CAT_PAW_Z := -0.25
 const CAT_PAW_HALF := 0.15
@@ -160,10 +159,7 @@ func look_centre(load: Node3D) -> Vector3:
 func update_cat(model: LeverLabModel, beam: Node3D, thick: float, effort: float) -> void:
 	if cat == null:
 		return
-	# Right of the effort point, or left of it when the beam ends too soon (the far point).
-	var ex := model.effort_x() + CAT_RIGHT
-	if ex + CAT_PAW_HALF > model.beam_half - 0.05:
-		ex = model.effort_x() - CAT_RIGHT
+	var ex := cat_x(model)
 	var top := thick * 0.5
 	var targets: Array[Vector3] = []
 	for along in [ex - CAT_PAW_HALF, ex + CAT_PAW_HALF]:
@@ -171,6 +167,13 @@ func update_cat(model: LeverLabModel, beam: Node3D, thick: float, effort: float)
 	var shoulder_y: float = cat.look.shoulders[0].y
 	cat.grab(Vector3(ex, model.pivot_y + top + CAT_ABOVE - shoulder_y, CAT_Z), 0.0, targets, effort, CAT_LEAN_MAX)
 	cat_stand.fit(cat, 0.0)
+
+
+## The middle of the cat's paws along the level beam: the chosen effort point itself (2026-10-29
+## user: the cat pressed at the same place for 중간 and 멀리), only kept CAT_PAW_HALF inside the
+## beam's end when the fulcrum is far right.
+static func cat_x(model: LeverLabModel) -> float:
+	return minf(model.effort_x(), model.beam_half - 0.05 - CAT_PAW_HALF)
 
 
 ## The effort pegs for beam-local points `points` (rebuilt only when they or the choice changed).

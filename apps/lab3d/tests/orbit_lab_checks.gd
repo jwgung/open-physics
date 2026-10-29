@@ -52,6 +52,7 @@ func run() -> void:
 	await check_conditions()
 	await check_art()
 	await check_first_launch_screen()
+	await check_pull_preview()
 	await check_input_path()
 	await check_demo()
 
@@ -459,6 +460,101 @@ func check_first_launch_screen() -> void:
 
 # --- 8. input path ----------------------------------------------------------------------------
 
+## The slingshot's path ahead (2026-10-29 user: show kids the way ahead while pulling): for
+## pulls giving a circle, an ellipse, an escape, a crash and a straight fall, every preview dot lies on
+## the model's own flight (OrbitModel stepped at the fixed step, the same GM, crash and far radii)
+## within PREVIEW_TOL, the dots run from the start along the way it goes round, a closed orbit is the
+## whole loop (back at the start), a crash ends on the star's crash circle and an escape at the far
+## radius where the model's run ends; at most PREVIEW_DOTS dots; a changed pull redraws it, no pull
+## and the launch hide it; the predicted path is hidden while the preview shows.
+const PREVIEW_TOL := 0.02
+func check_pull_preview() -> void:
+	var lab: Experiment = await _lab()
+	var problems := []
+	var counts := []
+	# [name, start radius, direction, speed, the model's outcome ("" = still flying after a full turn)]
+	var pulls := [["circle", 3.0, 90.0, 3.0, ""], ["ellipse", 3.0, 90.0, 3.6, ""], ["ellipse in", 4.0, 120.0, 2.2, ""],
+		["escape", 3.0, 90.0, 4.6, "far"], ["escape back", 2.0, 300.0, 6.0, "far"], ["crash", 3.0, 90.0, 1.2, "crash"],
+		["crash out", 5.0, 30.0, 2.0, "crash"], ["fall", 3.0, 0.0, 0.0, "crash"], ["bound far", 5.0, 90.0, 3.2, "far"]]
+	for pull: Array in pulls:
+		lab.begin_batch()
+		lab.set_control("radius", pull[1])
+		lab.end_batch()
+		lab.set_slingshot_preview(Vector2(pull[2], pull[3]))
+		var dots: PackedVector3Array = lab.props.preview_dots.duplicate()
+		var shown: int = lab.props.preview.multimesh.visible_instance_count
+		counts.append("%s %d" % [pull[0], shown])
+		if shown != dots.size() or shown < 2 or shown > OrbitProps.PREVIEW_DOTS or lab.props.path.visible:
+			problems.append("%s: %d dots shown (%d placed), predicted path visible %s" % [pull[0], shown, dots.size(), lab.props.path.visible])
+			continue
+		# The model's flight, step by step, for as long as one turn (or to its end).
+		var model := OrbitModel.new()
+		model.mu = lab.MU
+		model.crash_radius = lab.CRASH_RADIUS
+		model.far_radius = lab.FAR_RADIUS
+		var v: PackedFloat64Array = lab.launch_velocity(pull[2], pull[3])
+		model.reset(pull[1], v[0], v[1])
+		var flight := PackedVector2Array([Vector2(model.x, model.z)])
+		for k in 12000:
+			model.steps += 1
+			model.advance(1.0 / 60.0)
+			flight.append(Vector2(model.x, model.z))
+			if model.stopped or absf(model.swept) >= TAU + 0.05:
+				break
+		if model.outcome != pull[4]:
+			problems.append("%s: the model's run ends '%s' (want '%s')" % [pull[0], model.outcome, pull[4]])
+		var worst := 0.0
+		for d in dots:
+			worst = maxf(worst, _to_line(Vector2(d.x, d.z), flight))
+			if absf(d.y - lab.ORBIT_Y) > 1e-6:
+				worst = INF
+		if worst > PREVIEW_TOL:
+			problems.append("%s: a preview dot %.3f m off the model's flight" % [pull[0], worst])
+		var first := Vector2(dots[0].x, dots[0].z)
+		var last := Vector2(dots[dots.size() - 1].x, dots[dots.size() - 1].z)
+		var second := Vector2(dots[1].x, dots[1].z)
+		if first.distance_to(Vector2(pull[1], 0.0)) > 1e-6 or (pull[3] > 0.0 and (second - first).dot(Vector2(v[0], v[1])) <= 0.0):
+			problems.append("%s: the dots start at %s going %s" % [pull[0], first, second - first])
+		var end := flight[flight.size() - 1]
+		match pull[4]:
+			"":
+				if last.distance_to(first) > 1e-6:
+					problems.append("%s: the loop ends at %s, not back at the start" % [pull[0], last])
+			"crash":
+				if absf(last.length() - lab.CRASH_RADIUS) > 1e-3 or last.distance_to(end) > PREVIEW_TOL:
+					problems.append("%s: ends at %s (r %.3f), the model's crash at %s" % [pull[0], last, last.length(), end])
+			"far":
+				if absf(last.length() - lab.FAR_RADIUS) > 1e-3 or last.distance_to(end) > 0.12:
+					problems.append("%s: ends at %s (r %.3f), the model leaves at %s" % [pull[0], last, last.length(), end])
+	# A changed pull redraws, no pull hides (the predicted path back), and the launch hides it.
+	lab.set_slingshot_preview(Vector2(90.0, 3.0))
+	var before: Vector3 = lab.props.preview_dots[5]
+	lab.set_slingshot_preview(Vector2(90.0, 3.6))
+	var redrawn: bool = lab.props.preview_dots[5] != before
+	lab.set_slingshot_preview(Vector2.INF)
+	var gone: bool = lab.props.preview.multimesh.visible_instance_count == 0 and lab.props.path.visible
+	lab.set_slingshot_preview(Vector2(90.0, 3.6))
+	lab.release()
+	gone = gone and lab.props.preview.multimesh.visible_instance_count == 0 and lab.props.path.visible
+	if not redrawn or not gone:
+		problems.append("redrawn %s, hidden without a pull and at the launch %s" % [redrawn, gone])
+	await _free(lab)
+	expect.call(problems.is_empty(),
+		"orbit: the pull's path ahead lies on the model's own flight (circle, ellipses, escapes, crashes, a straight fall, a bound orbit that leaves; within %.2f m): the whole loop for an orbit, to the star for a crash, to the far radius for an escape; at most %d dots (%s); redrawn as the pull changes, gone without a pull and at the launch" % [PREVIEW_TOL, OrbitProps.PREVIEW_DOTS, ", ".join(counts)],
+		"; ".join(problems))
+
+
+## Distance from `p` to the polyline `line`.
+static func _to_line(p: Vector2, line: PackedVector2Array) -> float:
+	var best := INF
+	for i in range(1, line.size()):
+		var a := line[i - 1]
+		var ab := line[i] - a
+		var t := clampf((p - a).dot(ab) / maxf(ab.length_squared(), 1e-12), 0.0, 1.0)
+		best = minf(best, p.distance_to(a + ab * t))
+	return best
+
+
 ## The view point of a pull from the planet's start by `pull` (orbit-plane x, z metres).
 func _pull_point(screen: Control, lab: Experiment, pull: Vector2) -> Vector2:
 	return _at(screen, Vector3(lab.start_radius + pull.x, lab.ORBIT_Y, pull.y))
@@ -488,13 +584,17 @@ func check_input_path() -> void:
 	var readout_ok: bool = hud.visible and hud.text.contains("1초에") and hud.text.contains("4.5") and not hud.text.contains("도") and not hud.text.contains("m/s")
 	var preview_ok: bool = absf(arrow - (lab.ARROW_OFFSET + 4.5 * lab.ARROW_SCALE)) < 0.03 and dots > 3 \
 		and last_dot.distance_to(Vector3(3.0, lab.ORBIT_Y, 4.5 * lab.PULL_SCALE)) < 1e-3
+	# The pull's path ahead (2026-10-29), in the game round too: white dots from the start.
+	var ahead: int = lab.props.preview.multimesh.visible_instance_count
+	preview_ok = preview_ok and ahead > 10 and lab.props.preview_dots[0].distance_to(Vector3(3.0, lab.ORBIT_Y, 0.0)) < 1e-6
 	_touch(screen, pull_to, false)
 	await tree.process_frame
+	preview_ok = preview_ok and lab.props.preview.multimesh.visible_instance_count == 0
 	var synced: bool = screen._control_widgets.speed.slider.value == 4.5 and screen._control_widgets.direction.slider.value == 90.0
 	var launched: bool = lab.released and lab.speed == 4.5 and lab.direction == 90.0 and not hud.visible and lab.props.pull_dots.dots() == 0
 	game_hidden = game_hidden and lab.props.path.multimesh.visible_instance_count > 1 and lab.props.guide.multimesh.visible_instance_count == OrbitProps.DASHES
 	expect.call(pulling and preview_ok and readout_ok and launched and synced and game_hidden,
-		"orbit: pulling the planet towards the camera 4.52 m/s worth sets 90 deg, 4.5 m/s (arrow, pull dots and '1초에 4.5미터' while held, the planet stays, no path or guide) and letting go launches (sliders follow; path and guide appear at the launch)",
+		"orbit: pulling the planet towards the camera 4.52 m/s worth sets 90 deg, 4.5 m/s (arrow, pull dots, the path ahead and '1초에 4.5미터' while held, the planet stays, no predicted path or guide) and letting go launches (the path ahead goes; sliders follow; path and guide appear at the launch)",
 		"pulling %s, arrow %.3f m, dots %d (last %s), readout '%s', launched %s (%.2f m/s %.0f deg), synced %s, game hidden %s" % [pulling, arrow, dots, str(last_dot), hud.text, launched, lab.speed, lab.direction, synced, game_hidden])
 	var grid: Vector2 = lab.pull_launch(-Vector2(cos(deg_to_rad(-37.0)), -sin(deg_to_rad(-37.0))) * 2.34 * lab.PULL_SCALE)
 	var capped: Vector2 = lab.pull_launch(Vector2(-9.0 * lab.PULL_SCALE, 0.0))

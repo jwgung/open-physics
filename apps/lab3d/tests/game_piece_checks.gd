@@ -540,46 +540,90 @@ func check_push_path() -> void:
 
 # --- slide: the dominoes past the slide's end -------------------------------------------------------------
 
-## The slide's dominoes (2026-10-29 user: they did not line up with the slide's bottom and overlapped
-## the box): the row starts GAP past the slide's lower end for every angle, beside the box's lane;
-## in runs of every stage setup and the fastest ones no domino (standing, falling or fallen) ever
-## meets the box; a stamp's chain starts at the formula moment the box reached the end, each domino
-## NEXT_S after the one before; at the default camera every domino is in the view and clear of the
-## picture buttons on the tablet and the phone.
+## The slide's dominoes (2026-10-29 user, twice: "미끄럼틀은 여전히 착지 지점과 도미노의 위치가
+## 안맞다"): the box's way past the end (InclineFriction.arrival(): the formula's flight from the end
+## and the floor brake from the formula landing) is where the engine box goes, within 2 cm of its rest
+## point; the stage's row stands in the box's lane there. For every stage's fitting setting (the
+## picture buttons, the sidebar's steepest, a short run) the first domino's near face is HIT_DEPTH
+## short of the box's front at rest; the engine box's front reaches it within 3 steps of the formula's
+## step, the chain starts at that touch (stamped before it, or by the judging poll right after it), no
+## domino ever overlaps the box (before the touch, falling, pushed, fallen), and the run is settled
+## at the touch. A setting that falls short stops MISS_GAP before the row (no touch, a wobble). The
+## waiting rows stand beside the lane past the slide's end. At the default camera every domino is in
+## the view and clear of the picture buttons on the tablet and the phone.
 func check_incline_dominoes() -> void:
 	var lab: Experiment = await _lab("incline-friction")
 	var game := lab.game as InclineGame
 	var problems := []
-	for angle in [0.0, 20.0, 30.0, 40.0, 45.0]:
-		lab.set_control("angle", angle)
-		var end: Vector3 = lab.lower_end()
-		var first: Node3D = game._pivots[0][0]
-		if absf(first.global_position.x - (end.x - InclineGame.GAP)) > 1e-5 or absf(first.global_position.z - InclineGame.ROW_Z) > 1e-5:
-			problems.append("%s°: the row starts at %s (the slide's end %s)" % [angle, first.global_position, end])
-	var closest := INF
-	var runs := [["steel", 20.0], ["steel", 30.0], ["steel", 45.0], ["wood", 30.0], ["wood", 45.0], ["rubber", 40.0], ["rubber", 45.0]]
+	var touches := []
+	# [stage, material, angle, run, the stamp: "left" (judged at the end) or "touch" (the poll after)]
+	var runs := [[0, "steel", 20.0, 7.5, "left"], [0, "steel", 30.0, 7.5, "touch"], [0, "steel", 40.0, 7.5, "left"],
+		[0, "steel", 45.0, 7.5, "touch"], [0, "steel", 40.0, 3.0, "left"], [0, "steel", 20.0, 3.0, "miss"], [1, "wood", 30.0, 7.5, "left"],
+		[1, "wood", 40.0, 7.5, "touch"], [1, "wood", 45.0, 7.5, "left"], [2, "rubber", 40.0, 7.5, "left"],
+		[2, "rubber", 45.0, 7.5, "touch"], [1, "wood", 25.0, 7.5, "miss"], [2, "rubber", 35.0, 7.5, "miss"]]
 	for run: Array in runs:
-		lab.set_control("material", run[0])
-		lab.set_control("angle", run[1])
-		for fallen in [false, true]:
-			game.show_stage(0 if not fallen else -1, 0 if not fallen else 3, false)
-			lab.release()
-			var t_left := -1.0
-			for k in 330:
-				await tree.physics_frame
-				await tree.process_frame
-				if t_left < 0.0 and lab.status() == "left":
-					t_left = game._t
-					if not fallen:
-						game.show_stage(1, 1, true)   # the stamp (the screen judges at its next poll)
-				var box_aabb: AABB = lab.box.global_transform * AABB(-Vector3.ONE * lab.BOX * 0.5, Vector3.ONE * lab.BOX)
-				for d: AABB in game.domino_boxes():
-					if d.intersects(box_aabb):
-						problems.append("%s %s° (%s): a domino meets the box at step %d" % [run[0], run[1], "fallen" if fallen else "standing", k])
-						break
-					closest = minf(closest, box_aabb.position.z - d.end.z)
-			if not fallen and absf(game.chain_started(0) - t_left) > 1e-6:
-				problems.append("%s %s°: the chain started at %.3f, the box got to the end at %.3f" % [run[0], run[1], game.chain_started(0), t_left])
+		var stage: int = run[0]
+		var tag := "%s %s° run %s" % [run[1], run[2], run[3]]
+		game.show_stage(stage, stage, false)
+		lab.set_control("material", run[1])
+		lab.set_control("angle", run[2])
+		lab.set_run_length(run[3])
+		var miss: bool = run[4] == "miss"
+		var way: Dictionary = lab.arrival()
+		var size: Vector3 = InclineGame.ROWS[stage][1]
+		var first: Node3D = game._pivots[stage][0]
+		var front_rest: float = way.rest_x - lab.BOX * 0.5
+		var face: float = front_rest + (-InclineGame.MISS_GAP if miss else InclineGame.HIT_DEPTH)
+		if game.lane != stage or game.hits == miss or absf(first.global_position.x + size.x - face) > 1e-5 or absf(first.global_position.z) > 1e-6:
+			problems.append("%s: stage %d's row at %s (lane %d, hits %s), want its near face at %.3f" % [tag, stage + 1, first.global_position, game.lane, game.hits, face])
+		for r in InclineGame.ROWS.size():
+			if r != stage and absf((game._pivots[r][0] as Node3D).global_position.z - InclineGame.ROW_Z) > 1e-6:
+				problems.append("%s: waiting row %d in the lane" % [tag, r + 1])
+		# The formula's step at which the box's front reaches the face.
+		var want_step := -1
+		for k in 2000:
+			if k / 60.0 >= way.t_left and lab.arrival_x(way, k) - lab.BOX * 0.5 <= face:
+				want_step = k
+				break
+		lab.release()
+		var touch_t := -1.0
+		var touch_step := -1
+		var rest_x := NAN
+		for k in 420:
+			await tree.process_frame   # the box node as drawn this frame and the dominoes posed for it
+			if run[4] == "left" and lab.status() == "left" and game.cleared == stage:
+				game.show_stage(stage + 1, stage + 1, true)   # the stamp at the end (the box still on its way)
+			var box_aabb: AABB = lab.box.global_transform * AABB(-Vector3.ONE * lab.BOX * 0.5, Vector3.ONE * lab.BOX)
+			if touch_t < 0.0 and box_aabb.position.x <= face:
+				touch_t = game._t
+				touch_step = lab.corrector.steps
+				if not lab.settled():
+					problems.append("%s: not settled at the touch" % tag)
+				if run[4] == "touch":
+					game.show_stage(stage + 1, stage + 1, true)   # the judging poll right after the touch
+			for d: AABB in game.domino_boxes():
+				if d.grow(-0.002).intersects(box_aabb):
+					problems.append("%s: a domino overlaps the box at step %d (%s)" % [tag, k, "after the touch" if touch_t >= 0.0 else "before the touch"])
+					break
+			if game.stopped():
+				rest_x = lab.box.global_position.x
+				break
+			if touch_t >= 0.0 and game._t - touch_t > 1.2:
+				break
+		if miss:
+			if touch_t >= 0.0 or not game.stopped() or game._wobble_row != stage or not lab.settled():
+				problems.append("%s (falls short): touch %.3f, stopped %s, wobble row %d" % [tag, touch_t, game.stopped(), game._wobble_row])
+			elif absf(rest_x - way.rest_x) > 0.02:
+				problems.append("%s: the box stopped at %.3f, the formula's rest %.3f" % [tag, rest_x, way.rest_x])
+			continue
+		if touch_t < 0.0:
+			problems.append("%s: the box never reached the first domino (face %.3f)" % [tag, face])
+			continue
+		if absf(game.touch_time() - touch_t) > 1e-6 or absf(game.chain_started(stage) - touch_t) > 1e-6:
+			problems.append("%s: touch %.3f, the game's touch %.3f, chain %.3f" % [tag, touch_t, game.touch_time(), game.chain_started(stage)])
+		if absf(touch_step - want_step) > 3:
+			problems.append("%s: the box reached the domino at step %d, the formula's step %d" % [tag, touch_step, want_step])
+		touches.append("%s %.2f m @%.2f s" % [tag, face, touch_step / 60.0])
 	lab.queue_free()
 	# The default camera (tablet and phone): every domino's top and foot in the view, clear of the
 	# picture buttons, for every stage's buttons and every angle a button sets.
@@ -606,7 +650,7 @@ func check_incline_dominoes() -> void:
 		await _free(screen)
 	DirAccess.remove_absolute(ProgressStore.path)
 	expect.call(problems.is_empty(),
-		"piece game (slide): the dominoes start %.1f m past the slide's lower end at every angle, beside the box's lane (%.2f m clear of it at the closest); no domino ever meets the box (standing, falling, fallen; steel, wood, rubber up to 45°); the chain starts at the formula moment the box reached the end; every domino in the default view and clear of the picture buttons (tablet, phone)" % [InclineGame.GAP, closest],
+		"piece game (slide): the stage's row stands in the box's lane where it arrives (the formula's flight and floor brake, the engine box within 3 steps); the box runs into the first domino and the chain starts at that touch, no domino ever overlaps the box, a short setting stops %.2f m before the row; every domino in the default view and clear of the picture buttons (tablet, phone) — %s" % [InclineGame.MISS_GAP, ", ".join(touches)],
 		"; ".join(problems.slice(0, 8)))
 
 

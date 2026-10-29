@@ -8,7 +8,9 @@
 ## Before the launch the panel and the dotted path show the web's prediction (OrbitChallenge: crash,
 ## orbit or escape, with the circular and escape speeds); "발사" launches. In a game round
 ## (answer_preview false) the path and the dashed circle appear only once the planet is launched:
-## the path's colour would answer Dugi's question ("더 세게 쏘면 별을 떠날까?") before the run.
+## the path's colour would answer Dugi's question ("더 세게 쏘면 별을 떠날까?") before the run. While a
+## finger pulls the planet its way ahead shows (2026-10-29, also in a game round: pull_path, the
+## model's conic as white dots), gone at the release.
 ## Motion and every displayed number: OrbitModel (the web's PointGravityField, GM = 27 m^3/s^2,
 ## 8 velocity Verlet substeps per fixed step). BodyModelDriver poses the engine planet on it every
 ## step (method "kinematic_model"): the panel has no engine measurement.
@@ -52,6 +54,7 @@ var _analyzed: Dictionary = {}
 ## The slingshot pull's (direction, speed) while a finger holds the planet; INF when no pull (the
 ## screen sets it from the Manipulator's slingshot signal).
 var _slingshot_preview := Vector2.INF
+var _preview_key := Vector3.INF           # (radius, direction, speed) of the preview drawn
 ## The steps owed to the playback pace (time_scale) not taken yet (0 <= _pace < 1).
 var _pace := 0.0
 
@@ -144,6 +147,8 @@ func reset_run() -> void:
 
 func _notify_released() -> void:
 	_pace = 0.0
+	_preview_key = Vector3.INF
+	props.hide_preview()
 	if not answer_preview:
 		_show_prediction(start_radius, prediction)
 	var v := launch_velocity(direction, speed)
@@ -203,7 +208,7 @@ func _process(_delta: float) -> void:
 
 
 ## Waiting: the velocity arrow of the launch; while a finger pulls the planet, the arrow of the
-## pull's launch and the pull dots back to the pulled point (no path preview).
+## pull's launch and the pull dots back to the pulled point (the path ahead: set_slingshot_preview).
 func _show_waiting() -> void:
 	var at := planet.global_position
 	props.place_cat(at, holding != "planet")
@@ -218,11 +223,31 @@ func _show_waiting() -> void:
 	props.show_pull(at, pull)
 
 
-## The pull's (direction, speed) while a finger holds the planet (INF when the pull ends).
+## The pull's (direction, speed) while a finger holds the planet (INF when the pull ends): the arrow,
+## the pull dots and the pull's path ahead (pull_path), redrawn as the finger moves; gone with the pull.
 func set_slingshot_preview(value: Variant) -> void:
 	_slingshot_preview = value if value is Vector2 else Vector2.INF
-	if planet != null and not released:
+	if planet == null:
+		return
+	if _slingshot_preview == Vector2.INF or released:
+		_preview_key = Vector3.INF
+		props.hide_preview()
+	else:
+		var key := Vector3(start_radius, _slingshot_preview.x, _slingshot_preview.y)
+		if key != _preview_key:
+			_preview_key = key
+			props.show_preview(pull_path(_slingshot_preview))
+	if not released:
 		_show_waiting()
+
+
+## The path a pull's launch (direction deg, speed m/s; pull_launch) would fly from the start, as the
+## model flies it (OrbitModel.conic_path: the same GM, the crash and far radii): plane points (x, z)
+## OrbitProps.PREVIEW_STEP m apart (2026-10-29 user: show kids the way ahead while pulling;
+## in a game round too, only while pulling).
+func pull_path(launch: Vector2) -> PackedVector2Array:
+	var v := launch_velocity(launch.x, launch.y)
+	return OrbitModel.conic_path(start_radius, 0.0, v[0], v[1], MU, CRASH_RADIUS, FAR_RADIUS, OrbitProps.PREVIEW_STEP)
 
 
 ## The launch (direction deg, speed m/s) of a slingshot pull `pull` (orbit-plane coordinates: x, z;

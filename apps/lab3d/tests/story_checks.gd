@@ -16,7 +16,7 @@ const EXPERIMENT_SCREEN := "res://scripts/shell/experiment_screen.gd"
 const HOME_SCREEN := "res://scripts/app/island_home_screen.gd"
 const SETTINGS_SCREEN := "res://scripts/app/settings_screen.gd"
 const CLUES := {
-	"projectile": "나무 위 상자에 조각이 있어! 상자를 맞히면 조각이 떨어질 것 같아!",
+	"projectile": "상자를 하나씩 맞히다 보면 조각이 나올 것 같아!",
 	"collision": "얼음 속에 조각이 갇혔어! 공을 부딪혀서 저 얼음을 깨 보자!",
 	"free-fall": "조각이 파란 집에 갇혔어! 버튼 두 개를 같이 누르면 문이 열릴 것 같아!",
 	"incline-friction": "조각이 빨간 기둥 꼭대기에 있어! 상자로 도미노를 쓰러뜨려 보자!",

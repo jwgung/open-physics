@@ -63,7 +63,7 @@ func _piece_home() -> Vector3:
 static func buttons_mesh(xs: Dictionary, lit: Dictionary) -> Mesh:
 	var b := ArtKit.builder()
 	for id in xs:
-		var colour: Color = ArtPalette.RED if id == "red" else ArtPalette.YELLOW
+		var colour: Color = ArtPalette.RED if id == "red" else ArtPalette.PINK
 		var on: bool = lit.get(id, false)
 		var x: float = xs[id]
 		b.add_cylinder(Transform3D(Basis(), Vector3(x, 0.006, 0.0)), BUTTON_R + 0.08, BUTTON_R + 0.06, 0.012, 12, ArtPalette.WHITE)

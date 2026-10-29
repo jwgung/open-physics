@@ -6,6 +6,9 @@
 ## the fence or the island's edge); the crate tips when the formula clock reaches that time. The
 ## engine ball flies on through it as it always did (the crates are pictures, not bodies). The last
 ## crate's tip drops the piece on the same uniform gravity (LabGame.launch_piece).
+## One crate at a time (2026-10-29 user "상자 세 개가 한꺼번에 있으면 헷갈려"): only the stage's crate
+## (with its stump or tree) is on the island; a cleared crate falls, and after the stamp the next one
+## pops in at its place. After the last stage the fallen last crate stays (the piece on the ground).
 class_name ProjectileGame
 extends LabGame
 
@@ -24,10 +27,17 @@ const STUMP_RADIUS := 0.32
 const SAMPLE_DT := 1.0 / 1200.0          # s between the path points the hit is looked for at
 const TIP_S := 0.55
 const CALL_EVERY_S := 2.4                # the crate to hit gives a little shake this often
+const APPEAR_DELAY_S := 1.1              # after a clear (the crate tips 0.55 s, the stamp lands ~0.94 s) the next crate pops in
+const POP_S := 0.35
 const WOOD := Color("c98d4f")
 const WOOD_DARK := Color("8f5a2c")
 
 var _pivots: Array[Node3D] = []
+var _spots: Array[Node3D] = []           # per crate: its stump (or tree), shown with it
+var _shown := 0                          # the crate on the island
+var _pending := -1                       # the crate that pops in at _appear_at (game time)
+var _appear_at := 0.0
+var _pop_since := -1.0
 var _tipped: Array = [false, false, false]
 var _tip_since: Array = [-1.0, -1.0, -1.0]
 
@@ -58,8 +68,8 @@ static func hit_time(i: int, c: Vector2, vx: float, vy: float, g: float, r: floa
 
 
 func build() -> void:
-	var stumps := ArtKit.builder()
 	for i in TARGETS.size():
+		var stumps := ArtKit.builder()
 		var t: Vector2 = TARGETS[i]
 		if i == HIGH:
 			# A tree left of the crate, its branch reaching right along the line under the crate (the
@@ -78,7 +88,10 @@ func build() -> void:
 		crate.position = Vector3(-CRATE * 0.5, CRATE * 0.5, 0.0)   # the pivot is the crate's bottom far edge
 		pivot.add_child(crate)
 		_pivots.append(pivot)
-	add_child(ArtKit.instance(stumps.commit()))
+		var spot := ArtKit.instance(stumps.commit())
+		spot.name = "Stump%d" % (i + 1)
+		add_child(spot)
+		_spots.append(spot)
 	var top: Vector2 = TARGETS[TARGETS.size() - 1]
 	make_piece(Vector3(top.x, top.y + CRATE + PIECE_SIZE * 0.95, 0.0))
 	_jump(0)
@@ -97,7 +110,7 @@ static func crate_mesh() -> Mesh:
 ## The formula path reached crate `i` (the lab's clock passed its hit time): it tips when it is the
 ## crate of the stage being played; the last one drops the piece on the lab's gravity `g`.
 func hit(i: int, g: float) -> void:
-	if i != stage or _tipped[i]:
+	if i != stage or i != _shown or _tipped[i]:   # only the crate on the island counts
 		return
 	_tip(i)
 	if i == TARGETS.size() - 1:
@@ -115,18 +128,56 @@ func _cleared(stage_index: int, last: bool) -> void:
 		_tip(stage_index)   # (the demo, a lab without throws): the crate goes now
 	if last:
 		launch_piece(Vector3(1.1, 1.6, 0.0), lab_g())
+	else:
+		_pending = stage_index + 1   # the next crate pops in after the stamp
+		_appear_at = _t + APPEAR_DELAY_S
 
 
-## Crates of the cleared stages lie on the ground, the others stand on their stumps.
+## Only the stage's crate is on the island, at once (a reset, a re-entered spot): standing, or the
+## last one lying once the round is done.
 func _jump(stamps: int) -> void:
 	for i in TARGETS.size():
 		_tipped[i] = i < stamps
 		_tip_since[i] = -1.0
 		_pose(i, 1.0 if _tipped[i] else 0.0)
+	_pending = -1
+	_pop_since = -1.0
+	_shown = mini(stamps, TARGETS.size() - 1)
 	if stamps < TARGETS.size() and piece != null and piece_state != "held":
 		var top: Vector2 = TARGETS[TARGETS.size() - 1]
 		piece.position = Vector3(top.x, top.y + CRATE + PIECE_SIZE * 0.95, 0.0)
 		set_piece_state("held")
+	_apply_shown()
+
+
+## The crate `_shown` (with its stump and, on the last, the piece in it) is the only one visible.
+func _apply_shown() -> void:
+	for i in TARGETS.size():
+		_pivots[i].visible = i == _shown
+		_spots[i].visible = i == _shown
+		_pivots[i].scale = Vector3.ONE
+	if piece != null:
+		piece.scale = Vector3.ONE
+		if piece_state == "held":
+			piece.visible = _shown == TARGETS.size() - 1
+
+
+## The next crate pops in at its place (a little overshoot), the old one and its stump are gone.
+func _pop_in(i: int) -> void:
+	_pending = -1
+	_shown = i
+	_apply_shown()
+	_pop_since = _t
+	SoundBoard.play(&"hop")
+	_pop_scale(0.0)
+
+
+func _pop_scale(k: float) -> void:
+	var u := clampf(k, 0.0, 1.0) - 1.0
+	var s := 1.0 + 2.70158 * u * u * u + 1.70158 * u * u   # ease-out-back
+	_pivots[_shown].scale = Vector3.ONE * maxf(s, 0.001)
+	if piece != null and piece_state == "held" and _shown == TARGETS.size() - 1:
+		piece.scale = Vector3.ONE * maxf(s, 0.001)
 
 
 ## Crate `i` at tip progress `k` (0 standing, 1 lying on the ground past its stump).
@@ -140,18 +191,34 @@ func _pose(i: int, k: float) -> void:
 
 func _process(delta: float) -> void:
 	super(delta)
+	if _pending >= 0 and _t >= _appear_at:
+		_pop_in(_pending)
+	if _pop_since >= 0.0:
+		var k := (_t - _pop_since) / POP_S
+		_pop_scale(k)
+		if k >= 1.0:
+			_pop_since = -1.0
+			_pop_scale(1.0)
 	for i in TARGETS.size():
 		if _tip_since[i] >= 0.0:
 			var k := clampf((_t - _tip_since[i]) / TIP_S, 0.0, 1.0)
 			_pose(i, k)
 			if k >= 1.0:
 				_tip_since[i] = -1.0
-		elif not _tipped[i] and i == stage:
+		elif not _tipped[i] and i == stage and i == _shown and _pop_since < 0.0:
 			# The crate to hit: a small shake now and then ("me!").
 			_pivots[i].rotation.z = wobble(fmod(_t, CALL_EVERY_S), 0.0, 0.06)
 
 
-## The clue's glow (LabGame.highlight): the high crate with the piece on it.
+## The clue's glow (LabGame.highlight): the crate of the stage being played.
 func highlight_spots() -> Array:
-	var top: Vector2 = TARGETS[TARGETS.size() - 1]
-	return [{"at": Vector3(top.x, top.y + CRATE * 0.85, 0.0), "radius": 1.0}]
+	var t: Vector2 = TARGETS[mini(stage, TARGETS.size() - 1)]
+	return [{"at": Vector3(t.x, t.y + CRATE * 0.6, 0.0), "radius": 1.0}]
+
+## The crate on the island now (tests): the index, or -1 when none shows.
+func visible_crates() -> Array:
+	var out := []
+	for i in TARGETS.size():
+		if _pivots[i].visible:
+			out.append(i)
+	return out

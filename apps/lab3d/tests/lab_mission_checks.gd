@@ -216,7 +216,7 @@ func check_round(id: String) -> void:
 	var game: LabGame = lab.game
 	if (id in PIECE_LABS) != (game != null):
 		problems.append("a piece game where none was made, or none where one was")
-	elif game != null and (game.piece == null or not game.piece.visible or game.piece_state != "held"):
+	elif game != null and (game.piece == null or (not game.piece.visible and id != "projectile") or game.piece_state != "held"):
 		problems.append("the piece is not in its object at the start")
 	for attempt in ROUNDS[id]:
 		var before := ProgressStore.stamps(ProgressStore.load(), id)

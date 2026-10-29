@@ -971,6 +971,9 @@ func check_collision_mesh_rolls() -> void:
 
 const COLOUR_WORDS := {"red": ["빨강", "빨간"], "yellow": ["노랑", "노란"], "purple": ["보라", "보라"]}
 const COLOURS := {"red": ArtPalette.RED, "yellow": ArtPalette.YELLOW, "purple": ArtPalette.VIOLET}
+# The free fall's light ball keeps the id "yellow" but is PINK (2026-10-29: yellow was hard to see on the grass).
+const FF_WORDS := {"red": ["빨강", "빨간"], "yellow": ["분홍", "분홍"]}
+const FF_COLOURS := {"red": ArtPalette.RED, "yellow": ArtPalette.PINK}
 
 
 ## Brightest coloured (not white) vertex colour of a mesh in sRGB (the builder stores linear colours; the baked shading only
@@ -1053,8 +1056,8 @@ func check_ball_colours() -> void:
 	for entry in definition.observations:
 		labels[entry.id] = entry.label
 	for id in lab.ORDER:
-		var words: Array = COLOUR_WORDS[id]
-		var colour: Color = COLOURS[id]
+		var words: Array = FF_WORDS[id]
+		var colour: Color = FF_COLOURS[id]
 		if lab.BALLS[id].color != colour or lab.BALLS[id].name != words[0]:
 			problems.append("%s: BALLS %s %s" % [id, lab.BALLS[id].name, lab.BALLS[id].color.to_html(false)])
 		var mesh_colour := _ball_colour(lab.balls[id].get_node("Visual") as MeshInstance3D)
@@ -1066,7 +1069,7 @@ func check_ball_colours() -> void:
 			problems.append("%s: observation %s" % [id, labels["height_" + id]])
 	for option in definition.controls[2].options:
 		for id in lab.ORDER:
-			if not str(option.note).contains("%s 공" % COLOUR_WORDS[id][1]):
+			if not str(option.note).contains("%s 공" % FF_WORDS[id][1]):
 				problems.append("note %s lacks %s" % [option.note, id])
 	var text: String = lab.measured_landings()
 	lab.release()
@@ -1074,9 +1077,9 @@ func check_ball_colours() -> void:
 		await tree.physics_frame
 	text = lab.measured_landings()
 	for id in lab.ORDER:
-		if not text.contains(COLOUR_WORDS[id][0]):
-			problems.append("landings '%s' lacks %s" % [text, COLOUR_WORDS[id][0]])
-	for old in ["분홍", "주황", "ff4fa3", "ff7a1a"]:
+		if not text.contains(FF_WORDS[id][0]):
+			problems.append("landings '%s' lacks %s" % [text, FF_WORDS[id][0]])
+	for old in ["노랑", "노란", "주황", "ffc61a", "ff7a1a"]:
 		if JSON.stringify(definition).contains(old):
 			problems.append("free-fall definition still has %s" % old)
 	# Every ball is a yarn ball (the strands show the turn); the drop pads are white / grey, no ball colour.
@@ -1132,5 +1135,5 @@ func check_ball_colours() -> void:
 				problems.append("dev box %s colour %s" % [id, box_colour.to_html(false)])
 	await _free(dev)
 	expect.call(problems.is_empty(),
-		"ball colours: free-fall balls red / yellow (development boxes red / yellow / violet), and every name, label, graph series and note matches the mesh colour",
+		"ball colours: free-fall balls red / pink (development boxes red / yellow / violet), and every name, label, graph series and note matches the mesh colour",
 		"; ".join(problems))

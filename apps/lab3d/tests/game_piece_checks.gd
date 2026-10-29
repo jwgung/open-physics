@@ -29,6 +29,7 @@ func run() -> void:
 	check_tracker_near_also()
 	await check_projectile()
 	await check_projectile_round()
+	await check_projectile_one_crate()
 	await check_collision()
 	await check_free_fall()
 	await check_incline()
@@ -218,6 +219,59 @@ func check_projectile_round() -> void:
 	DirAccess.remove_absolute(ProgressStore.path)
 	expect.call(problems.is_empty(),
 		"piece game (throw): a miss (30°) earns nothing; a hit on the stage's crate tips it at the formula hit time and the landing stamps it (near 10° → far 45° → high 65°); the same throw again earns nothing; the piece rides the high crate until that hit drops it to the ground",
+		"; ".join(problems))
+
+
+## One crate at a time (2026-10-29): only the stage's crate is on the island; it is the one judged;
+## a cleared crate falls, and the next pops in only after the stamp (APPEAR_DELAY_S); the round's
+## end keeps the fallen last crate. The piece rides the last crate only.
+func check_projectile_one_crate() -> void:
+	var lab: Experiment = await _lab("projectile")
+	var game := lab.game as ProjectileGame
+	var problems := []
+	var wait_for := func(want: Array) -> float:
+		var t0 := game._t
+		for k in 600:
+			await tree.process_frame
+			if game.visible_crates() == want:
+				break
+		return game._t - t0
+	game.show_stage(0, 0, false)
+	if game.visible_crates() != [0] or game.piece.visible:
+		problems.append("stage 1 shows %s, piece visible %s (want only the near crate, no piece)" % [str(game.visible_crates()), game.piece.visible])
+	# Only the visible crate counts: the far crate's hit is not taken while stage 1 is played.
+	game.hit(1, 9.81)
+	if game._tipped[1] or game._tipped[0]:
+		problems.append("a hit on a crate that is not the stage's tipped it")
+	game.hit(0, 9.81)
+	if not game._tipped[0]:
+		problems.append("the stage's own crate did not tip")
+	game.show_stage(1, 1, true)   # stamp 1
+	if game.visible_crates() != [0]:
+		problems.append("right after the stamp %s shows (the fallen crate stays until the next pops in)" % str(game.visible_crates()))
+	var waited: float = await wait_for.call([1])
+	if waited < ProjectileGame.APPEAR_DELAY_S - 0.05 or game.visible_crates() != [1] or game.piece.visible:
+		problems.append("the far crate came after %.2f s, shows %s" % [waited, str(game.visible_crates())])
+	game.hit(1, 9.81)
+	game.show_stage(2, 2, true)
+	waited = await wait_for.call([2])
+	if game.visible_crates() != [2] or not game.piece.visible or game.piece_state != "held":
+		problems.append("stage 3 shows %s, piece visible %s %s" % [str(game.visible_crates()), game.piece.visible, game.piece_state])
+	game.hit(2, 9.81)
+	game.show_stage(-1, 3, true)
+	await _frames(120)
+	if game.visible_crates() != [2] or not game._tipped[2]:
+		problems.append("after the round %s shows (want the fallen tree crate)" % str(game.visible_crates()))
+	# The clue's glow follows the crate of the stage; a reset shows the stage's crate at once.
+	game.show_stage(0, 0, false)
+	game.run_reset()
+	var spot: Vector2 = ProjectileGame.TARGETS[0]
+	var glow_at: Vector3 = game.highlight_spots()[0].at
+	if game.visible_crates() != [0] or absf(glow_at.x - spot.x) > 1e-6 or glow_at.y < spot.y or glow_at.y > spot.y + ProjectileGame.CRATE:
+		problems.append("after a reset %s shows, the glow is at %s" % [str(game.visible_crates()), glow_at])
+	lab.queue_free()
+	expect.call(problems.is_empty(),
+		"piece game (throw, one crate at a time): stage 1 shows only the near crate, stage 2 only the far one, stage 3 only the tree crate with the piece; only the visible crate is judged; a cleared crate falls and the next pops in after the stamp; the round's end keeps the fallen last one; the clue glows on the stage's crate",
 		"; ".join(problems))
 
 
@@ -892,7 +946,8 @@ func check_pieces() -> void:
 			problems.append("%s: no piece game" % id)
 			await _free(screen)
 			continue
-		if not (game.piece.visible and game.piece_state == "held" and game.piece.is_inside_tree()):
+		# (the throw shows its piece only with the last crate, 2026-10-29: one crate at a time)
+		if not ((game.piece.visible or id == "projectile") and game.piece_state == "held" and game.piece.is_inside_tree()):
 			problems.append("%s: the piece is not shown in its object at the start" % id)
 		for stamps in [1, 2, 3]:
 			screen._missions.stamps = stamps   # the demo's way (in memory only)
@@ -922,7 +977,7 @@ func check_pieces() -> void:
 			var g2: LabGame = again.experiment.game
 			if saved == 3 and (g2.piece.visible or g2.piece_state != "taken"):
 				problems.append("%s: a finished spot still shows its piece" % id)
-			if saved == 1 and (not g2.piece.visible or g2.piece_state != "held" or g2.cleared != 1):
+			if saved == 1 and ((not g2.piece.visible and id != "projectile") or g2.piece_state != "held" or g2.cleared != 1):
 				problems.append("%s: one stamp saved: the piece is not in its object (%s)" % [id, g2.piece_state])
 			await _free(again)
 	DirAccess.remove_absolute(ProgressStore.path)
@@ -992,8 +1047,11 @@ func check_clue_glow() -> void:
 		var on: bool = game.highlighting()
 		var glows: Array = game._glows
 		var near := false
+		var target: Vector3 = game.piece.global_position   # (the throw glows on the stage's crate, the piece is on the last one)
+		if id == "projectile":
+			target = game.to_global(game.highlight_spots()[0].at)
 		for glow: ClueGlow in glows:
-			if glow.name == "ClueHalo" and glow.global_position.distance_to(game.piece.global_position) <= glow.scale.x:
+			if glow.name == "ClueHalo" and glow.global_position.distance_to(target) <= glow.scale.x:
 				near = true
 		var faint: bool = glows.all(func(glow: ClueGlow) -> bool: return (glow.material_override as StandardMaterial3D).albedo_color.a <= ClueGlow.PEAK + 1e-6)
 		var closed: bool = screen.handle_back() and not screen.clue_telling()

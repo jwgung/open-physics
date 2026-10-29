@@ -69,7 +69,7 @@
       { "observe": "hit_3", "threshold": 0.5, "text": "높이 던져서 나무 위 상자 맞히기!", "say": "높이 던지면 공이 위로 많이 올라갔다가 가까이 내려와요. 그래서 높은 나뭇가지의 상자에 닿아요.", "say_face": "explain", "win": "와! 나무 위 상자가 떨어졌어!", "win_face": "surprised", "miss": "더 높이, 위로 던져 봐!", "miss_face": "thinking" }
     ]
   },
-  "story": { "clue": "나무 위 상자에 조각이 있어! 상자를 맞히면 조각이 떨어질 것 같아!", "clue_face": "surprised", "map_clue": "과녁 근처 풀밭에 뭔가 떨어졌어!", "map_clue_face": "surprised" },
+  "story": { "clue": "상자를 하나씩 맞히다 보면 조각이 나올 것 같아!", "clue_face": "surprised", "map_clue": "과녁 근처 풀밭에 뭔가 떨어졌어!", "map_clue_face": "surprised" },
   "kid": {
     "card": "range",
     "title": "공을 멀리 던져 보자!",

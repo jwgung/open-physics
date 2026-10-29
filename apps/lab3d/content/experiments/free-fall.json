@@ -37,9 +37,9 @@
     {
       "id": "mass", "type": "choice", "label": "빨간 공 무게", "default": "heavy",
       "options": [
-        { "id": "light", "label": "가벼움", "kg": 0.5, "note": "빨간 공 0.5 kg · 노란 공 0.5 kg" },
-        { "id": "normal", "label": "보통", "kg": 1.0, "note": "빨간 공 1 kg · 노란 공 0.5 kg" },
-        { "id": "heavy", "label": "무거움", "kg": 3.0, "note": "빨간 공 3 kg · 노란 공 0.5 kg" }
+        { "id": "light", "label": "가벼움", "kg": 0.5, "note": "빨간 공 0.5 kg · 분홍 공 0.5 kg" },
+        { "id": "normal", "label": "보통", "kg": 1.0, "note": "빨간 공 1 kg · 분홍 공 0.5 kg" },
+        { "id": "heavy", "label": "무거움", "kg": 3.0, "note": "빨간 공 3 kg · 분홍 공 0.5 kg" }
       ]
     }
   ],
@@ -67,7 +67,7 @@
     "hidden_until_end": ["fall_time"],
     "hidden_series_until_end": ["yellow", "red"],
     "stages": [
-      { "observe": "together_time", "threshold": 0.1, "conditions": {"gravity": "earth", "mass": "heavy"}, "text": "빨간 공과 노란 공을 같이 떨어뜨려 버튼 누르기!", "say": "무거운 빨간 공도 가벼운 노란 공도 같은 높이에서 놓으면 같이 닿아요.", "say_face": "happy", "win": "딸깍! 두 버튼이 같이 눌렸어!", "win_face": "happy", "miss": "두 공이 따로 닿았어. 높이를 맞춰 봐!", "miss_face": "thinking" },
+      { "observe": "together_time", "threshold": 0.1, "conditions": {"gravity": "earth", "mass": "heavy"}, "text": "빨간 공과 분홍 공을 같이 떨어뜨려 버튼 누르기!", "say": "무거운 빨간 공도 가벼운 분홍 공도 같은 높이에서 놓으면 같이 닿아요.", "say_face": "happy", "win": "딸깍! 두 버튼이 같이 눌렸어!", "win_face": "happy", "miss": "두 공이 따로 닿았어. 높이를 맞춰 봐!", "miss_face": "thinking" },
       { "observe": "together_time", "threshold": 3.0, "conditions": {"gravity": "moon", "mass": "heavy"}, "text": "달에서 두 공을 맨 위에서 같이 떨어뜨리기!", "say": "달은 지구보다 살살 끌어당겨요. 그래서 공이 천천히 떨어져요. 맨 위에서 놓으면 3초도 넘게 걸려요.", "say_face": "explain", "win": "달에서도 같이 눌렸어! 불이 켜졌어!", "win_face": "happy", "miss": "두 공을 맨 위에 나란히 올려 봐!", "miss_face": "thinking" },
       { "observe": "together_time", "compare": "less", "threshold": 1.0, "conditions": {"gravity": "jupiter", "mass": "heavy"}, "text": "목성에서 두 공을 같이 1초 안에 떨어뜨리기!", "say": "목성은 지구보다 훨씬 세게 끌어당겨요. 그래서 공이 아주 빨리 떨어져요. 그래도 두 공은 같이 닿아요.", "say_face": "surprised", "win": "문이 열렸어! 조각이 보여!", "win_face": "surprised", "miss": "목성에서 두 공 높이를 맞춰 봐!", "miss_face": "thinking" }
     ]
@@ -115,20 +115,20 @@
     { "id": "state", "label": "공 상태" },
     { "id": "fall_time", "label": "빨간 공이 바닥까지 √(2h₀/g)", "unit": "s", "digits": 2 },
     { "id": "height_red", "label": "빨간 공 높이 h", "unit": "m", "digits": 2 },
-    { "id": "height_yellow", "label": "노란 공 높이", "unit": "m", "digits": 2 },
+    { "id": "height_yellow", "label": "분홍 공 높이", "unit": "m", "digits": 2 },
     { "id": "speed", "label": "빨간 공 속력 v = gt", "unit": "m/s", "digits": 2 },
     { "id": "momentum", "label": "빨간 공 운동량 p = mv", "unit": "kg·m/s", "digits": 2 },
     { "id": "kinetic", "label": "빨간 공 운동 에너지 ½mv²", "unit": "J", "digits": 1 },
     { "id": "potential", "label": "빨간 공 위치 에너지 mgh", "unit": "J", "digits": 1 },
     { "id": "landing", "label": "바닥에 닿은 시각 (시뮬레이션)" },
-    { "id": "together_time", "label": "빨간 공과 노란 공이 함께 닿은 시간 (공식, 1/60초 안)", "unit": "s", "digits": 2 }
+    { "id": "together_time", "label": "빨간 공과 분홍 공이 함께 닿은 시간 (공식, 1/60초 안)", "unit": "s", "digits": 2 }
   ],
   "graph": {
     "title": "바닥까지 남은 높이",
     "x": { "label": "시간 t", "unit": "s", "max": 3.0 },
     "y": { "label": "높이 h", "unit": "m", "min_max": 1.0 },
     "series": [
-      { "id": "yellow", "label": "노란 공", "color": "#ffc61a", "style": "line" },
+      { "id": "yellow", "label": "분홍 공", "color": "#ff4fa3", "style": "line" },
       { "id": "red", "label": "빨간 공", "color": "#ff3b3b", "style": "line" },
       { "id": "measured", "label": "시뮬레이션", "color": "#0f8b8d", "style": "points" }
     ]

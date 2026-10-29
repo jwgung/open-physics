@@ -17,7 +17,7 @@ extends UniformFieldLab
 
 ## Left to right. mass: kg (the red one follows the "mass" control).
 const BALLS := {
-	"yellow": {"x": -1.5, "mass": 0.5, "color": ArtPalette.YELLOW, "name": "노랑"},
+	"yellow": {"x": -1.5, "mass": 0.5, "color": ArtPalette.PINK, "name": "분홍"},
 	"red": {"x": 1.5, "mass": 3.0, "color": ArtPalette.RED, "name": "빨강"},
 }
 const ORDER := ["yellow", "red"]
@@ -260,7 +260,7 @@ func together_time() -> Variant:
 	return t_red
 
 
-## Engine landing times of the two balls (the "시뮬레이션" readout): "노랑 1.02 · 빨강 … s"; a
+## Engine landing times of the two balls (the "시뮬레이션" readout): "분홍 1.02 · 빨강 … s"; a
 ## ball shows "—" until it has a measured landing step (measured_landing_step).
 func measured_landings() -> String:
 	if not released:

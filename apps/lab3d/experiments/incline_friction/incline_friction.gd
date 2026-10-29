@@ -45,6 +45,8 @@ var _placed := false          # the user dragged the box to start_x (kept across
 var _brake_step := -1         # the step (corrector.steps) of the formula landing: the floor brake starts
 var _graph_points := PackedVector2Array()
 var _graph_revision := 0
+var _reach_key := []
+var _reach := []
 
 
 func _ready() -> void:
@@ -217,7 +219,8 @@ func arrival() -> Dictionary:
 	var r := 1.0 - FLOOR_DAMP * dt
 	return {
 		"t_left": t_left, "t_land": t_left + t_fly, "x_land": from.x - vx * t_fly, "from_x": from.x,
-		"vx": vx, "brake_step": brake_step, "rest_x": at_brake - vx * dt * r / (1.0 - r),
+		"from_y": from.y, "vx": vx, "vy": vy, "brake_step": brake_step,
+		"rest_x": at_brake - vx * dt * r / (1.0 - r),
 	}
 
 
@@ -233,6 +236,60 @@ static func arrival_x(way: Dictionary, step: int) -> float:
 		var r := 1.0 - FLOOR_DAMP * dt
 		x -= way.vx * dt * r * (1.0 - pow(r, step - brake)) / (1.0 - r)
 	return x
+
+
+## The box centre's height (world y) after `step` steps on arrival()'s way past the end: the flight
+## p = p₀ + v t − ½ g t² from the slide's end until the formula landing, then BOX/2 on the floor.
+static func arrival_y(way: Dictionary, step: int) -> float:
+	if way.is_empty():
+		return NAN
+	var t := step / float(Engine.physics_ticks_per_second)
+	if t >= float(way.t_land):
+		return BOX * 0.5
+	var s: float = t - float(way.t_left)
+	return maxf(float(way.from_y) + float(way.vy) * s - 0.5 * G * s * s, BOX * 0.5)
+
+
+## The first step (from the release) at which the formula's box (arrival(): its flight from the
+## slide's end, then the braked floor run; the box's square of side BOX about its centre) overlaps a
+## domino of the piece game's row r standing in the lane (InclineGame.LANE_FACE); -1 when it
+## stops short, flies over the row or holds.
+static func contact_step(way: Dictionary, row: int) -> int:
+	if way.is_empty() or row < 0 or row >= InclineGame.ROWS.size():
+		return -1
+	var dt := 1.0 / Engine.physics_ticks_per_second
+	var half := BOX * 0.5
+	var pivots: Array = []
+	for k in (InclineGame.ROWS[row][0] as Array).size():
+		pivots.append(InclineGame.lane_x(row, k))
+	var nearest: float = pivots[0] + (InclineGame.ROWS[row][1] as Vector3).x
+	var step := ceili(float(way.t_left) / dt - 1e-6)
+	var last := -INF
+	while step < int(way.brake_step) + 1200:
+		var x := arrival_x(way, step)
+		var y := arrival_y(way, step)
+		if x - half <= nearest:
+			for p: float in pivots:
+				if InclineGame.overlaps(row, p, x - half, x + half, y - half):
+					return step
+		if step > int(way.brake_step) and absf(x - last) < 1e-5:
+			return -1   # at rest
+		last = x
+		step += 1
+	return -1
+
+
+## Per stage: 1 when the formula's way past the end meets that stage's fixed domino row
+## (contact_step), else 0 (the stamp's judge, reach_1–3; read only). Kept for a setting.
+func reaches() -> Array:
+	var key := [angle_deg, mu_s, mu_k, start_x]
+	if key != _reach_key:
+		_reach_key = key
+		var way := arrival()
+		_reach = []
+		for r in InclineGame.LANE_FACE.size():
+			_reach.append(1.0 if contact_step(way, r) >= 0 else 0.0)
+	return _reach
 
 
 func status() -> String:
@@ -297,6 +354,9 @@ func observations() -> Dictionary:
 		"distance": minf(corrector.last_sample, run_length()) if released else 0.0,
 		"run": run_length(),
 		"bottom_speed": bottom_speed(),
+		"reach_1": reaches()[0],
+		"reach_2": reaches()[1],
+		"reach_3": reaches()[2],
 	}
 
 

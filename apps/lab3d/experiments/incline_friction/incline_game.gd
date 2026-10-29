@@ -6,16 +6,23 @@
 ## Where the box arrives (2026-10-29 user, twice: "미끄럼틀은 여전히 착지 지점과 도미노의 위치가
 ## 안맞다"): past the slide's end the box flies on g from the end, lands on the frictionless floor and
 ## the floor brake stops it (InclineFriction.arrival(): the formula's projectile and the brake, which
-## the engine box follows within 2 cm). The stage's row stands in the box's lane (z 0) there:
-## - when the setting earns the stage (fits()), the first domino's near face is HIT_DEPTH short of the
-##   box's front at rest, so the sliding box runs into it; the moment the engine box's front reaches
-##   that face (touched()) the row's chain starts (each domino NEXT_S after the one before), and the
-##   first domino is pushed over by the box so it never sits inside it (push());
-## - otherwise the row stands MISS_GAP past where the box stops: it slides up to the row and the row
-##   only wobbles.
+## the engine box follows within 2 cm).
+##
+## One fixed row per stage (2026-10-29 user: the row that moved to where the box would stop gave the
+## answer away before the release): the stage's row stands in the box's lane (z 0) at LANE_FACE (its
+## first domino's near face), whatever the material, slope or start. The stage is judged by whether
+## the formula's way meets the row (the lab's contact_step() and reach_1–3): the box's square on its
+## flight and floor run against the standing dominoes' boxes. So a box can fall short, or fly over a
+## row and land past it. Where it meets the row:
+## - the moment the engine box's square reaches a standing domino (touched()) the row's chain starts
+##   (each domino NEXT_S after the one before), stamped or not (a setting the stage does not want
+##   knocks it over too: it stands again at the next attempt), and the box shoves each domino it
+##   reaches so it never sits inside one (push());
+## - a box that stops short within NEAR_MISS of the row makes it wobble.
 ## The other rows wait beside the lane (ROW_Z, past the slide's end, as before), standing or fallen.
-## The pillar's fall throws the piece down on uniform gravity (LabGame.launch_piece). Visual only:
-## the dominoes are pictures on the floor (no body), the box and the numbers are the lab's.
+## The pillar's fall throws the piece down on uniform gravity (LabGame.launch_piece) on the last
+## stamp; knocked over without it, the piece rides on its top. Visual only: the dominoes are pictures
+## on the floor (no body), the box and the numbers are the lab's.
 class_name InclineGame
 extends LabGame
 
@@ -28,9 +35,12 @@ const ROWS := [
 ]
 const GAP := 0.3                         # m from the slide's lower end (x) to a waiting row's start
 const ROW_Z := -1.15                     # the waiting rows' middle (z): beside the box's lane, behind it
-const HIT_DEPTH := 0.15                  # m the box at rest would reach past the first domino's near face
-const MISS_GAP := 0.25                   # m between the box at rest and the row on a setting that falls short
-const HOLD_GAP := 2.0                    # m past the slide's end the row waits when the box holds (a ≤ 0)
+## Per stage: the world x of its row's first domino's near (+x) face in the lane, fixed (m). Steel
+## from the top at 20° or 30° gets to −6.8 (wood 30° stops 0.12 m short, steel 40° 1.06 m: the
+## steeper slide ends lower, so the box flies less far); wood from the top at 30° or 40° to −5.2;
+## rubber at 40° or 45° to −4.45 (README "고정 도미노 줄").
+const LANE_FACE := [-6.8, -5.2, -4.45]
+const NEAR_MISS := 0.5                   # m: a box stopping this close short of the row makes it wobble
 const FALL_S := 0.35
 const NEXT_S := 0.12                     # the next domino starts falling this long after the one before
 const TOUCH_KEEP_S := 0.5                # a stamp this soon after the box's touch starts the chain at it
@@ -41,7 +51,7 @@ var end_x := -3.76
 ## The row standing in the box's lane (-1: none, the round is done) and its first domino's near face (x).
 var lane := -1
 var face_x := 0.0
-## The lane row is where the box gets there (fits() when placed).
+## The formula's way meets the lane row with the lab's setting now (the lab's contact_step(), when placed).
 var hits := false
 var _touch_at := -10.0                   # game clock of the box's touch (-10: not yet this run)
 var _stopped := false
@@ -49,7 +59,6 @@ var _stopped := false
 var _pivots: Array = []                  # per row: [Node3D, ...] (pivot at the domino's far foot edge)
 var _home: Array = []                    # per row: [x, ...] the pivots' standing x now (world)
 var _fall_at: Array = []                 # per row: the time its first domino started (-1: standing)
-var _armed: Array = [false, false, false]   # stamped, waiting for the box's touch to start the chain
 var _down: Array = [false, false, false]
 var _wobble_at := -10.0
 var _wobble_row := -1
@@ -83,7 +92,7 @@ func build() -> void:
 
 
 ## The stage being played earns its stamp with the lab's setting now (MissionTracker's own rule:
-## the stage's conditions and its formula value, bottom_speed, past the threshold).
+## the stage's conditions and its formula value, reach_n: the box's way meets the stage's row).
 func fits() -> bool:
 	var definition: Dictionary = lab.definition
 	var all: Array = MissionTracker.missions(definition).get("stages", [])
@@ -96,31 +105,39 @@ func fits() -> bool:
 	return how.observe == "" or MissionTracker.beats(definition, how.observe, how.compare, entry, lab.observations())
 
 
-## Puts the rows for the lab's setting now (the lab calls it on every reset: an angle, a material, a
-## new start, a new attempt). The stage's row into the box's lane where the box arrives, the others
-## beside the lane past the slide's lower end.
+## Puts the rows (the lab calls it on every reset: an angle, a material, a new start, a new attempt).
+## The stage's row into the box's lane at its fixed place, the others beside the lane past the
+## slide's lower end.
 func place() -> void:
 	var l: Variant = lab
 	end_x = l.lower_end().x
 	lane = stage if stage >= 0 and stage < ROWS.size() and not _down[stage] else -1
-	var way: Dictionary = l.arrival()
-	hits = lane >= 0 and not way.is_empty() and fits()
-	if way.is_empty():
-		face_x = end_x - HOLD_GAP
-	else:
-		var front: float = way.rest_x - l.BOX * 0.5   # the box's front (−x face) at rest
-		face_x = front + HIT_DEPTH if hits else front - MISS_GAP
+	face_x = LANE_FACE[lane] if lane >= 0 else 0.0
+	hits = lane >= 0 and l.contact_step(l.arrival(), lane) >= 0
 	for r in ROWS.size():
 		var xs: Array = ROWS[r][0]
-		var size: Vector3 = ROWS[r][1]
 		_home[r] = []
 		for k in xs.size():
-			var x: float = face_x - size.x + (xs[k] - xs[0]) if r == lane else end_x - GAP + xs[k]
+			var x: float = lane_x(r, k) if r == lane else end_x - GAP + xs[k]
 			_home[r].append(x)
 			var pivot: Node3D = _pivots[r][k]
 			pivot.position = Vector3(x, 0.0, 0.0 if r == lane else ROW_Z)
 	if piece != null and piece_state == "held":
 		piece.position = _piece_home()
+
+
+## World x of the domino k of row r (its far foot edge, the pivot) standing in the lane.
+static func lane_x(row: int, k: int) -> float:
+	var xs: Array = ROWS[row][0]
+	var size: Vector3 = ROWS[row][1]
+	return float(LANE_FACE[row]) - size.x + (float(xs[k]) - float(xs[0]))
+
+
+## The box's square (centre x, y; half size `half`) overlaps a domino of row r standing in the lane
+## with its pivot at `pivot` (the lane's floor plane x, y).
+static func overlaps(row: int, pivot: float, left: float, right: float, bottom: float) -> bool:
+	var size: Vector3 = ROWS[row][1]
+	return left <= pivot + size.x and right >= pivot and bottom <= size.y
 
 
 ## World x of the domino k of row r standing now.
@@ -171,41 +188,50 @@ func _box_front() -> float:
 	return (box.global_transform * AABB(-Vector3.ONE * half, Vector3.ONE * half * 2.0)).position.x
 
 
-## Watches the released box (each frame): its touch on the lane row's first domino, or its stop.
+## Watches the released box (each frame): its touch on the lane row (its square on a standing
+## domino), or its stop.
 func _watch_box() -> void:
 	var l: Variant = lab
 	if not l.released or l.status() != "left" or touched() or _stopped:
 		return
-	if lane >= 0 and _box_front() <= face_x:
+	if lane >= 0 and _meets_row():
 		_touch_at = _t
-		if _armed[lane]:
-			_start_chain(lane, _t)
+		if _fall_at[lane] < 0.0:
+			_start_chain(lane, _t)   # the box knocks the row over, stamped or not
 		SoundBoard.play(&"stop")
 	elif l.box.freeze or (l.box.linear_damp > 0.0 and l.box.linear_velocity.length() < STOP_SPEED):
 		_stopped = true
-		if lane >= 0:
+		var short := _box_front() - face_x
+		if lane >= 0 and short > 0.0 and short <= NEAR_MISS:
 			_wobble_at = _t
 			_wobble_row = lane
+
+
+## The engine box's square (its world AABB in the lane's x, y) overlaps a standing lane domino.
+func _meets_row() -> bool:
+	var box: RigidBody3D = (lab as Variant).box
+	var half: float = (lab as Variant).BOX * 0.5
+	var aabb := box.global_transform * AABB(-Vector3.ONE * half, Vector3.ONE * half * 2.0)
+	for k in (_home[lane] as Array).size():
+		if overlaps(lane, _home[lane][k], aabb.position.x, aabb.end.x, aabb.position.y):
+			return true
+	return false
 
 
 func _cleared(stage_index: int, last: bool) -> void:
 	if stage_index < 0 or stage_index >= ROWS.size() or _down[stage_index]:
 		return
 	_down[stage_index] = true
-	if stage_index != lane:
+	var l: Variant = lab
+	var on_its_way: bool = stage_index == lane and hits and l.released and not touched() and not _stopped
+	if _fall_at[stage_index] < 0.0 and not on_its_way:
 		_start_chain(stage_index, _t)   # not in the lane (a restored or skipped stage): it goes at once
-	elif touched() and _t - _touch_at <= TOUCH_KEEP_S:
-		_start_chain(stage_index, _touch_at)   # the box touched it a moment ago (the judging poll)
-	elif touched():
-		_start_chain(stage_index, _t)
-	else:
-		_armed[stage_index] = true          # the box is on its way: the chain starts at its touch
+	# On its way: the chain starts at the box's touch (_watch_box); touched: it already started then.
 	if last:
 		_pending_piece = true
 
 
 func _start_chain(row: int, at: float) -> void:
-	_armed[row] = false
 	_fall_at[row] = at
 
 
@@ -219,7 +245,6 @@ func _jump(stamps: int) -> void:
 	_wobble_row = -1
 	for r in ROWS.size():
 		_down[r] = r < stamps
-		_armed[r] = false
 		_fall_at[r] = -1.0
 		for pivot: Node3D in _pivots[r]:
 			pivot.rotation.z = PI * 0.5 if _down[r] else 0.0
@@ -243,25 +268,38 @@ func _physics_process(_delta: float) -> void:
 			var tilt := 0.0
 			if _fall_at[r] >= 0.0:
 				tilt = PI * 0.5 * smooth((_t - _fall_at[r] - NEXT_S * k) / FALL_S)
-			elif _down[r] and not _armed[r]:
+			elif _down[r]:
 				tilt = PI * 0.5
 			elif r == _wobble_row:
 				tilt = wobble(_t, _wobble_at, 0.12, 0.6)
 			var x: float = home_x(r, k)
-			if r == lane and k == 0 and front < INF:
-				var pushed := push(x, size.x, tilt, front)
+			if r == lane and front < INF:
+				var pushed := push(x, size.x, tilt, front)   # every domino the box gets to
 				tilt = pushed.x
 				x -= pushed.y
 			pivot.rotation.z = tilt
 			pivot.position.x = x
-	if _pending_piece and _fall_at[ROWS.size() - 1] >= 0.0:
-		var pillar: Array = ROWS[ROWS.size() - 1]
-		if _t >= _fall_at[ROWS.size() - 1] + FALL_S * 0.6 + NEXT_S * ((pillar[0] as Array).size() - 1):
+	var last := ROWS.size() - 1
+	if _pending_piece and _fall_at[last] >= 0.0:
+		var pillar: Array = ROWS[last]
+		if _t >= _fall_at[last] + FALL_S * 0.6 + NEXT_S * ((pillar[0] as Array).size() - 1):
 			_pending_piece = false
 			launch_piece(Vector3(0.4, 1.6, 1.2), 9.81)   # the slide lab's g (InclineFriction G)
+	elif piece != null and piece_state == "held" and not _pending_piece:
+		piece.position = _piece_on_pillar()   # knocked over without the stamp: it rides on the top
 
 
-## The first domino as the box presses it (visual only): standing at `home` (its far foot edge) with
+## The piece on the pillar's top as the pillar stands or lies now (local to the game).
+func _piece_on_pillar() -> Vector3:
+	var last := ROWS.size() - 1
+	var size: Vector3 = ROWS[last][1]
+	var pillar: Node3D = _pivots[last][0]
+	var at := pillar.transform * Vector3(size.x * 0.5, size.y + PIECE_SIZE * 0.95, 0.0)
+	at.y = maxf(at.y, PIECE_SIZE)
+	return at
+
+
+## A domino as the box presses it (visual only): standing at `home` (its far foot edge) with
 ## thickness `thick` and tilt `tilt`, the box's front at `front`. Its nearest point to the box is the
 ## near foot corner home + thick cos(tilt): the domino tips at least so far that the corner stays at the
 ## box's front, and once it lies flat the box shoves it along. Returns (tilt, shove).

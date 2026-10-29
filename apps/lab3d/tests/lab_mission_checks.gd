@@ -118,13 +118,13 @@ const ROUNDS := {
 	],
 	"incline-friction": [
 		["20° on wood holds", [["act", "release"]], 90, 0],
-		["25° on wood: 5.7 m/s at the end, not the steel slope", [["ctl", "angle", 25.0], ["act", "release"]], 200, 0],
-		["steel at 25°: 7.2 m/s at the end", [["ctl", "material", "steel"], ["act", "release"]], 200, 1],
+		["25° on wood: it gets to the small dominoes, but not on steel", [["ctl", "angle", 25.0], ["act", "release"]], 200, 0],
+		["steel at 25°: to the small dominoes", [["ctl", "material", "steel"], ["act", "release"]], 200, 1],
 		["steel at 25° again: nothing", [["act", "release"]], 200, 1],
-		["wood at 25°: 5.7 m/s, not steep enough", [["ctl", "material", "wood"], ["act", "release"]], 200, 1],
-		["wood at 30°: 6.7 m/s", [["ctl", "angle", 30.0], ["act", "release"]], 200, 2],
-		["rubber at 35°: 5.8 m/s, not past 6.5", [["ctl", "material", "rubber"], ["ctl", "angle", 35.0], ["act", "release"]], 220, 2],
-		["rubber at 40°: 6.9 m/s", [["ctl", "angle", 40.0], ["act", "release"]], 220, 3],
+		["wood at 25°: past the big dominoes, but not steep enough", [["ctl", "material", "wood"], ["act", "release"]], 200, 1],
+		["wood at 30°: to the big dominoes", [["ctl", "angle", 30.0], ["act", "release"]], 200, 2],
+		["rubber at 35°: past the pillar, but not steep enough", [["ctl", "material", "rubber"], ["ctl", "angle", 35.0], ["act", "release"]], 220, 2],
+		["rubber at 40°: to the red pillar", [["ctl", "angle", 40.0], ["act", "release"]], 220, 3],
 	],
 }
 

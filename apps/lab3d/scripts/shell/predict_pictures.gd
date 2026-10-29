@@ -9,7 +9,7 @@ extends RefCounted
 const KINDS := ["long_arc", "same_arc", "fall_together", "fall_heavy_first", "light_flies", "both_stop",
 	"spring_slow", "spring_even", "rubber_floor", "steel_floor", "push_harder", "push_same", "lever_far", "lever_same",
 	"orbit_leave", "orbit_stay", "drum_big", "drum_small", "swing_slow", "swing_same",
-	"pulley_many", "pulley_same", "slope_steep", "slope_same"]
+	"pulley_many", "pulley_same", "slope_steep", "slope_same", "throw_slant", "throw_steep"]
 const STRONG := Color("e2683c")
 const PALE := Color("c9b892")
 const GROUND := Color("8a6a46")
@@ -23,6 +23,8 @@ static func draw(canvas: Control, kind: String) -> void:
 	match kind:
 		"long_arc", "same_arc":
 			_throws(canvas, r, kind == "long_arc")
+		"throw_slant", "throw_steep":
+			_angles(canvas, r, kind == "throw_steep")
 		"fall_together", "fall_heavy_first":
 			_fall(canvas, r, kind == "fall_heavy_first")
 		"light_flies", "both_stop":
@@ -68,6 +70,15 @@ static func _throws(canvas: Control, r: Rect2, far: bool) -> void:
 	var soft := 0.45
 	_arc(canvas, r, 0.95 if far else soft, 0.9 if far else 0.5, STRONG, 6.0)
 	_arc(canvas, r, soft, 0.5, PALE, 3.0)   # on top: both show when they land together
+	canvas.draw_circle(Vector2(r.position.x + 8.0, r.end.y - 8.0), 7.0, STRONG)
+
+
+## Two throws of the same speed (2026-10-29, the angle game): a slanted one landing far and a steep
+## one going high and landing near; the choice's one thick orange, the other pale.
+static func _angles(canvas: Control, r: Rect2, steep: bool) -> void:
+	_ground(canvas, r)
+	_arc(canvas, r, 0.95, 0.5, PALE if steep else STRONG, 3.0 if steep else 6.0)
+	_arc(canvas, r, 0.45, 0.95, STRONG if steep else PALE, 6.0 if steep else 3.0)
 	canvas.draw_circle(Vector2(r.position.x + 8.0, r.end.y - 8.0), 7.0, STRONG)
 
 

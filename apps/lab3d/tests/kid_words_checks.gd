@@ -146,15 +146,22 @@ func check_content_lint() -> void:
 	# The approved wordings (2026-10-28).
 	var want := {
 		"pulley": [ExperimentRegistry.kid_text(ExperimentRegistry.find("pulley"), "title"), "줄이 많으면 힘이 덜 들까?"],
-		"buoyancy": [MissionTracker.missions(ExperimentRegistry.find("buoyancy")).stages[0].text, "80킬로그램 통을 둥둥 띄우기!"],
-		"constraints": [ExperimentRegistry.find("constraints").story.clue, "조각이 매달린 공 근처에 있어. 공을 흔들어 보자!"],
+		"buoyancy": [MissionTracker.missions(ExperimentRegistry.find("buoyancy")).stages[0].text, "보물 상자를 매단 통을 80킬로그램으로 띄우기!"],
+		"constraints": [ExperimentRegistry.find("constraints").story.clue, "거북이 시계 속에 조각이 있어! 공을 시계 추랑 똑같이 흔들어 보자!"],
 		# The piece game's stages (2026-10-29).
 		"spring": [MissionTracker.missions(ExperimentRegistry.find("spring")).stages.map(func(s: Dictionary) -> String: return s.text),
 			["가벼운 공을 2미터 넘게 당겨 빠른 박자 맞추기!", "무거운 공으로 느린 박자 맞추기!", "가벼운 공을 1미터 안으로 조금만 당겨 박자 맞추기!"]],
 		"free-fall": [MissionTracker.missions(ExperimentRegistry.find("free-fall")).stages.map(func(s: Dictionary) -> String: return s.text),
 			["빨간 공과 노란 공을 같이 떨어뜨려 버튼 누르기!", "달에서 두 공을 맨 위에서 같이 떨어뜨리기!", "목성에서 두 공을 같이 1초 안에 떨어뜨리기!"]],
 		"collision": [MissionTracker.missions(ExperimentRegistry.find("collision")).stages.map(func(s: Dictionary) -> String: return s.text),
-			["같은 무게 두 공으로 세게 쳐서 얼음에 금 내기!", "파란 공을 무겁게 해서 얼음에 금 더 내기!", "주황 공을 가볍게 해서 얼음 깨기!"]],
+			["같은 무게 두 공으로 세게 쳐서 얼음에 금 내기!", "파란 공을 무겁게 해서 더 세게 부딪히기!", "무거운 주황 공을 세게 밀어 얼음 깨기!"]],
+		# Batch B (2026-10-29) and the throw's angle game.
+		"projectile": [MissionTracker.missions(ExperimentRegistry.find("projectile")).stages.map(func(s: Dictionary) -> String: return s.text),
+			["낮게 던져서 가까운 상자 맞히기!", "얼마나 기울여 던질까? 먼 상자 맞히기!", "높이 던져서 나무 위 상자 맞히기!"]],
+		"constraints_stages": [MissionTracker.missions(ExperimentRegistry.find("constraints")).stages.map(func(s: Dictionary) -> String: return s.text),
+			["지구에서 긴 줄로 거북이 박자 맞추기!", "달에서 짧은 줄로 느린 거북이 박자 맞추기!", "달에서 아주 긴 줄로 아주 느린 박자 맞추기!"]],
+		"pulley_stages": [MissionTracker.missions(ExperimentRegistry.find("pulley")).stages.map(func(s: Dictionary) -> String: return s.text),
+			["1줄로 보물 상자를 선반까지 올리기!", "2줄로 보물 상자를 선반까지 올리기!", "4줄로 가볍게 선반까지 올리기!"]],
 		"incline-friction": [MissionTracker.missions(ExperimentRegistry.find("incline-friction")).stages.map(func(s: Dictionary) -> String: return s.text),
 			["강철 미끄럼틀로 작은 도미노 넘어뜨리기!", "나무 미끄럼틀을 더 기울여 큰 도미노 넘어뜨리기!", "고무 미끄럼틀을 많이 기울여 빨간 기둥 넘어뜨리기!"]],
 	}

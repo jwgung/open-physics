@@ -543,11 +543,13 @@ func check_layout(id: String) -> void:
 		# Puppy (full views): never over the apparatus, the motion, the cat or Dugi on the view.
 		if not setup[1]:
 			var over := 0
+			var kinds := {}
 			for k in keep:
 				if (k[0] as Rect2).intersects(puppy_r.grow(4.0)):
 					over += 1
+					kinds[k[2]] = true
 			if over > 0 or puppy_r.intersects(dugi_r):
-				problems.append("Puppy overlaps %d apparatus / motion / cat rects%s" % [over, ", Dugi" if puppy_r.intersects(dugi_r) else ""])
+				problems.append("Puppy overlaps %d apparatus / motion / cat rects (%s)%s" % [over, ", ".join(kinds.keys()), ", Dugi" if puppy_r.intersects(dugi_r) else ""])
 		# Explaining: the dialogue.
 		cast.dugi.explain(lab.explain_point)
 		for k in int(DugiActor.RAISE_S * 60.0) + 3:

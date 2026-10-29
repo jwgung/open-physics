@@ -35,6 +35,9 @@ var balls: Dictionary = {}        # id -> FormulaBody
 var starts: Dictionary = {}
 ## The "height" control (all three balls); a height handle changes one ball only.
 var height := 5.0
+## Each ball's own start (its bottom, m) when the lab opens (2026-10-29): not level, so the first drop
+## of the piece game's buttons is not together by itself (the slider still sets all three alike).
+const START_HEIGHTS := {"red": 5.0, "purple": 4.0, "yellow": 3.0}
 var mass_id := "heavy"
 ## The signpost showing which world the gravity is (2026-10-28).
 var planet_sign: PlanetSign
@@ -43,6 +46,16 @@ var _pressed := {}                # the piece game: the balls whose formula land
 
 func _init() -> void:
 	props = FreeFallProps.new()
+
+
+## The balls start at different heights (2026-10-29 user: the first drop must not press both buttons
+## at once): after the controls' defaults (the "height" slider sets all three), each ball gets its
+## own START_HEIGHTS; the child lifts the red and the yellow ball to the same height.
+func _ready() -> void:
+	super()
+	for id in ORDER:
+		starts[id].y = float(START_HEIGHTS[id])
+	reset_run()
 
 
 func set_control(id: String, value: Variant) -> void:

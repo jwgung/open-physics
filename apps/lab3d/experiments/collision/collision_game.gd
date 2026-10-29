@@ -1,16 +1,16 @@
 ## The collision's piece game (2026-10-29 "조각 꺼내기"): the star piece is frozen in an ice block on
 ## the right bumper, where the orange ball ends its run. A stage asks for the orange ball to leave
-## the collision fast enough (MissionTracker: after_b, the formula's speed of B just after the hit,
-## past 5 → 9 → 13 m/s). The ice shakes whenever the formula orange ball reaches the bumper (knock);
+## a hard enough push (MissionTracker: impulse_b, the formula's J_B = m_B Δv_B the orange ball gets in
+## the hit, past 6.5 → 12 → 18 N·s since 2026-10-29; before: its speed after the hit). The ice shakes whenever the formula orange ball reaches the bumper (knock);
 ## a stamp cracks it (stages 1 and 2) at that knock, and the last one breaks it: the chunks and the
 ## piece fly out on uniform gravity (LabGame.launch_piece). Visual only: the ice is a picture on the
 ## bumper (no body), the balls and the numbers are CollisionModel's as before.
 class_name CollisionGame
 extends LabGame
 
-const ICE := 0.72                        # m, the ice block's side
+const ICE := 0.85                        # m, the ice block's side (0.72 until 2026-10-29)
 const ICE_COLOR := Color(0.78, 0.93, 1.0, 0.62)
-const CRACK := Color("ffffff")
+const CRACK := Color("2f6fb8")           # deep blue on the pale ice (white read poorly, 2026-10-29)
 const CHUNKS := 8
 const BREAK_S := 0.7
 const KNOCK_WAIT_S := 1.6                # a stamp with no knock yet (the ball still rolling) waits this long
@@ -114,7 +114,7 @@ static func crack_mesh(count: int) -> Mesh:
 			var mid := (p0 + p1) * 0.5
 			var seg := p1 - p0
 			var xf := Transform3D(Basis(Vector3.BACK, atan2(seg.y, seg.x)), Vector3(mid.x, mid.y, ICE * 0.5 + 0.006))
-			c.add_rounded_box(xf, Vector3(seg.length() + 0.03, 0.025, 0.01), 0.0, 1, CRACK)
+			c.add_rounded_box(xf, Vector3(seg.length() + 0.03, 0.04, 0.012), 0.0, 1, CRACK)
 	_crack_meshes[count] = c.commit()
 	return _crack_meshes[count]
 

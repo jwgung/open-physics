@@ -106,8 +106,8 @@ func check_round() -> void:
 		"round: while Dugi asks nothing behind takes a touch (ball, 다시, main button, 자세히, 지도)", str(behind))
 	# The pick: the question goes at once, the strip shows the pick, the next touch reaches the ball.
 	(buttons[0] as Button).pressed.emit()
-	expect.call(screen._predict_pick == "farther" and not screen._asking and not box.active and screen._choices == null
-		and screen._mission_text.text == ExperimentScreen.PICK_PREFIX + "더 멀리",
+	expect.call(screen._predict_pick == "slant" and not screen._asking and not box.active and screen._choices == null
+		and screen._mission_text.text == ExperimentScreen.PICK_PREFIX + "비스듬히",
 		"round: a picked picture is kept and the question goes at once", screen._mission_text.text)
 	expect.call(screen.dialogue.get_index() == dialogue_home and screen._question_shield == null,
 		"round: after the pick the dim goes and the box is back in its place among the overlays", "%d %d" % [screen.dialogue.get_index(), dialogue_home])
@@ -123,8 +123,9 @@ func check_round() -> void:
 	touch.canceled = true
 	tree.root.push_input(touch)
 	await tree.process_frame
-	# First throw (45°, 6 m/s: it hits the near crate, the piece game of 2026-10-29): one stamp, then Dugi tells the reason.
-	await _throw(screen, lab, 45.0, 6.0)
+	# First throw (15° at the fixed 8 m/s: low, onto the near crate; the angle game of 2026-10-29): one
+	# stamp, then Dugi tells the reason.
+	await _throw(screen, lab, 15.0, 8.0)
 	await _run_to_end(lab)
 	screen._update_readouts(false)
 	var range_value: Variant = lab.observations().get("range")
@@ -139,26 +140,26 @@ func check_round() -> void:
 		"stamps %d, '%s'" % [ProgressStore.stamps(ProgressStore.load(), "projectile"), screen._mission_text.text])
 	var said := await _next_explanation(screen)
 	expect.call(said == str(predict.reason), "round: after the first throw Dugi tells the prediction's reason", said)
-	# Second throw straight away (no 처음으로): 7.5 m/s, onto the far crate.
-	await _throw(screen, lab, 45.0, 7.5)
+	# Second throw straight away (no 처음으로): 45°, onto the far crate.
+	await _throw(screen, lab, 45.0, 8.0)
 	await _run_to_end(lab)
 	expect.call(ProgressStore.stamps(ProgressStore.load(), "projectile") == 2, "round: the second throw (no 처음으로 between) earns the second stamp",
 		"stamps %d" % ProgressStore.stamps(ProgressStore.load(), "projectile"))
 	said = await _next_explanation(screen)
 	expect.call(said == str(stages[1].say), "round: later explanations are Dugi's say for the stage (here the one just cleared; the reason was told once)", said)
 	expect.call(not screen.cast.puppy.celebrating(), "round: no celebration before the last stamp", "")
-	# The third stage wants the high crate: the far crate's throw again (45°, 7.5 m/s) earns nothing.
-	await _throw(screen, lab, 45.0, 7.5)
+	# The third stage wants the high crate: the far crate's throw again (45°) earns nothing.
+	await _throw(screen, lab, 45.0, 8.0)
 	await _run_to_end(lab)
 	expect.call(ProgressStore.stamps(ProgressStore.load(), "projectile") == 2 and float(lab.observations().hit_3) == 0.0,
-		"round: the far crate's throw again (45°, 7.5 m/s, under the high crate) earns no third stamp",
+		"round: the far crate's throw again (45°, under the high crate) earns no third stamp",
 		"stamps %d, range %s" % [ProgressStore.stamps(ProgressStore.load(), "projectile"), str(lab.observations().range)])
-	# Third throw (40°, 9 m/s: onto the high crate) after 처음으로: the last stamp, the done text, the
-	# puppy hops and waves.
+	# Third throw (65°: steep, onto the high crate on the branch) after 처음으로: the last stamp, the
+	# done text, the puppy hops and waves.
 	screen.experiment_action("reset")
 	for i in 4:
 		await tree.process_frame
-	await _throw(screen, lab, 40.0, 9.0)
+	await _throw(screen, lab, 65.0, 8.0)
 	var rest_y: float = screen.cast.puppy.position.y
 	var hopped := false
 	for i in 900:
@@ -179,7 +180,7 @@ func check_round() -> void:
 	again._missions.progress = func(id: String, stamps: int) -> void: awarded.append(stamps)
 	expect.call(again._mission_text.text == ExperimentScreen.DONE_TEXT and not again._asking and again._choices == null,
 		"round: a reopened finished place keeps its stamps and asks nothing", again._mission_text.text)
-	await _throw(again, lab2, 45.0, 9.0)
+	await _throw(again, lab2, 45.0, 8.0)
 	await _run_to_end(lab2)
 	expect.call(awarded.is_empty() and not again.cast.puppy.celebrating() and ProgressStore.stamps(ProgressStore.load(), "projectile") == 3,
 		"round: a long throw at a finished place celebrates nothing again", str(awarded))

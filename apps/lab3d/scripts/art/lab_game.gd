@@ -15,6 +15,11 @@ extends Node3D
 const PIECE_SIZE := 0.3                 # the piece's outer radius (m): its face reads from the front view
 const PIECE_SPIN := 1.4                 # rad/s the waiting piece turns (a little "find me" sparkle)
 const LAND_BOUNCES := 2                 # small hops after it lands (visual only)
+const CHEST_WOOD := Color("c98d4f")      # the treasure chests of batch B (chest_mesh)
+const CHEST_DARK := Color("8f5a2c")
+const CHEST_GOLD := Color("ffc61a")
+const LAMP_OFF := Color("6b7a90")
+const LAMP_ON := Color("ffe14a")
 
 var lab: Experiment
 ## The stages of the round (the missions' stage count) and the stamps the screen showed last.
@@ -183,3 +188,43 @@ static func wobble(now: float, since: float, amount: float, duration := 0.6) -> 
 static func smooth(k: float) -> float:
 	k = clampf(k, 0.0, 1.0)
 	return k * k * (3.0 - 2.0 * k)
+
+
+## A treasure chest of outer `size` (centred at the origin; batch B, 2026-10-29): a wooden box with
+## a darker lid band, two gold straps and a gold lock. `lid`: false leaves the lid off (a separate
+## hinged node, chest_lid_mesh). `window`: a dark barred window in the front (the piece shows
+## through it; the bars are the door, a separate node).
+static func chest_mesh(size: Vector3, lid := true, window := false) -> Mesh:
+	var b := ArtKit.builder()
+	var body_h := size.y * 0.7
+	b.ao_height = size.y
+	b.add_rounded_box(Transform3D(Basis(), Vector3(0.0, -size.y * 0.5 + body_h * 0.5, 0.0)), Vector3(size.x, body_h, size.z), 0.03, 1, CHEST_WOOD, CHEST_WOOD.lightened(0.12))
+	if lid:
+		b.add_rounded_box(Transform3D(Basis(), Vector3(0.0, -size.y * 0.5 + body_h + (size.y - body_h) * 0.5, 0.0)), Vector3(size.x * 1.02, size.y - body_h, size.z * 1.02), 0.04, 1, CHEST_DARK, CHEST_DARK.lightened(0.15))
+	b.ao_min = 1.0
+	var strap_h := size.y if lid else body_h
+	for side in [-1.0, 1.0]:
+		b.add_rounded_box(Transform3D(Basis(), Vector3(side * size.x * 0.32, -size.y * 0.5 + strap_h * 0.5, 0.0)), Vector3(size.x * 0.08, strap_h + 0.01, size.z + 0.02), 0.01, 1, CHEST_GOLD, CHEST_GOLD.lightened(0.2))
+	if window:
+		b.add_rounded_box(Transform3D(Basis(), Vector3(0.0, -size.y * 0.5 + body_h * 0.5, size.z * 0.5 + 0.004)), Vector3(size.x * 0.5, body_h * 0.62, 0.01), 0.0, 1, Color("3a2416"))
+	else:
+		b.add_rounded_box(Transform3D(Basis(), Vector3(0.0, -size.y * 0.5 + body_h - 0.02, size.z * 0.5 + 0.02)), Vector3(size.x * 0.14, size.y * 0.16, 0.04), 0.01, 1, CHEST_GOLD, CHEST_GOLD.lightened(0.2))
+	return b.commit()
+
+
+## The chest's lid alone (`size`: the chest's outer size), hinged at its back bottom edge: the origin
+## is the hinge, the lid lies forward (+z) and up from it.
+static func chest_lid_mesh(size: Vector3) -> Mesh:
+	var b := ArtKit.builder()
+	var h := size.y * 0.3
+	b.add_rounded_box(Transform3D(Basis(), Vector3(0.0, h * 0.5, size.z * 0.5)), Vector3(size.x * 1.02, h, size.z * 1.02), 0.04, 1, CHEST_DARK, CHEST_DARK.lightened(0.15))
+	b.ao_min = 1.0
+	b.add_rounded_box(Transform3D(Basis(), Vector3(0.0, h * 0.3, size.z * 1.02 + 0.015)), Vector3(size.x * 0.14, h * 0.8, 0.04), 0.01, 1, CHEST_GOLD, CHEST_GOLD.lightened(0.2))
+	return b.commit()
+
+
+## Three lamps in a row (off / lit), the batch-A house's and clock's colours.
+static func add_lamps(b: ArtMeshBuilder, at: Vector3, lit: int, spacing := 0.22, radius := 0.075) -> void:
+	b.ao_min = 1.0
+	for i in 3:
+		b.add_sphere(Transform3D(Basis(), at + Vector3((i - 1) * spacing, 0.0, 0.0)), radius, 3, 6, LAMP_ON if i < lit else LAMP_OFF)

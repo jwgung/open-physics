@@ -116,6 +116,8 @@ func reset_run() -> void:
 		return
 	_clear_run()
 	props.reset()
+	if game != null:
+		game.run_reset()
 	_update_status(true)
 
 
@@ -244,6 +246,9 @@ func _build_world() -> void:
 	driver.history_steps = _history_steps()
 	driver.bind(model, drum)
 	driver.reset()
+	game = BuoyancyGame.new(self)   # the piece game: the chest tied to the drum (visual only)
+	add_child(game)
+	game.build()
 
 
 # --- manipulation -------------------------------------------------------------------------------

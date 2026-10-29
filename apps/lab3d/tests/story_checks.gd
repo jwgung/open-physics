@@ -16,17 +16,17 @@ const EXPERIMENT_SCREEN := "res://scripts/shell/experiment_screen.gd"
 const HOME_SCREEN := "res://scripts/app/island_home_screen.gd"
 const SETTINGS_SCREEN := "res://scripts/app/settings_screen.gd"
 const CLUES := {
-	"projectile": "저 높은 상자 위에 조각이 있어! 상자를 맞히면 조각이 떨어질 것 같아!",
+	"projectile": "나무 위 상자에 조각이 있어! 상자를 맞히면 조각이 떨어질 것 같아!",
 	"collision": "얼음 속에 조각이 갇혔어! 공을 부딪혀서 저 얼음을 깨 보자!",
 	"free-fall": "조각이 파란 집에 갇혔어! 버튼 두 개를 같이 누르면 문이 열릴 것 같아!",
 	"incline-friction": "조각이 빨간 기둥 꼭대기에 있어! 상자로 도미노를 쓰러뜨려 보자!",
 	"friction": "조각이 상자 밑에 깔렸어! 무거운 상자도 밀어 보자.",
 	"spring": "시계 속에 조각이 있어! 공을 시계 박자에 맞춰 흔들어 보자!",
-	"rotation": "무거운 짐 밑에 조각이 있어! 막대로 짐을 들어 보자.",
-	"pulley": "조각이 높은 곳에 있어. 줄을 당겨 짐을 올려 보자!",
-	"constraints": "조각이 매달린 공 근처에 있어. 공을 흔들어 보자!",
-	"buoyancy": "조각이 물속에 있어! 통을 띄워서 건져 보자.",
-	"orbit": "조각 하나가 하늘로 날아갔어! 별 둘레를 돌며 찾아보자.",
+	"rotation": "무거운 보물 상자 밑에 조각이 끼어 있어! 막대를 눌러서 상자를 들어 보자.",
+	"pulley": "보물 상자 창살 안에 조각이 있어! 줄을 당겨서 상자를 높은 선반까지 올려 보자!",
+	"constraints": "거북이 시계 속에 조각이 있어! 공을 시계 추랑 똑같이 흔들어 보자!",
+	"buoyancy": "물속 보물 상자에 조각이 있어! 통을 띄워서 상자를 건져 보자.",
+	"orbit": "조각 하나가 저 멀리 우주에 떠 있어! 행성을 쏴서 데려오자!",
 }
 const PROLOGUE := [
 	["dugi", "여기는 바다 위 나라, 퍼피랜드예요."],

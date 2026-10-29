@@ -509,7 +509,8 @@ func handle_back() -> bool:
 ## The collision and orbit labs (2026-10-28) pull their ball / planet the same way: the spec may give
 ## the pull's own value (`value`: pull -> Vector2), its readout (`readout`: value -> text), the
 ## action that launches (`action`, default "release"), the one that readies the next shot (`rearm`,
-## default "reset") and the demo's pulls (`demo`). One control: the value's x.
+## default "reset") and the demo's pulls (`demo`). One control: the value's x (and `fixed`, the value's
+## y that no control sets: the projectile's fixed speed since 2026-10-29).
 func _setup_slingshot() -> void:
 	if manipulator == null or not experiment.has_method("slingshot_setup"):
 		return
@@ -520,7 +521,7 @@ func _setup_slingshot() -> void:
 	_slingshot_controls = PackedStringArray(spec.controls)
 	manipulator.set_slingshot(str(spec.object), spec.surface, spec.launch, func() -> Vector2:
 		return Vector2(experiment.control_value(_slingshot_controls[0]),
-			experiment.control_value(_slingshot_controls[1]) if _slingshot_controls.size() > 1 else 0.0),
+			experiment.control_value(_slingshot_controls[1]) if _slingshot_controls.size() > 1 else float(spec.get("fixed", 0.0))),
 		spec.get("value", Callable()), spec.get("demo", Manipulator.DEMO_PULLS))
 	manipulator.slingshot.connect(_on_slingshot)
 	_make_slingshot_hud()

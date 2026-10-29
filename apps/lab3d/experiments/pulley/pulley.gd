@@ -117,6 +117,8 @@ func _new_pull() -> void:
 	_restart_clock()
 	_lifted = false   # the pop below is the reaction
 	props.reset()
+	if game != null:
+		game.run_reset()
 
 
 ## The screen's batch calls this once at its end (Experiment._restart): the new pull, then the posed
@@ -259,6 +261,10 @@ func _build_world() -> void:
 		"left": LOAD_X - 1.4, "right": GUIDE.x + 1.0, "beam_y": BEAM_Y, "guide": GUIDE, "load_x": LOAD_X,
 		"top_y": TOP_Y, "hook_up": HOOK_UP, "load_size": LOAD_SIZE,
 	})
+	game = PulleyGame.new(self)   # the piece game: the chest load, the shelf at the top (visual only)
+	(game as PulleyGame).shelf_y = MAX_LIFT
+	add_child(game)
+	game.build()
 
 
 ## The rope end's place at the start of a stroke: under the guide wheel's right side.

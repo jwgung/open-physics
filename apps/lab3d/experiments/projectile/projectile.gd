@@ -51,8 +51,12 @@ var ball: FormulaBody
 var knob: StaticBody3D
 ## Launch point: x, height of the ball's bottom above the floor, z.
 var start := Vector3(START_X, START_HEIGHT, 0.0)
-var angle_deg := 45.0
-var speed := 9.0
+var angle_deg := 30.0
+## The throw's speed (m/s). Fixed in the app since 2026-10-29 (user: "세기는 고정하는거로 하자":
+## a stronger throw obviously goes farther; the game is the angle): the slingshot sets only the angle
+## and "speed" is no control of the definition any more (set_control still takes it: tests, vectors).
+const FIXED_SPEED := 8.0
+var speed := FIXED_SPEED
 var out_of_bounds := false
 var _path := PackedVector3Array()   # reused by _fill_path (the drag preview runs every frame)
 var _out_steps := 0                 # fixed steps counted after the ball was stopped out of bounds
@@ -482,7 +486,7 @@ var _slingshot_preview := Vector2.INF
 ## The screen calls this with the pull's (angle, speed) while a finger holds it (the preview
 ## hides the formula path and ring), and with INF when the pull ends.
 func set_slingshot_preview(value: Variant) -> void:
-	_slingshot_preview = value if value is Vector2 else Vector2.INF
+	_slingshot_preview = Vector2(value.x, speed) if value is Vector2 and value != Vector2.INF else Vector2.INF
 
 
 ## The pull's arrow (the (angle, speed) the release throws); the path stays the last trail.
@@ -549,8 +553,22 @@ func slingshot_setup() -> Dictionary:
 	trail_only = true
 	projectile_props().show_dots(0)   # nothing thrown yet: no dots
 	_show_launch()
-	return {"object": "ball", "surface": surface, "launch": ball_center, "controls": ["angle", "speed"],
-		"units": {"angle": "°", "speed": "m/s"}}
+	# The pull sets the angle only (the reversed pull's direction on the 5° grid); its length no longer
+	# changes the speed (2026-10-29), the manipulator's dead zone still keeps a tap from throwing.
+	return {"object": "ball", "surface": surface, "launch": ball_center, "controls": ["angle"],
+		"value": func(pull: Vector2) -> Vector2: return Vector2(Manipulator.pull_launch(surface, pull).x, speed),
+		"readout": angle_words, "fixed": speed}
+
+
+## The pull's angle in a child's words (no degrees on the kid screen; the number is in 자세히).
+static func angle_words(value: Vector2) -> String:
+	if value.x <= 25.0:
+		return "낮게"
+	if value.x <= 55.0:
+		return "비스듬히"
+	if value.x <= 75.0:
+		return "높이"
+	return "아주 높이"
 
 
 func manipulation_body(id: String) -> PhysicsBody3D:

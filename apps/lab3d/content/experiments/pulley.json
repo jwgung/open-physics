@@ -52,16 +52,17 @@
   "missions": {
     "observe": "required",
     "compare": "less",
-    "judge_on": ["held", "top"],
+    "judge_on": ["top"],
+    "reveal_on": ["held", "top"],
     "hidden_until_end": ["required", "applied"],
     "hidden_series_until_end": ["required"],
     "stages": [
-      { "threshold": 200.0, "conditions": {"strands": "one", "mass": 20.0}, "text": "1줄로 무거운 짐 올리기!", "say": "줄 하나로 들면 짐 무게를 내 손이 다 받쳐요. 그래서 힘이 많이 들어요.", "say_face": "worried" },
-      { "threshold": 100.0, "conditions": {"strands": "two", "mass": 20.0}, "text": "2줄로 짐 올리기!", "say": "줄 두 개가 짐을 나눠 들어요. 그래서 힘이 반만 들어요.", "say_face": "explain" },
-      { "threshold": 50.0, "conditions": {"strands": "four", "mass": 20.0}, "text": "4줄로 가볍게 들기!", "say": "줄 네 개가 나눠 들면 힘이 조금만 들어요. 대신 줄을 네 배 길게 당겨요.", "say_face": "happy" }
+      { "threshold": 200.0, "conditions": {"strands": "one", "mass": 20.0}, "text": "1줄로 보물 상자를 선반까지 올리기!", "say": "줄 하나로 들면 상자 무게를 내 손이 다 받쳐요. 그래서 힘이 많이 들어요.", "say_face": "worried" },
+      { "threshold": 100.0, "conditions": {"strands": "two", "mass": 20.0}, "text": "2줄로 보물 상자를 선반까지 올리기!", "say": "줄 두 개가 상자를 나눠 들어요. 그래서 힘이 반만 들어요. 대신 줄을 두 배 길게 당겨요.", "say_face": "explain" },
+      { "threshold": 50.0, "conditions": {"strands": "four", "mass": 20.0}, "text": "4줄로 가볍게 선반까지 올리기!", "say": "줄 네 개가 나눠 들면 힘이 조금만 들어요. 대신 줄을 네 배 길게 당겨요.", "say_face": "happy" }
     ]
   },
-  "story": { "clue": "조각이 높은 곳에 있어. 줄을 당겨 짐을 올려 보자!", "clue_face": "explain", "map_clue": "줄 끝에 빨간 상자가 매달린 곳이야!", "map_clue_face": "explain" },
+  "story": { "clue": "보물 상자 창살 안에 조각이 있어! 줄을 당겨서 상자를 높은 선반까지 올려 보자!", "clue_face": "explain", "map_clue": "줄 끝에 빨간 상자가 매달린 곳이야!", "map_clue_face": "explain" },
   "kid": {
     "card": "strands",
     "title": "줄이 많으면 힘이 덜 들까?",

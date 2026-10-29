@@ -133,6 +133,8 @@ func reset_run() -> void:
 	else:
 		props.hide_prediction()
 	props.reset()
+	if game != null:
+		game.run_reset()
 	_show_waiting()
 	_update_status(true)
 
@@ -304,6 +306,10 @@ func _build_world() -> void:
 	driver.history_steps = _history_steps()
 	driver.bind(model, planet)
 	driver.reset()
+	game = OrbitGame.new(self)   # the piece game: the piece far out in space, the lap sparkles (visual only)
+	(game as OrbitGame).plane_y = ORBIT_Y
+	add_child(game)
+	game.build()
 
 
 ## Length of the velocity arrow of launch speed `launch_speed` (m), the same before the launch and

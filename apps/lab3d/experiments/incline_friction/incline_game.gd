@@ -10,10 +10,11 @@ class_name InclineGame
 extends LabGame
 
 ## Per row: [the dominoes' x (world, their foot on the floor), size (thick, tall, wide), colour].
+## (2026-10-29: 1.4x taller and wider than first made, the rows read on the tablet's front view.)
 const ROWS := [
-	[[-4.0, -4.18, -4.36], Vector3(0.08, 0.3, 0.3), Color("ffc61a")],
-	[[-4.62, -4.84, -5.06], Vector3(0.1, 0.42, 0.38), Color("2d7cf6")],
-	[[-5.35], Vector3(0.16, 0.75, 0.5), Color("ff3b3b")],
+	[[-4.0, -4.22, -4.44], Vector3(0.11, 0.44, 0.44), Color("ffc61a")],
+	[[-4.72, -4.97, -5.22], Vector3(0.14, 0.6, 0.54), Color("2d7cf6")],
+	[[-5.55], Vector3(0.22, 1.05, 0.7), Color("ff3b3b")],
 ]
 const FALL_S := 0.35
 const NEXT_S := 0.12                     # the next domino starts falling this long after the one before

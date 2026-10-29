@@ -102,6 +102,8 @@ func run_action(id: String) -> void:
 		_restart_clock()
 		_was_lifted = false   # the pop below is the reaction; no lowering on top of it
 		props.reset()
+		if game != null:
+			game.run_reset()
 		_changed()
 
 
@@ -266,6 +268,9 @@ func _build_world() -> void:
 		"beam_half": BEAM_HALF, "beam_thick": BEAM_THICK, "beam_depth": BEAM_DEPTH, "rest_x": REST_X,
 		"rest_top": PIVOT_Y - BEAM_THICK * 0.5, "stand_height": stand_height(), "load_size": LOAD_SIZE,
 	})
+	game = RotationGame.new(self)   # the piece game: the chest load and the piece in its pit (visual only)
+	add_child(game)
+	game.build()
 
 
 ## The stand reaches from the floor to just under the beam.

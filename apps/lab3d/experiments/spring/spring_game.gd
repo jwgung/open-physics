@@ -19,8 +19,6 @@ const ARM := 1.55
 const SWING := 0.42                     # rad, the arm's swing to each side
 const IDLE_BEAT := 2.8                  # s, the beat once the round is done
 const DOOR_S := 0.5
-const LAMP_OFF := Color("6b7a90")
-const LAMP_ON := Color("ffe14a")
 
 var _clock: Node3D
 var _arm: Node3D

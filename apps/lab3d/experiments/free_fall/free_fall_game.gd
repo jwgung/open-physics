@@ -11,12 +11,10 @@
 class_name FreeFallGame
 extends LabGame
 
-const BUTTON_R := 0.3
+const BUTTON_R := 0.38                   # (0.3 until 2026-10-29: hard to see on the tablet)
 const HOUSE_AT := Vector3(3.5, 0.0, -0.7)
-const HOUSE := Vector3(0.95, 1.05, 0.75)
+const HOUSE := Vector3(0.95, 1.05, 0.75)   # (kept: a bigger house hides behind Dugi from the front view, tests/island_cast_checks.gd)
 const DOOR_S := 0.5
-const LAMP_OFF := Color("6b7a90")
-const LAMP_ON := Color("ffe14a")
 
 static var _house_meshes := {}
 
@@ -87,7 +85,7 @@ static func house_mesh(lit: int) -> Mesh:
 	b.add_rounded_box(Transform3D(Basis(), Vector3(0.0, w.y + 0.06, 0.0)), Vector3(w.x + 0.16, 0.12, w.z + 0.16), 0.04, 1, ArtPalette.RED, ArtPalette.RED_TOP)
 	b.ao_min = 1.0
 	for i in 3:
-		b.add_sphere(Transform3D(Basis(), Vector3((i - 1) * 0.26, w.y + 0.2, w.z * 0.5 - 0.02)), 0.075, 3, 6, LAMP_ON if i < lit else LAMP_OFF)
+		b.add_sphere(Transform3D(Basis(), Vector3((i - 1) * 0.28, w.y + 0.22, w.z * 0.5 - 0.02)), 0.09, 3, 6, LAMP_ON if i < lit else LAMP_OFF)
 	_house_meshes[lit] = b.commit()
 	return _house_meshes[lit]
 

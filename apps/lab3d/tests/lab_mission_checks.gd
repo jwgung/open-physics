@@ -19,7 +19,7 @@ const EXPERIMENT_SCREEN := "res://scripts/shell/experiment_screen.gd"
 const TABLET := Vector2(1152, 720)
 const AFTER_STAMP := 40          # frames an attempt runs on after its stamp (no second stamp)
 ## The labs with the piece game (2026-10-29, LabGame) in this round (the projectile: game_piece_checks).
-const PIECE_LABS := ["free-fall", "collision", "spring", "friction", "incline-friction"]
+const PIECE_LABS := ["free-fall", "collision", "spring", "friction", "incline-friction", "rotation", "pulley", "constraints", "buoyancy", "orbit"]
 
 ## Per lab: the attempts in order, [what, ops, frames, stamps after]. Ops: ["ctl", id, value],
 ## ["act", id], ["place", object, pull m] (the spring ball let go there), ["force", N] (the push),
@@ -27,6 +27,7 @@ const PIECE_LABS := ["free-fall", "collision", "spring", "friction", "incline-fr
 ## load), ["stroke", cells] (one pulley stroke let go).
 const ROUNDS := {
 	"free-fall": [
+		["the start: red 5 m, yellow 3 m (2026-10-29: not level), the buttons are not pressed together", [["act", "release"]], 240, 0],
 		["the red ball dragged up to 8 m alone: it lands after the yellow one, no button pair", [["drop", "red", 8.0], ["act", "release"]], 240, 0],
 		["the yellow ball up to 8 m too: the heavy red and the light yellow land together on the earth", [["drop", "yellow", 8.0], ["act", "release"]], 240, 1],
 		["the same again: the earth earns nothing (the Moon is next)", [["act", "release"]], 240, 1],
@@ -38,13 +39,14 @@ const ROUNDS := {
 	],
 	"collision": [
 		["the start conditions (B is 2 kg): not the two 1 kg balls", [["act", "release"]], 600, 0],
-		["two 1 kg balls at 3.4 m/s: B at 2.4 m/s, not past 5", [["ctl", "mass_b", 1.0], ["act", "release"]], 600, 0],
-		["two 1 kg balls at 6.5 m/s: B at 5.2 m/s", [["ctl", "velocity_a", 6.5], ["act", "release"]], 600, 1],
+		["two 1 kg balls at 3.4 m/s: B gets a small push, not past 6.5", [["ctl", "mass_b", 1.0], ["act", "release"]], 600, 0],
+		["two 1 kg balls at 6 m/s: 6.25 N·s, not past 6.5", [["ctl", "velocity_a", 6.0], ["act", "release"]], 600, 0],
+		["two 1 kg balls at 6.5 m/s: 6.72 N·s", [["ctl", "velocity_a", 6.5], ["act", "release"]], 600, 1],
 		["the same two balls again: nothing", [["act", "release"]], 600, 1],
-		["a 3 kg A on the 1 kg B at 6.5 m/s: 8.6 m/s, not past 9", [["ctl", "mass_a", 3.0], ["act", "release"]], 600, 1],
-		["a 3 kg A on the 1 kg B at 7 m/s: 9.3 m/s", [["ctl", "velocity_a", 7.0], ["act", "release"]], 600, 2],
-		["the 0.5 kg B at 8 m/s: 12.4 m/s, not past 13", [["ctl", "mass_b", 0.5], ["ctl", "velocity_a", 8.0], ["act", "release"]], 600, 2],
-		["the 0.5 kg B at 8.5 m/s: 13.2 m/s", [["ctl", "velocity_a", 8.5], ["act", "release"]], 600, 3],
+		["a 3 kg A on the 1 kg B at 7.5 m/s: 11.5 N·s, not past 12", [["ctl", "mass_a", 3.0], ["ctl", "velocity_a", 7.5], ["act", "release"]], 600, 1],
+		["a 3 kg A on the 1 kg B at 8 m/s: 12.2 N·s", [["ctl", "velocity_a", 8.0], ["act", "release"]], 600, 2],
+		["the 2 kg B at 7 m/s: 17.2 N·s, not past 18", [["ctl", "mass_b", 2.0], ["ctl", "velocity_a", 7.0], ["act", "release"]], 600, 2],
+		["the 2 kg B at 7.5 m/s: 18.4 N·s", [["ctl", "velocity_a", 7.5], ["act", "release"]], 600, 3],
 	],
 	"spring": [
 		["놓기 from the start pull 1.2 m (1 kg on the quick beat): not past 2 m", [["act", "release"]], 220, 0],
@@ -93,20 +95,22 @@ const ROUNDS := {
 		["45 kg in the small drum floats", [["ctl", "mass", 45.0], ["act", "release"]], 1200, 3],
 	],
 	"constraints": [
-		["L = 2 m on the earth: 2.9 s", [["act", "release"]], 330, 0],
-		["L = 2.5 m on the earth: 3.24 s", [["ctl", "length", 2.5], ["act", "release"]], 400, 1],
+		["L = 2 m on the earth: 2.9 s, not a long rope", [["act", "release"]], 330, 0],
+		["L = 3 m on the earth: 3.56 s, off the 3.2 s beat (a very long rope)", [["ctl", "length", 3.0], ["act", "release"]], 400, 0],
+		["L = 2.5 m on the earth: 3.25 s on the 3.2 s beat", [["ctl", "length", 2.5], ["act", "release"]], 400, 1],
 		["L = 2.5 m on the earth again: nothing", [["act", "release"]], 400, 1],
-		["the moon, L = 2.5 m: 7.94 s", [["ctl", "gravity", "moon"], ["act", "release"]], 1000, 2],
-		["the moon, L = 2.5 m again: 7.94 s, not past 8 (and the same rope)", [["act", "release"]], 1000, 2],
-		["the moon, L = 3 m: 8.70 s", [["ctl", "length", 3.0], ["act", "release"]], 1000, 3],
+		["the Moon, L = 2.5 m: 7.98 s, off the 6.3 s beat (and not a short rope)", [["ctl", "gravity", "moon"], ["act", "release"]], 600, 1],
+		["the Moon, L = 1.5 m: 6.18 s on the 6.3 s beat", [["ctl", "length", 1.5], ["act", "release"]], 500, 2],
+		["the Moon, L = 2.5 m again: off the 8.8 s beat", [["ctl", "length", 2.5], ["act", "release"]], 600, 2],
+		["the Moon, L = 3 m: 8.74 s on the 8.8 s beat", [["ctl", "length", 3.0], ["act", "release"]], 700, 3],
 	],
 	"pulley": [
-		["one strand, a 10 kg load: not the 20 kg load", [["ctl", "mass", 10.0], ["stroke", 20]], 20, 0],
-		["one strand, 20 kg: 196.2 N", [["ctl", "mass", 20.0], ["stroke", 20]], 20, 1],
-		["one strand, the next stroke: nothing", [["stroke", 20]], 20, 1],
-		["two strands: 98.1 N", [["ctl", "strands", "two"], ["stroke", 20]], 20, 2],
-		["two strands, the next stroke: nothing", [["stroke", 20]], 20, 2],
-		["four strands: 49.05 N", [["ctl", "strands", "four"], ["stroke", 20]], 20, 3],
+		["one strand, a 10 kg load halfway: not the 20 kg load, not on the shelf", [["ctl", "mass", 10.0], ["stroke", 20]], 20, 0],
+		["one strand, 20 kg, 2 m of rope: the chest not yet on the shelf (2.4 m)", [["ctl", "mass", 20.0], ["stroke", 20]], 20, 0],
+		["one strand, 20 kg, up to the shelf: 196.2 N", [["stroke", 20]], 20, 1],
+		["two strands, halfway (2 m of rope, 1 m up): nothing", [["ctl", "strands", "two"], ["stroke", 40]], 20, 1],
+		["two strands, up to the shelf: 98.1 N", [["stroke", 56]], 20, 2],
+		["four strands, up to the shelf (9.6 m of rope): 49.05 N", [["ctl", "strands", "four"], ["stroke", 192]], 20, 3],
 	],
 	"incline-friction": [
 		["20° on wood holds", [["act", "release"]], 90, 0],

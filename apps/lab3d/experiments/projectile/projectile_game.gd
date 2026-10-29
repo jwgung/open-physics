@@ -9,13 +9,17 @@
 class_name ProjectileGame
 extends LabGame
 
-const CRATE := 0.6                       # m, the crate's side (its box is the target)
-## The stages' crates: (centre x, stump height) on the throw's line z = 0. From the launch at x = −6
-## (ball bottom 0.5 m): 2.8 m out at 0.5 m, 5.5 m out at 1 m, 7.2 m out at 1.2 m. On the slingshot's
-## grid (5°, 0.5 m/s, up to 9 m/s) from the default height 81, 24 and 10 throws hit them, none
-## slower than 4.5 m/s (tests/game_piece_checks.gd). The near crate stands off the line between the
-## front camera and Puppy (tests/island_cast_checks.gd).
-const TARGETS := [Vector2(-3.2, 0.5), Vector2(-0.5, 1.0), Vector2(1.2, 1.2)]
+const CRATE := 0.7                       # m, the crate's side (its box is the target; 0.6 until 2026-10-29: too small on the tablet)
+## The stages' crates: (centre x, bottom height) on the throw's line z = 0. The throw's speed is fixed
+## (ProjectileLab FIXED_SPEED 8 m/s, 2026-10-29): the angle is the game. From the launch at x = −6
+## (ball bottom 0.5 m) on the 5° grid: the near crate (2.4 m out on a low stump) is hit by the low
+## throws 0–20° (and the very steep 80°), the far crate (6.2 m out, 1 m up) by the slanted ones
+## 35–55°, the high crate (3.1 m out, 3.2 m up at the end of a tree's branch: the lower throws pass
+## under it) by the steep ones 60–70° (tests/game_piece_checks.gd): three bands that do not overlap.
+const TARGETS := [Vector2(-3.6, 0.3), Vector2(0.2, 1.0), Vector2(-2.9, 3.2)]
+const HIGH := 2                          # the crate on the branch (its tree stands behind the line)
+const TREE_X := -4.7                     # the high crate's tree: left of it, a little behind the line
+const TREE_Z := -0.45
 const STUMP_RADIUS := 0.32
 const SAMPLE_DT := 1.0 / 1200.0          # s between the path points the hit is looked for at
 const TIP_S := 0.55
@@ -57,7 +61,16 @@ func build() -> void:
 	var stumps := ArtKit.builder()
 	for i in TARGETS.size():
 		var t: Vector2 = TARGETS[i]
-		stumps.add_cylinder(Transform3D(Basis(), Vector3(t.x, t.y * 0.5, 0.0)), STUMP_RADIUS * 1.08, STUMP_RADIUS, t.y, 8, ArtPalette.TRUNK, true, Color("d9a066"))
+		if i == HIGH:
+			# A tree left of the crate, its branch reaching right along the line under the crate (the
+			# lower throws pass below; Puppy stands clear behind the line, tests/island_cast_checks.gd).
+			var trunk := Vector3(TREE_X, 0.0, TREE_Z)
+			stumps.add_cylinder(Transform3D(Basis(), trunk + Vector3(0.0, (t.y + 0.6) * 0.5, 0.0)), STUMP_RADIUS * 1.1, STUMP_RADIUS * 0.8, t.y + 0.6, 8, ArtPalette.TRUNK)
+			var reach := t.x + CRATE * 0.3 - TREE_X
+			stumps.add_rounded_box(Transform3D(Basis(Vector3.UP, atan2(-TREE_Z, reach)), Vector3((TREE_X + t.x + CRATE * 0.3) * 0.5, t.y - 0.08, TREE_Z * 0.5)), Vector3(Vector2(reach, TREE_Z).length(), 0.16, 0.2), 0.04, 1, ArtPalette.TRUNK, Color("d9a066"))
+			stumps.add_sphere(Transform3D(Basis.from_scale(Vector3(1.0, 0.8, 1.0)), trunk + Vector3(-0.2, t.y + 1.0, 0.0)), 0.85, 4, 8, ArtPalette.LEAF)
+		else:
+			stumps.add_cylinder(Transform3D(Basis(), Vector3(t.x, t.y * 0.5, 0.0)), STUMP_RADIUS * 1.08, STUMP_RADIUS, t.y, 8, ArtPalette.TRUNK, true, Color("d9a066"))
 		var pivot := Node3D.new()
 		pivot.name = "Crate%d" % (i + 1)
 		add_child(pivot)

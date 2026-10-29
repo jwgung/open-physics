@@ -55,12 +55,12 @@
     "hidden_until_end": ["judgement", "density", "floating_depth"],
     "hidden_series_until_end": ["floating"],
     "stages": [
-      { "conditions": {"volume": "big", "mass": 80.0}, "text": "80킬로그램 통을 둥둥 띄우기!", "say": "통이 물을 밀어내면 물이 통을 밀어 올려요. 큰 통은 물을 많이 밀어내서 떠요.", "say_face": "explain" },
-      { "conditions": {"volume": "big", "mass": 95.0}, "text": "95킬로그램 통도 둥둥 띄우기!", "say": "무거워도 큰 통은 물에 더 잠기면서 물을 더 밀어내요. 그래서 떠요.", "say_face": "explain" },
-      { "conditions": {"volume": "small", "mass": 45.0}, "text": "작은 통을 45킬로그램으로 띄우기!", "say": "작은 통은 물을 조금만 밀어내요. 그래서 가벼워야 뜰 수 있어요.", "say_face": "thinking" }
+      { "conditions": {"volume": "big", "mass": 80.0}, "text": "보물 상자를 매단 통을 80킬로그램으로 띄우기!", "say": "통이 물을 밀어내면 물이 통을 밀어 올려요. 큰 통은 물을 많이 밀어내서 상자를 매달아도 떠요.", "say_face": "explain" },
+      { "conditions": {"volume": "big", "mass": 95.0}, "text": "상자까지 95킬로그램도 둥둥 띄우기!", "say": "무거워도 큰 통은 물에 더 잠기면서 물을 더 밀어내요. 그래서 떠요.", "say_face": "explain" },
+      { "conditions": {"volume": "small", "mass": 45.0}, "text": "작은 통에 상자를 매달아 45킬로그램으로 띄우기!", "say": "작은 통은 물을 조금만 밀어내요. 그래서 가벼워야 뜰 수 있어요.", "say_face": "thinking" }
     ]
   },
-  "story": { "clue": "조각이 물속에 있어! 통을 띄워서 건져 보자.", "clue_face": "surprised", "map_clue": "연못 물속에서 반짝여!", "map_clue_face": "explain" },
+  "story": { "clue": "물속 보물 상자에 조각이 있어! 통을 띄워서 상자를 건져 보자.", "clue_face": "surprised", "map_clue": "연못 물속에서 반짝여!", "map_clue_face": "explain" },
   "kid": {
     "card": "state",
     "title": "통을 물에 띄워 보자!",

@@ -246,42 +246,40 @@ static func measured_period(length: float, g: float, b: float) -> float:
 
 
 func check_pendulum() -> void:
+	# Since 2026-10-29 the stages are the turtle clock's beats (MissionTracker "near", the piece game:
+	# tests/game_piece_checks.gd check_pendulum_beat sweeps the release angles). Here: from the lab's
+	# start angle, each stage's fitting rope is on the beat with either damping, the default 2 m rope
+	# on the earth clears nothing, and the stages ask for different ropes and worlds.
 	var definition := ExperimentRegistry.find("constraints")
-	var lengths := grid(definition, "length")
 	var stages: Array = MissionTracker.missions(definition).stages
 	var problems := []
+	var seen := []
 	for damping in ["web", "none"]:
 		var b := float(option(definition, "damping", damping).rope_b)
 		for stage in stages.size():
 			var want: Dictionary = stages[stage].conditions
-			var world := str(want.gravity)
-			var g := float(option(definition, "gravity", world).g)
-			for length in lengths:
+			var g := float(option(definition, "gravity", str(want.gravity)).g)
+			for length in picked(definition, stage, "length", true):
 				var t := measured_period(length, g, b)
-				if MissionTracker.condition_holds(want.get("length", {}), length) and not beats(definition, stage, t):
-					problems.append("stage %d (%s): %s m misses at %.2f s" % [stage + 1, damping, length, t])
-			# Stage 1's lesson is the rope (on the Moon every rope is slow: stage 2's lesson).
-			for other in picked(definition, stage, "gravity", false) if stage > 0 else []:
-				var og := float(option(definition, "gravity", other).g)
-				if lengths.any(func(l: float) -> bool: return beats(definition, stage, measured_period(l, og, b))):
-					problems.append("stage %d (%s): %s beats it" % [stage + 1, damping, other])
-			for length in picked(definition, stage, "length", false):
-				if beats(definition, stage, measured_period(length, g, b)):
-					problems.append("stage %d (%s): the other rope %s m beats it" % [stage + 1, damping, length])
-	# The default rope (2 m on the earth) does not clear stage 1.
-	if beats(definition, 0, measured_period(2.0, 9.81, float(option(definition, "damping", "web").rope_b))):
+				if damping == "web":
+					seen.append("%s %s m %.2f s" % [want.gravity, length, t])
+				if not _near(definition, stage, t):
+					problems.append("stage %d (%s): %s m off the beat at %.2f s" % [stage + 1, damping, length, t])
+	if _near(definition, 0, measured_period(2.0, 9.81, float(option(definition, "damping", "web").rope_b))) and MissionTracker.condition_holds(stages[0].conditions.get("length", {}), 2.0):
 		problems.append("the default 2 m rope clears stage 1")
-	# As shown (one decimal): the shortest rope stage 1 allows (2.25 m) still reads past 3 s (3.08 s:
-	# 3.1초) with either damping, the default 2 m does not (2.90 s: 2.9초).
-	var web_b := float(option(definition, "damping", "web").rope_b)
-	var t225 := measured_period(2.25, 9.81, web_b)
-	if not beats(definition, 0, t225) or not beats(definition, 0, measured_period(2.25, 9.81, 0.0)):
-		problems.append("stage 1: the 2.25 m rope (%.3f s) does not read past 3 s" % t225)
-	var seen := "earth 2.25 m %.3f, 2.5 m %.3f; moon 1 m %.3f, 1.5 m %.3f, 2.5 m %.3f, 2.75 m %.3f" % [t225, measured_period(2.5, 9.81, web_b),
-		measured_period(1.0, 1.62, web_b), measured_period(1.5, 1.62, web_b), measured_period(2.5, 1.62, web_b), measured_period(2.75, 1.62, web_b)]
-	expect.call(problems.is_empty() and (stages[2].get("change", []) as Array).has("length"),
-		"goal (pendulum): judged on the half swing x 2 as shown (one decimal): the earth's long rope past 3 s from 2.25 m (3.08 s reads 3.1초; 2 m 2.9초 not), the Moon past 5 s with any rope (1 m 5.05 s reads 5.1초), the earth never, the Moon's very long rope past 8 s and the long 2.5 m never; the last stage wants another rope",
-		"%s; %s" % [seen, "; ".join(problems)])
+	for stage in range(1, stages.size()):
+		if stages[stage].conditions == stages[stage - 1].conditions:
+			problems.append("stages %d and %d ask the same" % [stage, stage + 1])
+	expect.call(problems.is_empty() and stages.all(func(s: Dictionary) -> bool: return s.get("compare") == "near"),
+		"goal (pendulum): the turtle clock's beats (half swing x 2 as shown, near): from the lab's start angle the earth's long rope on 3.2 s, the Moon's short rope on 6.3 s, the Moon's very long rope on 8.8 s; the default 2 m rope clears nothing",
+		"%s; %s" % [", ".join(seen), "; ".join(problems)])
+
+
+## The stage's "near" rule holds for `value` (the shown number within the stage's tolerance).
+static func _near(definition: Dictionary, stage: int, value: float) -> bool:
+	var entry: Dictionary = MissionTracker.missions(definition).stages[stage]
+	var how := MissionTracker.rule(definition, stage)
+	return MissionTracker.beats(definition, how.observe, how.compare, entry, {how.observe: value})
 
 
 ## The half swing x 2 against the measured period (2026-10-28): every rope of the grid, the Moon and

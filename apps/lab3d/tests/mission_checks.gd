@@ -115,18 +115,19 @@ func check_content() -> void:
 	expect.call(rules == [[{}, []], [{}, []], [{}, []]],
 		"missions: no conditions and no change rule (each stage is another crate)", str(rules))
 	var texts := (missions.stages as Array).map(func(s: Dictionary) -> Variant: return s.text)
-	expect.call(texts == ["가까운 상자를 공으로 맞히기!", "더 먼 상자를 맞히기!", "높은 상자를 맞혀 조각 떨어뜨리기!"],
+	expect.call(texts == ["낮게 던져서 가까운 상자 맞히기!", "얼마나 기울여 던질까? 먼 상자 맞히기!", "높이 던져서 나무 위 상자 맞히기!"],
 		"missions: the stage texts say the rule in a child's words", str(texts))
 	for stage in missions.stages:
 		expect.call(stage.text != "", "missions: every stage has its text", str(stage.get("threshold")))
 	var predict: Dictionary = definition.predict
-	expect.call(predict.question == "더 세게 던지면 더 멀리 갈까?" and (predict.choices as Array).size() == 2,
+	# The angle game (2026-10-29: the speed is fixed): which way goes farthest.
+	expect.call(predict.question == "어떻게 던져야 가장 멀리 갈까?" and (predict.choices as Array).size() == 2,
 		"predict: the one question, two pictures", str(predict.get("question")))
 	var ids := (predict.choices as Array).map(func(c: Dictionary) -> Variant: return c.id)
-	expect.call(ids == ["farther", "same"], "predict: the two pictures are 멀리 and 똑같이", str(ids))
-	expect.call(predict.reason.contains("세게") and predict.reason.contains("멀리") and not predict.reason.contains("v₀"),
-		"predict: the reason says a harder throw goes farther, in a child's words (the formula stays in 자세히)", predict.reason)
-	expect.call(predict.answer == "farther", "predict: the answer is 멀리", str(predict.get("answer")))
+	expect.call(ids == ["slant", "steep"], "predict: the two pictures are 비스듬히 and 아주 높이", str(ids))
+	expect.call(predict.reason.contains("비스듬히") and predict.reason.contains("멀리") and not predict.reason.contains("v₀") and not predict.reason.contains("45"),
+		"predict: the reason says a slanted throw goes farthest, in a child's words (the formula and 45° stay in 자세히)", predict.reason)
+	expect.call(predict.answer == "slant", "predict: the answer is 비스듬히", str(predict.get("answer")))
 	# Every listed lab has its round now (Plan G2): three stages, a question with two pictures and an
 	# answer, a reason, and every threshold / condition inside the lab's controls (the registry).
 	for other in ExperimentRegistry.load_all():
@@ -143,6 +144,9 @@ func check_content() -> void:
 ## `change` rule, a kept throw) keep this fixture.
 static func range_definition() -> Dictionary:
 	var definition := ExperimentRegistry.find("projectile").duplicate(true)
+	# The speed slider the app had then (fixed at 8 m/s since 2026-10-29): the fixture keeps it.
+	definition.controls.insert(2, {"id": "speed", "type": "slider", "label": "던지는 빠르기 v₀", "unit": " m/s",
+		"min": 1.0, "max": 9.0, "step": 0.5, "default": 9.0, "digits": 1})
 	definition.missions.judge_on = ["landed"]
 	definition.missions.stages = [
 		{"threshold": 3.0, "text": "3미터 넘게 던지기!"},
@@ -456,7 +460,7 @@ func check_progress_store() -> void:
 # --- physics unchanged -----------------------------------------------------------------------------
 
 
-## One recorded throw of 40 deg, 8.5 m/s on the projectile screen (earth, 0.5 m): from the frame of
+## One recorded throw of 40 deg at the fixed 8 m/s on the projectile screen (earth, 0.5 m): from the frame of
 ## the throw on, every 5th physics step the status, the panel's values and the engine ball's
 ## transform. `missions`: the screen with its mission round (the tracker judging, the strip, Dugi's
 ## question) or a definition without the missions / predict blocks (no tracker at all).
@@ -485,10 +489,9 @@ func _record(missions: bool, slingshot: bool) -> Array:
 		await tree.physics_frame
 		if k == 30:
 			if slingshot:
-				_pull(screen, lab, 40.0, 8.5)
+				_pull(screen, lab, 40.0, 8.0)
 			else:
 				screen._set_control("angle", 40.0)
-				screen._set_control("speed", 8.5)
 				screen.experiment_action("release")
 		if lab.status() != previous:
 			statuses.append(lab.status())
@@ -541,11 +544,11 @@ func check_physics_unchanged() -> void:
 		"projectile: a slingshot throw and the sliders + 공 놓기 at the same angle and speed fly the same, step by step",
 		"first difference at row %d of %d" % [by_pull, game[0].size()])
 	var values: Dictionary = pulled[2]
-	expect.call(values.range is float and float(values.range) > 7.0 and pulled[1].has("landed"),
-		"the 40° 8.5 m/s throw lands past 7 m (formula range %s)" % str(values.range), str(pulled[1]))
-	# The 40° 8.5 m/s throw flies over the near crate (the piece game's first stage, 2026-10-29): no
+	expect.call(values.range is float and float(values.range) > 6.5 and pulled[1].has("landed"),
+		"the 40° 8 m/s throw lands past 6.5 m (formula range %s)" % str(values.range), str(pulled[1]))
+	# The 40° 8 m/s throw flies over the near crate (the piece game's first stage, 2026-10-29): no
 	# stamp on either game screen; the plain screen judged nothing (game_round_checks earns them).
 	expect.call(ProgressStore.load().get("projectile", 0) == 0 and float(values.hit_1) == 0.0 and float(values.hit_2) == 1.0,
-		"the game screens' 40° 8.5 m/s throws fly over the near crate (through the far one): no first stamp; the plain screen judged nothing",
+		"the game screens' 40° 8 m/s throws fly over the near crate (through the far one): no first stamp; the plain screen judged nothing",
 		"stored %s" % str(ProgressStore.load()))
 	DirAccess.remove_absolute(ProgressStore.path)

@@ -490,7 +490,7 @@ func check_first_release_from_floor() -> void:
 		if purple.landed_step >= 0:
 			break
 		await tree.physics_frame
-	var want := roundi(PhysicsLaws.landing_time(0.0, -9.81, 5.0) * STEP_HZ)
+	var want := roundi(PhysicsLaws.landing_time(0.0, -9.81, 4.0) * STEP_HZ)   # purple starts at 4 m (2026-10-29)
 	expect.call(lab.corrector_of("red").landed_step < 0 and lab.has_landed("red") and absi(purple.landed_step - want) <= 2,
 		"landing: a fresh free-fall lab with a ball on the floor reports no engine landing for it; the dropped ones land at their formula time",
 		"red %d, purple %d (formula %d)" % [lab.corrector_of("red").landed_step, purple.landed_step, want])
@@ -762,7 +762,8 @@ func check_free_fall_manipulation() -> void:
 	var held: bool = m.mode == "drag" and m.active_id == "drop_red"
 	_touch(screen, 0, _at(screen, goal), false)
 	var slider_kept: bool = screen._control_widgets.height.slider.value == 5.0
-	var own: bool = lab.starts.red.y == 7.0 and lab.starts.yellow.y == 5.0 and lab.starts.purple.y == 5.0
+	# The balls open at their own heights (2026-10-29: red 5, purple 4, yellow 3 m).
+	var own: bool = lab.starts.red.y == 7.0 and lab.starts.yellow.y == 3.0 and lab.starts.purple.y == 4.0
 	expect.call(held and lab.height == 5.0 and own and slider_kept and is_equal_approx(red.global_position.x, 1.5) and m.selected_id == "" and not m._knob.visible,
 		"free fall: dragging a ball up sets its own drop height on the 0.5 m grid (the others and the height slider stay, no height handle)",
 		"held %s, height %.2f, starts %s" % [held, lab.height, str(lab.starts)])
@@ -771,15 +772,15 @@ func check_free_fall_manipulation() -> void:
 		if lab.status() == "landed" and _engine_landed(lab):
 			break
 		await tree.physics_frame
-	var want := {"red": roundi(PhysicsLaws.landing_time(0.0, -9.81, 7.0) * STEP_HZ), "yellow": roundi(PhysicsLaws.landing_time(0.0, -9.81, 5.0) * STEP_HZ),
-		"purple": roundi(PhysicsLaws.landing_time(0.0, -9.81, 5.0) * STEP_HZ)}
+	var want := {"red": roundi(PhysicsLaws.landing_time(0.0, -9.81, 7.0) * STEP_HZ), "yellow": roundi(PhysicsLaws.landing_time(0.0, -9.81, 3.0) * STEP_HZ),
+		"purple": roundi(PhysicsLaws.landing_time(0.0, -9.81, 4.0) * STEP_HZ)}
 	var lands: Dictionary = {}
 	for id in lab.ORDER:
 		lands[id] = lab.corrector_of(id).landed_step
 	expect.call(lab.ORDER.all(func(id: String) -> bool: return absi(lands[id] - want[id]) <= 2)
 		and float(lab.observations().fall_time) == PhysicsLaws.landing_time(0.0, -9.81, 7.0)
 		and lab.observations().together_time == "따로 닿았어요" and lab.game.pressed("red") and lab.game.pressed("yellow"),
-		"free fall: after the drag each ball lands at the formula time of its own height; red 7 m and yellow 5 m press their buttons apart, not together",
+		"free fall: after the drag each ball lands at the formula time of its own height; red 7 m and yellow 3 m press their buttons apart, not together",
 		"steps %s (formula %s), together %s" % [str(lands), str(want), str(lab.observations().together_time)])
 	# Picking up a landed ball stops the run (every ball back at its start).
 	_swipe(screen, _at(screen, red.global_position), _at(screen, red.global_position + Vector3(0, 0.05, 0)), 2)
@@ -803,8 +804,8 @@ func check_projectile_manipulation() -> void:
 	var knob_held: bool = m.active_id == "arrow"
 	_touch(screen, 0, _at(screen, goal), false)
 	await tree.process_frame
-	expect.call(not knob_held and lab.angle_deg == 45.0 and lab.speed == 9.0,
-		"projectile: the arrow knob is not dragged (the slingshot sets direction and speed)", "held %s, angle %.1f, speed %.1f" % [knob_held, lab.angle_deg, lab.speed])
+	expect.call(not knob_held and lab.angle_deg == 30.0 and lab.speed == 8.0,
+		"projectile: the arrow knob is not dragged (the slingshot sets the direction; the speed is fixed at 8 m/s)", "held %s, angle %.1f, speed %.1f" % [knob_held, lab.angle_deg, lab.speed])
 	var ball_at := _at(screen, lab.ball_center())
 	_touch(screen, 1, ball_at, true)
 	_touch(screen, 1, ball_at, false)

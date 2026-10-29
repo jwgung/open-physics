@@ -32,11 +32,7 @@
     },
     {
       "id": "angle", "type": "slider", "label": "던지는 각도", "unit": "°",
-      "min": 0.0, "max": 90.0, "step": 5.0, "default": 45.0, "digits": 0
-    },
-    {
-      "id": "speed", "type": "slider", "label": "던지는 빠르기 v₀", "unit": " m/s",
-      "min": 1.0, "max": 9.0, "step": 0.5, "default": 9.0, "digits": 1
+      "min": 0.0, "max": 90.0, "step": 5.0, "default": 30.0, "digits": 0
     },
     {
       "id": "launch_height", "type": "slider", "label": "던지는 높이 (공 아래)", "unit": " m",
@@ -49,14 +45,14 @@
   ],
   "key_observations": ["range", "flight_time", "landing"],
   "predict": {
-    "question": "더 세게 던지면 더 멀리 갈까?",
+    "question": "어떻게 던져야 가장 멀리 갈까?",
     "question_face": "thinking",
     "choices": [
-      { "id": "farther", "label": "더 멀리", "picture": "long_arc" },
-      { "id": "same", "label": "똑같이", "picture": "same_arc" }
+      { "id": "slant", "label": "비스듬히", "picture": "throw_slant" },
+      { "id": "steep", "label": "아주 높이", "picture": "throw_steep" }
     ],
-    "answer": "farther",
-    "reason": "세게 던지면 공이 더 빨리 날아가요. 그래서 더 멀리 가요."
+    "answer": "slant",
+    "reason": "같은 세기로 던지면 비스듬히 던진 공이 가장 멀리 가요. 아주 높이 던지면 위로만 올라갔다가 가까이 떨어져요."
   },
   "missions": {
     "observe": "range",
@@ -65,23 +61,23 @@
     "hidden_until_end": ["range", "flight_time", "apex", "hit_1", "hit_2", "hit_3"],
     "hidden_series_until_end": ["formula"],
     "stages": [
-      { "observe": "hit_1", "threshold": 0.5, "text": "가까운 상자를 공으로 맞히기!", "say": "공은 앞으로 가면서 아래로 떨어져요. 가까운 상자는 살살 던져도 닿아요.", "say_face": "explain" },
-      { "observe": "hit_2", "threshold": 0.5, "text": "더 먼 상자를 맞히기!", "say": "먼 상자는 더 세게 던져야 닿아요. 빠른 공은 땅에 닿기 전에 더 멀리 가요.", "say_face": "thinking" },
-      { "observe": "hit_3", "threshold": 0.5, "text": "높은 상자를 맞혀 조각 떨어뜨리기!", "say": "높고 먼 상자는 세게, 비스듬히 던져요. 너무 눕히면 낮게 가고, 너무 세우면 가까이 떨어져요.", "say_face": "explain" }
+      { "observe": "hit_1", "threshold": 0.5, "text": "낮게 던져서 가까운 상자 맞히기!", "say": "공은 늘 같은 세기로 날아가요. 낮게 던지면 금방 땅으로 내려와서 가까운 상자에 닿아요.", "say_face": "explain" },
+      { "observe": "hit_2", "threshold": 0.5, "text": "얼마나 기울여 던질까? 먼 상자 맞히기!", "say": "비스듬히 던지면 공이 앞으로도 위로도 가서 가장 멀리 날아가요. 그래서 먼 상자에 닿아요.", "say_face": "thinking" },
+      { "observe": "hit_3", "threshold": 0.5, "text": "높이 던져서 나무 위 상자 맞히기!", "say": "높이 던지면 공이 위로 많이 올라갔다가 가까이 내려와요. 그래서 높은 나뭇가지의 상자에 닿아요.", "say_face": "explain" }
     ]
   },
-  "story": { "clue": "저 높은 상자 위에 조각이 있어! 상자를 맞히면 조각이 떨어질 것 같아!", "clue_face": "surprised", "map_clue": "과녁 근처 풀밭에 뭔가 떨어졌어!", "map_clue_face": "surprised" },
+  "story": { "clue": "나무 위 상자에 조각이 있어! 상자를 맞히면 조각이 떨어질 것 같아!", "clue_face": "surprised", "map_clue": "과녁 근처 풀밭에 뭔가 떨어졌어!", "map_clue_face": "surprised" },
   "kid": {
     "card": "range",
     "title": "공을 멀리 던져 보자!",
     "place": "공 던지기",
     "say": "공이 앞으로 가면서 아래로 떨어져요. 그래서 둥글게 날아가요.",
     "say_face": "explain",
-    "tip": "공을 뒤로 쭉 당겼다 놓아 봐요!",
+    "tip": "공을 당기는 쪽의 반대로 날아가요. 아래로 당기면 높이 날아가요!",
     "cards": {"range": "얼마나 멀리", "flight_time": "날아간 시간", "landing": "떨어진 곳"}
   },
   "note": {
-    "law": "세게 던질수록, 45°에 가까운 각도로 던질수록 멀리 가요. 옆으로는 같은 빠르기로 가고 아래로는 중력이 끌어당겨요.",
+    "law": "빠르기가 같으면(여기선 8 m/s) 45°에 가까운 각도로 던질수록 멀리 가요. 옆으로는 같은 빠르기로 가고 아래로는 중력이 끌어당겨요.",
     "formula": "R = v₀² sin 2θ / g",
     "numbers": [
       { "label": "날아가는 거리 R (던진 높이 포함)", "ids": ["range"] },
@@ -93,7 +89,7 @@
   },
   "cast": {
     "dugi": { "at": [7.25, -1.0], "explain_on": ["landed", "fence"], "delay_s": 0.6 },
-    "puppy": { "at": [-2.0, -6.25] }
+    "puppy": { "at": [6.0, -8.0] }
   },
   "observations": [
     { "id": "g", "label": "중력 가속도 g", "unit": "m/s²", "digits": 2 },

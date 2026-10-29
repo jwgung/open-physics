@@ -124,6 +124,8 @@ func reset_run() -> void:
 		return
 	_clear_run()
 	props.reset()
+	if game != null:
+		game.run_reset()
 	props.place_cat(models[0].position())
 	props.show_paths(length, MAX_DEG)
 	_show()
@@ -250,6 +252,9 @@ func _build_world() -> void:
 	planet_sign = PlanetSign.new()
 	planet_sign.position = SIGN_AT
 	add_child(planet_sign)
+	game = ConstraintsGame.new(self)   # the piece game: the turtle clock with the star piece (visual only)
+	add_child(game)
+	game.build()
 
 
 # --- manipulation -------------------------------------------------------------------------------

@@ -690,7 +690,7 @@ func _layout() -> void:
 	if skip_button != null:
 		skip_button.size = skip_button.get_combined_minimum_size()
 		skip_button.position = Vector2(view_size.x - skip_button.size.x - DIALOGUE_MARGIN, DIALOGUE_MARGIN)
-	var right := maxf(view_size.x * DIALOGUE_SHARE, minf(view_size.x - DIALOGUE_MARGIN, 900.0))
+	var right := view_size.x - DIALOGUE_MARGIN   # the whole width (2026-10-29 user)
 	if dialogue != null and dialogue.active:
 		dialogue.visible = dialogue.layout(Rect2(Vector2.ZERO, view_size), right, DIALOGUE_MARGIN)
 	if riddle != null and riddle.active:

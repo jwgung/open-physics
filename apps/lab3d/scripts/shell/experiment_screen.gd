@@ -481,10 +481,9 @@ func _close_dialogue() -> void:
 ## the box's height band), whichever is nearer. False when there is no room.
 func _layout_dialogue() -> bool:
 	var view_rect := Rect2(Vector2.ZERO, view.size)
+	# Up to the 다시 button (2026-10-29 user: the box stopped halfway, at Dugi's left edge): it may pass
+	# over the 3D Dugi, whose portrait the box shows anyway.
 	var right := _action_row.position.x - OVERLAY_MARGIN
-	var who := dugi_rect()
-	if who.size.x > 0.0 and who.end.y > view.size.y - OVERLAY_MARGIN - DialogueBox.PORTRAIT_SIZE:
-		right = minf(right, who.position.x - OVERLAY_MARGIN)
 	# While the box is open its right end only moves left: Dugi's raised and lowered arm (his drawn
 	# bounds) made it grow and shrink every frame (2026-10-27 user report). A new box or a resized
 	# view starts over.

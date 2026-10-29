@@ -569,8 +569,8 @@ func check_layout(id: String) -> void:
 				for o in overlays:
 					if o.intersects(r):
 						problems.append("dialogue under an overlay")
-				if r.intersects(screen.dugi_rect()):
-					problems.append("dialogue covers Dugi")
+				# The box may pass over the 3D Dugi (2026-10-29 user: longer box, up to the 다시 button);
+				# its portrait is Dugi.
 				if r.grow(4.0).has_point(screen.view_point(lab.explain_point())):
 					problems.append("dialogue covers what Dugi points at")
 				for p: Vector3 in _scene[id].explained:   # the target over a whole run (moving bodies too)
@@ -579,7 +579,7 @@ func check_layout(id: String) -> void:
 						break
 			if box.portrait.position.x > box.size.x * 0.5:
 				problems.append("portrait not on the left")
-		expect.call(problems.is_empty(), "cast (%s, %s): Dugi and Puppy in the front view clear of the overlays; Dugi hides no apparatus, motion or cat; Puppy over none of them nor Dugi; the dialogue clear of the controls, cards, Dugi and what he points at (none beside the open sidebar)" % [id, setup[2]],
+		expect.call(problems.is_empty(), "cast (%s, %s): Dugi and Puppy in the front view clear of the overlays; Dugi hides no apparatus, motion or cat; Puppy over none of them nor Dugi; the dialogue clear of the controls, cards and what Dugi points at (none beside the open sidebar)" % [id, setup[2]],
 			"; ".join(problems))
 		await _close(screen)
 

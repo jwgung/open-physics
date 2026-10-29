@@ -108,9 +108,16 @@ func check_flow(quality_script: GDScript) -> void:
 ## NOTIFICATION_WM_GO_BACK_REQUEST in the same frame (onBackPressed + the KEYCODE_BACK key event). Each
 ## press is one step: an open sidebar closes, the lab -> the map, settings -> where they opened, the
 ## map -> the title, the title quits once. Before the fix the second of the pair quit from the map.
+## Since 2026-10-29 (user: back closes the dialogue first) an open box goes first: in a lab Puppy's
+## clue (then Dugi asks) and Dugi's explanation; Dugi's prediction question is not answered by back,
+## the lab goes to the map; on the map Puppy's riddle closes before the title.
 func check_back_press(quality_script: GDScript) -> void:
 	quality_script.set("_args_cache", PackedStringArray([]))
+	DirAccess.remove_absolute(ProgressStore.TEST_PATH)
+	ProgressStore.path = ProgressStore.TEST_PATH
+	ProgressStore.set_mark(ProgressStore.STORY, "prologue", true)   # the map opens without the prologue
 	var app := await _app()
+	app.size = TABLET   # room for the dialogue boxes (the headless window is tiny)
 	var quits := [0]
 	app.quit = func() -> void: quits[0] += 1
 	var press := func() -> void:
@@ -118,30 +125,74 @@ func check_back_press(quality_script: GDScript) -> void:
 		app.notification(Node.NOTIFICATION_WM_GO_BACK_REQUEST)
 		for i in 3:
 			await tree.process_frame
+	var settle := func(n: int) -> void:
+		for i in n:
+			await tree.process_frame
 	var trail := []
 	var where := func() -> String:
 		if app._screen is ExperimentScreen:
-			return "lab+sidebar" if (app._screen as ExperimentScreen).is_sidebar_open() else "lab"
+			var lab := app._screen as ExperimentScreen
+			if lab.is_sidebar_open():
+				return "lab+sidebar"
+			if lab.clue_telling():
+				return "lab+clue"
+			if lab._asking and lab.dialogue.active:
+				return "lab+question"
+			if lab.dialogue.active:
+				return "lab+dugi"
+			return "lab"
 		if app._screen is IslandHomeScreen:
-			return "map"
+			var story: StoryDirector = (app._screen as IslandHomeScreen).story
+			return "map+riddle" if story != null and story.riddle != null and story.riddle.active else "map"
 		if app._screen is SettingsScreen:
 			return "settings"
 		if app._screen is TitleScreen:
 			return "title"
 		return str(app._screen)
+	# A first visit: Puppy's clue, then Dugi's question.
 	app.show_experiment(ExperimentRegistry.find("projectile"))
-	await tree.process_frame
-	(app._screen as ExperimentScreen).open_sidebar(false)
+	for i in 120:   # the screen slides in, then Puppy speaks
+		if app._screen is ExperimentScreen and (app._screen as ExperimentScreen).clue_telling():
+			break
+		await tree.process_frame
+	await settle.call(2)
+	trail.append(where.call())   # Puppy's clue
+	var glow_on: bool = app._screen is ExperimentScreen and (app._screen as ExperimentScreen).experiment.game.highlighting()
+	await press.call()
+	trail.append(where.call())   # the clue closed: Dugi asks
+	if app._screen is ExperimentScreen:   # (a wrong step left the lab: the trail shows it)
+		(app._screen as ExperimentScreen).open_sidebar(false)
 	await tree.process_frame
 	trail.append(where.call())
 	await press.call()
-	trail.append(where.call())   # the sidebar closed, still the lab
+	await settle.call(20)   # the sidebar slides away, the question comes back
+	trail.append(where.call())   # the sidebar closed, the question back
 	await press.call()
-	trail.append(where.call())   # the map
+	await settle.call(4)
+	trail.append(where.call())   # the question unanswered: the map, Puppy's riddle
+	await press.call()
+	trail.append(where.call())   # the riddle closed, still the map
+	# Dugi's explanation (the question answered first): back closes his box, the lab stays.
+	app.show_experiment(ExperimentRegistry.find("projectile"))
+	await settle.call(4)
+	var lab := app._screen as ExperimentScreen
+	lab._end_question()
+	lab.cast.dugi.explain(lab.experiment.explain_point)
+	for i in 120:
+		if lab.dialogue.active:
+			break
+		await tree.process_frame
+	trail.append(where.call())
+	await press.call()
+	trail.append(where.call())   # his box closed, still the lab
+	await press.call()
+	trail.append(where.call())   # the map (Puppy says his riddle as it opens)
 	app.show_settings()
 	await tree.process_frame
 	await press.call()
-	trail.append(where.call())   # settings from the map -> the map
+	trail.append(where.call())   # settings from the map -> the map (the riddle again)
+	if app._screen is IslandHomeScreen and (app._screen as IslandHomeScreen).story != null:
+		(app._screen as IslandHomeScreen).story.hush()
 	await press.call()
 	trail.append(where.call())   # the map -> the title
 	app.show_settings(true)
@@ -151,9 +202,11 @@ func check_back_press(quality_script: GDScript) -> void:
 	var quits_before: int = quits[0]
 	await press.call()
 	await _free(app)
-	expect.call(trail == ["lab+sidebar", "lab", "map", "map", "title", "title"] and quits_before == 0 and quits[0] == 1,
-		"back: one press (two go-back notifications in a frame) is one step: sidebar, lab -> map, settings -> back, map -> title, title quits once",
-		"%s quits %d/%d" % [str(trail), quits_before, quits[0]])
+	DirAccess.remove_absolute(ProgressStore.TEST_PATH)
+	var want := ["lab+clue", "lab+question", "lab+sidebar", "lab+question", "map+riddle", "map", "lab+dugi", "lab", "map+riddle", "map+riddle", "title", "title"]
+	expect.call(trail == want and glow_on and quits_before == 0 and quits[0] == 1,
+		"back: one press (two go-back notifications in a frame) is one step: Puppy's clue -> Dugi's question, sidebar, the unanswered question -> the map, Puppy's riddle, Dugi's explanation, lab -> map, settings -> back, map -> title, title quits once",
+		"%s (want %s) glow %s quits %d/%d" % [str(trail), str(want), glow_on, quits_before, quits[0]])
 
 
 ## A measured, direct or resumed launch opens its screen as before (no title).

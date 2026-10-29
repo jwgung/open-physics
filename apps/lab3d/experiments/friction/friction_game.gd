@@ -82,3 +82,8 @@ func _process(delta: float) -> void:
 		var moved: float = absf(push_lab.formula_x() - START_X) if push_lab != null and push_lab.has_method("formula_x") else INF
 		if moved > box_half + PIECE_SIZE or _t - _pop_at > POP_WAIT_S:
 			_pop()
+
+
+## The clue's glow (LabGame.highlight): a halo on the piece under the box's front.
+func highlight_radius() -> float:
+	return 0.75

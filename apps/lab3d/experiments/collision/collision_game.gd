@@ -166,3 +166,8 @@ func _process(delta: float) -> void:
 		_chunks.scale = Vector3.ONE * (1.0 + 1.4 * k) * maxf(0.01, 1.0 - k * k)
 		if k >= 1.0:
 			_chunks.visible = false
+
+
+## The clue's glow (LabGame.highlight): a halo on the ice block (the piece is frozen in it).
+func highlight_radius() -> float:
+	return 0.75

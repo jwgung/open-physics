@@ -1,11 +1,13 @@
-## Guided free-fall lab (Phase 1 Task 4a; web preset "free-fall"): three balls of different mass
-## (yellow 0.5 kg, violet "보라" 1 kg, red = the "mass" control, 3 kg by default, like the web's light /
-## reference / heavy balls) are dropped together in the chosen field and land at the same time.
-## Conditions: gravity (the web's buttons), the drop height of all three (slider) and the red ball's
-## mass. A finger drags any ball up or down (2026-10-27, one drag per lab: "drop_<ball>" objects on a
-## vertical line through the ball). Since 2026-10-29 (the piece game "두 공을 같이 떨어뜨려 버튼
-## 누르기", FreeFallGame) letting go sets that ball's own drop height (the others stay), so the child
-## starts two balls level or not; the "height" control (the "자세히" slider) still sets all three.
+## Guided free-fall lab (Phase 1 Task 4a; web preset "free-fall"): balls of different mass dropped
+## in the chosen field land at the same time. Since 2026-10-29 (user: "2개만 놓고 하자") two balls:
+## the light yellow one (0.5 kg) and the heavy red one (the "mass" control, 3 kg by default); the web's
+## third, violet reference ball is not in the 3D lab (the web keeps its three; the law is the same).
+## Conditions: gravity (the web's buttons), the drop height of both (slider) and the red ball's
+## mass. A finger drags either ball up or down (2026-10-27, one drag per lab: "drop_<ball>" objects on
+## a vertical line through the ball). Since 2026-10-29 (the piece game "두 공을 같이 떨어뜨려 버튼
+## 누르기", FreeFallGame) letting go sets that ball's own drop height (the other stays), so the child
+## starts the two balls level or not; the "height" control (the "자세히" slider) still sets both.
+## Heights are whole metres (1–8 m, the slider's and the drags' 1 m step: user "스텝을 크게 해서 쉽게").
 ## A finger does not move a ball sideways (definition: "drag": false).
 ## Motion: Jolt + UniformFieldCorrector (uniform_field_lab.gd). Displayed numbers: PhysicsLaws at the formula time (the landing at landing_time(0, -g, h0)); the engine is
 ## only the graph's "시뮬레이션" points and the measured landing times.
@@ -16,14 +18,13 @@ extends UniformFieldLab
 ## Left to right. mass: kg (the red one follows the "mass" control).
 const BALLS := {
 	"yellow": {"x": -1.5, "mass": 0.5, "color": ArtPalette.YELLOW, "name": "노랑"},
-	"purple": {"x": 0.0, "mass": 1.0, "color": ArtPalette.VIOLET, "name": "보라"},
 	"red": {"x": 1.5, "mass": 3.0, "color": ArtPalette.RED, "name": "빨강"},
 }
-const ORDER := ["yellow", "purple", "red"]
+const ORDER := ["yellow", "red"]
 const LINE_X := 3.0              # the balls move along the floor line x = -3..3 m (z = 0)
 const DROP := "drop_"             # the finger's object of a ball: "drop_red" drags the red ball up and down
 const BOUNCE := 0.5               # the web's wood balls (restitution 0.5)
-const LOOK_MASS := 1.0            # kg: the ball that looks BALL_RADIUS round (the violet one)
+const LOOK_MASS := 1.0            # kg: the mass that looks BALL_RADIUS round (the web's violet reference ball)
 const SIGN_AT := Vector3(-5.0, 0.0, -2.2)   # the gravity's signpost (PlanetSign), left of the ruler
 ## The piece game's two balls (the heavy red and the light yellow one) press their buttons "together"
 ## when their formula landings are this close (one fixed step: the same height lands at the same step).
@@ -33,11 +34,11 @@ const PAIR := ["red", "yellow"]
 var balls: Dictionary = {}        # id -> FormulaBody
 ## id -> start point of the ball's bottom (x, height above the floor, z).
 var starts: Dictionary = {}
-## The "height" control (all three balls); a height handle changes one ball only.
+## The "height" control (both balls); a height handle changes one ball only.
 var height := 5.0
 ## Each ball's own start (its bottom, m) when the lab opens (2026-10-29): not level, so the first drop
-## of the piece game's buttons is not together by itself (the slider still sets all three alike).
-const START_HEIGHTS := {"red": 5.0, "purple": 4.0, "yellow": 3.0}
+## of the piece game's buttons is not together by itself (the slider still sets both alike).
+const START_HEIGHTS := {"red": 5.0, "yellow": 3.0}
 var mass_id := "heavy"
 ## The signpost showing which world the gravity is (2026-10-28).
 var planet_sign: PlanetSign
@@ -49,7 +50,7 @@ func _init() -> void:
 
 
 ## The balls start at different heights (2026-10-29 user: the first drop must not press both buttons
-## at once): after the controls' defaults (the "height" slider sets all three), each ball gets its
+## at once): after the controls' defaults (the "height" slider sets both), each ball gets its
 ## own START_HEIGHTS; the child lifts the red and the yellow ball to the same height.
 func _ready() -> void:
 	super()
@@ -79,7 +80,8 @@ func control_value(id: String) -> Variant:
 	return super(id)
 
 
-## All three balls start `h` metres above the floor (their bottoms), limited to the slider's range.
+## Both balls start `h` metres above the floor (their bottoms), limited to the slider's range (not
+## snapped: the slider's 1 m step is the UI's; the web-parity cases drop from 2.5 m).
 func set_height(h: float) -> void:
 	var clamped := _clamp_to_control("height", h)
 	if is_nan(clamped):
@@ -231,7 +233,6 @@ func observations() -> Dictionary:
 		"red_time": t_red,   # the red ball's own time (its landing once it landed): the kid card and the stamp
 		"state": state_text,
 		"height_red": h_red,
-		"height_purple": formula_height("purple", ball_time("purple") if released else 0.0),
 		"height_yellow": formula_height("yellow", ball_time("yellow") if released else 0.0),
 		"fall_time": fall if is_finite(fall) else "닿지 않아요",
 		"speed": speed,
@@ -259,7 +260,7 @@ func together_time() -> Variant:
 	return t_red
 
 
-## Engine landing times of the three balls (the "시뮬레이션" readout): "노랑 1.02 · 보라 … s"; a
+## Engine landing times of the two balls (the "시뮬레이션" readout): "노랑 1.02 · 빨강 … s"; a
 ## ball shows "—" until it has a measured landing step (measured_landing_step).
 func measured_landings() -> String:
 	if not released:
@@ -330,7 +331,7 @@ func manipulation_body(id: String) -> PhysicsBody3D:
 
 ## "line": the floor line under the balls in front of the ruler (0.5 m grid, the balls' `snap` rule).
 ## "drop_<ball>": the vertical line of that ball's drop, plane x = the height of the ball's bottom over
-## the floor in the height slider's range (its 0.5 m step is the objects' `snap`). The frame stands
+## the floor in the height slider's range (its 1 m step is the drop objects' `snap`, 2026-10-29). The frame stands
 ## upright (x up, its normal towards the front camera) one radius behind the ball, so a ball lifted
 ## by its radius off the frame is on its own drop line.
 func manipulation_surface(surface_id: String) -> ManipSurface:
@@ -385,7 +386,7 @@ func manipulation_placed(id: String, transform: Transform3D) -> void:
 	if id.begins_with(DROP):
 		# A ball let go on its drop line starts at that height, the others stay (2026-10-29).
 		var ball_id := id.trim_prefix(DROP)
-		var step := _grid_step(id) if _grid_step(id) > 0.0 else 0.5
+		var step := _grid_step(id) if _grid_step(id) > 0.0 else 1.0
 		var h := _clamp_to_control("height", snappedf(transform.origin.y - BALL_RADIUS, step))
 		if is_nan(h):
 			return

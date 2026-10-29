@@ -128,3 +128,8 @@ func _process(delta: float) -> void:
 	_arm.rotation.z = -SWING * cos(TAU * _phase) + wobble(_t, _ring_at, 0.1, 0.5)
 	if _door_open_at >= 0.0:
 		_door.rotation.y = -PI * 0.6 * smooth((_t - _door_open_at) / DOOR_S)
+
+
+## The clue's glow (LabGame.highlight): the metronome clock.
+func highlight_spots() -> Array:
+	return [{"at": AT + Vector3(0.0, BODY_H * 0.6, 0.0), "radius": 1.35}]

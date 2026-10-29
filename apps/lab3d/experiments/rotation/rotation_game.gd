@@ -82,3 +82,8 @@ func _process(delta: float) -> void:
 	if l != null and l.model.lifting():
 		y += 0.03 * absf(sin(_t * 9.0))
 	piece.position.y = y
+
+
+## The clue's glow (LabGame.highlight): a halo on the piece in its pit under the chest.
+func highlight_radius() -> float:
+	return 0.75

@@ -63,6 +63,7 @@ const HINT_DELAY_S := 20.0
 const HINT_PERIOD_S := 2.4
 const HINT_TWINKLE_S := 1.1
 const HINT_SIZE := 0.42
+const GLOW_MARGIN := 0.35          # the riddle's ring reaches this far past the spot's stage (m)
 
 var home: IslandHomeScreen
 var part := ""                     # "", "prologue", "flight", "finale"
@@ -117,6 +118,11 @@ var wrongs_told := 0               # (tests)
 var hint: Node3D                   # the next spot's glint (null until the first hint)
 var _riddle_due := false           # say the riddle as soon as the map is free
 var _hint_t := 0.0                 # seconds since the riddle was last said
+## While Puppy's riddle is in his box the next spot's stage faintly glows (2026-10-29 user "해당
+## 포인트를 희미하게 강조": a soft warm ring, slowly pulsing; ClueGlow), fading out when the box closes.
+## Subtle on purpose: it does not name the spot (the 20 s hint glint stays the loud help).
+var spot_glow: ClueGlow            # null until the first riddle
+var _riddle_open := false          # the box holds the riddle (not the "not here" line)
 
 
 func _init(screen: IslandHomeScreen) -> void:
@@ -203,6 +209,7 @@ func say_riddle() -> void:
 	_hide_hint()
 	var spot := ExperimentRegistry.find(next_id)
 	_say(Story.map_clue(spot), Story.map_clue_face(spot))
+	_riddle_open = true
 	riddles_told += 1
 
 
@@ -211,6 +218,7 @@ func say_wrong() -> void:
 	if cinematic():
 		return
 	_riddle_due = false
+	_riddle_open = false
 	_say(Story.wrong_line(), Story.wrong_face())
 	wrongs_told += 1
 
@@ -220,6 +228,40 @@ func hush() -> void:
 	_riddle_due = false
 	if riddle != null and riddle.active:
 		riddle.close(true)
+	_step_spot_glow(0.0)
+
+
+## Back on the map (Android back): Puppy's open box closes first. True if it did.
+func close_riddle() -> bool:
+	if riddle == null or not riddle.active:
+		return false
+	hush()
+	return true
+
+
+## The next spot glows while its riddle is told (the box open with the riddle).
+func riddle_glowing() -> bool:
+	return spot_glow != null and spot_glow.on
+
+
+func _step_spot_glow(delta: float) -> void:
+	var on := _riddle_open and riddle != null and riddle.active and next_id != "" and not cinematic()
+	if not on:
+		_riddle_open = _riddle_open and riddle != null and riddle.active
+	if on and spot_glow == null:
+		spot_glow = ClueGlow.ring(1.0)
+		spot_glow.name = "RiddleGlow"
+		spot_glow.set_process(false)   # stepped here with the story (tests step it)
+		home.world.add_child(spot_glow)
+	if spot_glow == null:
+		return
+	if on:
+		for spot in home._spots:
+			if spot.id == next_id:
+				spot_glow.position = spot.at + Vector3.UP * 0.04
+				spot_glow.scale = Vector3.ONE * (maxf(float(spot.radius), 0.9) + GLOW_MARGIN)   # the pond has no stage (0)
+	spot_glow.set_on(on)
+	spot_glow.step(delta)
 
 
 func _say(words: String, face := "") -> void:
@@ -498,6 +540,7 @@ func advance(delta: float) -> void:
 		elif _riddle_due and not home._walking:
 			say_riddle()
 	_step_hint(delta)
+	_step_spot_glow(delta)
 	for b in _beats.duplicate():
 		b[0] -= delta
 		if b[0] <= 0.0:

@@ -387,6 +387,12 @@ func _print_spot_points() -> void:
 		print("[explore] puppy %d %d" % [roundi((to_window * at).x), roundi((to_window * at).y)])
 
 
+## Back (Android back) on the map: Puppy's open box (a riddle, "not here") closes first. True if it
+## did; false: the app goes on to the title (App._go_back).
+func handle_back() -> bool:
+	return story != null and story.close_riddle()
+
+
 ## The night map's 단서 button shows while a spot is still to find.
 func show_clue_button(on: bool) -> void:
 	if clue_button != null:

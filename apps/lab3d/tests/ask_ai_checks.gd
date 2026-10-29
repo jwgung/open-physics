@@ -124,13 +124,13 @@ func check_follows_run() -> void:
 	var screen := await _open("free-fall")
 	var control: Dictionary = screen.definition.controls.filter(func(c: Dictionary) -> bool: return c.id == "height")[0]
 	var before := ScienceNote.question(screen.definition, screen.experiment)
-	screen._set_control("height", 2.5)
+	screen._set_control("height", 3.0)
 	await tree.process_frame
 	var after := ScienceNote.question(screen.definition, screen.experiment)
 	var old_text := "%s: %s" % [control.label, ScienceNote.condition_text(control, 5.0)]
-	var new_text := "%s: %s" % [control.label, "2.5m"]
+	var new_text := "%s: %s" % [control.label, "3m"]   # whole metres (1 m step, 2026-10-29)
 	expect.call(before.contains(old_text) and after.contains(new_text) and not after.contains(old_text),
-		"ask AI: the question follows the run (height 5.0m -> 2.5m)", new_text)
+		"ask AI: the question follows the run (height 5m -> 3m)", "%s / %s" % [old_text, new_text])
 	await _close(screen)
 
 

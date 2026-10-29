@@ -157,3 +157,12 @@ func _process(delta: float) -> void:
 		_door.rotation.y = -PI * 0.6 * smooth((_t - _door_open_at) / DOOR_S)
 	else:
 		_door.rotation.y = (-PI * 0.6 if cleared >= stages else 0.0) + wobble(_t, _rattle_at, 0.08, 0.5)
+
+
+## The clue's glow (LabGame.highlight): the blue house and, flat on the floor, its two buttons (the
+## clue: "버튼 두 개를 같이 누르면 문이 열릴 것 같아"). The buttons' rings follow their balls.
+func highlight_spots() -> Array:
+	var spots: Array = [{"at": HOUSE_AT + Vector3(0.0, HOUSE.y * 0.55, 0.0), "radius": 1.0}]
+	for id in _button_x:
+		spots.append({"at": Vector3(float(_button_x[id]), 0.0, 0.0), "radius": BUTTON_R + 0.3, "flat": true})
+	return spots

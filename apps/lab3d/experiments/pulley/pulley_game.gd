@@ -112,3 +112,8 @@ func _process(delta: float) -> void:
 		_door.rotation.y = -PI * 0.6 * smooth((_t - _door_open_at) / DOOR_S)
 	elif _shelf != null:
 		_shelf.position.y = shelf_y + absf(wobble(_t, _ring_at, 0.03, 0.4))
+
+
+## The clue's glow (LabGame.highlight): a halo on the chest (the piece behind its window), following the load.
+func highlight_radius() -> float:
+	return 0.75

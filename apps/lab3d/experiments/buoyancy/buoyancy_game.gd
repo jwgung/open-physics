@@ -97,3 +97,8 @@ func _process(delta: float) -> void:
 		_lid.rotation_degrees.x = lerpf(_lid_from, _lid_to, smooth(k))
 		if k >= 1.0:
 			_lid_at = -1.0
+
+
+## The clue's glow (LabGame.highlight): a halo on the sunk chest (the piece under its lid), following the drum.
+func highlight_radius() -> float:
+	return 0.5

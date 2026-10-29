@@ -319,6 +319,19 @@ func _process(delta: float) -> void:
 			_run_measured_action(manipulator.demo_action)
 	_run_dialogue()
 	_run_celebration(delta)
+	_sync_clue_glow()
+
+
+## While Puppy tells the lab's clue the game object holding the piece faintly glows (2026-10-29 user
+## "해당 포인트를 희미하게 강조", LabGame.highlight); it fades out when his box closes.
+func _sync_clue_glow() -> void:
+	if experiment != null and experiment.game != null:
+		experiment.game.highlight(clue_telling())
+
+
+## Puppy's clue is in the box now (not yet read).
+func clue_telling() -> bool:
+	return _asking and _clue != "" and _clue_open and dialogue != null and dialogue.active
 
 
 ## Dugi's dialogue opens when he starts explaining and keeps him pointing until it closes (a tap
@@ -485,11 +498,23 @@ func _on_back_pressed() -> void:
 		back_requested.emit()
 
 
-## Back (Android back, Esc): closes an open sidebar first. Returns true if it did.
+## Back (Android back, Esc, ← 지도): one step back. Returns true if it closed something here, false
+## when the screen should go to the map. In order (2026-10-29 user: back closes the dialogue first):
+## the round-done card; Puppy's clue (read: Dugi's question comes next, as after a tap); Dugi's
+## explanation (he lowers his arm); the open sidebar. Dugi's prediction question is not skipped by
+## back: it is not closed, the screen goes to the map without an answer (the question is asked again
+## next time, like any unanswered visit).
 func handle_back() -> bool:
 	if _done_card != null:
 		_done_card.close()   # back closes the round-done card first (the lab stays, like 더 해 보기)
 		_done_card = null
+		return true
+	if clue_telling():
+		dialogue.close(true)   # _run_question sees the clue read and lets Dugi ask
+		_sync_clue_glow()
+		return true
+	if dialogue != null and dialogue.active and not _asking:
+		_close_dialogue()   # Dugi's explanation
 		return true
 	if not is_sidebar_open():
 		return false

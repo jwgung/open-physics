@@ -43,6 +43,7 @@ func run() -> void:
 	await check_labels()
 	await check_riddle()
 	await check_riddle_after_flight()
+	await check_riddle_glow()
 	await check_hint()
 	await check_brightness()
 	await check_old_save()
@@ -151,6 +152,40 @@ func check_riddle() -> void:
 	await tree.process_frame
 	expect.call(quiet and story.riddles_told == 1 and story.riddle.text == MAP_CLUES["free-fall"],
 		"explore: no riddle during the prologue; after it Puppy's first riddle (the blue tower)", str(story.riddles_told))
+	await _free(home)
+
+
+## While Puppy's riddle is in his box the next spot's stage faintly glows (a warm pulsing ring on its
+## stage, 2026-10-29 "해당 포인트를 희미하게 강조"); his "not here" line has none; closing the box (back,
+## the read timer) fades it out. Back on the map closes his box first (then the title, App._go_back).
+func check_riddle_glow() -> void:
+	_store(_first(2))
+	var home := await _home()
+	var story: StoryDirector = home.story
+	story.advance(0.6)
+	var glow := story.spot_glow
+	var target: Dictionary = _spot(home, "collision")
+	var on: bool = story.riddle.active and story.riddle_glowing() and glow != null and glow.shown() and glow.level > 0.99
+	var over := glow != null and Vector2(glow.position.x - target.at.x, glow.position.z - target.at.z).length() < 1e-4 \
+		and absf(glow.position.y - target.at.y) < 0.1 and glow.scale.x > maxf(float(target.radius), 0.9)
+	# Faint and breathing: below PEAK at most, never dark while on.
+	var alphas := []
+	for i in 40:
+		story.advance(0.05)
+		alphas.append((glow.material_override as StandardMaterial3D).albedo_color.a)
+	var faint: bool = alphas.max() <= ClueGlow.PEAK + 1e-6 and alphas.min() >= ClueGlow.PEAK * ClueGlow.LOW - 1e-6 and alphas.max() - alphas.min() > 0.1
+	story.say_wrong()
+	story.advance(1.0)
+	var wrong_off: bool = story.riddle.active and not story.riddle_glowing() and not glow.shown()
+	story.say_riddle()
+	story.advance(0.6)
+	var again: bool = story.riddle_glowing() and glow.shown()
+	var closed: bool = home.handle_back() and not story.riddle.active and not story.riddle_glowing()
+	story.advance(ClueGlow.FADE_OUT_S + 0.1)
+	var faded: bool = not glow.shown() and not home.handle_back()
+	expect.call(on and over and faint and wrong_off and again and closed and faded,
+		"explore: during Puppy's riddle the next spot's stage glows faintly (a pulsing warm ring on it), not for 'not here'; back closes his box first and the glow fades out",
+		"on %s over %s faint %s (%.2f..%.2f) wrong %s again %s closed %s faded %s" % [on, over, faint, alphas.min(), alphas.max(), wrong_off, again, closed, faded])
 	await _free(home)
 
 
@@ -293,8 +328,8 @@ func check_bench_map() -> void:
 	var walking: bool = home._walking
 	home._walking = false
 	expect.call(not Story.enabled and home.story == null and shown == ORDER and walking and home.lit_spots().is_empty()
-		and not home.clue_button.visible and home.find_child("PuppyRiddle", true, false) == null,
-		"explore: the measured map (--progress=bench) is the day map as before: every name, every spot opens, no riddle", str(shown))
+		and not home.clue_button.visible and home.find_child("PuppyRiddle", true, false) == null and home.find_child("RiddleGlow", true, false) == null,
+		"explore: the measured map (--progress=bench) is the day map as before: every name, every spot opens, no riddle, no riddle glow", str(shown))
 	app.queue_free()
 	for i in 3:
 		await tree.process_frame

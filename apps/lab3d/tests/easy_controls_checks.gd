@@ -26,7 +26,7 @@ const TABLET := Vector2(1152, 720)
 const GRAB_MIN := 72.0
 ## Per lab: the objects a finger still picks up (one gesture per lab).
 const KEPT := {
-	"free-fall": ["drop_red", "drop_purple", "drop_yellow"],
+	"free-fall": ["drop_red", "drop_yellow"],
 	"projectile": ["ball"],
 	"collision": ["ball_a"],
 	"spring": ["ball"],

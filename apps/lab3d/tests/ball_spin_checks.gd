@@ -11,7 +11,7 @@
 ##    landing step still come.
 ## 3. where the thrown ball stops: the default and the farthest throw (reported).
 ## 4. what is seen turning is the body: the mesh (the yarn ball) is its child with no turn of its own.
-## 5. free fall: the three balls never turn and do not drift sideways through their bounces.
+## 5. free fall: the two balls never turn and do not drift sideways through their bounces.
 ## 6. collision lab (model driven): each ball's mesh turns by its travel over its radius (v = omega r).
 ## 7. colours (2026-10-23 user request): the free-fall balls and the development scene's boxes are
 ##    red / yellow / violet, and every label (ball names, observations, graph series and colours,
@@ -1132,5 +1132,5 @@ func check_ball_colours() -> void:
 				problems.append("dev box %s colour %s" % [id, box_colour.to_html(false)])
 	await _free(dev)
 	expect.call(problems.is_empty(),
-		"ball colours: free-fall balls red / yellow / violet (development boxes too), and every name, label, graph series and note matches the mesh colour",
+		"ball colours: free-fall balls red / yellow (development boxes red / yellow / violet), and every name, label, graph series and note matches the mesh colour",
 		"; ".join(problems))

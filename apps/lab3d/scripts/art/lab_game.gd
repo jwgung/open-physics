@@ -40,6 +40,11 @@ var _fly_g := 9.81
 var _fly_t := 0.0
 var _hops := 0
 var _rest_at := Vector3.ZERO
+## The clue's faint glow (2026-10-29 user "해당 포인트를 희미하게 강조"): while Puppy says the lab's
+## clue, the object holding the piece glows (ClueGlow, built on the first clue; none in a bench run,
+## which has no story). [glow, spot index] pairs following highlight_spots().
+var _glows: Array = []
+var _highlight := false
 
 
 func _init(experiment: Experiment = null) -> void:
@@ -105,6 +110,50 @@ func run_reset() -> void:
 	_jump(cleared)
 
 
+## The clue is told (true) or its box closed (false): the game object faintly glows and pulses
+## while on, and fades out after. Visual only.
+func highlight(on: bool) -> void:
+	if on == _highlight:
+		return
+	_highlight = on
+	if on and _glows.is_empty():
+		var spots := highlight_spots()
+		for i in spots.size():
+			var spot: Dictionary = spots[i]
+			var glow := ClueGlow.ring(float(spot.radius)) if spot.get("flat", false) else ClueGlow.halo(float(spot.radius))
+			add_child(glow)
+			_glows.append(glow)
+		_place_glows()
+	for glow: ClueGlow in _glows:
+		glow.set_on(on)
+
+
+## Whether the clue's glow shows now (tests: asked on, or still fading out).
+func highlighting() -> bool:
+	return _glows.any(func(glow: ClueGlow) -> bool: return glow.shown())
+
+
+## The glow's spots (local to the game): [{at, radius, flat}] — by default a halo of HIGHLIGHT_R at
+## the piece in its object (the piece sits inside the crate, the ice, the house …), which moves with
+## the object (a chest on a rope, a load on a pulley). Subclasses aim at their object's middle.
+func highlight_spots() -> Array:
+	if piece == null:
+		return []
+	return [{"at": to_local(piece.global_position) if piece.is_inside_tree() else piece.position, "radius": highlight_radius()}]
+
+
+## The halo's radius (m) around the piece by default (subclasses: their object's size).
+func highlight_radius() -> float:
+	return 0.8
+
+
+func _place_glows() -> void:
+	var spots := highlight_spots()
+	for i in mini(spots.size(), _glows.size()):
+		var glow: ClueGlow = _glows[i]
+		glow.position = spots[i].at + (Vector3.UP * 0.02 if spots[i].get("flat", false) else Vector3.ZERO)
+
+
 func set_piece_state(state: String) -> void:
 	piece_state = state
 	if piece != null:
@@ -144,6 +193,8 @@ func take_piece() -> Variant:
 
 func _process(delta: float) -> void:
 	_t += delta
+	if not _glows.is_empty() and (_glows[0] as ClueGlow).visible:
+		_place_glows()
 	if piece == null or not piece.visible:
 		return
 	match piece_state:

@@ -161,17 +161,17 @@ func check_free_fall() -> void:
 	var worlds := [0, 1, 2].map(func(i: int) -> String: return str(MissionTracker.missions(definition).stages[i].conditions.gravity))
 	if worlds != ["earth", "moon", "jupiter"]:
 		problems.append("the worlds %s" % str(worlds))
-	# The start (the earth, the heavy red ball, all at 5 m) is stage 1's setup: the first drop lands
-	# the two together (the prediction's answer). The decision of 2026-10-29 (README).
+	# The start (the earth, the heavy red ball; red 5 m, yellow 3 m) is stage 1's setup (the world and
+	# the ball); the child lifts the two level. The decision of 2026-10-29 (README).
 	var start: Experiment = await _lab("free-fall")
 	if not MissionTracker.conditions_met(MissionTracker.missions(definition).stages[0].conditions, start):
 		problems.append("the start is not stage 1's setup")
 	start.queue_free()
 	var lab: Experiment = await _lab("free-fall")
 	lab.set_control("gravity", "moon")
-	lab.set_control("height", 7.5)
+	lab.set_control("height", 7.0)
 	var shown: Variant = lab.observations().fall_time
-	if not (shown is float and absf(shown - sqrt(2.0 * 7.5 / 1.62)) < 1e-9):
+	if not (shown is float and absf(shown - sqrt(2.0 * 7.0 / 1.62)) < 1e-9):
 		problems.append("the lab's fall_time %s is not √(2h/g)" % str(shown))
 	if ExperimentRegistry.shown_cards(definition) != ["red_time"]:
 		problems.append("the card is not the red ball's time")

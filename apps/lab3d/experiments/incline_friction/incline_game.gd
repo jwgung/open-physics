@@ -101,3 +101,10 @@ func _process(delta: float) -> void:
 	if _pending_piece_at >= 0.0 and _t >= _pending_piece_at:
 		_pending_piece_at = -1.0
 		launch_piece(Vector3(0.4, 1.6, 1.2), 9.81)   # the slide lab's g (InclineFriction G)
+
+
+## The clue's glow (LabGame.highlight): the red pillar with the piece on its top.
+func highlight_spots() -> Array:
+	var pillar: Array = ROWS[ROWS.size() - 1]
+	var size: Vector3 = pillar[1]
+	return [{"at": Vector3(pillar[0][0] + size.x * 0.5, size.y * 0.8, 0.0), "radius": 0.95}]

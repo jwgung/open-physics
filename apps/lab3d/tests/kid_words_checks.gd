@@ -186,24 +186,24 @@ func check_content_lint() -> void:
 
 # --- the cards ------------------------------------------------------------------------------------
 
-## The free fall's card is the red ball's time: with the red ball low and the purple one high, the
-## red ball has landed while the purple one still falls; the card stays at the red ball's landing
+## The free fall's card is the red ball's time: with the red ball low and the yellow one high, the
+## red ball has landed while the yellow one still falls; the card stays at the red ball's landing
 ## while the slowest ball's time (`time`) runs on.
 func check_free_fall_card() -> void:
 	var screen := await _open("free-fall")
 	screen._end_question()
 	var lab: Experiment = screen.experiment
 	screen._set_control("height", 2.0)
-	lab.manipulation_placed("purple", Transform3D(Basis(), Vector3(lab.starts.purple.x, 8.0 + 0.25, 0.0)))
+	lab.manipulation_placed("yellow", Transform3D(Basis(), Vector3(lab.starts.yellow.x, 8.0 + 0.25, 0.0)))
 	screen.experiment_action("release")
-	await _frames(54)   # 0.9 s: the red ball (2 m, 0.64 s) is down, the purple one (8 m, 1.28 s) not
+	await _frames(54)   # 0.9 s: the red ball (2 m, 0.64 s) is down, the yellow one (8 m, 1.28 s) not
 	screen._poll()
 	var values: Dictionary = lab.observations()
 	var red := PhysicsLaws.landing_time(0.0, -9.81, 2.0)
 	var card: String = screen._key_labels.red_time.text if screen._key_labels.has("red_time") else ""
 	var ok: bool = lab.status() == "falling" and screen.key_card_ids() == ["red_time"] and absf(float(values.red_time) - red) < 1e-9 \
 		and float(values.time) > red + 0.2 and card == ExperimentScreen.kid_value("s", red, 2) and card != ExperimentScreen.kid_value("s", float(values.time), 2)
-	expect.call(ok, "kid words: the free fall's card is the red ball's own time (landed at 0.6초 while the high purple ball still falls), not the slowest ball's",
+	expect.call(ok, "kid words: the free fall's card is the red ball's own time (landed at 0.6초 while the high yellow ball still falls), not the slowest ball's",
 		"status %s, card '%s', red_time %s, time %s" % [lab.status(), card, str(values.red_time), str(values.time)])
 	await _close(screen)
 

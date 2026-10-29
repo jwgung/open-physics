@@ -624,7 +624,7 @@ const ROLE_RUNS := {
 	"orbit": {"steps": 480, "ops": [[30, "act", "launch"]]},
 	# Other conditions (the same checks; `lab` before the slash).
 	"free-fall/high": {"steps": 240, "ops": [[0, "call", "set_height", 8.0], [30, "act", "release"]]},
-	"free-fall/low": {"steps": 120, "ops": [[0, "call", "set_height", 0.5], [30, "act", "release"]]},
+	"free-fall/low": {"steps": 120, "ops": [[0, "call", "set_height", 1.0], [30, "act", "release"]]},
 	"collision/back": {"steps": 300, "ops": [[0, "call", "set_control", "velocity_a", -3.0], [30, "act", "release"]]},
 	"collision/bumper": {"steps": 300, "ops": [[0, "call", "manipulation_placed", "ball_a", Transform3D(Basis(), Vector3(-6.5, 0.4, 0.0))], [30, "act", "release"]]},
 	"incline-friction/flat": {"steps": 120, "ops": [[0, "call", "set_angle", 0.0], [30, "act", "release"]]},

@@ -2,7 +2,7 @@
 ## run_tests.gd. Expected values are the TS-core vectors in tests/uniform_labs_vectors.json
 ## (tools/uniform-labs-vectors.test.ts); motion is measured from the balls' engine positions.
 ## 1. free fall: the displayed numbers at fixed steps and at the landing = TS (1e-9), the step
-##    positions = h0 - g t^2 / 2 (1e-4 m), the three masses fall together (1e-6 m), the engine landing
+##    positions = h0 - g t^2 / 2 (1e-4 m), the two masses fall together (1e-6 m), the engine landing
 ##    = TS landing time +-2 steps; red mass 0.5 vs 3 kg gives the same motion; no field: nothing falls.
 ## 2. projectile: step positions = TS x(t), y(t) (1e-4 m), displayed position / velocity / flight time
 ##    / range / apex = TS (1e-9), engine landing time +-2 steps and distance +-2 steps of travel,
@@ -180,7 +180,7 @@ func check_free_fall_cases() -> void:
 				var field: String = "height_red" if key == "height" else key
 				worst_display = maxf(worst_display, _err(shown[field], float(sample[key])))
 			worst_display = maxf(worst_display, _err(shown.time, float(sample.t)))
-			worst_display = maxf(worst_display, maxf(_err(shown.height_purple, float(sample.height)), _err(shown.height_yellow, float(sample.height))))
+			worst_display = maxf(worst_display, _err(shown.height_yellow, float(sample.height)))
 			var k := int(sample.step)
 			var want := float(sample.height) - float(case.height)
 			for id in lab.ORDER:
@@ -200,7 +200,7 @@ func check_free_fall_cases() -> void:
 		worst_land_display = maxf(worst_land_display, maxf(_err(shown.time, landing), _err(shown.fall_time, landing)))
 		worst_land_display = maxf(worst_land_display, maxf(_err(shown.speed, float(case.landing.speed)), _err(shown.momentum, float(case.landing.momentum))))
 		worst_land_display = maxf(worst_land_display, maxf(_err(shown.kinetic, float(case.landing.kinetic)), _err(shown.height_red, 0.0) + _err(shown.potential, 0.0)))
-		states_ok = states_ok and shown.state == "모두 바닥에 닿음" and str(shown.landing).count(".") == 3
+		states_ok = states_ok and shown.state == "모두 바닥에 닿음" and str(shown.landing).count(".") == 2
 		# Graph: measured points on the formula line (both are heights of the balls' bottoms).
 		var series: Dictionary = lab.graph_series()
 		for p in series.measured:
@@ -208,11 +208,11 @@ func check_free_fall_cases() -> void:
 		details.append("%s h %.1f: T %.4f s, landed %s" % [case.gravity, case.height, landing,
 			str(lab.ORDER.map(func(id: String) -> int: return lab.corrector_of(id).landed_step))])
 	expect.call(worst_display <= tolerance, "free fall: displayed t, heights, v, p, K, U at fixed steps = TS core (6 cases)", "max rel err %s" % String.num_scientific(worst_display))
-	expect.call(worst_motion <= 1e-4, "free fall: ball positions = h0 - g t^2 / 2 at the step points (3 balls, 6 cases)", "max |diff| %s m" % String.num_scientific(worst_motion))
-	expect.call(worst_spread <= 1e-6, "free fall: 0.5, 1 and 3 kg balls fall together", "max spread %s m" % String.num_scientific(worst_spread))
+	expect.call(worst_motion <= 1e-4, "free fall: ball positions = h0 - g t^2 / 2 at the step points (2 balls, 6 cases)", "max |diff| %s m" % String.num_scientific(worst_motion))
+	expect.call(worst_spread <= 1e-6, "free fall: the 0.5 kg yellow and the 3 kg red ball fall together", "max spread %s m" % String.num_scientific(worst_spread))
 	expect.call(worst_landing <= 2, "free fall: each ball's engine landing = TS landing time ±2 steps", "worst %d steps; %s" % [worst_landing, "; ".join(details)])
 	expect.call(worst_land_display <= tolerance, "free fall: after the landing the panel shows the formula landing (t = T, v, p, K; h = U = 0)", "max rel err %s" % String.num_scientific(worst_land_display))
-	expect.call(states_ok, "free fall: state '모두 바닥에 닿음' and three measured landing times", "")
+	expect.call(states_ok, "free fall: state '모두 바닥에 닿음' and two measured landing times (the two balls, 2026-10-29)", "")
 	expect.call(graph_worst <= 1e-4, "free fall: graph's simulation points lie on the formula line", "max |diff| %s m" % String.num_scientific(graph_worst))
 	await _free(lab)
 
@@ -266,8 +266,8 @@ func check_free_fall_art() -> void:
 			children.append(child.get_class())
 		children.sort()
 		juices_ok = juices_ok and juice.mesh.get_parent() == lab.balls[id] and children == ["CollisionShape3D", "MeshInstance3D"] and not lab.balls[id].is_ancestor_of(juice)
-	expect.call(bodies == ["RigidBody3D", "RigidBody3D", "RigidBody3D", "StaticBody3D"] and juices_ok,
-		"free fall art adds no collision objects (floor + 3 balls); reactions act on each ball's mesh only", ", ".join(bodies))
+	expect.call(bodies == ["RigidBody3D", "RigidBody3D", "StaticBody3D"] and juices_ok,
+		"free fall art adds no collision objects (floor + 2 balls); reactions act on each ball's mesh only", ", ".join(bodies))
 	var runs := []
 	var deformed := 0.0
 	for with_juice in [true, false]:
@@ -455,8 +455,8 @@ func check_free_fall_height_clamp() -> void:
 	lab.set_control("height", 99.0)
 	var high: float = lab.height
 	lab.set_control("height", 3.0)
-	expect.call(low == 0.5 and high == 8.0 and low_starts and lab.height == 3.0 and lab.control_value("height") == 3.0,
-		"free fall: the height condition is limited to the slider's range (0.5..8 m)", "low %.1f, high %.1f" % [low, high])
+	expect.call(low == 1.0 and high == 8.0 and low_starts and lab.height == 3.0 and lab.control_value("height") == 3.0,
+		"free fall: the height condition is limited to the slider's range (1..8 m)", "low %.1f, high %.1f" % [low, high])
 	await _free(lab)
 
 
@@ -485,15 +485,15 @@ func check_first_release_from_floor() -> void:
 	lab = await _lab("free-fall")
 	lab.manipulation_placed("red", Transform3D(Basis(), Vector3(1.5, lab.BALL_RADIUS, 0.0)))
 	lab.release()
-	var purple: UniformFieldCorrector = lab.corrector_of("purple")
+	var yellow: UniformFieldCorrector = lab.corrector_of("yellow")
 	for i in 2 * STEP_HZ:
-		if purple.landed_step >= 0:
+		if yellow.landed_step >= 0:
 			break
 		await tree.physics_frame
-	var want := roundi(PhysicsLaws.landing_time(0.0, -9.81, 4.0) * STEP_HZ)   # purple starts at 4 m (2026-10-29)
-	expect.call(lab.corrector_of("red").landed_step < 0 and lab.has_landed("red") and absi(purple.landed_step - want) <= 2,
-		"landing: a fresh free-fall lab with a ball on the floor reports no engine landing for it; the dropped ones land at their formula time",
-		"red %d, purple %d (formula %d)" % [lab.corrector_of("red").landed_step, purple.landed_step, want])
+	var want := roundi(PhysicsLaws.landing_time(0.0, -9.81, 3.0) * STEP_HZ)   # yellow starts at 3 m (2026-10-29)
+	expect.call(lab.corrector_of("red").landed_step < 0 and lab.has_landed("red") and absi(yellow.landed_step - want) <= 2,
+		"landing: a fresh free-fall lab with a ball on the floor reports no engine landing for it; the dropped one lands at its formula time",
+		"red %d, yellow %d (formula %d)" % [lab.corrector_of("red").landed_step, yellow.landed_step, want])
 	await _free(lab)
 	# 1 mm up: the floor is touched inside the first (seeding) step, so the engine reports nothing and
 	# the formula clock decides.
@@ -558,7 +558,7 @@ func check_free_fall_zero_g_on_floor() -> void:
 	var revision: int = lab.graph_revision()
 	await _until_step(lab.corrector_of("red"), 4 * lab.GRAPH_EVERY_STEPS)
 	shown = lab.observations()
-	expect.call(float(shown.time) == 0.0 and shown.state == "모두 바닥에 닿음" and lab.graph_revision() == revision and lab.graph_series().measured.size() == 3,
+	expect.call(float(shown.time) == 0.0 and shown.state == "모두 바닥에 닿음" and lab.graph_revision() == revision and lab.graph_series().measured.size() == 2,
 		"landing: in a field balls let go on the floor have landed (time 0); the graph revision stays while no point is added",
 		"time %s, state %s, revision %d -> %d" % [str(shown.time), shown.state, revision, lab.graph_revision()])
 	await _free(lab)
@@ -573,7 +573,7 @@ func check_free_fall_drop_lines() -> void:
 	var lab: Experiment = screen.experiment
 	var m: Manipulator = screen.manipulator
 	var yellow: RigidBody3D = lab.balls.yellow
-	lab.manipulation_placed("purple", Transform3D(Basis(), Vector3(0.0, 2.0 + lab.BALL_RADIUS, 0.0)))
+	lab.manipulation_placed("red", Transform3D(Basis(), Vector3(0.0, 2.0 + lab.BALL_RADIUS, 0.0)))   # the red ball's line to the middle
 	var y := yellow.global_position.y
 	var blocked: bool = not lab.placement_allowed("yellow", Transform3D(Basis(), Vector3(0.0, y, 0.0)))
 	var allowed: bool = lab.placement_allowed("yellow", Transform3D(Basis(), Vector3(-0.5, y, 0.0)))
@@ -581,7 +581,7 @@ func check_free_fall_drop_lines() -> void:
 	_swipe(screen, _at(screen, yellow.global_position), _at(screen, beside))
 	_touch(screen, 0, _at(screen, beside), false)
 	expect.call(blocked and allowed and is_equal_approx(lab.starts.yellow.x, -1.5) and m.selected_id == ""
-		and not lab.placement_allowed("red", Transform3D(Basis(), Vector3(0.0, 6.0, 0.0))),
+		and not lab.placement_allowed("red", Transform3D(Basis(), Vector3(-1.5, 6.0, 0.0))),
 		"landing: a ball cannot be placed on another ball's drop line (above or below); beside it is allowed; a finger does not slide a ball sideways",
 		"blocked %s, allowed %s, yellow x %.2f, selected %s" % [blocked, allowed, lab.starts.yellow.x, m.selected_id])
 	await _close(screen)
@@ -652,9 +652,9 @@ func check_drop_from_mm() -> void:
 	var text: String = lab.observations().landing
 	var want := "%s %.2f" % [lab.BALLS.red.name, roundi(landing * STEP_HZ) / float(STEP_HZ)] if red.landed_step < 0 else "%s %.2f" % [lab.BALLS.red.name, red.landed_step / float(STEP_HZ)]
 	var points: int = lab.graph_series().measured.size()
-	expect.call(landed and text.contains(want) and points == 3 + 2 * 5,
+	expect.call(landed and text.contains(want) and points == 2 + 5,   # both balls' first point, then the yellow one's (2026-10-29: two balls)
 		"landing: a drop from 5 mm lands by the formula, has a measured landing time and no graph point after the formula landing",
-		"T %.4f s, engine step %d, readout %s (want %s), %d graph points (want 13)" % [landing, red.landed_step, text, want, points])
+		"T %.4f s, engine step %d, readout %s (want %s), %d graph points (want 7)" % [landing, red.landed_step, text, want, points])
 	await _free(lab)
 
 
@@ -749,31 +749,30 @@ func check_arrow_surface() -> void:
 # --- manipulation through the input path -----------------------------------------------------------
 
 ## The free-fall drag (2026-10-27, one drag per lab; 2026-10-29 the piece game): a ball dragged up or
-## down sets its own drop height on its 0.5 m grid (the others stay; the "height" slider, all three,
-## stays too); no height handle shows. The run: each ball lands at the formula time of its own height,
+## down sets its own drop height on its 1 m grid (2026-10-29; the other stays; the "height" slider,
+## both balls, stays too); no height handle shows. The run: each ball lands at the formula time of its own height,
 ## and two different heights do not press the piece game's buttons together.
 func check_free_fall_manipulation() -> void:
 	var screen: Control = await _open(ExperimentRegistry.find("free-fall"))
 	var lab: Experiment = screen.experiment
 	var m: Manipulator = screen.manipulator
 	var red: RigidBody3D = lab.balls.red
-	var goal := red.global_position + Vector3(0.0, 1.9, 0.0)   # about 6.9 m -> 7 m on the 0.5 m grid
+	var goal := red.global_position + Vector3(0.0, 1.7, 0.0)   # about 6.7 m -> 7 m on the 1 m grid
 	_swipe(screen, _at(screen, red.global_position), _at(screen, goal))
 	var held: bool = m.mode == "drag" and m.active_id == "drop_red"
 	_touch(screen, 0, _at(screen, goal), false)
 	var slider_kept: bool = screen._control_widgets.height.slider.value == 5.0
-	# The balls open at their own heights (2026-10-29: red 5, purple 4, yellow 3 m).
-	var own: bool = lab.starts.red.y == 7.0 and lab.starts.yellow.y == 3.0 and lab.starts.purple.y == 4.0
+	# The balls open at their own heights (2026-10-29: red 5, yellow 3 m; two balls only).
+	var own: bool = lab.starts.red.y == 7.0 and lab.starts.yellow.y == 3.0 and lab.ORDER == ["yellow", "red"]
 	expect.call(held and lab.height == 5.0 and own and slider_kept and is_equal_approx(red.global_position.x, 1.5) and m.selected_id == "" and not m._knob.visible,
-		"free fall: dragging a ball up sets its own drop height on the 0.5 m grid (the others and the height slider stay, no height handle)",
+		"free fall: dragging a ball up sets its own drop height on the 1 m grid (the other ball and the height slider stay, no height handle)",
 		"held %s, height %.2f, starts %s" % [held, lab.height, str(lab.starts)])
 	screen.experiment_action("release")
 	for i in 3 * STEP_HZ:
 		if lab.status() == "landed" and _engine_landed(lab):
 			break
 		await tree.physics_frame
-	var want := {"red": roundi(PhysicsLaws.landing_time(0.0, -9.81, 7.0) * STEP_HZ), "yellow": roundi(PhysicsLaws.landing_time(0.0, -9.81, 3.0) * STEP_HZ),
-		"purple": roundi(PhysicsLaws.landing_time(0.0, -9.81, 4.0) * STEP_HZ)}
+	var want := {"red": roundi(PhysicsLaws.landing_time(0.0, -9.81, 7.0) * STEP_HZ), "yellow": roundi(PhysicsLaws.landing_time(0.0, -9.81, 3.0) * STEP_HZ)}
 	var lands: Dictionary = {}
 	for id in lab.ORDER:
 		lands[id] = lab.corrector_of(id).landed_step
@@ -784,7 +783,7 @@ func check_free_fall_manipulation() -> void:
 		"steps %s (formula %s), together %s" % [str(lands), str(want), str(lab.observations().together_time)])
 	# Picking up a landed ball stops the run (every ball back at its start).
 	_swipe(screen, _at(screen, red.global_position), _at(screen, red.global_position + Vector3(0, 0.05, 0)), 2)
-	var reset_ok: bool = not lab.released and lab.balls.purple.global_position.is_equal_approx(lab.starts.purple + Vector3.UP * lab.BALL_RADIUS)
+	var reset_ok: bool = not lab.released and lab.balls.yellow.global_position.is_equal_approx(lab.starts.yellow + Vector3.UP * lab.BALL_RADIUS)
 	_touch(screen, 0, _at(screen, red.global_position), false)
 	expect.call(reset_ok and lab.starts.red.y == 7.0 and not lab.game.pressed("red"), "free fall: picking up a landed ball stops the run (every ball back at its start, the buttons up)", str(red.global_position))
 	await _close(screen)

@@ -128,13 +128,15 @@ func go_back_requested() -> void:
 
 func _go_back() -> void:
 	if _screen is ExperimentScreen:
-		if not (_screen as ExperimentScreen).handle_back():   # an open sidebar closes first
+		if not (_screen as ExperimentScreen).handle_back():   # an open box, card or sidebar closes first
 			show_list()
 	elif _screen is SettingsScreen:
 		if _settings_from_title:
 			show_title()
 		else:
 			show_list()
+	elif _screen is IslandHomeScreen and (_screen as IslandHomeScreen).handle_back():
+		pass   # Puppy's open box closed first (2026-10-29)
 	elif _screen is IslandHomeScreen and TitleScreen.app_may_show:
 		show_title()   # the map goes back to the title (2026-10-29 decision)
 	else:

@@ -40,6 +40,7 @@ func run() -> void:
 	await check_orbit_piece()
 	await check_pieces()
 	await check_found_piece_flies()
+	await check_clue_glow()
 	check_words()
 
 
@@ -297,13 +298,18 @@ func check_free_fall() -> void:
 		return lab.observations().together_time
 	var level: Variant = await together.call("earth", "heavy", 5.0, 5.0)
 	var light: Variant = await together.call("earth", "light", 5.0, 5.0)
-	var apart: Variant = await together.call("earth", "heavy", 8.0, 7.5)
-	var dragged_one: bool = absf(lab.starts.purple.y - 4.0) < 1e-9   # the drag moved its own ball only (purple opens at 4 m)
+	var apart: Variant = await together.call("earth", "heavy", 8.0, 7.0)
+	# Two balls only (2026-10-29), and a drag moves its own ball to a whole metre (6.4 m -> 6 m).
+	lab.manipulation_placed("drop_red", Transform3D(Basis(), Vector3(lab.starts.red.x, 6.4 + lab.BALL_RADIUS, 0.0)))
+	var dragged_one: bool = absf(lab.starts.red.y - 6.0) < 1e-9 and absf(lab.starts.yellow.y - 7.0) < 1e-9 \
+		and lab.ORDER == ["yellow", "red"] and lab.balls.size() == 2
 	if not (level is float and absf(level - sqrt(2.0 * 5.0 / 9.81)) < 1e-9 and light is float and absf(light - level) < 1e-12 and apart is String and dragged_one):
-		problems.append("the lab: level %s, light %s, 8 vs 7.5 m %s, purple kept %s" % [level, light, apart, dragged_one])
+		problems.append("the lab: level %s, light %s, 8 vs 7 m %s, own whole-metre drag / two balls %s" % [level, light, apart, dragged_one])
+	if heights != [1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0]:
+		problems.append("the height grid %s (want 1–8 m by 1 m)" % str(heights))
 	lab.queue_free()
-	# The formula on the grid: two different heights never land within a step (Jupiter's 7.5 and 8 m
-	# are the closest pair: 0.026 s), the same height always does.
+	# The formula on the grid: two different heights never land within a step (Jupiter's 7 and 8 m
+	# are the closest pair: 0.052 s), the same height always does.
 	var g := {"earth": 9.81, "moon": 1.62, "jupiter": 24.79}
 	var closest := INF
 	for world in g:
@@ -333,7 +339,7 @@ func check_free_fall() -> void:
 				or (goals.call("picked", definition, i, "gravity", false) as Array).size() != 2:
 			problems.append("stage %d: the conditions / buttons" % (i + 1))
 	expect.call(problems.is_empty(),
-		"piece game (drop): the buttons count when the heavy red and the light yellow ball land within one step (the same height: √(2h/g) has no mass); grid heights apart never do (closest %.3f s); the earth any height, the Moon only both at 8 m (3.14 s), Jupiter any height under 1 s (the Moon not from 1 m, the earth not from 5 m); each stage wants the heavy red ball" % closest,
+		"piece game (drop): the buttons count when the heavy red and the light yellow ball land within one step (the same height: √(2h/g) has no mass); grid heights (1–8 m by 1 m) apart never do (closest %.3f s); the earth any height, the Moon only both at 8 m (3.14 s; 7 m is 2.94 s), Jupiter any height under 1 s (the Moon not from 1 m, the earth not from 5 m); each stage wants the heavy red ball" % closest,
 		"; ".join(problems))
 
 
@@ -745,6 +751,53 @@ func check_found_piece_flies() -> void:
 	expect.call(ok and over_cat,
 		"piece game: the found piece starts where the lab's piece lies (handed over: the lab's is gone) and flies into the bread cat's raised paws",
 		"first %s, lab piece %s, state %s, over the cat %s" % [first, lab_piece_at, state, over_cat])
+
+
+# --- the clue's glow ----------------------------------------------------------------------------------
+
+## While Puppy tells a lab's clue its game object faintly glows and pulses (2026-10-29 user "해당
+## 포인트를 희미하게 강조": LabGame.highlight, ClueGlow halos around the object, the free fall's buttons as
+## flat rings); when his box closes (back here; a tap or the read timer alike) it fades out and Dugi
+## asks. The glow is around the piece's object (the piece lies within a halo). A run without the
+## story (bench, measurements) has no clue and builds no glow.
+func check_clue_glow() -> void:
+	var was := Story.enabled
+	var problems := []
+	for id in PIECE_LABS:
+		DirAccess.remove_absolute(ProgressStore.path)
+		Story.enabled = true
+		var screen := await _open(ExperimentRegistry.find(id))
+		await _frames(2)
+		var game: LabGame = screen.experiment.game
+		var telling: bool = screen.clue_telling()
+		var on: bool = game.highlighting()
+		var glows: Array = game._glows
+		var near := false
+		for glow: ClueGlow in glows:
+			if glow.name == "ClueHalo" and glow.global_position.distance_to(game.piece.global_position) <= glow.scale.x:
+				near = true
+		var faint: bool = glows.all(func(glow: ClueGlow) -> bool: return (glow.material_override as StandardMaterial3D).albedo_color.a <= ClueGlow.PEAK + 1e-6)
+		var closed: bool = screen.handle_back() and not screen.clue_telling()
+		await _frames(int((ClueGlow.FADE_OUT_S + 0.2) * 60.0))
+		var off: bool = not game.highlighting() and glows.all(func(glow: ClueGlow) -> bool: return not glow.visible)
+		var asks: bool = screen._asking and screen.dialogue.active and screen.dialogue.speaker == "dugi"
+		if not (telling and on and near and faint and closed and off and asks):
+			problems.append("%s: telling %s on %s near %s faint %s closed %s off %s asks %s" % [id, telling, on, near, faint, closed, off, asks])
+		Story.enabled = was
+		await _free(screen)
+	# No story (a bench or measured run): no clue, no glow built.
+	Story.enabled = false
+	DirAccess.remove_absolute(ProgressStore.path)
+	var bench := await _open(ExperimentRegistry.find("free-fall"))
+	await _frames(10)
+	if bench.clue_telling() or not bench.experiment.game._glows.is_empty() or bench.experiment.game.find_children("Clue*", "", true, false).size() > 0:
+		problems.append("bench: a clue glow without the story")
+	await _free(bench)
+	Story.enabled = was
+	DirAccess.remove_absolute(ProgressStore.path)
+	expect.call(problems.is_empty(),
+		"clue glow: in all eleven labs Puppy's clue makes the game object glow faintly (a halo around the piece's object, the free fall's buttons ringed), back closes the clue, the glow fades out and Dugi asks; no glow without the story",
+		"; ".join(problems))
 
 
 # --- words ---------------------------------------------------------------------------------------------

@@ -135,3 +135,8 @@ func _process(delta: float) -> void:
 			piece.global_position = orbit_lab.planet.global_position + Vector3.UP * RIDE_UP
 		else:
 			piece.position = home() + Vector3.UP * (0.08 * sin(_t * 1.7) + absf(wobble(_t, _glint_at, 0.25, 0.6)))
+
+
+## The clue's glow (LabGame.highlight): a halo on the far piece in space.
+func highlight_radius() -> float:
+	return 0.9

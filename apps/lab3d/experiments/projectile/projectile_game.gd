@@ -149,3 +149,9 @@ func _process(delta: float) -> void:
 		elif not _tipped[i] and i == stage:
 			# The crate to hit: a small shake now and then ("me!").
 			_pivots[i].rotation.z = wobble(fmod(_t, CALL_EVERY_S), 0.0, 0.06)
+
+
+## The clue's glow (LabGame.highlight): the high crate with the piece on it.
+func highlight_spots() -> Array:
+	var top: Vector2 = TARGETS[TARGETS.size() - 1]
+	return [{"at": Vector3(top.x, top.y + CRATE * 0.85, 0.0), "radius": 1.0}]

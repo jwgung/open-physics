@@ -192,9 +192,9 @@ func check_free_fall_looks() -> void:
 	var follows := _follows(masses, radii)
 	if follows != "":
 		problems.append(follows)
-	lab.set_control("mass", "normal")   # red 1 kg = violet 1 kg; yellow 0.5 kg
-	if lab.look_radius("red") != lab.look_radius("purple") or not lab.look_radius("yellow") < lab.look_radius("purple"):
-		problems.append("red %s, violet %s, yellow %s" % [lab.look_radius("red"), lab.look_radius("purple"), lab.look_radius("yellow")])
+	lab.set_control("mass", "normal")   # red 1 kg = the look's 1 kg (BALL_RADIUS); yellow 0.5 kg
+	if not is_equal_approx(lab.look_radius("red"), lab.BALL_RADIUS) or not lab.look_radius("yellow") < lab.look_radius("red"):
+		problems.append("red %s (radius %s), yellow %s" % [lab.look_radius("red"), lab.BALL_RADIUS, lab.look_radius("yellow")])
 	lab.set_control("mass", "heavy")
 	# Every ball's drawn bottom is its body's bottom: waiting, falling, landing and bouncing.
 	lab.release()

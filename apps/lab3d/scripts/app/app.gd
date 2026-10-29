@@ -1,6 +1,6 @@
 ## App root: theme, screen navigation (the title on launch -> island map -> experiment, settings from
-## the title or the map; back returns to the map, or to the title from settings opened there; back on
-## the title or the map quits) and the fps overlay.
+## the title or the map; back returns to the map, or to the title from settings opened there and from
+## the map; back on the title quits) and the fps overlay.
 ## Landscape only (Task 2d): project.godot locks the screen to sensor landscape on Android and iOS.
 ## Launch args (command line or Android `opargs`, see Quality.all_args):
 ##   --experiment=<id>   open that experiment directly (measurements, screenshots)
@@ -27,8 +27,13 @@ var _screen: Control
 var _fps_label: Label
 var _show_fps := false
 var _settings_from_title := false
-## Back on the title or the map (tests replace it: quitting would end their run).
+## Back on the title (tests replace it: quitting would end their run).
 var quit := func() -> void: get_tree().quit()
+## The process frame of the last Android back handled (-10: none yet). One press of Android back
+## arrives twice in the same frame on Godot 4.7.2 (SM-X115, 2026-10-29): the activity's onBackPressed
+## (GodotLib.back) and the KEYCODE_BACK key event each send NOTIFICATION_WM_GO_BACK_REQUEST. Without
+## this the first took the lab to the map and the second quit the app from the map.
+var _back_frame := -10
 
 
 func _ready() -> void:
@@ -108,7 +113,17 @@ func show_title() -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_GO_BACK_REQUEST:
-		_go_back()
+		go_back_requested()
+
+
+## Android back (the notification): one step back per press. A second request in the same or the
+## next process frame is the same press (see _back_frame) and does nothing.
+func go_back_requested() -> void:
+	var frame := Engine.get_process_frames()
+	if frame - _back_frame <= 1:
+		return
+	_back_frame = frame
+	_go_back()
 
 
 func _go_back() -> void:
@@ -120,8 +135,10 @@ func _go_back() -> void:
 			show_title()
 		else:
 			show_list()
+	elif _screen is IslandHomeScreen and TitleScreen.app_may_show:
+		show_title()   # the map goes back to the title (2026-10-29 decision)
 	else:
-		quit.call()   # the title and the map quit
+		quit.call()   # the title quits (and the map when the title may not show: tests)
 
 
 ## The home is the 3D island (Plan G2): tap a spot, the cat hops over, the experiment opens. The

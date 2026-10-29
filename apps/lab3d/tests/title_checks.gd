@@ -2,7 +2,7 @@
 ## the boot splash) and never in a measurement, a direct --experiment / --screen launch, a
 ## --demo-story screenshot or the settings' renderer restart (--demo-title forces it); 시작하기 opens
 ## the prologue the first time and the map afterwards; 이야기 다시 보기 replays the prologue; 설정 opens
-## the settings and back returns to the title; back on the title quits. The island behind turns by
+## the settings and back returns to the title; back on the map goes to the title, back on the title quits. The island behind turns by
 ## itself and takes no input; no spot names; the logo and the buttons fit phone and tablet.
 extends RefCounted
 
@@ -26,6 +26,7 @@ func run() -> void:
 	Story.app_may_enable = true
 	check_launch_rule()
 	await check_flow(quality_script)
+	await check_back_press(quality_script)
 	await check_skips(quality_script)
 	await check_layout()
 	TitleScreen.app_may_show = false
@@ -101,6 +102,58 @@ func check_flow(quality_script: GDScript) -> void:
 		"%s %s %s" % [first, later, replay])
 	expect.call(settings and back_title and button_title and map_back, "title: 설정 opens the settings and back returns to the title (from the map: to the map)",
 		"%s %s %s %s" % [settings, back_title, button_title, map_back])
+
+
+## Android back as the device sends it (SM-X115, 2026-10-29): one press = two
+## NOTIFICATION_WM_GO_BACK_REQUEST in the same frame (onBackPressed + the KEYCODE_BACK key event). Each
+## press is one step: an open sidebar closes, the lab -> the map, settings -> where they opened, the
+## map -> the title, the title quits once. Before the fix the second of the pair quit from the map.
+func check_back_press(quality_script: GDScript) -> void:
+	quality_script.set("_args_cache", PackedStringArray([]))
+	var app := await _app()
+	var quits := [0]
+	app.quit = func() -> void: quits[0] += 1
+	var press := func() -> void:
+		app.notification(Node.NOTIFICATION_WM_GO_BACK_REQUEST)
+		app.notification(Node.NOTIFICATION_WM_GO_BACK_REQUEST)
+		for i in 3:
+			await tree.process_frame
+	var trail := []
+	var where := func() -> String:
+		if app._screen is ExperimentScreen:
+			return "lab+sidebar" if (app._screen as ExperimentScreen).is_sidebar_open() else "lab"
+		if app._screen is IslandHomeScreen:
+			return "map"
+		if app._screen is SettingsScreen:
+			return "settings"
+		if app._screen is TitleScreen:
+			return "title"
+		return str(app._screen)
+	app.show_experiment(ExperimentRegistry.find("projectile"))
+	await tree.process_frame
+	(app._screen as ExperimentScreen).open_sidebar(false)
+	await tree.process_frame
+	trail.append(where.call())
+	await press.call()
+	trail.append(where.call())   # the sidebar closed, still the lab
+	await press.call()
+	trail.append(where.call())   # the map
+	app.show_settings()
+	await tree.process_frame
+	await press.call()
+	trail.append(where.call())   # settings from the map -> the map
+	await press.call()
+	trail.append(where.call())   # the map -> the title
+	app.show_settings(true)
+	await tree.process_frame
+	await press.call()
+	trail.append(where.call())   # settings from the title -> the title
+	var quits_before: int = quits[0]
+	await press.call()
+	await _free(app)
+	expect.call(trail == ["lab+sidebar", "lab", "map", "map", "title", "title"] and quits_before == 0 and quits[0] == 1,
+		"back: one press (two go-back notifications in a frame) is one step: sidebar, lab -> map, settings -> back, map -> title, title quits once",
+		"%s quits %d/%d" % [str(trail), quits_before, quits[0]])
 
 
 ## A measured, direct or resumed launch opens its screen as before (no title).

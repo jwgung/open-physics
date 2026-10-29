@@ -497,8 +497,8 @@ func check_buttons_and_layout() -> void:
 		await _free(screen)
 
 
-## Android back (App._go_back): an experiment and settings go back to the map; only back on the
-## map quits (not called here: it would end the run).
+## Android back (App._go_back): an experiment and settings go back to the map (the map's back:
+## the title, or a quit when the title may not show; see title_checks.check_back_press).
 func check_back_navigation() -> void:
 	var app: Control = load("res://scripts/app/app.gd").new()
 	tree.root.add_child(app)

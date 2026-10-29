@@ -34,6 +34,9 @@ const FLAGS := "flags"
 const STORY := "story"
 const CLUES := "clues"
 const PIECES := "pieces"
+## The map (2026-10-29): [map] last_spot = the spot id the trio last walked to (they stand there when
+## the map opens again; none: the square).
+const MAP := "map"
 
 
 static func load() -> Dictionary:
@@ -153,3 +156,28 @@ static func clear_section(section: String) -> void:
 	if config.has_section(section):
 		config.erase_section(section)
 		config.save(path)
+
+
+## The spot the trio last walked to on the map ("" when none: they stand on the square).
+static func last_spot() -> String:
+	var value: Variant = _read().get_value(MAP, "last_spot", "")
+	return value if value is String else ""
+
+
+static func set_last_spot(id: String) -> void:
+	var config := _read()
+	if id == "":
+		if config.has_section_key(MAP, "last_spot"):
+			config.erase_section_key(MAP, "last_spot")
+	else:
+		config.set_value(MAP, "last_spot", id)
+	config.save(path)
+
+
+## 처음부터 다시 하기 (settings, confirmed): every section of the store in use is gone — the stamps,
+## the cleared runs, the flags, the story (prologue, clues, pieces, finale) and the map's last spot.
+## Only the file at `path` (the bench or test store in measurements and tests). The sound and the
+## other settings live in user://settings.cfg and stay.
+static func reset_all() -> void:
+	if FileAccess.file_exists(path):
+		DirAccess.remove_absolute(path)

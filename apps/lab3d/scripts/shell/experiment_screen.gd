@@ -84,6 +84,8 @@ var _sidebar: PanelContainer
 var _sidebar_state := "closed"          # closed, opening, open, closing
 var _sidebar_tween: Tween
 var _scroll: ScrollContainer
+## The sheet's 닫기, in the header above the scrolled note (always on screen while it is open).
+var close_button: Button
 var _observation_labels: Dictionary = {}
 var _control_widgets: Dictionary = {}   # id -> {"slider": HSlider, "value": Label} or {"buttons": {}, "note": Label}
 var _graph: GraphView
@@ -1447,25 +1449,36 @@ func _build_sidebar() -> void:
 	_sidebar = Ui.panel("SideSheet")
 	_sidebar.visible = false
 	add_child(_sidebar)
-	_scroll = Ui.scroller()
-	_sidebar.add_child(_scroll)
-	var pad := Ui.margin(18)
-	pad.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_scroll.add_child(pad)
-	var column := Ui.vbox(16)
-	pad.add_child(column)
+	var sheet := Ui.vbox(0)
+	_sidebar.add_child(sheet)
 
+	# The header (the lab's name and 닫기) stays put above the scrolled note (2026-10-29 user
+	# report: scrolled down, 닫기 was gone with no way to close). Only the cards below scroll.
+	var header_pad := Ui.margin(18)
+	header_pad.add_theme_constant_override("margin_bottom", 8)
+	header_pad.name = "SheetHeader"
+	sheet.add_child(header_pad)
 	var header := Ui.hbox(8)
+	header_pad.add_child(header)
 	var heading := Ui.vbox(6)
 	heading.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	heading.add_child(Ui.label(definition.category, "EyebrowLabel"))
 	heading.add_child(Ui.label(definition.question, "MutedLabel", true))
 	header.add_child(heading)
-	var close := Ui.button("닫기", "", 56)
-	close.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	close.pressed.connect(close_sidebar.bind(true))
-	header.add_child(close)
-	column.add_child(header)
+	close_button = Ui.button("닫기", "", 56)
+	close_button.name = "CloseSheet"
+	close_button.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	close_button.pressed.connect(close_sidebar.bind(true))
+	header.add_child(close_button)
+
+	_scroll = Ui.scroller()
+	sheet.add_child(_scroll)
+	var pad := Ui.margin(18)
+	pad.add_theme_constant_override("margin_top", 8)
+	pad.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_scroll.add_child(pad)
+	var column := Ui.vbox(16)
+	pad.add_child(column)
 
 	var note := ExperimentRegistry.note(definition)
 	_sections = {

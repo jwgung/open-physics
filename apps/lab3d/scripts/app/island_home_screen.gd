@@ -38,6 +38,12 @@ var _walk_to := Vector3.ZERO
 var _walk_t := 0.0
 var _walk_total := 0.0
 var _walk_spot := -1
+var _route := PackedVector2Array()   # the way (x, z) from the cat to the spot's stand
+var _route_at := PackedFloat32Array()   # its length up to each point
+var _walk_last: Dictionary = {}      # actor -> its last position on the ground (its steps)
+var _walk_heading: Dictionary = {}   # actor -> its recent velocity (x, z; its facing)
+## The spot the three stand at (its index; -1: the square). Saved as the store's last spot on arrival.
+var rest_spot := -1
 var _down := [Vector2.INF, false]    # screen point of the press, cancelled (a drag)
 var _last := Vector2.INF             # the pointer's last point while it turns the map
 var _progress: Dictionary = {}       # ProgressStore.load(), read on open (refresh_progress)
@@ -71,9 +77,36 @@ const RAISE_GROW_S := 1.0            # the grow with its bounce
 const RAISE_FILL := 0.42             # share of the view height the spot (landmark + flag) takes
 
 const TAP_SLOP := 14.0               # UI units a press may move and still count as a tap
-const WALK_SPEED := 6.0              # m/s the cat hops
-const HOP_HEIGHT := 0.35             # m the cat rises on a hop
-const HOP_HZ := 4.0                  # hops per second while walking
+## The walk to a tapped spot (2026-10-29 user request: calmer; the three walk together). The cat
+## hops along the dirt paths (PATHS, the shortest way over their crossings, then straight to the
+## spot's stand) at WALK_SPEED, the whole walk taking at least WALK_MIN_S and at most WALK_MAX_S
+## (a far spot: a little quicker, never a long wait). Puppy and Dugi follow FOLLOW_LAG m behind on
+## the same way, FOLLOW_SIDE m to its left and right (stepping aside when the cat comes their way,
+## never nearer each other than KEEP_APART), each facing where it goes with its own hop.
+## Taps on spots are ignored until they arrive; then the lab opens.
+const WALK_SPEED := 2.5              # m/s along the way
+const WALK_MIN_S := 1.5
+const WALK_MAX_S := 4.0
+const WALK_IN_PLACE_S := 0.7         # the spot they stand at: a hop in place
+const HOP_HEIGHT := 0.16             # m the cat rises on a hop (the followers: their own share)
+const HOP_HZ := 2.2                  # hops per second while walking
+const FOLLOW_LAG := 0.8              # m behind the cat along the way
+const FOLLOW_SIDE := 0.42            # m to the left (Puppy) and right (Dugi) of the way
+const FOLLOW_HOPS := {"Puppy": [0.33, 0.8], "Dugi": [0.66, 0.65]}   # phase (share of a hop), height share
+const FOLLOW_SPEED := 4.0            # m/s a follower may go to keep its place
+const KEEP_APART := 0.68             # m: no two of the three nearer than this while walking
+const HEADING_RATE := 12.0           # 1/s: how fast an actor's heading follows its steps
+const SETTLE_SHARE := 0.2            # the last share of the walk they step into the group's places
+const TURN_RATE := 14.0              # 1/s the actors turn towards where they go
+## The three on the map at this scale of their lab size (2026-10-29 "캐릭터 크기를 조절하는게 맞을거
+## 같다": at lab size the cat, 1.4 m, stood over most landmarks (0.5-1.3 m, the tall ones 1.75-2.55 m)
+## and was wider than a path, 0.8 m). At 0.7 the cat is 0.98 m, Dugi 1.16 m, Puppy (his flag) 1.09 m:
+## about a landmark's height, a body narrower than the path.
+const ACTOR_SCALE := 0.7
+## The group at a spot: the cat on its stand, Puppy and Dugi GROUP_BACK m behind it (away from the
+## landmark), GROUP_SIDE m to its left and right.
+const GROUP_BACK := 0.8
+const GROUP_SIDE := 0.42
 const SPOT_RADIUS := 2.2             # m: how far a tap may be from a spot and still hit it
 const LABEL_FULL_DISTANCE := 34.0    # m: a spot name nearer than this is full size
 const LABEL_MIN_SCALE := 0.7          # the smallest a far spot name gets
@@ -120,6 +153,8 @@ func _ready() -> void:
 	puppy = PuppyActor.new()
 	world.add_child(dugi)
 	world.add_child(puppy)
+	for actor: Node3D in [cat, dugi, puppy]:
+		actor.scale = Vector3.ONE * ACTOR_SCALE
 
 	for zone in ZONES:
 		for spot in ZONES[zone].spots:
@@ -130,6 +165,7 @@ func _ready() -> void:
 	view.rig.focus_modes = ["three_quarter", "orbit", "front", "top", "side"]   # the flag raise frames the spot from any view
 	_demo_flag()
 	view.two_finger_pan = true   # one finger turns the map; two move it (and pinch zooms)
+	rest_spot = _spot_index(ProgressStore.last_spot())
 	_place_trio(TRIO_YAW)
 	refresh_progress()
 	_build_top_bar()
@@ -415,21 +451,49 @@ func _process(delta: float) -> void:
 	if _label_frames > 0:
 		_label_frames -= 1
 		_place_labels()
+	_fade_labels()
 
 
-## The trio's row on the square facing `yaw` (the camera's: yaw 0 looks along -z from +z): across
-## the view through HOME, Puppy on the left, the cat in the middle, Dugi on the right. The cat
-## keeps its own course while it hops to a spot.
+## A spot name over the three fades to LABEL_FADE (2026-10-29: at a yard spot they stand under the
+## next spot's name), so they are never hidden; the name is still read and still takes taps.
+const LABEL_FADE := 0.3
+
+
+func _fade_labels() -> void:
+	var group := trio_rect()
+	for id in _labels:
+		var label: Control = _labels[id]
+		var a := LABEL_FADE if group.has_area() and label.visible and _label_rect(label).intersects(group) else 1.0
+		if not is_equal_approx(label.modulate.a, a):
+			label.modulate.a = a
+
+
+## The screen rect the three take (their feet to their heads), Rect2() when off screen.
+func trio_rect() -> Rect2:
+	var out := Rect2()
+	var first := true
+	for actor: Node3D in [cat, puppy, dugi]:
+		if actor == null:
+			continue
+		for lift in [0.0, 1.1 * ACTOR_SCALE * 1.4]:   # the cat's lab height is 1.4 m (Dugi's head a little above)
+			var p := _world_to_screen(actor.position + Vector3.UP * lift)
+			if p == Vector2.INF:
+				continue
+			var r := Rect2(p - Vector2(18.0, 0.0), Vector2(36.0, 0.0))
+			out = r if first else out.merge(r)
+			first = false
+	return out
+
+
+## Where the three stand: on the square (no spot yet) in a row across the view through HOME — Puppy
+## on the left, the cat in the middle, Dugi on the right — or at the spot they last walked to
+## (rest_spot, saved in the store: after a lab they are where they went), in the group's places
+## (group_at). They face `yaw` (the camera's: yaw 0 looks along -z from +z), towards the default view.
 func _place_trio(yaw: float) -> void:
-	var home := Vector2(HOME[0], HOME[1])
-	var right := Vector2(cos(yaw), -sin(yaw))   # screen right, on the ground
-	var row := [[puppy, -1.0], [cat, 0.0], [dugi, 1.0]]
-	for entry in row:
-		var actor: Node3D = entry[0]
+	for actor: Node3D in [puppy, cat, dugi]:
 		if actor == null or (actor == cat and _walking):
 			continue
-		var at: Vector2 = home + right * TRIO_GAP * float(entry[1])
-		actor.position = Vector3(at.x, map.walk_height(at.x, at.y), at.y)
+		actor.position = trio_spot(actor)
 		actor.rotation.y = yaw
 
 
@@ -446,13 +510,23 @@ func set_cinematic(on: bool) -> void:
 		_label_frames = 3
 
 
-## The trio back on the square (after the story moved the cat).
+## The three back where they rest (after the story moved the cat).
 func reset_trio() -> void:
 	_place_trio(TRIO_YAW)
 
 
-## Where `actor` stands in the trio's row on the square.
+## The three on the square again, and the store forgets the last spot (the prologue starts there).
+func trio_home() -> void:
+	rest_spot = -1
+	if ProgressStore.last_spot() != "":
+		ProgressStore.set_last_spot("")
+	_place_trio(TRIO_YAW)
+
+
+## Where `actor` stands at rest: its place in the row on the square, or in the group at rest_spot.
 func trio_spot(actor: Node3D) -> Vector3:
+	if rest_spot >= 0:
+		return group_at(_spots[rest_spot]).get(actor, _spots[rest_spot].stand)
 	var home := Vector2(HOME[0], HOME[1])
 	var right := Vector2(cos(TRIO_YAW), -sin(TRIO_YAW))
 	var place := {puppy: -1.0, cat: 0.0, dugi: 1.0}
@@ -460,9 +534,145 @@ func trio_spot(actor: Node3D) -> Vector3:
 	return Vector3(at.x, map.walk_height(at.x, at.y), at.y)
 
 
+## The group's places at a spot: {cat: its stand, puppy: a step behind it on its left, dugi: on its
+## right}, "facing": the yaw towards the landmark (how they arrive). Where a place would be on another
+## spot's stage or in the water (the yard's spots stand close), the next of GROUP_SHAPES that is clear.
+func group_at(spot: Dictionary) -> Dictionary:
+	var stand := Vector2(spot.stand.x, spot.stand.z)
+	var back := stand - Vector2(spot.at.x, spot.at.z)
+	back = back.normalized() if back.length() > 0.01 else Vector2(0.0, 1.0)
+	var left := Vector2(-back.y, back.x)   # the left of one facing -back (a model faces +z, its left is +x)
+	var out := {"facing": atan2(-back.x, -back.y)}
+	var places: Array = []
+	for shape: Vector2 in GROUP_SHAPES:
+		places = [stand + back * shape.x + left * shape.y, stand + back * shape.x - left * shape.y]
+		if places.all(func(p: Vector2) -> bool: return _clear_ground(p)):
+			break
+	out[cat] = Vector3(stand.x, map.walk_height(stand.x, stand.y), stand.y)
+	for i in 2:
+		var p: Vector2 = places[i]
+		out[[puppy, dugi][i]] = Vector3(p.x, map.walk_height(p.x, p.y), p.y)
+	return out
+
+
+## (back, side) m of Puppy's and Dugi's places from the cat's (Dugi mirrored), in the order tried.
+const GROUP_SHAPES := [Vector2(GROUP_BACK, GROUP_SIDE), Vector2(0.35, 0.72), Vector2(0.0, 0.8), Vector2(-0.3, 0.8)]
+const STAGE_CLEAR := 0.3             # m a group place keeps off a stage's edge
+
+
+## Grass to stand on: not water, inside the beach, off every stage.
+func _clear_ground(p: Vector2) -> bool:
+	if map.water_at(p.x, p.y) or MapIsland.coast_fraction(p.x, p.y) > MapIsland.grass_edge():
+		return false
+	for other in _spots:
+		if float(other.radius) > 0.0 and p.distance_to(Vector2(other.at.x, other.at.z)) < float(other.radius) + STAGE_CLEAR:
+			return false
+	return true
+
+
+## The index of the spot `id` (-1: none).
+func _spot_index(id: String) -> int:
+	for i in _spots.size():
+		if _spots[i].id == id:
+			return i
+	return -1
+
+
 ## Where the trio stands now: [Dugi, cat, Puppy] (tests).
 func trio() -> Array:
 	return [dugi, cat, puppy]
+
+
+## The way from `from` to `to` (x, z): to the paths' point nearest `from`, along the paths (the
+## shortest way over their points and crossings) to the point nearest `to`, then to `to`; smoothed
+## (two Chaikin passes, the ends kept). Ends nearer each other than to the paths: straight.
+func route(from: Vector2, to: Vector2) -> PackedVector2Array:
+	var nodes: Array[Vector2] = []
+	var links: Dictionary = {}   # node index -> [neighbour indices]
+	var index_of := func(p: Vector2) -> int:
+		for i in nodes.size():
+			if nodes[i].distance_to(p) < 0.05:
+				return i
+		nodes.append(p)
+		links[nodes.size() - 1] = []
+		return nodes.size() - 1
+	for line in PATHS:
+		for k in line.size() - 1:
+			var a: int = index_of.call(Vector2(line[k][0], line[k][1]))
+			var b: int = index_of.call(Vector2(line[k + 1][0], line[k + 1][1]))
+			links[a].append(b)
+			links[b].append(a)
+	var nearest := func(p: Vector2) -> int:
+		var best := 0
+		for i in nodes.size():
+			if nodes[i].distance_to(p) < nodes[best].distance_to(p):
+				best = i
+		return best
+	var a: int = nearest.call(from)
+	var b: int = nearest.call(to)
+	var points := PackedVector2Array([from])
+	if from.distance_to(to) > nodes[a].distance_to(from) + nodes[b].distance_to(to):
+		# Dijkstra over the crossings (11 spots, a few dozen points: cheap, once per tap).
+		var dist: Dictionary = {a: 0.0}
+		var prev: Dictionary = {}
+		var open: Array = [a]
+		while not open.is_empty():
+			open.sort_custom(func(x: int, y: int) -> bool: return dist[x] < dist[y])
+			var u: int = open.pop_front()
+			if u == b:
+				break
+			for v: int in links[u]:
+				var d: float = dist[u] + nodes[u].distance_to(nodes[v])
+				if d < dist.get(v, INF):
+					dist[v] = d
+					prev[v] = u
+					if v not in open:
+						open.append(v)
+		var way: Array[Vector2] = []
+		var n := b
+		while true:
+			way.push_front(nodes[n])
+			if n == a or not prev.has(n):
+				break
+			n = prev[n]
+		for p in way:
+			if p.distance_to(points[points.size() - 1]) > 0.05:
+				points.append(p)
+	if to.distance_to(points[points.size() - 1]) > 0.05 or points.size() == 1:
+		points.append(to)
+	for pass_i in 2:
+		if points.size() < 3:
+			break
+		var out := PackedVector2Array([points[0]])
+		for k in points.size() - 1:
+			out.append(points[k].lerp(points[k + 1], 0.25))
+			out.append(points[k].lerp(points[k + 1], 0.75))
+		out.append(points[points.size() - 1])
+		points = out
+	return points
+
+
+## How long the walk over `length` m takes (s).
+static func walk_seconds(length: float) -> float:
+	if length < 0.3:
+		return WALK_IN_PLACE_S
+	return clampf(length / WALK_SPEED, WALK_MIN_S, WALK_MAX_S)
+
+
+## The point `s` m along the way (clamped to its ends) and the way's direction there.
+func _along(s: float) -> Array:
+	var n := _route.size()
+	if n == 1:
+		return [_route[0], Vector2.ZERO]
+	s = clampf(s, 0.0, _route_at[n - 1])
+	var k := 1
+	while k < n - 1 and _route_at[k] < s:
+		k += 1
+	var a := _route[k - 1]
+	var b := _route[k]
+	var span := _route_at[k] - _route_at[k - 1]
+	var t := (s - _route_at[k - 1]) / span if span > 1e-6 else 0.0
+	return [a.lerp(b, t), (b - a).normalized()]
 
 
 func _step_walk(delta: float) -> void:
@@ -472,14 +682,80 @@ func _step_walk(delta: float) -> void:
 		SoundBoard.play(&"hop")   # each hop's landing (HOP_HZ a second while it walks)
 	var k := clampf(_walk_t / _walk_total, 0.0, 1.0)
 	var eased := k * k * (3.0 - 2.0 * k)
-	var pos := _walk_from.lerp(_walk_to, eased)
-	pos.y = map.walk_height(pos.x, pos.z) + HOP_HEIGHT * absf(sin(_walk_t * PI * HOP_HZ))   # up the hills
-	cat.position = pos
+	var length := _route_at[_route_at.size() - 1]
+	var s := length * eased
+	var spot: Dictionary = _spots[_walk_spot]
+	var group := group_at(spot)
+	var here: Array = _along(s)
+	var cat_at: Vector2 = here[0]
+	var cat_dir: Vector2 = here[1] if here[1] != Vector2.ZERO else _along(0.0)[1]
+	_set_walker(cat, cat_at, HOP_HEIGHT * absf(sin(_walk_t * PI * HOP_HZ)), delta)
+	# Puppy and Dugi: each heads for its place a step behind the cat on the way (to its left / right),
+	# at a walker's pace; one in the cat's way steps aside to its own side, and they keep apart. Over
+	# the last SETTLE_SHARE their goal becomes the group's place at the spot.
+	var top_speed := maxf(FOLLOW_SPEED, 1.6 * length / maxf(_walk_total, 0.01))
+	var settle := smoothstep(1.0 - SETTLE_SHARE, 1.0, k)
+	var spots := {}
+	for entry in [[puppy, 1.0], [dugi, -1.0]]:
+		var actor: Node3D = entry[0]
+		if actor == null:
+			continue
+		var side: float = entry[1]
+		var behind: Array = _along(s - FOLLOW_LAG)
+		var dir: Vector2 = behind[1] if behind[1] != Vector2.ZERO else cat_dir
+		var goal: Vector2 = behind[0] + Vector2(dir.y, -dir.x) * FOLLOW_SIDE * side   # (dir.y, -dir.x): the walker's left
+		if s < FOLLOW_LAG:   # behind the way's start
+			goal += -cat_dir * (FOLLOW_LAG - s)
+		var place: Vector3 = group[actor]
+		goal = goal.lerp(Vector2(place.x, place.z), settle)
+		var now: Vector3 = _walk_last.get(actor, actor.position)
+		var at := Vector2(now.x, now.z)
+		at += (goal - at).limit_length((top_speed + 4.0 * settle) * delta)
+		# Out of the cat's way: never nearer than KEEP_APART, a follower ahead of it to its own side.
+		var off := at - cat_at
+		if off.length() < KEEP_APART:
+			var away := off.normalized() if off.length() > 0.01 else Vector2(cat_dir.y, -cat_dir.x) * side
+			if off.dot(cat_dir) > 0.0:
+				away = (away + Vector2(cat_dir.y, -cat_dir.x) * side).normalized()
+			at = cat_at + away * KEEP_APART
+		spots[actor] = at
+	if spots.size() == 2:
+		var gap: Vector2 = spots[dugi] - spots[puppy]
+		if gap.length() < KEEP_APART:
+			var push := (gap.normalized() if gap.length() > 0.01 else Vector2(cat_dir.y, -cat_dir.x) * -1.0) * (KEEP_APART - gap.length()) * 0.5
+			spots[puppy] -= push
+			spots[dugi] += push
+			for actor: Node3D in spots:   # still out of the cat's way
+				var off: Vector2 = spots[actor] - cat_at
+				if off.length() < KEEP_APART and off.length() > 0.01:
+					spots[actor] = cat_at + off.normalized() * KEEP_APART
+	for actor: Node3D in spots:
+		var hop: Array = FOLLOW_HOPS[str(actor.name)]
+		_set_walker(actor, spots[actor], HOP_HEIGHT * float(hop[1]) * absf(sin((_walk_t + float(hop[0]) / HOP_HZ) * PI * HOP_HZ)), delta)
 	if k >= 1.0:
 		_walking = false
-		cat.position = _walk_to
-		var spot: Dictionary = _spots[_walk_spot]
+		rest_spot = _walk_spot
+		ProgressStore.set_last_spot(str(spot.id))
+		for actor: Node3D in [cat, puppy, dugi]:
+			if actor != null:
+				actor.position = group[actor]
+				actor.rotation.y = group.facing
 		experiment_chosen.emit(spot.definition)
+
+
+## An actor on the way at `at` (x, z) `lift` m above the ground (up the hills), turning towards where
+## it goes (its recent heading, so a small sidestep does not spin it).
+func _set_walker(actor: Node3D, at: Vector2, lift: float, delta: float) -> void:
+	var last: Vector3 = _walk_last.get(actor, actor.position)
+	if delta > 0.0:
+		var velocity: Vector2 = (at - Vector2(last.x, last.z)) / delta
+		var heading: Vector2 = _walk_heading.get(actor, Vector2.ZERO)
+		heading = heading.lerp(velocity, 1.0 - exp(-HEADING_RATE * delta))
+		_walk_heading[actor] = heading
+		if heading.length() > 0.3:
+			actor.rotation.y = lerp_angle(actor.rotation.y, atan2(heading.x, heading.y), 1.0 - exp(-TURN_RATE * delta))
+	actor.position = Vector3(at.x, map.walk_height(at.x, at.y) + lift, at.y)
+	_walk_last[actor] = Vector3(at.x, actor.position.y, at.y)
 
 
 ## One 2D label per spot (its name), its bottom edge just above its landmark (the landmark stays
@@ -658,7 +934,7 @@ func _world_to_screen(world: Vector3) -> Vector2:
 func _puppy_at(position: Vector2) -> bool:
 	if puppy == null:
 		return false
-	var middle := puppy.global_position + Vector3.UP * 0.35
+	var middle := puppy.global_position + Vector3.UP * 0.55 * ACTOR_SCALE
 	var point := _world_to_screen(middle)
 	if point == Vector2.INF:
 		return false
@@ -679,11 +955,20 @@ func _walk_to_spot(index: int) -> void:
 		return
 	if story != null:
 		story.hush()
+	_walk_spot = index
+	_route = route(Vector2(cat.position.x, cat.position.z), Vector2(_spots[index].stand.x, _spots[index].stand.z))
+	_route_at = PackedFloat32Array([0.0])
+	for i in range(1, _route.size()):
+		_route_at.append(_route_at[i - 1] + _route[i - 1].distance_to(_route[i]))
 	_walk_from = cat.position
 	_walk_to = _spots[index].stand
-	_walk_spot = index
-	_walk_total = maxf(0.25, _walk_from.distance_to(_walk_to) / WALK_SPEED)
+	_walk_total = walk_seconds(_route_at[_route_at.size() - 1])
 	_walk_t = 0.0
+	_walk_last = {}
+	_walk_heading = {}
 	_walking = true
 	SoundBoard.play(&"spot")
-	cat.rotation.y = atan2(_walk_to.x - _walk_from.x, _walk_to.z - _walk_from.z)
+	var first: Array = _along(0.3)
+	var ahead: Vector2 = first[0] - _route[0]
+	if ahead.length() > 0.01:
+		cat.rotation.y = atan2(ahead.x, ahead.y)

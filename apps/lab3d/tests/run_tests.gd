@@ -96,6 +96,11 @@
 ## 22. sound (tests/sound_checks.gd, 2026-10-28): every event asks SoundBoard for its sound id, the
 ##    효과음 / 배경 음악 switches mute their bus and are kept in the settings file (the real one untouched),
 ##    the music loops, a measurement plays nothing and writes nothing, nothing sounds while idle.
+## 23c. UI polish (tests/polish_checks.gd, 2026-10-29): 자세히's header (닫기) stays above the scrolled
+##    note; a vertical drag from a button, check box or slider scrolls the settings and the note
+##    (DragScroll) and presses nothing; check boxes instead of switches; 처음부터 다시 하기 asks first and
+##    then erases the whole store; the map walk (speed, Puppy and Dugi following apart, map-size
+##    actors, the last spot kept) and the story with the new places.
 ## Times are engine fixed steps (60 Hz), independent of rendering FPS.
 extends SceneTree
 
@@ -328,6 +333,11 @@ func _run() -> void:
 	_expect(faces != null and faces.can_instantiate(), "faces checks compile", "")
 	if faces != null and faces.can_instantiate():
 		await faces.new(self, _expect).run()
+	print("== UI polish (2026-10-29): fixed sheet header, drag to scroll from controls, check boxes, start over, the map walk ==")
+	var polish: GDScript = load("res://tests/polish_checks.gd")
+	_expect(polish != null and polish.can_instantiate(), "polish checks compile", "")
+	if polish != null and polish.can_instantiate():
+		await polish.new(self, _expect).run()
 	print("== the night map (2026-10-28): fixed order, locks, Puppy's riddle, hint, night by pieces, old saves, launches ==")
 	var explore: GDScript = load("res://tests/explore_checks.gd")
 	_expect(explore != null and explore.can_instantiate(), "explore checks compile", "")
@@ -730,7 +740,7 @@ func _check_list_cards() -> void:
 			scroll.scroll_vertical = 25 * i
 			await _mouse_at(from - Vector2(0, 25.0 * i), true, true)
 		await _mouse_at(from - Vector2(0, 200), false)
-		if scroll.scroll_vertical != 200 or not chosen.is_empty():
+		if scroll.scroll_vertical < 200 or not chosen.is_empty():   # >= 200: the lift keeps a little momentum (DragScroll)
 			problems.append("%s scroll drag: scrolled %d, chose %s" % [size, scroll.scroll_vertical, chosen])
 		# After the scroll a plain tap still starts the card under the finger.
 		var under: Control = null

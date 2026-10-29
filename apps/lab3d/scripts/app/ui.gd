@@ -126,11 +126,14 @@ static func margin(all: int) -> MarginContainer:
 	return node
 
 
-## Vertical scroller whose content always fits the width (labels wrap instead of scrolling).
+## Vertical scroller whose content always fits the width (labels wrap instead of scrolling). A
+## vertical drag anywhere on it scrolls, also one that starts on a button, check box or slider
+## (DragScroll); a tap still presses what is under the finger.
 static func scroller() -> ScrollContainer:
 	var node := ScrollContainer.new()
 	node.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	node.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	DragScroll.attach(node)
 	return node
 
 

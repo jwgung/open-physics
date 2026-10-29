@@ -226,7 +226,60 @@ static func build() -> Theme:
 	theme.set_stylebox("grabber_highlight", "VScrollBar", _box(Color("97abc1"), Color.TRANSPARENT, 4, 4, 0))
 	theme.set_stylebox("grabber_pressed", "VScrollBar", _box(Color("8399b1"), Color.TRANSPARENT, 4, 4, 0))
 	theme.set_font_size("font_size", "CheckButton", SIZE_BODY)
+
+	# Check boxes (settings, 2026-10-29 "토글 대신 체크박스"): a big rounded box (CHECK_BOX units) with a
+	# white tick on the blue when on; the row is the touch target (Settings: 64 units high, full width).
+	theme.set_font_size("font_size", "CheckBox", SIZE_BODY)
+	theme.set_font("font", "CheckBox", bold)
+	for state in ["font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color", "font_focus_color"]:
+		theme.set_color(state, "CheckBox", INK)
+	theme.set_color("font_disabled_color", "CheckBox", Color(INK, 0.4))
+	theme.set_constant("h_separation", "CheckBox", 16)
+	var row := _box(Color.TRANSPARENT, Color.TRANSPARENT, 12, 6, 6)
+	for state in ["normal", "hover", "pressed", "hover_pressed", "disabled"]:
+		theme.set_stylebox(state, "CheckBox", row)
+	theme.set_stylebox("focus", "CheckBox", StyleBoxEmpty.new())
+	theme.set_icon("checked", "CheckBox", check_texture(CHECK_BOX, true))
+	theme.set_icon("unchecked", "CheckBox", check_texture(CHECK_BOX, false))
+	theme.set_icon("checked_disabled", "CheckBox", check_texture(CHECK_BOX, true, true))
+	theme.set_icon("unchecked_disabled", "CheckBox", check_texture(CHECK_BOX, false, true))
 	return theme
+
+
+const CHECK_BOX := 44   # units: the check box's side
+
+
+## The check box picture: a rounded square (white with the blue-grey line, or blue when on) and,
+## when on, a thick white tick. Anti-aliased by distance (one pixel).
+static func check_texture(side: int, on: bool, disabled := false) -> ImageTexture:
+	var image := Image.create(side, side, false, Image.FORMAT_RGBA8)
+	var fill := ACCENT if on else WHITE
+	var line := ACCENT_DARK if on else Color("9fb6cf")
+	var radius := side * 0.24
+	var border := 3.5
+	var half := side * 0.5
+	# The tick: two strokes through these points (fractions of the side).
+	var tick := [Vector2(0.25, 0.52), Vector2(0.43, 0.70), Vector2(0.76, 0.32)]
+	var stroke := side * 0.075
+	for y in side:
+		for x in side:
+			var p := Vector2(x + 0.5, y + 0.5)
+			# Signed distance to the rounded square (negative inside).
+			var q := (p - Vector2(half, half)).abs() - Vector2(half - 1.0 - radius, half - 1.0 - radius)
+			var d := Vector2(maxf(q.x, 0.0), maxf(q.y, 0.0)).length() + minf(maxf(q.x, q.y), 0.0) - radius
+			var color := line if d > -border else fill
+			if on:
+				var t := minf(_segment_distance(p, tick[0] * side, tick[1] * side), _segment_distance(p, tick[1] * side, tick[2] * side))
+				color = color.lerp(WHITE, clampf(stroke - t + 0.5, 0.0, 1.0))
+			color.a *= clampf(-d + 0.5, 0.0, 1.0)
+			if disabled:
+				color.a *= 0.45
+			image.set_pixel(x, y, color)
+	return ImageTexture.create_from_image(image)
+
+
+static func _segment_distance(p: Vector2, a: Vector2, b: Vector2) -> float:
+	return p.distance_to(Geometry2D.get_closest_point_to_segment(p, a, b))
 
 
 ## normal / hover / pressed / hover_pressed of a lipped button (border = lip colour). Pressed: the

@@ -153,6 +153,13 @@ func show_settings(from_title := false) -> void:
 		else:
 			show_list())
 	screen.story_requested.connect(func() -> void: show_list(true))   # 이야기 다시 보기
+	# 처음부터 다시 하기 (confirmed, the store already empty): the start, as on a first launch — the
+	# title when it may show, else the map (which plays the prologue: it was never seen now).
+	screen.restart_requested.connect(func() -> void:
+		if TitleScreen.app_may_show:
+			show_title()
+		else:
+			show_list())
 	screen.fps_toggled.connect(func(on: bool) -> void:
 		_set_fps(on)
 		var config := ConfigFile.new()

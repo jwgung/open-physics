@@ -270,6 +270,7 @@ func play_prologue() -> void:
 	if cinematic():
 		return
 	_begin("prologue")
+	home.trio_home()   # the story starts on the square (its last page shows the cat there)
 	_set_camera(FIRST_SHOT)
 	_open_page(0)
 
@@ -315,7 +316,7 @@ func _prologue_page(i: int) -> void:
 		6:   # the sweep goes on
 			_move({"yaw": -110.0, "pitch": -45.0, "dist": 23.0, "target": Vector3(0.0, 0.5, 0.0)}, 6.0, true)
 		7:   # the square: the bread cat hops out and lifts a paw; the day comes back
-			_move({"yaw": 0.0, "pitch": -24.0, "dist": 8.5, "target": home_at + Vector3(0.0, 0.7, 0.0)}, 2.2)
+			_move({"yaw": 0.0, "pitch": -24.0, "dist": 7.0, "target": home_at + Vector3(0.0, 0.5, 0.0)}, 2.2)   # the map-size trio (IslandHomeScreen.ACTOR_SCALE)
 			_beat(1.0, func() -> void:
 				_night(map_night(), 2.0)   # the map's night (no star in the sky yet; day only once explored)
 				_boats_wander = false)
@@ -856,7 +857,7 @@ func _step_star(delta: float) -> void:
 	_star_t += delta
 	StarArt.face_camera(_star, home.view.rig, _star_t)
 	if _lift and home.cat != null:
-		var top := home.cat.position + Vector3.UP * 2.0
+		var top := home.cat.position + Vector3.UP * (2.0 * IslandHomeScreen.ACTOR_SCALE + 0.3)   # over the map-size cat's paws
 		_star.position = _star.position.lerp(top, 1.0 - exp(-8.0 * delta))
 	if _star_motion.has("pop"):
 		_star_motion.pop += delta

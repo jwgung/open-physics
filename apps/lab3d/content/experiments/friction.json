@@ -56,17 +56,19 @@
     "reason": "무거운 상자일수록 바닥이 더 꽉 붙잡아요. 그래서 더 세게 밀어야 움직여요."
   },
   "missions": {
-    "judge_on": ["sliding"],
+    "observe": "distance",
+    "compare": "greater",
+    "judge_on": ["sliding", "holding", "end"],
     "reveal_on": ["sliding", "end"],
     "hidden_until_end": ["max_static", "kinetic"],
     "hidden_series_until_end": ["max_static"],
     "stages": [
-      { "conditions": {"mass": "light"}, "text": "가벼운 상자를 밀어 움직이기!", "say": "바닥이 상자를 붙잡고 버텨요. 그보다 세게 밀면 상자가 움직여요.", "say_face": "explain" },
-      { "conditions": {"mass": "normal"}, "text": "보통 상자를 밀어 움직이기!", "say": "상자가 무거우면 바닥이 더 꽉 붙잡아요. 조금 더 오래 꾹 눌러 봐요.", "say_face": "thinking" },
-      { "conditions": {"mass": "heavy"}, "text": "무거운 상자도 밀어서 조각 꺼내기!", "say": "제일 무거운 상자는 바닥이 제일 꽉 붙잡아요. 그래서 제일 세게 밀어야 해요.", "say_face": "explain" }
+      { "threshold": 1.5, "conditions": {"mass": "light"}, "text": "가벼운 상자를 밀어서 길 열기!", "say": "바닥이 상자를 붙잡고 버텨요. 그보다 세게 밀면 상자가 미끄러져서 길에서 비켜요.", "say_face": "explain" },
+      { "threshold": 1.5, "conditions": {"mass": "normal"}, "text": "보통 상자도 길에서 밀어 치우기!", "say": "상자가 무거우면 바닥이 더 꽉 붙잡아요. 그래서 더 오래 꾹 눌러야 움직여요.", "say_face": "thinking" },
+      { "threshold": 1.5, "conditions": {"mass": "heavy"}, "text": "무거운 상자까지 치우고 조각에게 가기!", "say": "제일 무거운 상자는 바닥이 제일 꽉 붙잡아요. 그래서 제일 세게 밀어야 길이 열려요.", "say_face": "explain" }
     ]
   },
-  "story": { "clue": "조각이 상자 밑에 깔렸어! 무거운 상자도 밀어 보자.", "clue_face": "surprised", "map_clue": "빨간 화살표가 상자를 미는 곳이야!", "map_clue_face": "explain" },
+  "story": { "clue": "상자가 길을 막고 있어! 상자를 치우면 조각까지 갈 수 있겠어!", "clue_face": "surprised", "map_clue": "빨간 화살표가 상자를 미는 곳이야!", "map_clue_face": "explain" },
   "kid": {
     "card": "start_force",
     "place": "상자 밀기",

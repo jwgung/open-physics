@@ -34,7 +34,7 @@ const KEPT := {
 	"rotation": ["effort"],
 	"orbit": ["planet"],
 	"buoyancy": ["drum"],
-	"constraints": ["rope", "rod"],
+	"constraints": ["rope"],
 	"pulley": ["rope"],
 	"incline-friction": ["box"],
 }

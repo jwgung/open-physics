@@ -22,6 +22,10 @@ const MAX_DEG := 75.0            # drag range either side of straight down (a st
 const BOB_LAYER := 3             # pickable; the bobs touch nothing in the engine (mask 0)
 const IDS: Array[String] = ["rope", "rod"]
 const SURFACES: Array[String] = ["rope_arc", "rod_arc"]
+## The pendulums the lab view shows (2026-10-29 user: "흔들 추 하나만"): the rope pendulum only. The
+## rod pendulum's model and engine body still run (the web's two pendulums, its parity checks) but
+## the view draws nothing of it and it cannot be picked; its numbers and graph line are not shown.
+const SHOWN := 1
 ## The web preset's release angles (rad): string, rod.
 const WEB_ANGLES: Array[float] = [0.62, -0.5]
 
@@ -195,7 +199,7 @@ func observations() -> Dictionary:
 		"length": length,
 		"small_period": models[0].small_angle_period() if g > 0.0 else "무중력에서는 흔들리지 않아요",
 	}
-	for i in 2:
+	for i in SHOWN:   # the rod pendulum's numbers are not shown (2026-10-29)
 		var m := models[i]
 		var id := IDS[i]
 		values[id + "_distance"] = m.distance()
@@ -207,14 +211,21 @@ func observations() -> Dictionary:
 	return values
 
 
-## The two angles (deg) over time since the release.
+## The rope pendulum's angle (deg) over time since the release (the rod's, not shown, is kept in
+## `_graph` for the parity checks: rod_graph()).
 func graph_series() -> Dictionary:
 	var rope := PackedVector2Array()
-	var rod := PackedVector2Array()
 	for s in _graph:
 		rope.append(Vector2(s.x, s.y))
+	return {"rope": rope}
+
+
+## The rod pendulum's angle over time (tests: the web's two pendulums; not drawn).
+func rod_graph() -> PackedVector2Array:
+	var rod := PackedVector2Array()
+	for s in _graph:
 		rod.append(Vector2(s.x, s.z))
-	return {"rope": rope, "rod": rod}
+	return rod
 
 
 func _main_body() -> RigidBody3D:
@@ -247,7 +258,9 @@ func _build_world() -> void:
 		bobs.append(bob)
 		(driver as BodyModelGroupDriver).add(models[i], bob, history)
 	driver.reset()
-	props.dress(self, bobs, anchors, colors, BOB_RADIUS)
+	props.dress(self, bobs, anchors, colors, BOB_RADIUS, SHOWN)
+	for i in range(SHOWN, bobs.size()):
+		bobs[i].collision_layer = 0   # not shown: nothing to pick
 	props.show_paths(length, MAX_DEG)
 	planet_sign = PlanetSign.new()
 	planet_sign.position = SIGN_AT
@@ -261,7 +274,7 @@ func _build_world() -> void:
 
 func manipulation_body(id: String) -> PhysicsBody3D:
 	var i := IDS.find(id)
-	return bobs[i] if i >= 0 and not bobs.is_empty() else null
+	return bobs[i] if i >= 0 and i < SHOWN and not bobs.is_empty() else null
 
 
 ## The bob's circle around its anchor (radius L) in its swing plane.

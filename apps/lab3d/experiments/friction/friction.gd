@@ -156,7 +156,6 @@ func reset_box() -> void:
 		push.start()   # a finger still on the box: the push counts from 0 again, no jump
 	props.reset()
 	if game != null:
-		(game as FrictionGame).box_half = BOX * 0.5 * look_factor()
 		game.run_reset()
 	_update_status(true)
 
@@ -235,7 +234,8 @@ func _physics_process(_delta: float) -> void:
 
 func _process(_delta: float) -> void:
 	props.show_gauge(box.global_position, push.held, push.fraction())
-	props.update_cat(model.applied, model.max_static(), box.global_position.x, 0.0 if ended else model.velocity)
+	if game == null or not (game as FrictionGame).cat_busy():   # after the round the cat walks the opened path
+		props.update_cat(model.applied, model.max_static(), box.global_position.x, 0.0 if ended else model.velocity)
 
 
 func _add_graph_sample() -> void:
@@ -333,8 +333,7 @@ func _build_world() -> void:
 
 	props.dress(self, box, box_visual, BOX, TRACK_HALF - BOX * 0.5 - END_PADDING)
 	props.set_look(look_factor())
-	game = FrictionGame.new(self)   # the piece game: the star piece under the box's start (visual only)
-	(game as FrictionGame).box_half = BOX * 0.5 * look_factor()
+	game = FrictionGame.new(self)   # the piece game: the path the box blocks, its gates, the piece (visual only)
 	add_child(game)
 	game.build()
 	props.juice.landed.connect(impact.emit)

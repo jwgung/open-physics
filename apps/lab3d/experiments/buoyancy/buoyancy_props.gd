@@ -8,10 +8,9 @@
 ##   squash) and a light-blue water ring around it at the waterline while it is partly under water,
 ## - its mass (set_mass, 2026-10-28 user request: the look follows the weight): the drum's size is its
 ##   volume (큰 통 / 작은 통), so the mass is an iron weight on its lid, its width the cube root of the
-##   mass (WEIGHT_WIDTH for 150 kg, the slider's top, like the picture button's weight), and a number
-##   tag above the drum's right side, clear of the force arrows ("80킬로그램", the mission's words; ink
-##   on a white outline, drawn over the tank walls and the cat). Visual only: the drum body and the
-##   model do not see either,
+##   mass (WEIGHT_WIDTH for 150 kg, the slider's top, like the picture button's weight). (2026-10-29
+##   user: no number on the kid screen — the "80킬로그램" tag over the drum is gone; the kilograms are
+##   in 자세히 only.) Visual only: the drum body and the model do not see it,
 ## - two force arrows beside the drum: the weight m g (red, down) and the buoyant force rho g V_sub
 ##   (blue, up), both ARROW_PER_FULL m for the buoyant force of the whole drum,
 ## - reactions: entering the water fast = splash (dust) and squash; hitting the tank floor = bump;
@@ -38,7 +37,6 @@ const CAT_SPREAD := 0.45
 const WEIGHT_MASS := 150.0       # kg: the weight that is WEIGHT_WIDTH wide (the mass slider's top)
 const WEIGHT_WIDTH := 0.34       # m (fits on the small drum's 0.4 m lid)
 const WEIGHT_TALL := 0.85       # the weight mesh's height per metre of its width
-const TAG_AT := Vector2(0.55, 0.3)   # the number tag's bottom: right of the drum's axis, above its lid (m)
 
 var juice: ArtJuice
 var drum_visual: Node3D
@@ -50,9 +48,8 @@ var _height := 0.5
 var _waterline := 1.5
 var cat: CatActor
 var cat_stand: CatCrates
-## The iron weight on the lid (a 1 m wide mesh scaled to the mass) and the number tag above it.
+## The iron weight on the lid (a 1 m wide mesh scaled to the mass).
 var weight: MeshInstance3D
-var tag: Label3D
 var _mass := 70.0
 
 
@@ -157,22 +154,6 @@ func dress(experiment: Node3D, drum: RigidBody3D, radius: float, height: float, 
 	weight = ArtKit.instance(weight_mesh())
 	weight.name = "Weight"
 	drum_visual.add_child(weight)   # on the lid: squashed with the drum
-	tag = Label3D.new()
-	tag.name = "MassTag"
-	tag.font = UiTheme.bold_font()
-	tag.font_size = 72
-	tag.pixel_size = 0.004
-	tag.outline_size = 22
-	tag.modulate = ArtPalette.INK
-	tag.outline_modulate = ArtPalette.WHITE
-	tag.billboard = BaseMaterial3D.BILLBOARD_ENABLED
-	tag.no_depth_test = true   # over the tank's walls, the arrows and the cat
-	tag.render_priority = 2
-	tag.shaded = false
-	tag.double_sided = false
-	tag.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	tag.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
-	drum.add_child(tag)
 	set_drum(radius, height)
 	cat = CatActor.new(BreadCat.new())
 	cat.look_target = drum
@@ -207,14 +188,12 @@ func set_drum(radius: float, height: float) -> void:
 	set_mass(_mass)
 
 
-## The drum's mass `mass` (kg): the weight's width (cube root of the mass against WEIGHT_MASS) and the tag.
+## The drum's mass `mass` (kg): the weight's width (cube root of the mass against WEIGHT_MASS).
 func set_mass(mass: float) -> void:
 	_mass = mass
 	var w := weight_width(mass)
 	weight.scale = Vector3.ONE * w
 	weight.position = Vector3(0.0, _height * 0.5, 0.0)
-	tag.text = "%s킬로그램" % String.num(mass, 0 if is_equal_approx(mass, roundf(mass)) else 1)
-	tag.position = Vector3(TAG_AT.x, _height * 0.5 + TAG_AT.y, 0.0)
 
 
 ## Width (m) of the weight for `mass` kg: one stuff, the cube root of the mass against WEIGHT_MASS.

@@ -98,7 +98,7 @@ var push_face: Callable
 ## Pushing: the paws stay this far (m, along z) from the middle of the face at most.
 var push_half_width := 0.2
 
-var mode := "free"                  # free / hold / throw / follow / push / grab / pull
+var mode := "free"                  # free / hold / throw / follow / push / grab / pull / walk
 ## Height of the base above the floor hold() was given (the lab draws a stand that tall).
 var stand_height := 0.0
 var _clock := 0.0
@@ -143,6 +143,7 @@ var _pull_ball := 0.0               # radius of a ball the pull's paws are on (0
 var _grab_key := []                 # the input the lean was last solved for (solved again only on a change)
 ## Cheers so far (tests).
 var cheers := 0
+var _walk_hop := 0.0                # m the bag is lifted this frame while walking
 var _cheers_queued := 0
 # follow-through after a release (let_go, the throw's release)
 var _rel_arms: Array[bool] = [false, false]
@@ -408,6 +409,18 @@ func pull(grip: Vector3, dir: Vector3, floor_y: float, effort := 0.0, ball := 0.
 	mode = "pull"
 
 
+## Walking (2026-10-29, the push's opened path): the actor stands at `at` (its base, on the floor)
+## facing `yaw` rad about +y (from +z), the bag lifted `hop` m (the lab steps it along its path each
+## frame); paws at rest. Poses in _process.
+func walk(at: Vector3, yaw: float, hop := 0.0) -> void:
+	position = at
+	_yaw = yaw
+	_lean = 0.0
+	_squash = 1.0
+	_walk_hop = hop
+	mode = "walk"
+
+
 ## A small happy hop (and both paws up, `arms_up`, unless the paws are busy: then only a nod).
 ## `times` > 1: that many cheers in a row (a whole round done, 2026-10-28).
 func cheer(arms_up := true, times := 1) -> void:
@@ -667,9 +680,11 @@ func _pose() -> void:
 			squint = absf(_effort)
 		"follow":
 			rig.transform = Transform3D(_body_basis(_yaw, _lean, _squash), Vector3(0.0, hop, 0.0))
+		"walk":
+			rig.transform = Transform3D(_body_basis(_yaw, 0.0, 1.0), Vector3(0.0, hop + _walk_hop, 0.0))
 		_:
 			rig.transform = Transform3D(Basis(Vector3.UP, yaw) * Basis(Vector3.RIGHT, lean) * Basis(Vector3.BACK, sway), Vector3(0.0, hop, 0.0))
-	var rig_yaw := yaw if mode == "push" else (_yaw if mode in ["grab", "pull", "follow"] else 0.0)
+	var rig_yaw := yaw if mode == "push" else (_yaw if mode in ["grab", "pull", "follow", "walk"] else 0.0)
 	if head != null:
 		# Idle tilt; turned towards the camera while pushing, grabbing or pulling, or towards
 		# look_target.

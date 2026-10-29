@@ -239,6 +239,10 @@ func check_engine_cases() -> void:
 				worst_x = INF
 				break
 			var shown: Dictionary = lab.observations()
+			# The rod pendulum's numbers are not shown since 2026-10-29 (one ball in the view): its model's.
+			var rod_model: PendulumLabModel = lab.models[1]
+			shown.merge({"rod_angle": rad_to_deg(rod_model.angle), "rod_tension": rod_model.tension(), "rod_distance": rod_model.distance(),
+				"rod_period": rod_model.period if rod_model.period > 0.0 else "—"})
 			for i in 2:
 				var v: Dictionary = s[SIDES[i]]
 				var want: Vector3 = lab.anchor(i) + Vector3(float(v.x), -float(v.y), 0.0)
@@ -416,8 +420,8 @@ func check_art() -> void:
 	var kinematic := true
 	for bob in lab.bobs:
 		kinematic = kinematic and bob.collision_mask == 0 and bob.freeze and bob.freeze_mode == RigidBody3D.FREEZE_MODE_KINEMATIC
-	expect.call(bodies == ["Floor:StaticBody3D", "RodBob:RigidBody3D", "StringBob:RigidBody3D"] and kinematic,
-		"constraints art adds no collision objects; the bobs are kinematic and touch nothing (the formula moves them)", ", ".join(bodies))
+	expect.call(bodies == ["Floor:StaticBody3D", "RodBob:RigidBody3D", "StringBob:RigidBody3D"] and kinematic and lab.bobs[1].collision_layer == 0,
+		"constraints art adds no collision objects; the bobs are kinematic and touch nothing (the formula moves them); the rod bob (not shown since 2026-10-29) cannot be picked", ", ".join(bodies))
 	var runs := []
 	for with_juice in [true, false]:
 		for juice in lab.props.juices:
@@ -431,15 +435,18 @@ func check_art() -> void:
 		"constraints: same motion and panel with and without the reactions; the bobs' bodies never turn", str(runs[0].at))
 	var draw_nodes := lab.find_children("*", "GeometryInstance3D", true, false).size()
 	expect.call(draw_nodes <= 28, "constraints: at most 28 drawn 3D nodes (art budget: 16 + the bread cat's 7 + its stand, 2026-10-27; + the turtle clock's 5: body, pendulum, door, the piece's 2, 2026-10-29)", "%d" % draw_nodes)
-	# The string and the rod reach from the anchor to the bob centre (their mesh's far end).
+	# The string reaches from the anchor to the bob centre (its mesh's far end). The lab view shows the
+	# rope pendulum only (2026-10-29 user "흔들 추 하나만"): no rod, rod ball, rod path or rod stand.
 	lab._show()
 	var worst := 0.0
-	for i in 2:
+	var one_ball: bool = lab.props.links.size() == 1 and lab.props.paths.size() == 1 and lab.props.juices.size() == 1 \
+		and not lab.bobs[1].has_node("Visual") and lab.find_children("Rod", "", true, false).is_empty()
+	for i in 1:
 		var link: MeshInstance3D = lab.props.links[i]
 		var end: Vector3 = link.global_transform * Vector3(0.0, -1.0, 0.0)
 		worst = maxf(worst, end.distance_to(lab.bobs[i].global_position))
 	var path_ok: bool = lab.props.paths[0].mesh != null and lab.props._path_length == lab.length
-	expect.call(worst < 1e-4 and path_ok, "constraints: the string and the rod reach from their anchors to the bobs; the dotted paths are the circles of radius L",
+	expect.call(worst < 1e-4 and path_ok and one_ball, "constraints: the string reaches from its anchor to the bob; the dotted path is the circle of radius L; the rod pendulum is not drawn (one ball)",
 		"max gap %s m" % String.num_scientific(worst))
 	await _free(lab)
 
@@ -478,9 +485,10 @@ func check_first_release_screen() -> void:
 	for i in range(1, series.rope.size()):
 		if signf(series.rope[i].y) != signf(series.rope[i - 1].y):
 			signs += 1
-	expect.call(series.rope.size() >= 55 and absf(series.rope[0].y - rad_to_deg(0.62)) < 1e-4 and absf(series.rod[0].y - rad_to_deg(-0.5)) < 1e-4
+	var rod_line: PackedVector2Array = lab.rod_graph()
+	expect.call(series.rope.size() >= 55 and absf(series.rope[0].y - rad_to_deg(0.62)) < 1e-4 and not series.has("rod") and absf(rod_line[0].y - rad_to_deg(-0.5)) < 1e-4
 		and signs >= 3 and GraphView.y_top(lab.definition.graph, series) == 90.0 and lab.definition.graph.y.signed,
-		"constraints: the graph shows both angles over time on a fixed signed +-90 deg axis, swinging through zero", "%d points, %d sign changes" % [series.rope.size(), signs])
+		"constraints: the graph shows the rope pendulum's angle over time on a fixed signed +-90 deg axis, swinging through zero (the rod's, kept for the web's two pendulums, is not drawn)", "%d points, %d sign changes" % [series.rope.size(), signs])
 	await _close(screen)
 
 
@@ -524,11 +532,12 @@ func check_input_path() -> void:
 		worst = maxf(worst, bob.global_position.distance_to(reference.position()))
 	expect.call(worst <= ENGINE_TOLERANCE and lab.driver.worst_position() <= ENGINE_TOLERANCE,
 		"constraints: the run after letting go follows the formula from rest at 20 deg", "|d| %s m" % String.num_scientific(worst))
+	# The rod bob is not shown (2026-10-29): touching where it is picks nothing and the run goes on.
 	_swipe(screen, _at(screen, lab.bobs[1].global_position), _at(screen, lab.bobs[1].global_position + Vector3(0.02, 0, 0)), 2)
-	var stopped: bool = not lab.released and lab.status() == "held" and bob.global_position.distance_to(_bob_at(lab, 0, deg_to_rad(20.0))) < 1e-5
+	var still_running: bool = lab.released and lab.status() == "swinging" and lab.manipulation_body("rod") == null
 	_touch(screen, _at(screen, lab.bobs[1].global_position), false)
 	await tree.process_frame
-	expect.call(stopped and lab.released, "constraints: picking the rod bob up stops the run and puts the string bob back at its angle; putting it down releases both again", "")
+	expect.call(still_running and lab.released, "constraints: the hidden rod bob cannot be picked up (no rod in the lab view)", "")
 	await _close(screen)
 
 

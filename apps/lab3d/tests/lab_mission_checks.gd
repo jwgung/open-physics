@@ -21,6 +21,11 @@ const AFTER_STAMP := 40          # frames an attempt runs on after its stamp (no
 ## The labs with the piece game (2026-10-29, LabGame) in this round (the projectile: game_piece_checks).
 const PIECE_LABS := ["free-fall", "collision", "spring", "friction", "incline-friction", "rotation", "pulley", "constraints", "buoyancy", "orbit"]
 
+## Consecutive stages that may share a setup (user decisions 2026-10-29): the spring's near and far
+## bells (a pull that reaches the far bell also reaches the near one) and the drum's "any load" first
+## stage before the heavy load.
+const SHARED_ON_PURPOSE := ["spring 1-2", "buoyancy 1-2"]
+
 ## Per lab: the attempts in order, [what, ops, frames, stamps after]. Ops: ["ctl", id, value],
 ## ["act", id], ["place", object, pull m] (the spring ball let go there), ["force", N] (the push),
 ## ["hand", N] (the lever's held press), ["layout", fulcrum x, load x] (the lever's fulcrum and
@@ -49,24 +54,22 @@ const ROUNDS := {
 		["the 2 kg B at 7.5 m/s: 18.4 N·s", [["ctl", "velocity_a", 7.5], ["act", "release"]], 600, 3],
 	],
 	"spring": [
-		["놓기 from the start pull 1.2 m (1 kg on the quick beat): not past 2 m", [["act", "release"]], 220, 0],
-		["a 3 kg ball let go at 2.2 m: not a light ball, not the quick beat", [["ctl", "mass", 3.0], ["place", "ball", 2.2]], 340, 0],
-		["the 1 kg ball let go at 2 m: the card reads 2.0미터, not past 2", [["ctl", "mass", 1.0], ["place", "ball", 2.0]], 220, 0],
-		["the 1 kg ball let go at 2.1 m: past 2, one swing in 2.81 s on the 2.8 s beat", [["place", "ball", 2.1]], 220, 1],
-		["the 1 kg ball again: not a heavy ball", [["place", "ball", 2.1]], 220, 1],
-		["the 2.5 kg ball: 4.44 s, off the 4.9 s beat", [["ctl", "mass", 2.5], ["place", "ball", 1.6]], 340, 1],
-		["the 3 kg ball: one swing in 4.87 s on the beat", [["ctl", "mass", 3.0], ["place", "ball", 1.6]], 340, 2],
-		["the 1 kg ball pulled 1.5 m: on the beat, but not a little pull", [["ctl", "mass", 1.0], ["place", "ball", 1.5]], 220, 2],
-		["the 1 kg ball pulled 0.6 m: the same beat (the pull does not change it)", [["place", "ball", 0.6]], 220, 3],
+		["the 1 kg ball let go at 0.4 m: it swings 0.4 m past the rest, short of the near bell (0.5 m)", [["place", "ball", 0.4]], 150, 0],
+		["let go at 0.5 m: it reaches the near bell", [["place", "ball", 0.5]], 150, 1],
+		["let go at 0.9 m: short of the far bell (1 m)", [["place", "ball", 0.9]], 150, 1],
+		["let go at 1 m: it rings the far bell", [["place", "ball", 1.0]], 150, 2],
+		["the 1 kg ball at 1.5 m: it reaches the farthest bell, but the last bell wants the heavy ball", [["place", "ball", 1.5]], 150, 2],
+		["the 3 kg ball at 1.4 m: short of the farthest bell (1.5 m)", [["ctl", "mass", 3.0], ["place", "ball", 1.4]], 220, 2],
+		["the 3 kg ball at 1.5 m: as far as the light ball (the swing's size does not depend on the mass)", [["place", "ball", 1.5]], 220, 3],
 	],
 	"friction": [
-		["the 8 kg start box pushed loose: not the light box", [["force", 40.0]], 90, 0],
-		["the light box pushed loose (9 N > 7.8 N)", [["force", 0.0], ["ctl", "mass", "light"], ["force", 9.0]], 90, 1],
-		["the light box pushed again: nothing", [["force", 0.0], ["ctl", "mass", "light"], ["force", 9.0]], 90, 1],
-		["the normal box held by friction (15 N < 19.6 N)", [["force", 0.0], ["ctl", "mass", "normal"], ["force", 15.0]], 90, 1],
-		["the normal box pushed loose (21 N)", [["force", 21.0]], 90, 2],
-		["the heavy box held by friction (30 N < 39.2 N)", [["force", 0.0], ["ctl", "mass", "heavy"], ["force", 30.0]], 90, 2],
-		["the heavy box pushed loose (41 N)", [["force", 41.0]], 90, 3],
+		["the 8 kg start box held 2 s (31 N moves it far): not the light box", [["hold", 2.0]], 150, 0],
+		["the light box held 1.2 s: pushed to the track's end, off the path", [["ctl", "mass", "light"], ["hold", 1.2]], 150, 1],
+		["the light box again: nothing", [["ctl", "mass", "light"], ["hold", 1.0]], 150, 1],
+		["the normal box held 1.2 s: 0.5 m, still on the path", [["ctl", "mass", "normal"], ["hold", 1.2]], 150, 1],
+		["the normal box held 1.6 s: off the path", [["ctl", "mass", "normal"], ["hold", 1.6]], 150, 2],
+		["the heavy box held 2 s: 0.4 m, still on the path", [["ctl", "mass", "heavy"], ["hold", 2.0]], 150, 2],
+		["the heavy box held 2.6 s: off the path", [["ctl", "mass", "heavy"], ["hold", 2.6]], 150, 3],
 	],
 	"rotation": [
 		["the middle point lifts with 186.9 N: not the near point", [["hand", 400.0]], 20, 0],
@@ -87,12 +90,13 @@ const ROUNDS := {
 		["from 4 m at 5 m/s: it leaves the star", [["ctl", "speed", 5.0], ["act", "launch"]], 600, 3],
 	],
 	"buoyancy": [
-		["70 kg floats: not the 80 kg drum", [["act", "release"]], 900, 0],
-		["80 kg floats", [["ctl", "mass", 80.0], ["act", "release"]], 1200, 1],
-		["80 kg again: nothing", [["act", "release"]], 1200, 1],
-		["95 kg floats", [["ctl", "mass", 95.0], ["act", "release"]], 1200, 2],
-		["50 kg in the small drum stays under (neutral)", [["ctl", "volume", "small"], ["ctl", "mass", 50.0], ["act", "release"]], 900, 2],
-		["45 kg in the small drum floats", [["ctl", "mass", 45.0], ["act", "release"]], 1200, 3],
+		["the 70 kg load in the small drum sinks", [["ctl", "volume", "small"], ["act", "release"]], 900, 0],
+		["the big drum with the 70 kg load floats", [["ctl", "volume", "big"], ["act", "release"]], 1200, 1],
+		["the same again: the next stage wants a heavy load", [["act", "release"]], 1200, 1],
+		["the big drum with the heavy load (80 kg) floats", [["ctl", "mass", 80.0], ["act", "release"]], 1200, 2],
+		["the small drum with the heavy load sinks", [["ctl", "volume", "small"], ["act", "release"]], 900, 2],
+		["50 kg in the small drum stays under (neutral)", [["ctl", "mass", 50.0], ["act", "release"]], 900, 2],
+		["the small drum with the light load (45 kg) floats", [["ctl", "mass", 45.0], ["act", "release"]], 1200, 3],
 	],
 	"constraints": [
 		["L = 2 m on the earth: 2.9 s, not a long rope", [["act", "release"]], 330, 0],
@@ -154,7 +158,10 @@ func check_conditions() -> void:
 			# that judges another goal of its own (the throw's next crate, 2026-10-29) is another task.
 			var other_goal: bool = str(stages[i].get("observe", "")) != "" and str(stages[i + 1].get("observe", "")) != "" \
 				and stages[i].observe != stages[i + 1].observe and stages[i].get("conditions", {}).is_empty() and stages[i + 1].get("conditions", {}).is_empty()
-			if not other_goal and (stages[i + 1].get("change", []) as Array).is_empty() and not _disjoint(stages[i].get("conditions", {}), stages[i + 1].get("conditions", {})):
+			# User decisions (2026-10-29): the spring's bells (near, then farther: the same light ball) and the
+			# drum's first stage (the big drum with any load, then a heavy one) share a setup on purpose.
+			var allowed := "%s %d-%d" % [definition.id, i + 1, i + 2] in SHARED_ON_PURPOSE
+			if not other_goal and not allowed and (stages[i + 1].get("change", []) as Array).is_empty() and not _disjoint(stages[i].get("conditions", {}), stages[i + 1].get("conditions", {})):
 				shared.append("%s %d-%d" % [definition.id, i + 1, i + 2])
 	expect.call(shared.is_empty(), "every lab: the next stage asks for another condition (no setup meets two stages in a row)", ", ".join(shared))
 
@@ -240,8 +247,9 @@ func check_round(id: String) -> void:
 			problems.append("%s: stamps %d (want %d, status %s, %s)" % [attempt[0], stored, want, lab.status(), _observed(lab)])
 		if game != null and stored < 3 and (game.piece_state != "held" or not game.piece.visible):
 			problems.append("%s: the piece left its object before the last stamp (%s)" % [attempt[0], game.piece_state])
-	# The last stamp let the piece out (the ice waits for the ball's knock; the push for the box to leave).
-	for k in 150:
+	# The last stamp let the piece out (the ice waits for the ball's knock; the push for the box to rest
+	# and the cat to walk the opened path).
+	for k in 600:
 		if game == null or game.piece_state != "held":
 			break
 		await tree.process_frame
@@ -296,6 +304,13 @@ func _ops(screen: Control, ops: Array) -> void:
 				m2.changed.emit()
 			"force":
 				lab.set_applied_force(float(op[1]))
+			"hold":
+				# The finger presses and holds the box for op[1] s (the push ramps 25 N/s), then lets go.
+				lab.hold_started("box")
+				for k in roundi(float(op[1]) * 60.0):
+					await tree.physics_frame
+				lab.hold_ended("box")
+				screen.manipulator.changed.emit()
 			"hand":
 				lab.set_hand(float(op[1]))   # the held press's force (N; 400 N = its cap)
 			"layout":

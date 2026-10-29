@@ -1,23 +1,34 @@
 ## The slide's piece game (2026-10-29 "조각 꺼내기"): three rows of dominoes on the floor past the
-## slide's lower end, small, bigger and the big pillar with the star piece on top. A stage asks for
+## slide's lower end, small, bigger and the big pillar with the star piece on top. (2026-10-29 user:
+## the rows did not line up with the slide's bottom and the box landed in them.) The row starts right
+## past the slide's lower end (it moves with the angle: place()) and runs on downhill (−x) beside the
+## box's lane, ROW_Z behind it, so the box flying off the end and sliding out never meets a domino. A stage asks for
 ## the box to reach the end fast enough (MissionTracker: bottom_speed, the formula's v = √(2 a d) with
 ## a = g (sin θ − μk cos θ) and d the run from the start to the end, past 5 → 6 → 6.5 m/s on steel →
 ## steeper wood → steepest rubber). When the box leaves the slide (the formula's run end, status
-## "left") the stage's row wobbles; its stamp knocks the row over one domino after the other, and the
-## pillar's fall throws the piece down on uniform gravity (LabGame.launch_piece). Visual only: the
+## "left") the stage's row wobbles; its stamp knocks the row over as a chain from that formula moment
+## (each domino tips the next NEXT_S later), and the pillar's fall throws the piece down on uniform gravity (LabGame.launch_piece). Visual only: the
 ## dominoes are pictures on the floor (no body), the box and the numbers are the lab's as before.
 class_name InclineGame
 extends LabGame
 
-## Per row: [the dominoes' x (world, their foot on the floor), size (thick, tall, wide), colour].
-## (2026-10-29: 1.4x taller and wider than first made, the rows read on the tablet's front view.)
+## Per row: [the dominoes' x from the row's start (their far foot edge, the pivot; the row starts
+## GAP past the slide's lower end), size (thick, tall, wide), colour]. A domino tips onto the next
+## (spacing < its height) and a fallen row lies clear of the next standing row.
 const ROWS := [
-	[[-4.0, -4.22, -4.44], Vector3(0.11, 0.44, 0.44), Color("ffc61a")],
-	[[-4.72, -4.97, -5.22], Vector3(0.14, 0.6, 0.54), Color("2d7cf6")],
-	[[-5.55], Vector3(0.22, 1.05, 0.7), Color("ff3b3b")],
+	[[0.0, -0.24, -0.48], Vector3(0.11, 0.44, 0.44), Color("ffc61a")],
+	[[-1.05, -1.35, -1.65], Vector3(0.14, 0.6, 0.54), Color("2d7cf6")],
+	[[-2.5], Vector3(0.22, 1.05, 0.7), Color("ff3b3b")],
 ]
+const GAP := 0.3                         # m from the slide's lower end (x) to the first domino's far foot
+const ROW_Z := -1.15                     # the rows' middle (z): beside the box's lane (z 0), behind it
 const FALL_S := 0.35
 const NEXT_S := 0.12                     # the next domino starts falling this long after the one before
+const ARRIVE_KEEP_S := 0.5               # a stamp this soon after the formula arrival starts the chain at it
+
+## The x of the slide's lower end (world) the rows start from (place()).
+var end_x := -3.76
+var _arrive_at := -10.0
 
 var _pivots: Array = []                  # per row: [Node3D, ...] (pivot at the domino's far foot edge)
 var _fall_at: Array = []                 # per row: the time its first domino started (-1: standing)
@@ -41,7 +52,7 @@ func build() -> void:
 		for x: float in spec[0]:
 			var pivot := Node3D.new()
 			pivot.name = "Domino%d_%d" % [r + 1, row.size() + 1]
-			pivot.position = Vector3(x, 0.0, 0.0)
+			pivot.position = Vector3(x, 0.0, ROW_Z)
 			add_child(pivot)
 			var mi := ArtKit.instance(mesh)
 			# The pivot is the far (−x) foot edge: a turn about +z tips it away from the slide.
@@ -49,14 +60,52 @@ func build() -> void:
 			row.append(pivot)
 		_pivots.append(row)
 		_fall_at.append(-1.0)
-	var pillar: Array = ROWS[ROWS.size() - 1]
-	make_piece(Vector3(pillar[0][0] + (pillar[1] as Vector3).x * 0.5, (pillar[1] as Vector3).y + PIECE_SIZE * 0.95, 0.0))
+	make_piece(_piece_home())
+	place(end_x)
 	_jump(0)
+
+
+## The rows start GAP past the slide's lower end at x `lower_end_x` (world; the lab calls it when the
+## angle changes): they follow the slide.
+func place(lower_end_x: float) -> void:
+	end_x = lower_end_x
+	for r in ROWS.size():
+		var xs: Array = ROWS[r][0]
+		for k in xs.size():
+			(_pivots[r][k] as Node3D).position.x = row_x(xs[k])
+	if piece != null and piece_state == "held":
+		piece.position = _piece_home()
+
+
+## World x of a domino at `offset` from the row's start.
+func row_x(offset: float) -> float:
+	return end_x - GAP + offset
+
+
+func _piece_home() -> Vector3:
+	var pillar: Array = ROWS[ROWS.size() - 1]
+	return Vector3(row_x(pillar[0][0]) + (pillar[1] as Vector3).x * 0.5, (pillar[1] as Vector3).y + PIECE_SIZE * 0.95, ROW_Z)
+
+
+## The dominoes' boxes now (world AABBs, tests): each tilted domino's mesh bounds.
+func domino_boxes() -> Array[AABB]:
+	var out: Array[AABB] = []
+	for row: Array in _pivots:
+		for pivot: Node3D in row:
+			var mi := pivot.get_child(0) as MeshInstance3D
+			out.append(mi.global_transform * mi.get_aabb())
+	return out
+
+
+## The time the stage's row started its chain (s on the game clock, tests; -1: standing).
+func chain_started(row: int) -> float:
+	return _fall_at[row] if row >= 0 and row < _fall_at.size() else -1.0
 
 
 ## The formula box reached the slide's end (status "left"): the stage's row wobbles (its stamp, if
 ## the speed was enough, knocks it over).
 func arrive() -> void:
+	_arrive_at = _t
 	if stage < ROWS.size() and not _down[stage]:
 		_wobble_at = _t
 		_wobble_row = stage
@@ -65,11 +114,12 @@ func arrive() -> void:
 func _cleared(stage_index: int, last: bool) -> void:
 	if stage_index >= 0 and stage_index < ROWS.size() and not _down[stage_index]:
 		_down[stage_index] = true
-		_fall_at[stage_index] = _t
+		# The chain starts when the formula box reached the end (the stamp comes at the next judging poll).
+		_fall_at[stage_index] = _arrive_at if _t - _arrive_at <= ARRIVE_KEEP_S else _t
 		SoundBoard.play(&"stop")
 	if last:
 		var pillar: Array = ROWS[ROWS.size() - 1]
-		_pending_piece_at = _t + FALL_S * 0.6 + NEXT_S * ((pillar[0] as Array).size() - 1)
+		_pending_piece_at = _fall_at[ROWS.size() - 1] + FALL_S * 0.6 + NEXT_S * ((pillar[0] as Array).size() - 1)
 
 
 var _pending_piece_at := -1.0
@@ -83,8 +133,7 @@ func _jump(stamps: int) -> void:
 		for pivot: Node3D in _pivots[r]:
 			pivot.rotation.z = PI * 0.5 if _down[r] else 0.0
 	if stamps < stages and piece != null and piece_state != "held":
-		var pillar: Array = ROWS[ROWS.size() - 1]
-		piece.position = Vector3(pillar[0][0] + (pillar[1] as Vector3).x * 0.5, (pillar[1] as Vector3).y + PIECE_SIZE * 0.95, 0.0)
+		piece.position = _piece_home()
 		set_piece_state("held")
 
 
@@ -107,4 +156,4 @@ func _process(delta: float) -> void:
 func highlight_spots() -> Array:
 	var pillar: Array = ROWS[ROWS.size() - 1]
 	var size: Vector3 = pillar[1]
-	return [{"at": Vector3(pillar[0][0] + size.x * 0.5, size.y * 0.8, 0.0), "radius": 0.95}]
+	return [{"at": Vector3(row_x(pillar[0][0]) + size.x * 0.5, size.y * 0.8, ROW_Z), "radius": 0.95}]

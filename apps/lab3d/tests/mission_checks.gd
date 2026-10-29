@@ -254,9 +254,9 @@ func check_registry_validation() -> void:
 	fine.missions.stages[0]["conditions"] = {"gravity": "moon", "speed": {"min": 2.0}, "angle": 45.0}
 	expect.call(ExperimentRegistry.validate(fine).is_empty(), "registry takes compare less and conditions (an option, a range, a value)",
 		", ".join(ExperimentRegistry.validate(fine)))
-	var goal := ExperimentRegistry.find("friction").duplicate(true)
+	var goal := ExperimentRegistry.find("buoyancy").duplicate(true)
 	expect.call(not goal.missions.has("observe") and ExperimentRegistry.validate(goal).is_empty(),
-		"registry takes a state goal (no observe, no thresholds: the friction box moving)", "")
+		"registry takes a state goal (no observe, no thresholds: the buoyancy drum floating; the push judges its distance since 2026-10-29)", "")
 	# A file without `missions` still validates (optional block).
 	var none := defined.duplicate(true)
 	none.erase("missions")

@@ -38,32 +38,32 @@
     { "id": "release", "label": "놓기", "style": "primary" },
     { "id": "reset", "label": "처음으로" }
   ],
-  "key_observations": ["extension", "pull", "swing_period"],
+  "key_observations": ["extension", "pull", "bell_reach"],
   "predict": {
-    "question": "무거운 공은 더 천천히 흔들릴까?",
+    "question": "무거운 공은 종까지 못 갈까?",
     "question_face": "thinking",
     "choices": [
-      { "id": "slower", "label": "천천히", "picture": "spring_slow" },
-      { "id": "same", "label": "똑같이", "picture": "spring_even" }
+      { "id": "short", "label": "못 가요", "picture": "spring_slow" },
+      { "id": "same", "label": "똑같이 가요", "picture": "spring_even" }
     ],
-    "answer": "slower",
-    "reason": "용수철이 당기는 힘은 똑같은데 무거운 공은 잘 안 움직여요. 그래서 천천히 왔다 갔다 해요."
+    "answer": "same",
+    "reason": "당긴 만큼 반대쪽으로 가요. 무거운 공은 천천히 가지만 같은 데까지 가요."
   },
   "missions": {
-    "observe": "swing_period",
+    "observe": "bell_reach",
     "judge_on": ["moving", "rest"],
     "stages": [
-      { "compare": "near", "threshold": 2.8, "tolerance": 0.2, "also": [{"observe": "pull", "compare": "greater", "threshold": 2.0}], "card": "pull", "conditions": {"mass": {"max": 1.0}}, "text": "가벼운 공을 2미터 넘게 당겨 빠른 박자 맞추기!", "say": "가벼운 공은 용수철이 금방 당겨 와요. 그래서 빨리 왔다 갔다 해서 빠른 박자에 맞아요.", "say_face": "explain" },
-      { "compare": "near", "threshold": 4.9, "tolerance": 0.2, "conditions": {"mass": {"min": 2.5}}, "text": "무거운 공으로 느린 박자 맞추기!", "say": "무거운 공은 잘 안 움직여요. 그래서 천천히 왔다 갔다 해서 느린 박자에 맞아요.", "say_face": "explain" },
-      { "compare": "near", "threshold": 2.8, "tolerance": 0.2, "also": [{"observe": "pull", "compare": "greater", "threshold": 0.05}, {"observe": "pull", "compare": "less", "threshold": 1.0}], "conditions": {"mass": {"max": 1.0}}, "text": "가벼운 공을 1미터 안으로 조금만 당겨 박자 맞추기!", "say": "조금 당겨도 많이 당겨도 같은 박자예요. 많이 당기면 더 멀리, 더 빨리 가서 같은 시간에 돌아와요.", "say_face": "happy" }
+      { "threshold": 0.45, "conditions": {"mass": {"max": 1.0}}, "text": "가벼운 공을 당겨 가까운 종 치기!", "say": "당긴 만큼 용수철이 공을 다시 당겨요. 그래서 공이 반대쪽으로 당긴 만큼 가서 종을 쳐요.", "say_face": "explain" },
+      { "threshold": 0.95, "conditions": {"mass": {"max": 1.0}}, "text": "더 멀리 당겨서 먼 종 치기!", "say": "멀리 당길수록 반대쪽으로도 멀리 가요. 먼 종에 닿으려면 그만큼 당겨요.", "say_face": "thinking" },
+      { "threshold": 1.45, "conditions": {"mass": {"min": 2.5}}, "text": "무거운 공으로 제일 먼 종 치기!", "say": "무거운 공도 같은 길이만큼 당기면 종에 닿아요. 천천히 갈 뿐 가는 거리는 같아요.", "say_face": "happy" }
     ]
   },
-  "story": { "clue": "시계 속에 조각이 있어! 공을 시계 박자에 맞춰 흔들어 보자!", "clue_face": "explain", "map_clue": "울타리 안, 통통 튀는 용수철 쪽이야!", "map_clue_face": "explain" },
+  "story": { "clue": "종 안에 조각이 매달려 있어! 공으로 종을 땡 쳐 보자!", "clue_face": "explain", "map_clue": "울타리 안, 통통 튀는 용수철 쪽이야!", "map_clue_face": "explain" },
   "kid": {
-    "card": "swing_period",
+    "card": "bell_reach",
     "title": "용수철을 당겼다 놓아 보자!",
     "place": "용수철",
-    "say": "당긴 만큼 용수철이 공을 다시 당겨요. 그래서 공이 왔다 갔다 해요. 무거운 공은 더 천천히 흔들려요.",
+    "say": "당긴 만큼 용수철이 공을 다시 당겨요. 그래서 공이 반대쪽으로 당긴 만큼 가요. 무거운 공은 더 천천히 흔들리지만 같은 데까지 가요.",
     "say_face": "explain",
     "tip": "공을 끌었다가 놓아 봐요!",
     "picks": {
@@ -72,18 +72,18 @@
         {"value": 3.0, "label": "무거운 공", "picture": "ball_orange", "size": 1.0}
       ]
     },
-    "cards": {"extension": "얼마나 늘어났나", "pull": "얼마나 당겼나", "swing_period": "한 번 왔다 갔다"},
+    "cards": {"extension": "얼마나 늘어났나", "pull": "얼마나 당겼나", "bell_reach": "반대쪽으로 간 길이", "swing_period": "한 번 왔다 갔다"},
     "states": {"한 번 왕복하면 보여요": "흔들면 보여요"},
     "minus": {"extension": "눌려서", "pull": "눌려서"}
   },
   "note": {
-    "law": "용수철은 늘어난 만큼 공을 되돌리는 힘을 내요. 무거운 공일수록 한 번 왔다 갔다 하는 데 오래 걸려요.",
+    "law": "용수철은 늘어난 만큼 되돌리는 힘을 내요. 그래서 공은 당긴 만큼 반대쪽으로 가요. 무거운 공일수록 천천히 왔다 갔다 해요.",
     "formula": "T = 2π√(m/k)",
     "numbers": [
       { "label": "당겼다 놓은 길이 x₀", "ids": ["pull"] },
-      { "label": "되돌리는 힘 F = −kx (지금)", "ids": ["force"] },
       { "label": "공식 주기 T = 2π√(m/k)", "ids": ["natural_period"] },
-      { "label": "한 번 왕복한 시간 (잰 값)", "ids": ["swing_period"] }
+      { "label": "한 번 왕복한 시간 (잰 값)", "ids": ["swing_period"] },
+      { "label": "반대쪽으로 간 길이 x₀e^(−γT/2)", "ids": ["bell_reach"] }
     ],
     "graph": false
   },
@@ -103,7 +103,8 @@
     { "id": "total", "label": "역학적 에너지 K + U", "unit": "J", "digits": 2 },
     { "id": "natural_period", "label": "고유 주기 T₀ = 2π√(m/k) (감쇠 없을 때)", "unit": "s", "digits": 2 },
     { "id": "period", "label": "실제 왕복 주기 T = 2π/ω_d (감쇠 없으면 T₀)", "unit": "s", "digits": 2 },
-    { "id": "swing_period", "label": "한 번 왕복한 시간 T (공식, 한 번 돌아온 뒤)", "unit": "s", "digits": 2 }
+    { "id": "swing_period", "label": "한 번 왕복한 시간 T (공식, 한 번 돌아온 뒤)", "unit": "s", "digits": 2 },
+    { "id": "bell_reach", "label": "첫 번에 반대쪽으로 간 길이 x₀e^(−γT/2) (감쇠 없으면 x₀)", "unit": "m", "digits": 2 }
   ],
   "manipulation": {
     "grab_radius": 72.0,

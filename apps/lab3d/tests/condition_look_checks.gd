@@ -390,9 +390,9 @@ func check_buoyancy_look() -> void:
 				lab.set_control("mass", m)
 				await _frames(1)
 				w.append(lab.props.weight.scale.x)
-				# The drum keeps its volume's size; the tag says the mass in the mission's words.
-				if lab.drum_radius() != drum or lab.props.tag.text != "%d킬로그램" % int(m):
-					problems.append("%s %s kg: radius %s, tag %s" % [volume, m, lab.drum_radius(), lab.props.tag.text])
+				# The drum keeps its volume's size; no number over it (2026-10-29: the kilograms are in 자세히 only).
+				if lab.drum_radius() != drum or not lab.find_children("*", "Label3D", true, false).is_empty():
+					problems.append("%s %s kg: radius %s, a 3D label" % [volume, m, lab.drum_radius()])
 				if absf(lab.props.weight.position.y - lab.drum_height() * 0.5) > 1e-6:
 					problems.append("%s %s kg: the weight is not on the lid" % [volume, m])
 			if widths.is_empty() or not looks:
@@ -420,7 +420,7 @@ func check_buoyancy_look() -> void:
 			problems.append("step %d: drum at %s vs %s" % [i, runs[0][0][i], runs[1][0][i]])
 			break
 	expect.call(problems.is_empty() and runs[0][0] == runs[1][0] and runs[0][1] == runs[1][1],
-		"mass look (buoyancy): the drum keeps its volume's size; the weight on its lid is as wide as the mass says (cube root), the tag names it; physics unchanged whatever is drawn",
+		"mass look (buoyancy): the drum keeps its volume's size; the weight on its lid is as wide as the mass says (cube root), no number tag (2026-10-29); physics unchanged whatever is drawn",
 		"; ".join(problems))
 
 

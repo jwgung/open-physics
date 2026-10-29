@@ -15,7 +15,7 @@ const SHARED_CONTENT_PATH := "res://content/mechanics-labs.json"
 ## from the lab's `app.tip` (the web has its own interaction tip). `app.steps` / `app.observe` replace
 ## the shared `steps` / `observe` for the 3D app when its motion differs from the web's (Task 4e).
 const SHARED_KEYS := ["title", "category", "icon", "question", "steps", "observe", "terms", "law"]
-const APP_OVERRIDES := ["steps", "observe"]
+const APP_OVERRIDES := ["steps", "observe", "question"]
 const CAMERA_MODES := CameraRig.MODES
 const REQUIRED_KEYS := ["id", "title", "category", "question", "steps", "observe", "law", "scene",
 	"camera", "controls", "actions", "observations", "key_observations", "graph"]
@@ -94,7 +94,7 @@ static func shared_labs() -> Dictionary:
 
 ## [definition, problems]: an experiment file with `content` gets the texts of that shared lab
 ## (SHARED_KEYS, and `tip` / `tip_short` from the lab's app.tip / app.tip_short); it must not write them itself. Files without
-## `content` are returned as they are. A lab's `app.steps` (three texts) or `app.observe` replaces
+## `content` are returned as they are. A lab's `app.steps` (three texts), `app.observe` or `app.question` replaces
 ## the shared text in the 3D app only; the web never reads `app`.
 static func resolve(raw: Dictionary) -> Array:
 	var problems := PackedStringArray()
@@ -122,8 +122,8 @@ static func resolve(raw: Dictionary) -> Array:
 		if not app.has(key):
 			continue
 		var text: Variant = app[key]
-		if (key == "steps" and not (text is Array and text.size() == 3)) or (key == "observe" and not (text is String and text != "")):
-			problems.append("app.%s of %s is not valid (steps: three texts, observe: a text)" % [key, raw.content])
+		if (key == "steps" and not (text is Array and text.size() == 3)) or (key != "steps" and not (text is String and text != "")):
+			problems.append("app.%s of %s is not valid (steps: three texts, observe / question: a text)" % [key, raw.content])
 		else:
 			definition[key] = text.duplicate(true) if text is Array else text
 	return [definition, problems]

@@ -181,6 +181,13 @@ static func fly_point(from: Vector3, v: Vector3, g: float, t: float) -> Vector3:
 	return from + v * t + Vector3.DOWN * 0.5 * g * t * t
 
 
+## The piece can go to the bread cat now (the screen waits with the round's piece until then): a
+## game with a last step of its own (the push: the cat walks the opened path to the piece) says
+## false until that is done. Default: at once.
+func piece_ready() -> bool:
+	return true
+
+
 ## The screen takes the piece for the bread cat: its world position now (it hides here), or null
 ## when there is no piece to take (none in this lab, or already taken).
 func take_piece() -> Variant:

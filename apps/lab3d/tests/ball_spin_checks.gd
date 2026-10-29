@@ -1107,7 +1107,7 @@ func check_ball_colours() -> void:
 	await _free(spring)
 	# Pendulum bobs and the orbit's planet too (2026-10-23 user decision), in their colours.
 	var pend: Experiment = await _lab("constraints")
-	for i in pend.bobs.size():
+	for i in pend.SHOWN:   # the lab view's bobs (2026-10-29: the rope pendulum only)
 		var bob_yarn: MeshInstance3D = pend.bobs[i].get_node("Visual/Yarn")
 		var yarn_p := _yarn_problem(bob_yarn, pend.BOB_RADIUS)
 		if yarn_p != "" or not _near(_ball_colour(bob_yarn), [ArtPalette.BLUE, ArtPalette.ORANGE][i]):

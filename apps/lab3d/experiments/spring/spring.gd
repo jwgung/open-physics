@@ -25,6 +25,7 @@ const REST_AMPLITUDE := 0.002     # m: a damped ball within this of the rest len
 const REST_SPEED := 0.005         # m/s
 ## The swing's readout until the ball has been back once (then the formula period, observations).
 const SWING_WAIT := "한 번 왕복하면 보여요"
+const REACH_WAIT := "흔들면 보여요"
 
 var model := SpringModel.new()
 var ball: RigidBody3D
@@ -191,7 +192,16 @@ func observations() -> Dictionary:
 		"period": model.period(),
 		# The mission's swing (2026-10-28): the period once the ball has been back once (the cat's cheer).
 		"swing_period": model.period() if released and holding == "" and model.time() >= model.period() else SWING_WAIT,
+		# The bell game (2026-10-29): how far past the rest the first swing goes on the squeezed side, once
+		# it got there (half a swing): x₀ e^(−γT/2) by the same law (x₀ without damping). Read only.
+		"bell_reach": first_swing_reach() if released and holding == "" and model.time() >= model.period() * 0.5 else REACH_WAIT,
 	}
+
+
+## The first swing's turn on the other side of the rest (m, + = squeezed past the rest): the law's
+## −x(T/2) for the run's x₀ (a ball pushed in first swings out: negative).
+func first_swing_reach() -> float:
+	return -PhysicsLaws.spring_release_displacement(model.x0, model.omega0(), model.gamma(), model.period() * 0.5)
 
 
 ## Kinetic and spring energy shares (%) over time since the release.

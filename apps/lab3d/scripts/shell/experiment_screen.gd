@@ -154,6 +154,7 @@ var _slam: StampSlam = null
 var _stamps_landed := 0
 var _confetti: Confetti = null
 var _done_card: RoundDoneCard = null
+var _piece_wait := -1.0                # s left waiting for the piece game's last step (< 0: not waiting)
 var _card_left := -1.0                 # s until the round-done card shows (after the confetti starts)
 var _cat: CatActor = null
 var _demo_left := -1.0                 # --demo-celebrate: s until the next demo stamp
@@ -168,6 +169,7 @@ var _piece_t := 0.0
 const PIECE_HOLD_S := 1.4              # the card waits this much longer: the piece is seen first
 const PIECE_POP_S := 0.4
 const PIECE_FLY_S := 0.7               # the lab's piece flies into the cat's paws (LabGame)
+const PIECE_WAIT_MAX_S := 8.0          # at most this long for a piece game's last step (LabGame.piece_ready)
 var _piece_from := Vector3.INF          # where it flew from (INF: popped in over the cat)
 const DEMO_STAMP_EVERY_S := 1.6
 
@@ -1003,8 +1005,11 @@ func _celebrate_round() -> void:
 		cat.cheer(cat.mode == "free", 4)
 	_card_left = CARD_DELAY_S
 	if Story.enabled:
-		_show_piece()
 		_card_left += PIECE_HOLD_S
+		if experiment.game != null and not experiment.game.piece_ready():
+			_piece_wait = PIECE_WAIT_MAX_S   # the lab's own last step first (the push: the cat walks to the piece)
+		else:
+			_show_piece()
 
 
 ## The story: the round's star piece appears over the bread cat, who lifts it (its cheer); pictures
@@ -1096,6 +1101,13 @@ func _show_done_card() -> void:
 ## The card's timer and the screenshot demo (--demo-celebrate: one stamp every DEMO_STAMP_EVERY_S,
 ## shown as earned, nothing judged or saved).
 func _run_celebration(delta: float) -> void:
+	if _piece_wait >= 0.0:
+		# The piece game still shows its last step (LabGame.piece_ready): the piece and the card wait.
+		_piece_wait -= delta
+		if _piece_wait < 0.0 or experiment.game == null or experiment.game.piece_ready():
+			_piece_wait = -1.0
+			_show_piece()
+		return
 	_place_piece(delta)
 	if _card_left >= 0.0:
 		_card_left -= delta

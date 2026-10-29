@@ -146,15 +146,15 @@ func check_content_lint() -> void:
 	# The approved wordings (2026-10-28).
 	var want := {
 		"pulley": [ExperimentRegistry.kid_text(ExperimentRegistry.find("pulley"), "title"), "줄이 많으면 힘이 덜 들까?"],
-		"buoyancy": [MissionTracker.missions(ExperimentRegistry.find("buoyancy")).stages[0].text, "보물 상자를 매단 통을 80킬로그램으로 띄우기!"],
+		"buoyancy": [MissionTracker.missions(ExperimentRegistry.find("buoyancy")).stages[0].text, "보물 상자를 매단 큰 통을 물에 띄우기!"],
 		"constraints": [ExperimentRegistry.find("constraints").story.clue, "거북이 시계 속에 조각이 있어! 공을 시계 추랑 똑같이 흔들어 보자!"],
 		# The piece game's stages (2026-10-29).
 		"spring": [MissionTracker.missions(ExperimentRegistry.find("spring")).stages.map(func(s: Dictionary) -> String: return s.text),
-			["가벼운 공을 2미터 넘게 당겨 빠른 박자 맞추기!", "무거운 공으로 느린 박자 맞추기!", "가벼운 공을 1미터 안으로 조금만 당겨 박자 맞추기!"]],
+			["가벼운 공을 당겨 가까운 종 치기!", "더 멀리 당겨서 먼 종 치기!", "무거운 공으로 제일 먼 종 치기!"]],
 		"free-fall": [MissionTracker.missions(ExperimentRegistry.find("free-fall")).stages.map(func(s: Dictionary) -> String: return s.text),
 			["빨간 공과 노란 공을 같이 떨어뜨려 버튼 누르기!", "달에서 두 공을 맨 위에서 같이 떨어뜨리기!", "목성에서 두 공을 같이 1초 안에 떨어뜨리기!"]],
 		"collision": [MissionTracker.missions(ExperimentRegistry.find("collision")).stages.map(func(s: Dictionary) -> String: return s.text),
-			["같은 무게 공을 세게 부딪혀 얼음에 금 내기!", "무거운 파란 공으로 더 세게 부딪히기!", "무거운 주황 공을 세게 밀어 얼음 깨기!"]],
+			["같은 무게 공을 세게 부딪혀 얼음에 금 내기!", "무거운 파란 공으로 더 세게 부딪히기!", "무거운 주황 공을 세게 쳐서 얼음 깨기!"]],
 		# Batch B (2026-10-29) and the throw's angle game.
 		"projectile": [MissionTracker.missions(ExperimentRegistry.find("projectile")).stages.map(func(s: Dictionary) -> String: return s.text),
 			["낮게 던져서 가까운 상자 맞히기!", "얼마나 기울여 던질까? 먼 상자 맞히기!", "높이 던져서 나무 위 상자 맞히기!"]],
@@ -208,22 +208,28 @@ func check_free_fall_card() -> void:
 	await _close(screen)
 
 
-## The spring's first stage shows how far the ball was pulled ("얼마나 당겼나 1.2미터" from the
-## start), the next stages the swing ("한 번 왔다 갔다").
+## The spring's card (2026-10-29, the bell game): every stage shows how far the first swing went
+## past the rest ("반대쪽으로 간 길이"), "흔들면 보여요" until the ball got there, then the length in words.
 func check_spring_card() -> void:
 	var screen := await _open("spring")
 	screen._end_question()
 	screen._poll()
 	var first: Array = screen.key_card_ids()
-	var first_caption := ExperimentRegistry.card_label(screen.definition, "pull")
-	var first_text: String = screen._key_labels.pull.text if screen._key_labels.has("pull") else ""
+	var caption := ExperimentRegistry.card_label(screen.definition, "bell_reach")
+	var waiting: String = screen._key_labels.bell_reach.text if screen._key_labels.has("bell_reach") else ""
+	var lab: Experiment = screen.experiment
+	lab.manipulation_placed("ball", Transform3D(Basis(), Vector3(lab.ANCHOR_X + lab.REST_LENGTH + 1.5, lab.ROD_Y, 0.0)))
+	for k in 100:
+		await tree.physics_frame
+	screen._poll()
+	var reached: String = screen._key_labels.bell_reach.text if screen._key_labels.has("bell_reach") else ""
 	screen._show_stamps(1)
 	await tree.process_frame
 	var second: Array = screen.key_card_ids()
-	expect.call(first == ["pull"] and first_caption == "얼마나 당겼나" and first_text == "1.2미터" and second == ["swing_period"]
+	expect.call(first == ["bell_reach"] and caption == "반대쪽으로 간 길이" and waiting == "흔들면 보여요" and reached == "1.5미터" and second == ["bell_reach"]
 		and screen._key_row.get_child_count() == 1,
-		"kid words: the spring's stage 1 card is the pull (얼마나 당겼나 1.2미터), stages 2-3 the swing",
-		"%s '%s' '%s' -> %s" % [str(first), first_caption, first_text, str(second)])
+		"kid words: the spring's card is how far the first swing went past the rest (반대쪽으로 간 길이: 흔들면 보여요, then 1.5미터 from a 1.5 m pull), every stage",
+		"%s '%s' '%s' '%s' -> %s" % [str(first), caption, waiting, reached, str(second)])
 	await _close(screen)
 
 

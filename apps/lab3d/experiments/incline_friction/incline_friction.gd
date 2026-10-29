@@ -81,6 +81,8 @@ func set_angle(degrees: float) -> void:
 	_pivot.rotation = Vector3(0.0, 0.0, deg_to_rad(angle_deg))
 	props.angle_changed(angle_deg)
 	_fit_stand()
+	if game != null:
+		(game as InclineGame).place(lower_end().x)   # the dominoes start past the slide's lower end
 	reset_box()
 
 
@@ -159,6 +161,11 @@ func _status_changed(previous: String, current: String) -> void:
 	props.status_changed(previous, current)
 	if current == "left" and game != null:
 		(game as InclineGame).arrive()   # the formula box reached the slide's end: the dominoes' row reacts
+
+
+## The middle of the slide's lower end on its top face (world): where the formula run ends.
+func lower_end() -> Vector3:
+	return _pivot.global_transform * Vector3(-INCLINE_LENGTH * 0.5, 0.0, 0.0)
 
 
 func formula_acceleration() -> float:
@@ -311,6 +318,7 @@ func _build_world() -> void:
 	game = InclineGame.new(self)   # the piece game: the dominoes past the slide's end (visual only)
 	add_child(game)
 	game.build()
+	(game as InclineGame).place(lower_end().x)
 	props.juice.landed.connect(impact.emit)
 
 

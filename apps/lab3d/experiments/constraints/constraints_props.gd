@@ -96,13 +96,17 @@ static func path_mesh(length: float, max_deg: float) -> Mesh:
 
 
 ## Stands, links, paths and bob meshes; `bobs` and `anchors` in the same order (string, rod).
-func dress(experiment: Node3D, bobs: Array[RigidBody3D], anchors: Array[Vector3], colors: Array[Color], radius: float) -> void:
+## `shown`: how many of the pendulums the lab view draws (2026-10-29 user: the rope pendulum only; the
+## rod pendulum's model still runs for the web-parity checks, with no stand, link, path or ball).
+func dress(experiment: Node3D, bobs: Array[RigidBody3D], anchors: Array[Vector3], colors: Array[Color], radius: float, shown := 2) -> void:
 	_anchors = anchors
 	ArtKit.add_world(experiment, Vector3(0.0, 0.0, -0.6))
-	var stand := ArtKit.instance(stand_mesh(anchors))
+	var drawn: Array[Vector3] = []
+	drawn.assign(anchors.slice(0, shown))
+	var stand := ArtKit.instance(stand_mesh(drawn))
 	stand.name = "Stands"
 	experiment.add_child(stand)
-	for i in bobs.size():
+	for i in mini(shown, bobs.size()):
 		var link := ArtKit.instance(ArtKit.link_mesh(CORD_RADIUS if i == 0 else ROD_RADIUS, ArtPalette.WHITE if i == 0 else ArtPalette.BLUE_DARK))
 		link.name = "String" if i == 0 else "Rod"
 		experiment.add_child(link)
@@ -177,7 +181,8 @@ func show_paths(length: float, max_deg: float) -> void:
 
 ## Link `i` from its anchor to the bob centre `at`.
 func stretch_link(i: int, at: Vector3) -> void:
-	ArtKit.stretch_link(links[i], _anchors[i], at)
+	if i < links.size():
+		ArtKit.stretch_link(links[i], _anchors[i], at)
 
 
 ## The swing starts with the string bob at `bob_at` (its start).

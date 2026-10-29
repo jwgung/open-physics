@@ -189,17 +189,25 @@ func check_spring() -> void:
 	var stages: Array = MissionTracker.missions(definition).stages
 	var spring_script: GDScript = load("res://experiments/spring/spring.gd")
 	var constants := spring_script.get_script_constant_map()
-	# Stage 1: the pull past 2 m (its `also`), reachable on the rod (2.5 m), not from the start 1.2 m,
-	# 2.0 m (2.0미터) not and 2.1 m yes; the pull is stage 1's card.
-	var pull := func(value: float) -> bool:
-		return MissionTracker.beats(definition, "pull", "greater", stages[0].also[0], {"pull": value})
-	if not (pull.call(constants.EXT_MAX) and not pull.call(constants.DEFAULT_PULL) and not pull.call(2.0) and pull.call(2.1)):
-		problems.append("stage 1: the pull past 2 m")
-	if stages[0].get("card") != "pull" or ExperimentRegistry.shown_cards(definition, 0) != ["pull"] or ExperimentRegistry.shown_cards(definition, 1) != ["swing_period"]:
-		problems.append("the card must be the pull during stage 1 only")
-	var rules := [0, 1, 2].map(func(i: int) -> Dictionary: return MissionTracker.rule(definition, i))
-	if rules.any(func(r: Dictionary) -> bool: return r.observe != "swing_period" or r.compare != "near"):
-		problems.append("the stages do not match the swing to a beat (%s)" % str(rules))
+	# The bell game (2026-10-29 user "종 치기"): every stage judges how far the first swing goes past the
+	# rest (bell_reach, as shown) beyond the bell's spot − 0.05 m: 0.5, 1, 1.5 m, all within the rod's
+	# squeezed side (EXT_MIN) and reached from pulls on the rod (up to EXT_MAX); the card is that reach.
+	var bells := [0.5, 1.0, 1.5]
+	for i in stages.size():
+		var how := MissionTracker.rule(definition, i)
+		var d: float = bells[i]
+		var hit := MissionTracker.beats(definition, "bell_reach", how.compare, stages[i], {"bell_reach": d})
+		var short := MissionTracker.beats(definition, "bell_reach", how.compare, stages[i], {"bell_reach": d - 0.1})
+		if how.observe != "bell_reach" or how.compare != "greater" or not hit or short or d > -float(constants.EXT_MIN) + 1e-9 or d > float(constants.EXT_MAX):
+			problems.append("stage %d: the bell at %s m (%s, hit %s, 0.1 m short %s)" % [i + 1, d, str(how), hit, short])
+		if ExperimentRegistry.shown_cards(definition, i) != ["bell_reach"]:
+			problems.append("stage %d card %s" % [i + 1, ExperimentRegistry.shown_cards(definition, i)])
+	if not MissionTracker.condition_holds(stages[2].conditions.mass, 3.0) or MissionTracker.condition_holds(stages[2].conditions.mass, 1.0):
+		problems.append("the last bell does not want the heavy ball")
+	# The period law stays in 자세히 (the note's formula and its numbers).
+	var note: Dictionary = ExperimentRegistry.note(definition)
+	if note.formula != "T = 2π√(m/k)" or not note.numbers.any(func(r: Dictionary) -> bool: return "swing_period" in r.ids):
+		problems.append("the period law left 자세히")
 	# The lab's swing reads the formula period once the ball has been back once, not before.
 	var lab: Experiment = await _lab("spring")
 	lab.set_control("mass", 3.0)
@@ -212,7 +220,7 @@ func check_spring() -> void:
 		problems.append("the swing reads %s after 4 s, %s after 5.2 s (want text, then 2π√(3/5))" % [str(early), str(late)])
 	lab.queue_free()
 	expect.call(problems.is_empty(),
-		"goal (spring): stage 1 also wants the pull past 2 m (2.1 m yes, 2.0 m no; rod 2.5 m, start 1.2 m) with the pull card; every stage matches the swing to the clock's beat (tests/game_piece_checks.gd: 1 kg on 2.8 s, 3 kg on 4.9 s); the swing shows after one return",
+		"goal (spring): the bells at 0.5, 1, 1.5 m on the squeezed side (within EXT_MIN), each reached by the first swing as shown and not 0.1 m short, the last with the heavy ball, the card is that reach; the period law T = 2π√(m/k) stays in 자세히 and the swing reads it after one return",
 		"; ".join(problems))
 
 
@@ -469,7 +477,8 @@ func check_invariants() -> void:
 		problems.append_array(Array(ExperimentRegistry.validate(definition)).map(func(p: String) -> String: return "%s: %s" % [id, p]))
 		var stages: Array = MissionTracker.missions(definition).stages
 		for i in stages.size():
-			if i > 0 and (stages[i].get("change", []) as Array).is_empty() and not disjoint.call("_disjoint", stages[i - 1].get("conditions", {}), stages[i].get("conditions", {})):
+			var on_purpose: bool = "%s %d-%d" % [id, i, i + 1] in disjoint.get_script_constant_map().SHARED_ON_PURPOSE
+			if i > 0 and not on_purpose and (stages[i].get("change", []) as Array).is_empty() and not disjoint.call("_disjoint", stages[i - 1].get("conditions", {}), stages[i].get("conditions", {})):
 				problems.append("%s: stages %d and %d share a setup" % [id, i, i + 1])
 			for group in ConditionPicks.groups(definition, i):
 				var holds: Array = group.presets.map(func(p: Dictionary) -> bool: return MissionTracker.condition_holds(group.want, p.value))

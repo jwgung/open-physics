@@ -1,135 +1,203 @@
-## The spring's piece game (2026-10-29 "조각 꺼내기"): a toy metronome clock ticks the stage's beat,
-## its arm swinging with the stage's period (MissionTracker: the stage's threshold, the beat in
-## seconds); the star piece waits behind the barred little door in its face. A stage asks for the
-## ball's swing to match the beat (the formula period T = 2π√(m/k), as shown, within the stage's
-## tolerance: a light ball the quick 2.8 s beat, a heavy one the slow 4.9 s beat, then the light ball
-## again pulled only a little — the beat does not care how far it was pulled). During a run the arm
-## starts with the ball (the ball is let go from its far end, the arm from its far side), so a
-## matching swing goes with the arm. A stamp lights a lamp; the last opens the door and the piece
-## hops out on uniform gravity (LabGame.launch_piece). Visual only: no body; the ball and the
-## numbers are SpringModel's as before.
+## The spring's piece game (2026-10-29 "조각 꺼내기"; reworked the same day, user chose "종 치기"): a
+## gold bell hangs over the rod on the squeezed side (towards the post), its pull cord's wooden knob
+## in front of the coil at the rod's height. Let go from a pull x₀ the ball swings to −x₀ (the formula
+## SpringModel: no damping by default, the first turn at −x₀ e^(−γT/2) with damping) and pushes the
+## knob when it gets past the bell's spot: the bell rings at the formula moment the ball's extension
+## reaches −d. A stage asks for the bell at d = 0.5, 1 and 1.5 m (MissionTracker: the lab's
+## `bell_reach` = how far the first swing goes past the rest, as shown, beyond the stage's threshold
+## d − 0.05), the last with the heavy ball ("무거운 공도 같은 길이만큼 당기면 종에 닿아요": the swing's
+## size does not depend on the mass). The piece hangs in the bell as its clapper; each stamp lights a
+## lamp on the bell's post, the last shakes the piece out (LabGame.launch_piece). Visual only: no body;
+## the ball and the numbers are SpringModel's as before.
 class_name SpringGame
 extends LabGame
 
-const AT := Vector3(1.6, 0.0, -2.8)
-const BODY_H := 2.0
-const BODY_R := Vector2(0.78, 0.4)      # the pyramid's corner radius at its foot and top
-const WINDOW_Y := 1.0                   # the barred door's foot: the piece shows over the rod from the front view
-const ARM := 1.55
-const SWING := 0.42                     # rad, the arm's swing to each side
-const IDLE_BEAT := 2.8                  # s, the beat once the round is done
-const DOOR_S := 0.5
+const POST_Z := -1.75                   # the bell's post behind the rod (clear of the heavy ball and of the cat stepping back)
+const KNOB_Z := 0.32                    # the knob's centre in front of the rod (outside the coil, r 0.235)
+const KNOB_R := 0.07
+const CORD := 1.05                      # m from the bell's mouth down to the knob's centre
+const BELL_H := 0.5
+const BELL_R := 0.32
+const IDLE_BELL := 1.0                  # m: the bell's distance once the round is done
+const RING_S := 1.2
+const MOVE_S := 0.6                     # the bell moves to the next stage's spot in this long
 
-var _clock: Node3D
-var _arm: Node3D
-var _door: Node3D
-var _body: MeshInstance3D
-var _door_open_at := -1.0
-var _phase := 0.0                         # the arm's phase (0..1 of a beat) while no run goes
+var _post: Node3D                       # the post, its arm and lamps (moves with the bell's spot)
+var _post_mesh: MeshInstance3D
+var _bell: Node3D                       # hangs from the arm's end; rocks when rung
+var _cord: Node3D                       # from the bell's mouth down to the knob; swings when pushed
 var _ring_at := -10.0
+var _rang := false                      # the bell rang in this run (once per run)
+var rang_time := -1.0                   # the formula clock (s since the release) when it rang (tests)
+var _bell_d := 0.5                      # the bell's distance shown now (m from the rest, squeezed side)
+var _move_from := 0.5
+var _move_at := -10.0
 
 
 func build() -> void:
-	_clock = Node3D.new()
-	_clock.name = "Metronome"
-	_clock.position = AT
-	add_child(_clock)
-	_body = ArtKit.instance(body_mesh(0))
-	_body.name = "Body"
-	_clock.add_child(_body)
-	# The arm: a thin rod from its pivot low on the face up, with a weight.
-	_arm = Node3D.new()
-	_arm.name = "Arm"
-	_arm.position = Vector3(0.0, 0.32, _face_z(0.32) + 0.08)
-	_clock.add_child(_arm)
-	var a := ArtKit.builder()
-	a.add_cylinder(Transform3D(Basis(), Vector3(0.0, ARM * 0.5, 0.0)), 0.025, 0.025, ARM, 6, ArtPalette.STEEL)
-	a.add_rounded_box(Transform3D(Basis(), Vector3(0.0, ARM * 0.62, 0.0)), Vector3(0.16, 0.12, 0.08), 0.02, 1, ArtPalette.RED, ArtPalette.RED_TOP)
-	_arm.add_child(ArtKit.instance(a.commit()))
-	# The little barred door low on the face (hinged on its left), the piece behind it.
-	_door = Node3D.new()
-	_door.name = "Door"
-	_door.position = Vector3(-0.27, WINDOW_Y, _face_z(WINDOW_Y + 0.27) + 0.03)
-	_clock.add_child(_door)
-	var d := ArtKit.builder()
-	for y in [0.0, 0.54]:
-		d.add_rounded_box(Transform3D(Basis(), Vector3(0.27, y, 0.0)), Vector3(0.54, 0.05, 0.04), 0.01, 1, ArtPalette.YELLOW, ArtPalette.YELLOW_TOP)
-	for k in 4:
-		d.add_cylinder(Transform3D(Basis(), Vector3(0.54 * (k + 0.5) / 4.0, 0.27, 0.0)), 0.02, 0.02, 0.54, 6, ArtPalette.YELLOW, false)
-	_door.add_child(ArtKit.instance(d.commit()))
-	make_piece(_piece_home(), PIECE_SIZE * 0.85)
+	_post = Node3D.new()
+	_post.name = "BellPost"
+	add_child(_post)
+	_post_mesh = ArtKit.instance(post_mesh(0))
+	_post.add_child(_post_mesh)
+	_bell = Node3D.new()
+	_bell.name = "Bell"
+	_post.add_child(_bell)
+	var b := ArtKit.builder()
+	# A gold bell (a flared cone, its mouth down at the node's origin) on a little crown.
+	b.add_cylinder(Transform3D(Basis(), Vector3(0.0, BELL_H * 0.5, 0.0)), BELL_R, BELL_R * 0.45, BELL_H, 8, Color("ffc61a"), true, Color("ffe14a"))
+	b.add_cylinder(Transform3D(Basis(), Vector3(0.0, 0.03, 0.0)), BELL_R * 1.08, BELL_R * 1.08, 0.06, 8, Color("e0a400"))
+	b.add_sphere(Transform3D(Basis(), Vector3(0.0, BELL_H + 0.07, 0.0)), 0.08, 3, 6, Color("8f5a2c"))
+	_bell.add_child(ArtKit.instance(b.commit()))
+	_cord = Node3D.new()
+	_cord.name = "Cord"
+	_bell.add_child(_cord)
+	var c := ArtKit.builder()
+	c.add_cylinder(Transform3D(Basis(), Vector3(0.0, -CORD * 0.5, 0.0)), 0.018, 0.018, CORD, 6, ArtPalette.WHITE, false)
+	c.add_sphere(Transform3D(Basis(), Vector3(0.0, -CORD, 0.0)), KNOB_R, 3, 6, Color("c98d4f"))
+	_cord.add_child(ArtKit.instance(c.commit()))
+	# The piece is the bell's clapper: just under its mouth.
+	make_piece(Vector3.ZERO, PIECE_SIZE * 0.8)
+	_bell_d = stage_bell(0)
+	_place_bell()
 	_jump(0)
 
 
-func _piece_home() -> Vector3:
-	return AT + Vector3(0.0, WINDOW_Y + 0.27, _face_z(WINDOW_Y + 0.27) - 0.06)
+static var _post_meshes := {}
 
 
-## The front face's z (from the clock's middle) at height `y`: the square pyramid turned 45°.
-static func _face_z(y: float) -> float:
-	var k := clampf((y - 0.16) / BODY_H, 0.0, 1.0)
-	return lerpf(BODY_R.x, BODY_R.y, k) * sqrt(0.5)
-
-
-static var _body_meshes := {}
-
-
-## The clock's body with `lit` of its three lamps on (cached per count): a wooden pyramid on a
-## foot, a cap, the lamps on top.
-static func body_mesh(lit: int) -> Mesh:
-	if _body_meshes.has(lit):
-		return _body_meshes[lit]
+## The bell's post (behind the rod) with its arm forward over the rod and `lit` of three lamps on.
+static func post_mesh(lit: int) -> Mesh:
+	if _post_meshes.has(lit):
+		return _post_meshes[lit]
 	var b := ArtKit.builder()
-	b.add_rounded_box(Transform3D(Basis(), Vector3(0.0, 0.08, 0.0)), Vector3(1.3, 0.16, 1.3), 0.04, 1, Color("8f5a2c"))
-	b.add_cylinder(Transform3D(Basis(Vector3.UP, PI * 0.25), Vector3(0.0, 0.16 + BODY_H * 0.5, 0.0)), BODY_R.x, BODY_R.y, BODY_H, 4, Color("c98d4f"), true, Color("dba56a"))
-	b.add_rounded_box(Transform3D(Basis(), Vector3(0.0, 0.16 + BODY_H + 0.05, 0.0)), Vector3(0.6, 0.1, 0.6), 0.03, 1, Color("8f5a2c"))
-	b.ao_min = 1.0
-	for i in 3:
-		b.add_sphere(Transform3D(Basis(), Vector3((i - 1) * 0.2, 0.16 + BODY_H + 0.18, 0.0)), 0.08, 3, 6, LAMP_ON if i < lit else LAMP_OFF)
-	_body_meshes[lit] = b.commit()
-	return _body_meshes[lit]
+	var top := SpringLab_ROD_Y() + CORD + BELL_H + 0.3
+	b.add_rounded_box(Transform3D(Basis(), Vector3(0.0, 0.06, POST_Z)), Vector3(0.5, 0.12, 0.5), 0.03, 1, Color("8f5a2c"))
+	b.add_rounded_box(Transform3D(Basis(), Vector3(0.0, top * 0.5, POST_Z)), Vector3(0.12, top, 0.12), 0.02, 1, Color("c98d4f"), Color("dba56a"))
+	b.add_rounded_box(Transform3D(Basis(), Vector3(0.0, top - 0.06, (POST_Z + KNOB_Z) * 0.5)), Vector3(0.1, 0.1, KNOB_Z - POST_Z + 0.12), 0.02, 1, Color("c98d4f"), Color("dba56a"))
+	LabGame.add_lamps(b, Vector3(0.0, 0.2, POST_Z + 0.2), lit, 0.15, 0.06)
+	_post_meshes[lit] = b.commit()
+	return _post_meshes[lit]
 
 
-## The stage's beat (s): its threshold, the period a matching swing has (MissionTracker "near").
-func beat() -> float:
+## The rod's height (SpringLab ROD_Y) without a typed reference to the lab script.
+static func SpringLab_ROD_Y() -> float:
+	return 1.0
+
+
+## Stage `i`'s bell distance d (m on the squeezed side): its threshold + 0.05 (a shown reach of d
+## beats it, d − 0.1 does not).
+func stage_bell(i: int) -> float:
 	var stages_list: Array = MissionTracker.missions(lab.definition).get("stages", []) if lab != null else []
-	if stage < stages_list.size():
-		return float(stages_list[stage].get("threshold", IDLE_BEAT))
-	return IDLE_BEAT
+	if i >= 0 and i < stages_list.size():
+		return snappedf(float(stages_list[i].get("threshold", IDLE_BELL - 0.05)) + 0.05, 0.01)
+	return IDLE_BELL
+
+
+## The bell's distance now (m): where a swing must reach to ring it.
+func bell_distance() -> float:
+	return _bell_d
+
+
+func _spring_lab() -> Variant:
+	return host()
+
+
+## The rest point's x (world) and the ball's look radius now.
+func _rest_x() -> float:
+	var l: Variant = _spring_lab()
+	return float(l.ANCHOR_X + l.REST_LENGTH) if l != null else -1.5
+
+
+func _ball_r() -> float:
+	var l: Variant = _spring_lab()
+	return float(l.look_radius()) if l != null else 0.35
+
+
+## How far from the ball's centre (along x) the knob is when the ball's surface touches it.
+func _touch_gap() -> float:
+	var r := _ball_r() + KNOB_R
+	return sqrt(maxf(r * r - KNOB_Z * KNOB_Z, 0.0))
+
+
+## The knob's resting x (world) for the bell at `d`: the ball touches it when its centre is at −d.
+func knob_x(d: float) -> float:
+	return _rest_x() - d - _touch_gap()
+
+
+func _place_bell() -> void:
+	var x := knob_x(_bell_d)
+	_post.position = Vector3(x, 0.0, 0.0)
+	_bell.position = Vector3(0.0, SpringLab_ROD_Y() + CORD, KNOB_Z)
 
 
 func _cleared(stage_index: int, last: bool) -> void:
-	_body.mesh = body_mesh(stage_index + 1)
-	_ring_at = _t
+	_post_mesh.mesh = post_mesh(stage_index + 1)
 	if last:
-		_door_open_at = _t
-		launch_piece(Vector3(0.3, 2.2, 1.4), 9.81)
+		launch_piece(Vector3(0.6, 2.0, 1.4), 9.81)
+	else:
+		_move_from = _bell_d
+		_move_at = _t + RING_S * 0.6   # after it rang: the bell moves on to the next stage's spot
 	SoundBoard.play(&"glint")
 
 
 func _jump(stamps: int) -> void:
-	_body.mesh = body_mesh(mini(stamps, 3))
-	_door_open_at = -1.0
-	_door.rotation.y = -PI * 0.6 if stamps >= stages else 0.0
+	_post_mesh.mesh = post_mesh(mini(stamps, 3))
+	_move_at = -10.0
+	_bell_d = stage_bell(stamps) if stamps < stages else stage_bell(stages - 1)
+	_rang = false
 	if stamps < stages and piece != null and piece_state != "held":
-		piece.position = _piece_home()
 		set_piece_state("held")
+
+
+## A new run (a new pull, 처음으로): the bell may ring again.
+func run_reset() -> void:
+	super()
+
+
+## The formula ball is at the bell now: its extension at or past −d, or past the first turn (T/2) of a
+## swing that turns at −d or beyond.
+func reaches_bell(l: Variant) -> bool:
+	if l.model.extension <= -_bell_d + 1e-9:
+		return true
+	return l.model.time() >= l.model.period() * 0.5 and l.first_swing_reach() >= _bell_d - 1e-9
+
+
+## The formula ball got to the bell in this run (tests).
+func rang() -> bool:
+	return _rang
 
 
 func _process(delta: float) -> void:
 	super(delta)
-	var period := beat()
-	var spring_lab: Variant = host()
-	if spring_lab != null and spring_lab.released and spring_lab.holding == "":
-		# The arm starts on its far side with the ball let go from its far end: in step when they match.
-		_phase = fmod(spring_lab.model.time() / period, 1.0)
-	else:
-		_phase = fmod(_phase + delta / period, 1.0)
-	_arm.rotation.z = -SWING * cos(TAU * _phase) + wobble(_t, _ring_at, 0.1, 0.5)
-	if _door_open_at >= 0.0:
-		_door.rotation.y = -PI * 0.6 * smooth((_t - _door_open_at) / DOOR_S)
+	if _move_at >= 0.0 and _t >= _move_at:
+		var k := (_t - _move_at) / MOVE_S
+		_bell_d = lerpf(_move_from, stage_bell(stage), smooth(k))
+		if k >= 1.0:
+			_move_at = -10.0
+	_place_bell()
+	var l: Variant = _spring_lab()
+	var ball_x := INF
+	if l != null and l.ball != null:
+		ball_x = l.ball.global_position.x
+		# The ring: the formula ball got to −d in this run (once): its extension crossed −d, or the first
+		# swing turns exactly there (x₀ = d: the turn at T/2 falls between two steps).
+		if l.released and l.holding == "" and not _rang and _move_at < 0.0 and reaches_bell(l):
+			_rang = true
+			rang_time = l.model.time()
+			_ring_at = _t
+			SoundBoard.play(&"glint")
+		if not l.released or l.holding != "":
+			_rang = false
+	# The cord: pushed by the ball's surface past the knob's resting spot, it swings away (−x).
+	var rest_knob := knob_x(_bell_d)
+	var want := minf(rest_knob, ball_x - _touch_gap()) if is_finite(ball_x) else rest_knob
+	_cord.rotation.z = asin(clampf((want - rest_knob) / CORD, -0.95, 0.0))
+	_bell.rotation.z = wobble(_t, _ring_at, 0.35, RING_S)
+	if piece != null and piece_state == "held":
+		piece.global_position = _bell.global_position + _bell.global_transform.basis.y * (-PIECE_SIZE * 0.55)
 
 
-## The clue's glow (LabGame.highlight): the metronome clock.
+## The clue's glow (LabGame.highlight): the bell with the piece in it.
 func highlight_spots() -> Array:
-	return [{"at": AT + Vector3(0.0, BODY_H * 0.6, 0.0), "radius": 1.35}]
+	return [{"at": _post.position + _bell.position + Vector3.UP * BELL_H * 0.4, "radius": 0.75}]

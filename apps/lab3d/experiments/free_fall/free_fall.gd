@@ -39,6 +39,12 @@ var height := 5.0
 ## Each ball's own start (its bottom, m) when the lab opens (2026-10-29): not level, so the first drop
 ## of the piece game's buttons is not together by itself (the slider still sets both alike).
 const START_HEIGHTS := {"red": 5.0, "yellow": 3.0}
+## Per stage of the piece game (2026-10-30 user: a ball let go drops both, so one ball can be lifted
+## per try): the red ball already waits where the stage needs it (the Moon's stage at the top, 8 m:
+## √(2·8/1.62) = 3.14 s > 3 s), the pink one lower; the child lifts the pink ball to the red one.
+const STAGE_HEIGHTS := [{"red": 5.0, "yellow": 3.0}, {"red": 8.0, "yellow": 4.0}, {"red": 6.0, "yellow": 3.0}]
+var _heights_stage := -1          # the stage whose STAGE_HEIGHTS the balls got
+var _heights_pending := false     # a stage just cleared: its next heights wait for the next run
 var mass_id := "heavy"
 ## The signpost showing which world the gravity is (2026-10-28).
 var planet_sign: PlanetSign
@@ -87,6 +93,7 @@ func set_height(h: float) -> void:
 	if is_nan(clamped):
 		return
 	height = clamped
+	_heights_pending = false   # the slider's height for both wins over a stage's waiting heights
 	for id in ORDER:
 		starts[id].y = height
 	reset_run()
@@ -116,8 +123,24 @@ func look_radius(id: String) -> float:
 	return BALL_RADIUS * MassLook.factor(mass_of(id), LOOK_MASS)
 
 
+## The stage changed (opened, or one just cleared): its STAGE_HEIGHTS, now or (the balls still lie
+## where the win landed them) at the next run.
+func set_game_stage(stage: int, stamps: int, just_cleared: bool) -> void:
+	super(stage, stamps, just_cleared)
+	if stage < 0 or stage >= STAGE_HEIGHTS.size() or stage == _heights_stage:
+		return
+	_heights_stage = stage
+	_heights_pending = true
+	if not released:
+		reset_run()
+
+
 func reset_run() -> void:
 	_pressed = {}
+	if _heights_pending and _heights_stage >= 0:
+		_heights_pending = false
+		for id in ORDER:
+			starts[id].y = _clamp_to_control("height", float(STAGE_HEIGHTS[_heights_stage][id]))
 	if game != null:
 		game.run_reset()
 		(game as FreeFallGame).place_buttons(starts)

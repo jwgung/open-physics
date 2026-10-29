@@ -189,8 +189,9 @@ func _rerelease_case(definition: Dictionary, ending: String) -> Array:
 		screen._set_control("gravity", "zero")
 		screen._set_control("speed", 9.0)
 		screen._set_control("angle", 80.0)   # up through the top of the box (the fence stops a level throw)
-	var button: Control = screen._action_buttons["release"]
-	await _tap(button.get_global_rect().get_center())
+	# The run's own action (2026-10-29: no 공 놓기 button; the screen's handler a button used to call).
+	screen.experiment_action("release")
+	await tree.process_frame
 	for i in (150 if ending == "rolling" else 260):
 		await tree.physics_frame
 	if lab.status() != ("out" if flies_off else "landed") or lab.ball.freeze != flies_off:
@@ -199,7 +200,8 @@ func _rerelease_case(definition: Dictionary, ending: String) -> Array:
 		problems.append("not rolling fast: %.2f m/s" % lab.ball.linear_velocity.length())
 	var landed: Vector3 = lab.ball.global_position
 	Engine.physics_ticks_per_second = SLOW_TICKS
-	await _tap(button.get_global_rect().get_center())
+	screen.experiment_action("release")
+	await tree.process_frame
 	var shadow: Node3D = lab.props.juice._shadow
 	var frames := 0
 	while not lab.released and frames < 120 and problems.is_empty():
@@ -229,7 +231,8 @@ func _manipulation_case(definition: Dictionary, cancel: bool) -> Array:
 	var root_size := tree.root.size
 	var screen := await _open(definition)
 	var lab: Experiment = screen.experiment
-	await _tap((screen._action_buttons["release"] as Control).get_global_rect().get_center())
+	screen.experiment_action("release")   # the run's own action (no 공 놓기 button since 2026-10-29)
+	await tree.process_frame
 	for i in 260:
 		await tree.physics_frame
 	Engine.physics_ticks_per_second = SLOW_TICKS
@@ -350,6 +353,10 @@ func _case(definition: Dictionary, wait: int, sidebar: bool, hold_box: bool) -> 
 		await tree.process_frame
 	await tree.physics_frame
 	await tree.process_frame
+	# The child answers Dugi first (2026-10-29): his question's shield takes every touch, so before this
+	# the taps on the run button and on 처음으로 below never reached them in the game labs.
+	if screen._asking:
+		screen._end_question()
 	var lab: Experiment = screen.experiment
 	var bodies0 := _bodies(lab)
 	var obs0 := str(lab.observations())
@@ -360,7 +367,9 @@ func _case(definition: Dictionary, wait: int, sidebar: bool, hold_box: bool) -> 
 	if lab.has_method("set_applied_force") and not hold_box:
 		lab.set_applied_force(60.0)
 	if not actions.is_empty():
-		await _tap((screen._action_buttons[actions[0]] as Control).get_global_rect().get_center())
+		# The run's own action (2026-10-29: a game lab has no run button; the screen's handler it called).
+		screen.experiment_action(actions[0])
+		await tree.process_frame
 	if hold_box:
 		# A finger presses and holds the box (touch index 0; a wiggle changes nothing); 처음으로 is the second finger.
 		var at: Vector2 = screen.view.rig.unproject_position(lab.box.global_position) / (Vector2(screen.view.viewport.size) / screen.view.size)

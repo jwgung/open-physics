@@ -140,6 +140,7 @@ func run() -> void:
 		await check_round(id)
 	for id in ROUNDS:
 		await check_physics_unchanged(id)
+	await check_isolated_worlds()
 	await check_pictures()
 
 
@@ -326,7 +327,7 @@ func _ops(screen: Control, ops: Array) -> void:
 
 ## The first two attempts of the round on a screen with the round and on one without the missions /
 ## predict blocks (no tracker): the formula values, the status and every engine body at each step.
-func check_physics_unchanged(id: String) -> void:
+func check_physics_unchanged(id: String, beside := "") -> void:
 	DirAccess.remove_absolute(ProgressStore.path)
 	var plain: Array = await _record(id, false)
 	var game: Array = await _record(id, true)
@@ -336,9 +337,21 @@ func check_physics_unchanged(id: String) -> void:
 			first = k
 			break
 	expect.call(first == -1 and plain[0].size() == game[0].size() and plain[0].size() > 30 and plain[1] == game[1] and game[2] == ROUNDS[id][1][3],
-		"%s: with or without the mission round, the formula values, statuses and engine bodies are the same at every step (and the panels after the run)" % id,
+		"%s: with or without the mission round, the formula values, statuses and engine bodies are the same at every step (and the panels after the run)%s" % [id, beside],
 		"first difference at step %d of %d; panels equal %s; game stamps %d (want %d)" % [first, plain[0].size(), str(plain[1] == game[1]), game[2], ROUNDS[id][1][3]])
 	DirAccess.remove_absolute(ProgressStore.path)
+
+
+## Each screen's lab has its own physics world (2026-10-29, ExperimentScreen: the view's own World3D).
+## A free-fall screen left open beside it (an aborted check, the map during a screen change) touches
+## nothing of another screen's lab: before, its bodies in the shared world made the incline's box land
+## differently at step 268 of 290 in a full run (the flaky "missions on/off" comparison).
+func check_isolated_worlds() -> void:
+	var other := await _open(ExperimentRegistry.find("free-fall"))
+	other._end_question()
+	other.experiment_action("release")
+	await check_physics_unchanged("incline-friction", " — with a free-fall screen open beside it (each screen its own physics world)")
+	await _free(other)
 
 
 func _record(id: String, missions: bool) -> Array:

@@ -40,25 +40,28 @@
   ],
   "key_observations": ["effort_arm", "advantage", "state"],
   "predict": {
-    "question": "멀리 누르면 힘이 덜 들까?",
+    "question": "받침 가까이 누르면 상자가 쉽게 들릴까?",
     "question_face": "thinking",
     "choices": [
-      { "id": "less", "label": "덜 들어요", "picture": "lever_far" },
-      { "id": "same", "label": "똑같아요", "picture": "lever_same" }
+      { "id": "hard", "label": "힘이 많이 들어요", "picture": "lever_near_hard" },
+      { "id": "easy", "label": "쉽게 들려요", "picture": "lever_near_easy" }
     ],
-    "answer": "less",
-    "reason": "받침에서 멀리 누를수록 막대가 쉽게 들려요. 그래서 힘이 덜 들어요."
+    "answer": "hard",
+    "reason": "받침 가까이 누르면 막대가 상자를 잘 못 들어 올려요. 그래서 아주 세게 눌러야 해요.",
+    "bridge": "직접 꾹 눌러 보면 알 수 있어요!",
+    "bridge_face": "happy"
   },
   "missions": {
     "observe": "applied",
     "compare": "less",
     "judge_on": ["lifted"],
+    "miss_on": ["ready"],
     "hidden_until_end": ["required", "advantage", "load_torque", "net_torque"],
     "hidden_series_until_end": ["required"],
     "stages": [
-      { "threshold": 350.0, "conditions": {"mass": 20.0, "effort": "near"}, "text": "막대를 가까이 눌러 보물 상자 들기!", "say": "받침 가까이 누르면 상자를 들기 힘들어요. 아주 세게 눌러야 해요.", "say_face": "worried" },
-      { "threshold": 200.0, "conditions": {"mass": 20.0, "effort": "mid"}, "text": "막대를 중간에 눌러 보물 상자 들기!", "say": "받침에서 조금 멀리 누르면 힘이 덜 들어요.", "say_face": "explain" },
-      { "threshold": 130.0, "conditions": {"mass": 20.0, "effort": "far"}, "text": "막대를 멀리 눌러 보물 상자 살살 들기!", "say": "받침에서 멀리 누를수록 막대가 상자를 쉽게 들어 올려요. 살살 눌러도 돼요.", "say_face": "happy" }
+      { "threshold": 350.0, "conditions": {"mass": 20.0, "effort": "near"}, "text": "막대를 가까이 눌러 보물 상자 들기!", "say": "받침 가까이 누르면 상자를 들기 힘들어요. 아주 세게 눌러야 해요.", "say_face": "worried", "win": "영차! 상자가 들렸어!", "win_face": "happy", "miss": "가까이를 꾹, 더 오래 눌러 봐!", "miss_face": "thinking" },
+      { "threshold": 200.0, "conditions": {"mass": 20.0, "effort": "mid"}, "text": "막대를 중간에 눌러 보물 상자 들기!", "say": "받침에서 조금 멀리 누르면 힘이 덜 들어요.", "say_face": "explain", "win": "들렸다! 조각이 올라와!", "win_face": "happy", "miss": "중간 자리를 꾹 눌러 봐!", "miss_face": "thinking" },
+      { "threshold": 130.0, "conditions": {"mass": 20.0, "effort": "far"}, "text": "막대를 멀리 눌러 보물 상자 살살 들기!", "say": "받침에서 멀리 누를수록 막대가 상자를 쉽게 들어 올려요. 살살 눌러도 돼요.", "say_face": "happy", "win": "살살 눌러도 들렸어!", "win_face": "surprised", "miss": "멀리 있는 자리를 눌러 봐!", "miss_face": "thinking" }
     ]
   },
   "story": { "clue": "무거운 보물 상자 밑에 조각이 끼어 있어! 막대를 눌러서 상자를 들어 보자.", "clue_face": "explain", "map_clue": "빨간 시소 밑에 뭔가 있어!", "map_clue_face": "surprised" },

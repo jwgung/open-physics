@@ -9,12 +9,18 @@ extends RefCounted
 const KINDS := ["long_arc", "same_arc", "fall_together", "fall_heavy_first", "light_flies", "both_stop",
 	"spring_slow", "spring_even", "rubber_floor", "steel_floor", "push_harder", "push_same", "lever_far", "lever_same",
 	"orbit_leave", "orbit_stay", "drum_big", "drum_small", "swing_slow", "swing_same",
-	"pulley_many", "pulley_same", "slope_steep", "slope_same", "throw_slant", "throw_steep"]
+	"pulley_many", "pulley_same", "slope_steep", "slope_same", "throw_slant", "throw_steep",
+	# 2026-10-29: the questions that stage 1 answers (ExperimentScreen: answered by doing the first mission).
+	"throw_low_near", "throw_low_far", "hit_flies", "hit_stop", "spring_reach_full", "spring_reach_short",
+	"push_wait", "push_now", "lever_near_hard", "lever_near_easy", "drum_floats", "drum_sinks",
+	"pulley_one_hard", "pulley_one_easy", "slide_go", "slide_stay"]
 const STRONG := Color("e2683c")
 const PALE := Color("c9b892")
 const GROUND := Color("8a6a46")
 const WATER := Color("7fb8e0")
 const STEEL := Color("9aa7b0")
+const BALL_BLUE := Color("2d7cf6")
+const CRATE := Color("5b4636")
 
 
 ## Draws `kind` filling `canvas` (an unknown kind draws the ground only).
@@ -47,6 +53,22 @@ static func draw(canvas: Control, kind: String) -> void:
 			_pulleys(canvas, r, kind == "pulley_many")
 		"slope_steep", "slope_same":
 			_slopes(canvas, r, kind == "slope_steep")
+		"throw_low_near", "throw_low_far":
+			_lows(canvas, r, kind == "throw_low_near")
+		"hit_flies", "hit_stop":
+			_hits(canvas, r, kind == "hit_flies")
+		"spring_reach_full", "spring_reach_short":
+			_reach(canvas, r, kind == "spring_reach_full")
+		"push_wait", "push_now":
+			_push_wait(canvas, r, kind == "push_wait")
+		"lever_near_hard", "lever_near_easy":
+			_lever_near(canvas, r, kind == "lever_near_hard")
+		"drum_floats", "drum_sinks":
+			_drum_one(canvas, r, kind == "drum_floats")
+		"pulley_one_hard", "pulley_one_easy":
+			_pulley_one(canvas, r, kind == "pulley_one_hard")
+		"slide_go", "slide_stay":
+			_slide(canvas, r, kind == "slide_go")
 		_:
 			_ground(canvas, r)
 
@@ -287,3 +309,144 @@ static func _slopes(canvas: Control, r: Rect2, faster: bool) -> void:
 		var at := top + down * 18.0 + normal * 9.0
 		canvas.draw_circle(at, 8.0, color)
 		_arrow(canvas, at + down * 12.0, at + down * (12.0 + float(side[3])), color, 3.0)
+
+
+## Two low throws of the same speed (2026-10-29, stage 1 of the angle game): one lands near (orange
+## when the choice is "near"), the other far; the choice's one thick orange, the other pale.
+static func _lows(canvas: Control, r: Rect2, near: bool) -> void:
+	_ground(canvas, r)
+	_arc(canvas, r, 0.95 if near else 0.38, 0.24, PALE, 3.0)
+	_arc(canvas, r, 0.38 if near else 0.95, 0.24, STRONG, 6.0)
+	canvas.draw_circle(Vector2(r.position.x + 8.0, r.end.y - 8.0), 7.0, STRONG)
+
+
+## Short still marks over a point (two little upright lines).
+static func _still(canvas: Control, at: Vector2, color: Color) -> void:
+	for k in [-1.0, 1.0]:
+		canvas.draw_line(at + Vector2(k * 6.0, -8.0), at + Vector2(k * 6.0, 0.0), color, 3.0)
+
+
+## Speed lines behind something moving right (three short lines on its left).
+static func _speed(canvas: Control, at: Vector2, color: Color) -> void:
+	for k in 3:
+		var y := at.y - 8.0 + k * 8.0
+		canvas.draw_line(Vector2(at.x - 26.0 + k * 3.0, y), Vector2(at.x - 12.0, y), color, 2.5)
+
+
+## A blue ball has hit an orange ball of the same size: the orange one rolls off fast while the blue
+## one stops ("hit_flies"), or both stand still together ("hit_stop").
+static func _hits(canvas: Control, r: Rect2, flies: bool) -> void:
+	_ground(canvas, r)
+	var y := r.end.y - 11.0
+	var blue := Vector2(r.position.x + r.size.x * 0.3, y)
+	canvas.draw_circle(blue, 11.0, BALL_BLUE)
+	var orange := Vector2(blue.x + 22.0 + (r.size.x * 0.4 if flies else 0.0), y)
+	canvas.draw_circle(orange, 11.0, STRONG)
+	_still(canvas, blue + Vector2(0.0, -16.0), PALE)
+	if flies:
+		_speed(canvas, orange, STRONG)
+		_arrow(canvas, orange + Vector2(-8.0, -22.0), orange + Vector2(18.0, -22.0), STRONG, 4.0)
+	else:
+		_still(canvas, orange + Vector2(0.0, -16.0), STRONG)
+
+
+## A spring from the wall, the ball pulled out to the right (pale, dashed spot) and where it swings to
+## on the other side: as far as it was pulled ("spring_reach_full") or only a little ("_short").
+static func _reach(canvas: Control, r: Rect2, full: bool) -> void:
+	var wall := r.position.x + 6.0
+	canvas.draw_line(Vector2(wall, r.position.y + 10.0), Vector2(wall, r.end.y - 4.0), GROUND, 4.0)
+	var y := r.get_center().y + 8.0
+	var rest := r.position.x + r.size.x * 0.55
+	var pulled := r.size.x * 0.3
+	canvas.draw_line(Vector2(rest, y - 22.0), Vector2(rest, y + 16.0), PALE, 2.0)
+	canvas.draw_circle(Vector2(rest + pulled, y), 10.0, PALE)
+	var to := rest - (pulled if full else pulled * 0.35)
+	_spring(canvas, Vector2(wall, y), to - wall, STRONG, 10.0)
+	_arrow(canvas, Vector2(rest + pulled, y - 22.0), Vector2(to, y - 22.0), STRONG, 4.0)
+
+
+## A box pushed harder and harder: it first stays (a small push, still marks) and moves only under a
+## big push ("push_wait"), or it moves at the first small push ("push_now").
+static func _push_wait(canvas: Control, r: Rect2, waits: bool) -> void:
+	_ground(canvas, r)
+	var y := r.end.y - 4.0
+	var size := 26.0
+	if waits:
+		var still := Rect2(r.position.x + 30.0, y - size, size, size)
+		canvas.draw_rect(still, PALE)
+		_arrow(canvas, Vector2(still.position.x - 22.0, y - size * 0.5), Vector2(still.position.x - 3.0, y - size * 0.5), PALE, 3.0)
+		_still(canvas, still.get_center() + Vector2(0.0, -size * 0.5 - 4.0), PALE)
+		var moved := Rect2(r.end.x - size - 6.0, y - size, size, size)
+		canvas.draw_rect(moved, STRONG)
+		_arrow(canvas, Vector2(moved.position.x - 52.0, y - size * 0.5), Vector2(moved.position.x - 30.0, y - size * 0.5), STRONG, 6.0)
+		_speed(canvas, moved.position + Vector2(0.0, size * 0.5), STRONG)
+	else:
+		var moved := Rect2(r.position.x + r.size.x * 0.62, y - size, size, size)
+		canvas.draw_rect(moved, STRONG)
+		_arrow(canvas, Vector2(r.position.x + 8.0, y - size * 0.5), Vector2(r.position.x + 30.0, y - size * 0.5), STRONG, 3.0)
+		_speed(canvas, moved.position + Vector2(0.0, size * 0.5), STRONG)
+
+
+## A lever with the chest on the left and the hand pressing right next to the fulcrum: a long, thick
+## push ("lever_near_hard": hard) or a short one ("lever_near_easy").
+static func _lever_near(canvas: Control, r: Rect2, hard: bool) -> void:
+	_ground(canvas, r)
+	var y := r.end.y - 26.0
+	canvas.draw_line(Vector2(r.position.x, y), Vector2(r.end.x, y), GROUND, 5.0)
+	var pivot := r.position.x + r.size.x * 0.45
+	canvas.draw_colored_polygon(PackedVector2Array([Vector2(pivot, y + 3.0), Vector2(pivot - 12.0, r.end.y), Vector2(pivot + 12.0, r.end.y)]), PALE)
+	canvas.draw_rect(Rect2(r.position.x + 4.0, y - 26.0, 30.0, 24.0), CRATE)
+	var at := pivot + 22.0
+	var top := y - (64.0 if hard else 22.0)
+	_arrow(canvas, Vector2(at, top), Vector2(at, y - 6.0), STRONG, 7.0 if hard else 4.0)
+
+
+## The big drum with the chest hung under it: afloat with its top out of the water ("drum_floats") or
+## down on the bottom ("drum_sinks").
+static func _drum_one(canvas: Control, r: Rect2, floats: bool) -> void:
+	var water := r.position.y + r.size.y * 0.32
+	canvas.draw_rect(Rect2(r.position.x, water, r.size.x, r.end.y - water), WATER)
+	var drum := Vector2(48.0, 36.0)
+	var x := r.get_center().x - drum.x * 0.5
+	var top := water - drum.y * 0.45 if floats else r.end.y - drum.y - 26.0
+	canvas.draw_rect(Rect2(x, top, drum.x, drum.y), STRONG)
+	var chest_y := top + drum.y + 10.0
+	canvas.draw_line(Vector2(x + drum.x * 0.5, top + drum.y), Vector2(x + drum.x * 0.5, chest_y), GROUND, 2.0)
+	canvas.draw_rect(Rect2(x + drum.x * 0.5 - 10.0, chest_y, 20.0, 14.0), CRATE)
+	canvas.draw_line(Vector2(r.position.x, water), Vector2(r.end.x, water), Color("4f86b3"), 2.0)
+
+
+## One rope lifting the chest from a beam: the hand's pull arrow is long and thick ("pulley_one_hard")
+## or short ("pulley_one_easy").
+static func _pulley_one(canvas: Control, r: Rect2, hard: bool) -> void:
+	var beam := r.position.y + 2.0
+	canvas.draw_line(Vector2(r.position.x, beam), Vector2(r.end.x, beam), GROUND, 4.0)
+	var wheel := Vector2(r.get_center().x, beam + 12.0)
+	canvas.draw_circle(wheel, 9.0, PALE)
+	var load_x := wheel.x - 9.0
+	var hand_x := wheel.x + 9.0
+	canvas.draw_line(Vector2(load_x, wheel.y), Vector2(load_x, r.end.y - 24.0), PALE, 2.0)
+	canvas.draw_rect(Rect2(load_x - 16.0, r.end.y - 24.0, 32.0, 24.0), CRATE)
+	canvas.draw_line(Vector2(hand_x, wheel.y), Vector2(hand_x, wheel.y + 18.0), PALE, 2.0)
+	var length := 56.0 if hard else 18.0
+	_arrow(canvas, Vector2(hand_x + 14.0, wheel.y + 4.0), Vector2(hand_x + 14.0, wheel.y + 4.0 + length), STRONG, 7.0 if hard else 4.0)
+
+
+## A steel slide: the box has slid down to its foot with speed lines ("slide_go") or still sits at the
+## top with still marks ("slide_stay").
+static func _slide(canvas: Control, r: Rect2, goes: bool) -> void:
+	_ground(canvas, r)
+	var top := Vector2(r.position.x + 6.0, r.position.y + r.size.y * 0.25)
+	var foot := Vector2(r.end.x - 26.0, r.end.y)
+	canvas.draw_colored_polygon(PackedVector2Array([top, foot, Vector2(top.x, r.end.y)]), Color(STEEL, 0.6))
+	canvas.draw_line(top, foot, STEEL, 4.0, true)
+	var down := (foot - top).normalized()
+	var normal := Vector2(down.y, -down.x)
+	var at := (top + down * 18.0 if not goes else foot - down * 16.0) + normal * 10.0
+	canvas.draw_circle(at, 9.0, STRONG)
+	if goes:
+		for k in 3:
+			var back := at - down * (16.0 + k * 6.0) + normal * (k - 1) * 6.0
+			canvas.draw_line(back, back - down * 10.0, STRONG, 2.5)
+	else:
+		_still(canvas, at + Vector2(0.0, -12.0), STRONG)

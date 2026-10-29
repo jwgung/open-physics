@@ -284,22 +284,24 @@ func check_art() -> void:
 		lab.set_stroke(12 * n)
 		await tree.physics_frame
 		lab._show()
-		# Every strand of the strands mesh ends at the hook: its lowest vertex, through the node's scale.
+		# Every strand of the strands mesh ends where the rope turns under the moving wheels (their centre
+		# height over the hook), or at the hook for one strand (2026-10-29: round the rims): its lowest
+		# vertex, through the node's scale.
 		var strands: MeshInstance3D = lab.props.strands
 		var lowest := INF
 		var xs: Array[float] = []
 		for v in strands.mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]:
 			lowest = minf(lowest, (strands.global_transform * v).y)
 			xs.append(v.x)
-		worst = maxf(worst, absf(lowest - (lab.load_body.global_position.y + lab.HOOK_UP)))
-		# n strands: the vertices fall in n groups along x (strands 0.26 m apart, 0.03 m thick).
+		worst = maxf(worst, absf(lowest - lab.props.strand_bottom(lab.load_body.global_position.y + lab.HOOK_UP)))
+		# n strands: the vertices fall in n groups along x (strands 0.4 m apart, 0.03 m thick).
 		xs.sort()
 		var groups := 1
 		for k in range(1, xs.size()):
 			if xs[k] - xs[k - 1] > 0.1:
 				groups += 1
 		worst = maxf(worst, absf(float(groups - n)))
-	expect.call(worst < 1e-4, "pulley: n strands are drawn from the fixed block down to the moving hook for n = 1, 2, 4", "gap %s m" % String.num_scientific(worst))
+	expect.call(worst < 1e-4, "pulley: n strands are drawn from the fixed wheels down to the moving wheels (the hook for one) for n = 1, 2, 4", "gap %s m" % String.num_scientific(worst))
 	await _free(lab)
 
 

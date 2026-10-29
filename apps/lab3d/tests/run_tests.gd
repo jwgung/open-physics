@@ -100,6 +100,11 @@
 ## 22. sound (tests/sound_checks.gd, 2026-10-28): every event asks SoundBoard for its sound id, the
 ##    효과음 / 배경 음악 switches mute their bus and are kept in the settings file (the real one untouched),
 ##    the music loops, a measurement plays nothing and writes nothing, nothing sounds while idle.
+## 20d. hands on (tests/hands_on_checks.gd, 2026-10-29 round 3): only 다시 on a game lab, every run from the
+##    hand (free fall, slide, drum, spring, bob let go), the demo and --auto-release; Puppy's 66 result
+##    lines and their bubble; Dugi's bridge, the strip's pulse, the reason after the first line, every
+##    question answered by stage 1; the orbit shown 2.5x faster with the model's numbers; the play yard
+##    spread out; the pulley rope on the wheels' rims.
 ## 23c. UI polish (tests/polish_checks.gd, 2026-10-29): 자세히's header (닫기) stays above the scrolled
 ##    note; a vertical drag from a button, check box or slider scrolls the settings and the note
 ##    (DragScroll) and presses nothing; check boxes instead of switches; 처음부터 다시 하기 asks first and
@@ -328,6 +333,11 @@ func _run() -> void:
 	_expect(objects != null and objects.can_instantiate(), "object controls checks compile", "")
 	if objects != null and objects.can_instantiate():
 		await objects.new(self, _expect).run()
+	print("== hands on (2026-10-29): no action buttons, release on the lift, Puppy's result lines, the bridge, the orbit's pace, the yard, the pulley rope ==")
+	var hands: GDScript = load("res://tests/hands_on_checks.gd")
+	_expect(hands != null and hands.can_instantiate(), "hands-on checks compile", "")
+	if hands != null and hands.can_instantiate():
+		await hands.new(self, _expect).run()
 	print("== story (2026-10-28 별 조각 찾기): prologue, clues, pieces, flights, finale, old saves, measurements ==")
 	var story: GDScript = load("res://tests/story_checks.gd")
 	_expect(story != null and story.can_instantiate(), "story checks compile", "")
@@ -1342,18 +1352,19 @@ func _check_layout(definition: Dictionary) -> void:
 		for i in overlays.size():
 			for j in range(i + 1, overlays.size()):
 				apart = apart and not overlays[i].get_rect().intersects(overlays[j].get_rect())
-		var actions_ok: bool = definition.actions.all(func(a: Dictionary) -> bool: return screen._action_buttons[a.id].get_parent() == screen._action_row \
-			or screen._extra_actions.has(screen._action_buttons[a.id]))
+		# A game lab draws only 다시 (2026-10-29: every run starts from the hand); another lab every action.
+		var game_lab := not MissionTracker.missions(definition).is_empty()
+		var actions_ok: bool = definition.actions.all(func(a: Dictionary) -> bool: return (game_lab and a.id != "reset" and not screen._action_buttons.has(a.id)) \
+			or (screen._action_buttons.has(a.id) and (screen._action_buttons[a.id].get_parent() == screen._action_row or screen._extra_actions.has(screen._action_buttons[a.id]))))
 		var compact: bool = screen._key_row.size.y <= 160.0 and screen._key_row.size.x <= size.x - 470.0 - 24.0
 		var cards := ExperimentRegistry.shown_cards(definition)
-		# A game lab (2026-10-27): one card, the main action, reset as a small "다시", the rest in the sidebar.
+		# A game lab (2026-10-27): one card, reset as a small "다시" and (2026-10-29) no other button.
 		var lean := true
-		if not MissionTracker.missions(definition).is_empty():
+		if game_lab:
 			lean = cards.size() == 1 and screen._action_buttons.reset.text == screen.RESET_SHORT \
-				and screen._action_row.get_child_count() <= 2 \
-				and screen._extra_actions.all(func(b: Button) -> bool: return screen._sidebar.is_ancestor_of(b))
+				and screen._action_row.get_child_count() == 1 and screen._extra_actions.is_empty()
 		_expect(inside and apart and actions_ok and compact and lean and screen._key_row.get_child_count() == cards.size(),
-			"%s landscape: title, buttons, %d key card(s) and the actions sit inside the view without overlapping (a game lab: one card, at most 2 buttons, reset = 다시)" % [name, cards.size()],
+			"%s landscape: title, buttons, %d key card(s) and the actions sit inside the view without overlapping (a game lab: one card, only 다시)" % [name, cards.size()],
 			"key row %s, actions %s" % [screen._key_row.get_rect(), screen._action_row.get_rect()])
 		var h_closed := _horizontal_fov(screen.view)
 		screen.open_sidebar()

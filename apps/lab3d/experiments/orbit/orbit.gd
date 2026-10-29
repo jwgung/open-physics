@@ -52,6 +52,8 @@ var _analyzed: Dictionary = {}
 ## The slingshot pull's (direction, speed) while a finger holds the planet; INF when no pull (the
 ## screen sets it from the Manipulator's slingshot signal).
 var _slingshot_preview := Vector2.INF
+## The steps owed to the playback pace (time_scale) not taken yet (0 <= _pace < 1).
+var _pace := 0.0
 
 
 func _init() -> void:
@@ -127,6 +129,7 @@ func _load_model() -> void:
 func reset_run() -> void:
 	if planet == null:
 		return
+	_pace = 0.0
 	_clear_run()
 	if answer_preview:
 		_show_prediction(start_radius, prediction)
@@ -140,6 +143,7 @@ func reset_run() -> void:
 
 
 func _notify_released() -> void:
+	_pace = 0.0
 	if not answer_preview:
 		_show_prediction(start_radius, prediction)
 	var v := launch_velocity(direction, speed)
@@ -156,19 +160,26 @@ func _show_prediction(radius: float, analysis: Dictionary) -> void:
 	props.set_path(analysis.path, analysis.outcome)
 
 
+## Model steps per frame (time_scale, 2026-10-29: shown 2.5x faster): the same fixed dt each step, so the
+## model's run (and every number) is the one of time_scale 1, only more of it per frame: 2, 3, 2, 3 ...
+## steps for 2.5 (_pace keeps the remainder). The engine planet is posed after the last one.
 func _physics_process(_delta: float) -> void:
 	if not released or holding != "":
 		return
-	var was := model.outcome
-	driver.step(1.0 / float(Engine.physics_ticks_per_second))
-	if model.outcome == "crash" and was == "":
-		crashes += 1
-		props.crashed(Vector3(model.cx - model.x, 0.0, model.cz - model.z))
-		impact.emit(0.6)
-	if model.outcome == "" and _graph_due(model.steps, model.time()):
-		_add_graph_point()
-	if status() != _last_status:
-		_update_status()
+	_pace += time_scale
+	var steps := int(floorf(_pace + 1e-9))
+	_pace -= steps
+	for i in steps:
+		var was := model.outcome
+		driver.step(1.0 / float(Engine.physics_ticks_per_second))
+		if model.outcome == "crash" and was == "":
+			crashes += 1
+			props.crashed(Vector3(model.cx - model.x, 0.0, model.cz - model.z))
+			impact.emit(0.6)
+		if model.outcome == "" and _graph_due(model.steps, model.time()):
+			_add_graph_point()
+		if status() != _last_status:
+			_update_status()
 
 
 ## (t, speed, circular speed, escape speed).

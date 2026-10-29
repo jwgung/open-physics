@@ -120,14 +120,15 @@ func check_content() -> void:
 	for stage in missions.stages:
 		expect.call(stage.text != "", "missions: every stage has its text", str(stage.get("threshold")))
 	var predict: Dictionary = definition.predict
-	# The angle game (2026-10-29: the speed is fixed): which way goes farthest.
-	expect.call(predict.question == "어떻게 던져야 가장 멀리 갈까?" and (predict.choices as Array).size() == 2,
+	# The angle game's first stage answers it (2026-10-29 round 3: the question stage 1 answers): a low
+	# throw of the fixed speed lands near (the near crate), not far.
+	expect.call(predict.question == "낮게 던지면 공이 어디에 떨어질까?" and (predict.choices as Array).size() == 2,
 		"predict: the one question, two pictures", str(predict.get("question")))
 	var ids := (predict.choices as Array).map(func(c: Dictionary) -> Variant: return c.id)
-	expect.call(ids == ["slant", "steep"], "predict: the two pictures are 비스듬히 and 아주 높이", str(ids))
-	expect.call(predict.reason.contains("비스듬히") and predict.reason.contains("멀리") and not predict.reason.contains("v₀") and not predict.reason.contains("45"),
-		"predict: the reason says a slanted throw goes farthest, in a child's words (the formula and 45° stay in 자세히)", predict.reason)
-	expect.call(predict.answer == "slant", "predict: the answer is 비스듬히", str(predict.get("answer")))
+	expect.call(ids == ["near", "far"], "predict: the two pictures are 가까이 and 아주 멀리", str(ids))
+	expect.call(predict.reason.contains("낮게") and predict.reason.contains("가까이") and not predict.reason.contains("v₀") and not predict.reason.contains("°"),
+		"predict: the reason says a low throw lands near, in a child's words (the formula stays in 자세히)", predict.reason)
+	expect.call(predict.answer == "near", "predict: the answer is 가까이", str(predict.get("answer")))
 	# Every listed lab has its round now (Plan G2): three stages, a question with two pictures and an
 	# answer, a reason, and every threshold / condition inside the lab's controls (the registry).
 	for other in ExperimentRegistry.load_all():
@@ -148,6 +149,7 @@ static func range_definition() -> Dictionary:
 	definition.controls.insert(2, {"id": "speed", "type": "slider", "label": "던지는 빠르기 v₀", "unit": " m/s",
 		"min": 1.0, "max": 9.0, "step": 0.5, "default": 9.0, "digits": 1})
 	definition.missions.judge_on = ["landed"]
+	definition.missions.erase("miss_on")   # the old round had no result lines (2026-10-29)
 	definition.missions.stages = [
 		{"threshold": 3.0, "text": "3미터 넘게 던지기!"},
 		{"threshold": 5.0, "change": ["speed", "angle"], "text": "세기나 각도를 바꿔 5미터 넘기기!"},
@@ -178,9 +180,12 @@ func check_kid_words() -> void:
 				found.append("%s: no kid caption for %s" % [definition.id, id])
 		for stage in MissionTracker.missions(definition).get("stages", []):
 			texts.append(str(stage.text))
+			texts.append(str(stage.get("win", "")))    # Puppy's result lines (2026-10-29)
+			texts.append(str(stage.get("miss", "")))
 		var predict := MissionTracker.predict(definition)
 		texts.append(str(predict.get("question", "")))
 		texts.append(str(predict.get("reason", "")))
+		texts.append(str(predict.get("bridge", "")))   # Dugi's bridge to the first mission (2026-10-29)
 		for choice in predict.get("choices", []):
 			texts.append(str(choice.label))
 		for action in definition.actions:

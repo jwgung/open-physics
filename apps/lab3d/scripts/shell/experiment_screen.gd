@@ -38,6 +38,8 @@ const PICK_GROUP_GAP := 22.0                # between two conditions' buttons
 const MORE_CLOSED := "더 보기"              # the science note's collapsed rest (_build_sidebar)
 const MORE_OPEN := "접기"
 const ASK_TEXT := "AI에게 더 물어보기"
+## The science note's line when a run is shown faster than it is (definition.time_scale).
+const TIME_SCALE_NOTE := "시간을 %s배 빠르게 보여 줘요. 숫자는 실제 시간 그대로예요."
 const ASK_CAPTION := "이 실험의 조건과 숫자로 질문을 만들어, 고른 AI 앱에 보내요."
 
 ## Set by App for the screen it opens from --experiment: then the launch args (--ctl-*, --camera,
@@ -172,6 +174,30 @@ const PIECE_FLY_S := 0.7               # the lab's piece flies into the cat's pa
 const PIECE_WAIT_MAX_S := 8.0          # at most this long for a piece game's last step (LabGame.piece_ready)
 var _piece_from := Vector3.INF          # where it flew from (INF: popped in over the cat)
 const DEMO_STAMP_EVERY_S := 1.6
+## Puppy's result line after an attempt (2026-10-29, ResultBubble): the bubble shown now, an attempt
+## waiting for its line (a press on the lab's object, a run action; a control change or 다시 drops it),
+## whether this touch already had its line, the polls in a row that saw a miss (MISS_POLLS needed: a
+## status of one step is not a result), the finger seen on an object last frame; counts for tests.
+var _result_bubble: ResultBubble = null
+var _result_armed := false
+var _touch_resolved := false
+var _miss_polls := 0
+var _was_touching := false
+var result_count := {"win": 0, "miss": 0}
+const MISS_POLLS := 2
+## The first attempt's line came (2026-10-29): only then does Dugi tell the prediction's reason.
+var _first_result := false
+## Dugi's bridge from the answer to the mission (predict.bridge, 2026-10-29), waiting for his box; the
+## strip's one pulse that shows where the mission is (strip_pulses counts them, tests).
+var _bridge := ""
+var _bridge_face := Story.DEFAULT_FACE
+var strip_pulses := 0
+var _pulse_t := -1.0
+const PULSE_S := 0.9
+const PULSE_GROW := 0.14
+const PULSE_TINT := Color(1.0, 0.93, 0.55)
+const BRIDGE_FIRST := "첫 번째 미션이에요."
+const BRIDGE_NEXT := "다음 미션이에요."
 
 
 ## `state` (optional): capture_state() of a previous screen of the same experiment (conditions
@@ -197,10 +223,15 @@ func _ready() -> void:
 			or Quality.cmdline_value("demo-celebrate") != ""):
 		ProgressStore.path = ProgressStore.BENCH_PATH   # a measurement's throws never earn the child's stamps
 	view = View3D.new()
+	# The lab's own World3D (2026-10-29): its bodies never meet another screen's (a lab left in the
+	# shared root world by an aborted test, or the map during a screen change). A free-fall screen left
+	# behind made the incline's box land differently at step 268 (tests/lab_mission_checks.gd).
+	view.viewport.own_world_3d = true
 	add_child(view)
 	_build_view_overlays()
 	_build_sidebar()
 	experiment = ExperimentRegistry.instantiate(definition)
+	experiment.time_scale = float(definition.get("time_scale", 1.0))   # the orbit's faster playback (2026-10-29)
 	# A game round draws no answer preview before the run (Experiment.answer_preview: visual only).
 	experiment.answer_preview = MissionTracker.missions(definition).is_empty()
 	experiment.state_changed.connect(_on_state_changed)
@@ -320,8 +351,11 @@ func _process(delta: float) -> void:
 		_demo_release_left -= delta
 		if _demo_release_left < 0.0:
 			_run_measured_action(manipulator.demo_action)
+	_watch_touch()
 	_run_dialogue()
 	_run_celebration(delta)
+	_run_result_bubble(delta)
+	_run_strip_pulse(delta)
 	_sync_clue_glow()
 
 
@@ -363,15 +397,19 @@ func _run_dialogue() -> void:
 	if dugi.speaking() and dugi.state == "raise" and not _dialogue_started and not is_sidebar_open() and _layout_dialogue():
 		_dialogue_started = true
 		_hide_tip()
-		# Dugi explains only after a throw has ended (cast explain_on): the first explanation tells the
-		# prediction's reason once, whether or not the stamp was judged yet.
-		if _reason_pending != "":
+		# The bridge from the answer to the mission comes first (2026-10-29). Dugi explains only after a
+		# throw has ended (cast explain_on); the prediction's reason waits for the first attempt's result
+		# line (2026-10-29: never before it, _first_result) and is told once.
+		if _bridge != "":
+			dialogue.open(_bridge, _bridge_face)
+			_bridge = ""
+		elif _reason_pending != "" and _first_result:
 			dialogue.open(_reason_pending, _reason_face)
+			_reason_pending = ""
 		else:
 			var say := explain_say()
 			dialogue.set_words(say[0], say[1])
 			dialogue.open()
-		_reason_pending = ""
 		dialogue.visible = true
 	elif not dugi.speaking():
 		_dialogue_started = false
@@ -907,6 +945,201 @@ func _predict_pick_choice(choice_id: String) -> void:
 	if _mission_text != null and picked != "":
 		_mission_text.text = PICK_PREFIX + picked
 		_fit_mission_strip()
+	_start_bridge()
+
+
+## After the answer (2026-10-29 user: "예측 → 첫 미션 연결"): Dugi says the lab's bridge line in his box
+## ("직접 던져 보면 알 수 있어요! 첫 번째 미션이에요.", pointing at the lab) and the mission strip pulses
+## once. A tap or the read timer closes the box; nothing waits for it.
+func _start_bridge() -> void:
+	var predict := MissionTracker.predict(definition)
+	var line := str(predict.get("bridge", ""))
+	if line != "" and dialogue != null and cast != null and cast.dugi != null and _missions != null and _missions.stage() >= 0:
+		_bridge = "%s %s" % [line, BRIDGE_FIRST if _missions.stage() == 0 else BRIDGE_NEXT]
+		_bridge_face = Story.face_or_default(predict.get("bridge_face"))
+		_dialogue_started = false
+		cast.dugi.explain(experiment.explain_point)
+	_pulse_strip()
+
+
+## Dugi's bridge line still waiting for his box ("" once it opened or when there is none; tests).
+func bridge_text() -> String:
+	return _bridge
+
+
+## The mission strip grows a little and glows warm once (PULSE_S), around the pill's centre.
+func _pulse_strip() -> void:
+	if _mission_pill == null:
+		return
+	strip_pulses += 1
+	_pulse_t = 0.0
+
+
+func _run_strip_pulse(delta: float) -> void:
+	if _pulse_t < 0.0 or _mission_pill == null:
+		return
+	_pulse_t += delta
+	var k := clampf(_pulse_t / PULSE_S, 0.0, 1.0)
+	var grow := 1.0 + PULSE_GROW * sin(PI * k)
+	var centre := _mission_pill.position + _mission_pill.size * 0.5
+	for node: Control in [_mission_pill, _mission_strip, _mission_text]:
+		if node == null:
+			continue
+		node.pivot_offset = centre - node.position
+		node.scale = Vector2.ONE * grow
+	_mission_pill.self_modulate = PULSE_TINT.lerp(Color.WHITE, k)
+	if k >= 1.0:
+		_pulse_t = -1.0
+		for node: Control in [_mission_pill, _mission_strip, _mission_text]:
+			if node != null:
+				node.scale = Vector2.ONE
+		_mission_pill.self_modulate = Color.WHITE
+
+
+## The strip is pulsing now (tests).
+func strip_pulsing() -> bool:
+	return _pulse_t >= 0.0
+
+
+# --- game: Puppy's result line after an attempt (2026-10-29) --------------------------------------
+
+## A finger came down on one of the lab's objects (a drag, a pull, a press): a new attempt that waits
+## for its line.
+func _watch_touch() -> void:
+	var touching := manipulator != null and manipulator.mode != ""
+	if touching and not _was_touching:
+		_arm_result(true)
+	_was_touching = touching
+
+
+## An attempt starts (`new_touch`: a new press, its line not told yet).
+func _arm_result(new_touch: bool) -> void:
+	if new_touch:
+		_touch_resolved = false
+	if not _touch_resolved:
+		_result_armed = true
+	_miss_polls = 0
+
+
+## A control change or 다시: the attempt in progress gets no line.
+func _disarm_result() -> void:
+	_result_armed = false
+	_touch_resolved = false
+	_miss_polls = 0
+
+
+## The attempt has no stamp and its run has come to one of the stage's miss_on results (settled, the
+## finger up, the result number there: MissionTracker.missed) on MISS_POLLS polls in a row: Puppy's
+## miss line, once.
+func _check_miss() -> void:
+	if not _result_armed or _missions == null or _judged_run:
+		_miss_polls = 0
+		return
+	var stage := _missions.stage()
+	if stage < 0 or (manipulator != null and manipulator.mode != "") or not experiment.settled() \
+			or not MissionTracker.missed(definition, stage, experiment.status(), experiment.observations()):
+		_miss_polls = 0
+		return
+	_miss_polls += 1
+	if _miss_polls >= MISS_POLLS:
+		show_result(stage, false)
+
+
+## Puppy says stage `stage`'s `win` (after its stamp) or `miss` line in the small bubble near him for
+## ResultBubble.SHOW_S. The first line of a visit lets Dugi tell the prediction's reason right after it.
+func show_result(stage: int, won: bool) -> void:
+	_result_armed = false
+	_touch_resolved = true
+	_miss_polls = 0
+	var line := MissionTracker.result_line(definition, stage, won)
+	if not _first_result:
+		_first_result = true
+		_tell_reason()
+	if str(line[0]) == "":
+		return
+	result_count["win" if won else "miss"] += 1
+	if _result_bubble != null and is_instance_valid(_result_bubble):
+		_result_bubble.queue_free()
+	_result_bubble = ResultBubble.new(str(line[0]), str(line[1]), won)
+	view.add_child(_result_bubble)
+	_fit_result_bubble()
+
+
+## The bubble shown now (null when none; tests).
+func result_bubble() -> ResultBubble:
+	return _result_bubble if _result_bubble != null and is_instance_valid(_result_bubble) else null
+
+
+## The prediction's reason, after the first result line: Dugi explains now (an explanation of the run
+## that already started gives way), with the reason in his box.
+func _tell_reason() -> void:
+	if _reason_pending == "" or dialogue == null or cast == null or cast.dugi == null:
+		return
+	_close_dialogue()
+	cast.dugi.stop(true)
+	cast.hold_explanation()   # the cast's own explanation of this run would only repeat him
+	_dialogue_started = false
+	cast.dugi.explain(experiment.explain_point)
+
+
+func _run_result_bubble(delta: float) -> void:
+	if _result_bubble == null:
+		return
+	if not is_instance_valid(_result_bubble) or _result_bubble.tick(delta):
+		if is_instance_valid(_result_bubble):
+			_result_bubble.queue_free()
+		_result_bubble = null
+		return
+	_fit_result_bubble()
+
+
+## Where Puppy's line goes: just above Puppy on the view (the cat without him, else the view's upper
+## middle), its tail pointing at him; inside the view and clear of the other overlays (the title, the
+## key cards, the strip, 다시, the picture buttons, the tip, Dugi's box) when it can be: above him,
+## else beside him, else below.
+func _fit_result_bubble() -> void:
+	if _result_bubble == null:
+		return
+	var bubble_size := _result_bubble.bubble_size()
+	var anchor := Vector2(view.size.x * 0.5, view.size.y * 0.35)
+	var who: Node3D = null
+	if cast != null and cast.puppy != null:
+		who = cast.puppy
+	elif lab_cat() != null:
+		who = lab_cat()
+	if who != null:
+		var r := view_rect_of(who.call("bounds"))
+		if r.size.x > 0.0:
+			anchor = Vector2(r.get_center().x, r.position.y)
+	var m := OVERLAY_MARGIN
+	var avoid := overlay_rects()
+	if _mission_pill != null and _mission_pill.visible:
+		avoid.append(_mission_pill.get_rect().grow(4.0))
+	if dialogue != null and dialogue.active and dialogue.visible:
+		for r in dialogue.rects():
+			avoid.append((r as Rect2).grow(4.0))
+	var gap := ResultBubble.TAIL + 6.0
+	var tries := [
+		Vector2(anchor.x - bubble_size.x * 0.5, anchor.y - gap - bubble_size.y),
+		Vector2(anchor.x + gap, anchor.y - bubble_size.y * 0.5),
+		Vector2(anchor.x - gap - bubble_size.x, anchor.y - bubble_size.y * 0.5),
+		Vector2(anchor.x - bubble_size.x * 0.5, anchor.y + gap * 2.0),
+	]
+	var best := Rect2()
+	var best_overlap := INF
+	for at: Vector2 in tries:
+		var rect := Rect2(Vector2(clampf(at.x, m, maxf(m, view.size.x - m - bubble_size.x)),
+			clampf(at.y, m, maxf(m, view.size.y - m - bubble_size.y))), bubble_size)
+		var overlap := 0.0
+		for r: Rect2 in avoid:
+			if r.intersects(rect):
+				overlap += r.intersection(rect).get_area()
+		if overlap < best_overlap:
+			best = rect
+			best_overlap = overlap
+		if overlap == 0.0:
+			break
+	_result_bubble.place(best, anchor)
 
 
 ## The question ends (an answer, or the round's end): the box closes, the buttons and the shield go.
@@ -949,6 +1182,7 @@ func _predict_finish() -> void:
 func _mission_progress(_id: String, stamps: int) -> void:
 	if _slam != null:
 		_slam.finish()
+	show_result(stamps - 1, true)   # Puppy's win line of the stage just cleared (2026-10-29)
 	_show_stamps(stamps)
 	# The piece game reacts now (a crate tips, the ice cracks; the last stamp lets the piece out).
 	experiment.set_game_stage(_missions.stage() if _missions != null else -1, stamps, true)
@@ -1361,9 +1595,12 @@ func _build_view_overlays() -> void:
 	_action_row = Ui.hbox(10)
 	_action_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	view.add_child(_action_row)
-	# A game lab keeps few buttons (2026-10-27): its main action, and "reset" as a small "다시";
-	# other actions (the orbit's "동그랗게 돌게") sit under the conditions in "자세히".
+	# A game lab has one button (2026-10-29 user: no action buttons): "reset" as a small "다시". Every
+	# run starts from the hand on the object (a slingshot's release, a let-go drag, a press); the lab's
+	# run actions stay its API (run_action: the slingshot's launch, --auto-release, experiment_action).
 	for action in definition.actions:
+		if game and action.id != "reset":
+			continue
 		var small: bool = game and action.id == "reset"
 		var button := Ui.button(RESET_SHORT if small else action.label, "PrimaryButton" if action.get("style") == "primary" and not small else "", 64)
 		button.custom_minimum_size.x = 96 if small else 140
@@ -1667,6 +1904,11 @@ func _build_law(note: Dictionary) -> Control:
 	formula.name = "Formula"
 	formula.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	body.add_child(formula)
+	var pace := float(definition.get("time_scale", 1.0))
+	if not is_equal_approx(pace, 1.0):
+		var paced := Ui.label(TIME_SCALE_NOTE % Ui.number(pace, 1), "MutedLabel", true)
+		paced.name = "TimeScaleNote"
+		body.add_child(paced)
 	return parts[0]
 
 
@@ -1762,6 +2004,10 @@ func _run_measured_action(id: String) -> void:
 func experiment_action(id: String) -> void:
 	_drop_held_object()
 	_new_attempt()
+	if id == "reset":
+		_disarm_result()
+	else:
+		_arm_result(true)   # a run action (tests, --auto-release): an attempt like a let-go hand
 	_updating = true
 	experiment.change_from_input(experiment.run_action.bind(id))
 	_updating = false
@@ -1786,6 +2032,7 @@ func _snap_camera_home() -> void:
 func _set_control(id: String, value: Variant) -> void:
 	_drop_held_object()
 	_new_attempt()
+	_disarm_result()
 	_updating = true
 	experiment.change_from_input(experiment.set_control.bind(id, value))
 	_updating = false
@@ -1817,6 +2064,7 @@ func _on_state_changed() -> void:
 
 func _on_manipulator_changed() -> void:
 	_new_attempt()   # an object put down or put back (a let-go hold, a placed ball)
+	_arm_result(false)   # the let-go of a touch whose line was not told yet (a run starts now)
 	if not _updating:
 		_refresh()
 
@@ -1952,6 +2200,7 @@ func _poll() -> void:
 	_update_readouts(false)
 	_apply_auto_conditions()
 	_missions_judge()   # a run can end between state_changed events (the engine's settled report)
+	_check_miss()       # an attempt without a stamp that came to its result: Puppy's hint
 
 
 ## The displayed text of an observation value (panel tiles and key cards show the same text).

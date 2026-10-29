@@ -40,26 +40,29 @@
   ],
   "key_observations": ["strands", "pulled", "lift"],
   "predict": {
-    "question": "줄이 많으면 힘이 덜 들까?",
+    "question": "줄 하나로 무거운 상자를 올리면 힘이 많이 들까?",
     "question_face": "thinking",
     "choices": [
-      { "id": "less", "label": "덜 들어요", "picture": "pulley_many" },
-      { "id": "same", "label": "똑같아요", "picture": "pulley_same" }
+      { "id": "hard", "label": "많이 들어요", "picture": "pulley_one_hard" },
+      { "id": "easy", "label": "조금 들어요", "picture": "pulley_one_easy" }
     ],
-    "answer": "less",
-    "reason": "줄 여러 개가 짐을 나눠 들어요. 그래서 힘이 덜 들어요. 대신 줄을 더 많이 당겨야 해요."
+    "answer": "hard",
+    "reason": "줄 하나면 상자 무게를 내 손이 다 받쳐요. 그래서 힘이 많이 들어요.",
+    "bridge": "직접 당겨 보면 알 수 있어요!",
+    "bridge_face": "happy"
   },
   "missions": {
     "observe": "required",
     "compare": "less",
     "judge_on": ["top"],
+    "miss_on": ["top", "ground"],
     "reveal_on": ["held", "top"],
     "hidden_until_end": ["required", "applied"],
     "hidden_series_until_end": ["required"],
     "stages": [
-      { "threshold": 200.0, "conditions": {"strands": "one", "mass": 20.0}, "text": "1줄로 보물 상자를 선반까지 올리기!", "say": "줄 하나로 들면 상자 무게를 내 손이 다 받쳐요. 그래서 힘이 많이 들어요.", "say_face": "worried" },
-      { "threshold": 100.0, "conditions": {"strands": "two", "mass": 20.0}, "text": "2줄로 보물 상자를 선반까지 올리기!", "say": "줄 두 개가 상자를 나눠 들어요. 그래서 힘이 반만 들어요. 대신 줄을 두 배 길게 당겨요.", "say_face": "explain" },
-      { "threshold": 50.0, "conditions": {"strands": "four", "mass": 20.0}, "text": "4줄로 가볍게 선반까지 올리기!", "say": "줄 네 개가 나눠 들면 힘이 조금만 들어요. 대신 줄을 네 배 길게 당겨요.", "say_face": "happy" }
+      { "threshold": 200.0, "conditions": {"strands": "one", "mass": 20.0}, "text": "1줄로 보물 상자를 선반까지 올리기!", "say": "줄 하나로 들면 상자 무게를 내 손이 다 받쳐요. 그래서 힘이 많이 들어요.", "say_face": "worried", "win": "영차영차! 선반까지 올렸어!", "win_face": "happy", "miss": "상자가 꿈쩍 안 해. 더 오래 눌러 봐!", "miss_face": "worried" },
+      { "threshold": 100.0, "conditions": {"strands": "two", "mass": 20.0}, "text": "2줄로 보물 상자를 선반까지 올리기!", "say": "줄 두 개가 상자를 나눠 들어요. 그래서 힘이 반만 들어요. 대신 줄을 두 배 길게 당겨요.", "say_face": "explain", "win": "두 줄로 올렸어! 불이 켜졌어!", "win_face": "happy", "miss": "줄 두 개로 꾹 눌러 올려 봐!", "miss_face": "thinking" },
+      { "threshold": 50.0, "conditions": {"strands": "four", "mass": 20.0}, "text": "4줄로 가볍게 선반까지 올리기!", "say": "줄 네 개가 나눠 들면 힘이 조금만 들어요. 대신 줄을 네 배 길게 당겨요.", "say_face": "happy", "win": "창살이 열렸어! 조각이 나와!", "win_face": "surprised", "miss": "줄 네 개로 꾹 눌러 올려 봐!", "miss_face": "thinking" }
     ]
   },
   "story": { "clue": "보물 상자 창살 안에 조각이 있어! 줄을 당겨서 상자를 높은 선반까지 올려 보자!", "clue_face": "explain", "map_clue": "줄 끝에 빨간 상자가 매달린 곳이야!", "map_clue_face": "explain" },

@@ -367,9 +367,13 @@ func manipulation_started(_id: String) -> void:
 	_update_status(true)  # no "placed" pop: the hand reaction comes from the manipulator
 
 
+## Put down on the slide = let go (2026-10-29 user: no "상자 놓기" button): the box starts from rest
+## there. A restored placement (the screen's batch) only places it.
 func manipulation_placed(_id: String, transform: Transform3D) -> void:
 	_placed = true
 	set_run_length((_pivot.global_transform.affine_inverse() * transform.origin).x + INCLINE_LENGTH * 0.5)
+	if _batch == 0:
+		release()
 
 
 func manipulation_cancelled(_id: String) -> void:

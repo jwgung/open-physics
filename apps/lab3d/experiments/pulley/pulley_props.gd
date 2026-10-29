@@ -7,11 +7,17 @@
 ##   of its mass against the 20 kg load's 0.8 m, grown from its bottom; the moving block on its top),
 ## - the fixed pulley block under the beam and the moving block on the load, each with its wheels
 ##   (n = 1: one fixed wheel; 2: one fixed + one moving; 4: two + two), rebuilt when n changes,
-## - the rope (white): the n supporting strands from the fixed block down to the moving block (one
-##   mesh, stretched each frame), the run over to the guide wheel (in the fixed block's mesh) and the
-##   pull strand down to its end, a white knot the child presses and holds (2026-10-28: the red grip
-##   went; a link posed each frame); the rope pulled in earlier strokes lies coiled on the ground
-##   (its height grows with the length),
+## - the rope (white), one path round the wheels' rims (2026-10-29 user: "도르래 줄 위치가 이상해", the
+##   strands used to start at the block's top and pass through the wheels' centres): the n supporting
+##   strands hang straight at the wheels' rims (layout(): strand k and the wheels between them), from
+##   the fixed wheels' centre height down to the moving wheels' centre height (one mesh, stretched each
+##   frame, so it follows the load); under every moving wheel and over every fixed wheel a half turn
+##   (the moving ones in the moving block's mesh, the fixed ones in the fixed block's); for even n the
+##   rope's dead end is tied to the fixed block, for n = 1 to the hook on the load; from the last fixed
+##   wheel the run to the guide wheel is their common upper tangent, round the guide to its right rim,
+##   then the pull strand down to its end, a white knot the child presses and holds (2026-10-28: the
+##   red grip went; a link posed each frame); the rope pulled in earlier strokes lies coiled on the
+##   ground (its height grows with the length),
 ## - arrows: the orange weight of the load and the red pull of the hand (down), FORCE_SCALE m per N,
 ## - reactions: lifting off = stretch; set down (reset) = pop.
 ## - the bread cat (CatActor wearing the BreadCat look, 2026-10-27) under the rope end, behind the
@@ -29,6 +35,13 @@ const FORCE_SCALE := 0.006
 const ARROW_MAX := 2.4
 const BLOCK_DEPTH := 0.3
 const KNOT_RADIUS := 0.13       # m, the rope end's knot
+## The rope's path round a wheel: its centre line on the rim (the rope sits in the groove).
+const RIM := WHEEL_RADIUS
+## The wheels' centres: the fixed ones this far below the block's top (top_y), the moving ones this
+## far above the load's hook.
+const FIXED_DOWN := WHEEL_RADIUS + 0.06
+const MOVING_UP := WHEEL_RADIUS + 0.06
+const ARC_STEPS := 8            # straight pieces per half turn of rope round a wheel
 ## The cat's reach to the rope end's back face (shoulders -> grip: from below and behind), how hard it
 ## leans back pulling, and its spot under the grip (x offset, z) when it does not hold it.
 const CAT_DIR := Vector3(0.0, 0.45, 0.89)
@@ -49,6 +62,7 @@ var _n := -1
 var _guide := Vector3.ZERO
 var _load_x := 0.0
 var _top_y := 0.0
+var _beam_y := 0.0
 ## The load look's size against its body's (set_look) and the hook above the body's centre for it.
 var look := 1.0
 var hook_up := 0.62
@@ -67,8 +81,10 @@ static func gantry_mesh(left: float, right: float, beam_y: float, guide: Vector3
 		b.add_rounded_box(Transform3D(Basis(), Vector3(x, beam_y * 0.5, -0.5)), Vector3(0.3, beam_y, 0.3), 0.05, 1, ArtPalette.BLUE, ArtPalette.BLUE_DARK)
 	b.ao_min = 1.0
 	b.add_rounded_box(Transform3D(Basis(), Vector3((left + right) * 0.5, beam_y + 0.15, -0.25)), Vector3(right - left + 0.5, 0.3, 0.8), 0.05, 1, ArtPalette.BLUE, ArtPalette.BLUE_DARK)
-	# The guide wheel over the pull side, hanging from the beam.
-	b.add_rounded_box(Transform3D(Basis(), Vector3(guide.x, (guide.y + beam_y) * 0.5, 0.0)), Vector3(0.12, beam_y - guide.y, 0.1), 0.0, 1, ArtPalette.BLUE_DARK)
+	# The guide wheel over the pull side, hanging from the beam by a strap behind it (clear of the rope
+	# that runs over its top).
+	var behind := -WHEEL_DEPTH * 0.5 - 0.05
+	b.add_rounded_box(Transform3D(Basis(), Vector3(guide.x, (guide.y + beam_y) * 0.5, behind)), Vector3(0.12, beam_y - guide.y, 0.06), 0.0, 1, ArtPalette.BLUE_DARK)
 	add_wheel(b, guide)
 	return b.commit()
 
@@ -80,33 +96,128 @@ static func add_wheel(b: ArtMeshBuilder, at: Vector3) -> void:
 	b.add_cylinder(Transform3D(turn, at - Vector3(0.0, 0.0, WHEEL_DEPTH * 0.5 + 0.01)), WHEEL_RADIUS * 0.4, WHEEL_RADIUS * 0.4, WHEEL_DEPTH + 0.02, 6, ArtPalette.BLUE_DARK)
 
 
-## A pulley block of `count` wheels side by side around its origin; `hang` = +1 hangs the block
-## below the origin (fixed block), -1 stands it above (moving block on the load). `run_to` (block
-## local, fixed block only) draws the rope's run from the last strand over to the guide wheel.
-static func block_mesh(count: int, hang: float, run_from := 0.0, run_to: Variant = null) -> Mesh:
+## The rope's layout for `n` strands round the load at `load_x` (x only; the rope lies in z = 0):
+## "strands" the n strand xs (2 RIM apart, centred on the load), "fixed" the fixed wheels' centre xs,
+## "moving" the moving wheels'. Strand 2j and 2j + 1 wrap moving wheel j from below; strand 2j + 1 and
+## 2j + 2 wrap fixed wheel j from above; the last strand goes up to the last fixed wheel, which turns
+## the rope towards the guide wheel. n = 1: the one strand from the hook to the one fixed wheel's left
+## rim. For even n the first strand's end is tied to the fixed block.
+static func layout(n: int, load_x: float) -> Dictionary:
+	var xs: Array[float] = []
+	for k in n:
+		xs.append(load_x + (2 * k - (n - 1)) * RIM)
+	var fixed: Array[float] = []
+	var moving: Array[float] = []
+	if n == 1:
+		fixed.append(xs[0] + RIM)
+	else:
+		for j in n / 2:
+			moving.append(xs[2 * j] + RIM)
+			fixed.append(xs[2 * j + 1] + RIM)
+	return {"strands": xs, "fixed": fixed, "moving": moving}
+
+
+## The rope's path round the fixed wheels and on to the guide (x-y points, block-local to (load_x,
+## top_y)): [the over-turns of the fixed wheels before the last, ..., the last wheel's turn + the run +
+## the guide's turn to its right rim]. Every point of a turn is on a rim (RIM from its centre).
+static func fixed_rope(n: int, load_x: float, top_y: float, guide: Vector3) -> Array:
+	var plan := layout(n, load_x)
+	var fixed: Array = plan.fixed
+	var y := -FIXED_DOWN
+	var paths: Array = []
+	for j in fixed.size() - 1:
+		paths.append(arc(Vector2(fixed[j] - load_x, y), PI, 0.0))
+	var last := Vector2(fixed[-1] - load_x, y)
+	var to := Vector2(guide.x - load_x, guide.y - top_y)
+	var up := run_normal(last, to)
+	var leave := atan2(up.y, up.x)
+	var path := arc(last, PI, leave)
+	path.append_array(arc(to, leave, 0.0))
+	paths.append(path)
+	return paths
+
+
+## The common upper tangent's normal of two equal wheels at `a` and `b` (pointing up): the run between
+## them touches each at centre + normal * RIM.
+static func run_normal(a: Vector2, b: Vector2) -> Vector2:
+	var d := (b - a).normalized()
+	return Vector2(-d.y, d.x) if d.x >= 0.0 else Vector2(d.y, -d.x)
+
+
+## Points on the rim round `centre` from angle `from` to `to` (radians, x right, y up), ARC_STEPS
+## pieces per half turn (at least 2).
+static func arc(centre: Vector2, from: float, to: float) -> PackedVector2Array:
+	var steps := maxi(2, ceili(absf(to - from) / PI * ARC_STEPS))
+	var out := PackedVector2Array()
+	for i in steps + 1:
+		var a := lerpf(from, to, float(i) / steps)
+		out.append(centre + Vector2(cos(a), sin(a)) * RIM)
+	return out
+
+
+## The fixed block for `n` strands at its origin (load_x, top_y): a dark plate behind its wheels, the
+## strap up to the beam (`beam_y`), the wheels (layout()), the rope's turns over them and the run to
+## the guide wheel (fixed_rope()), and for even n the rope's dead end tied to the plate over strand 0.
+static func fixed_block_mesh(n: int, load_x: float, top_y: float, beam_y: float, guide: Vector3) -> Mesh:
 	var b := ArtKit.builder()
-	if count <= 0:
-		return b.commit()
 	b.ao_min = 1.0
-	var width := count * WHEEL_RADIUS * 2.6
-	var centre := -hang * (WHEEL_RADIUS + 0.06)
-	b.add_rounded_box(Transform3D(Basis(), Vector3(0.0, centre, -BLOCK_DEPTH * 0.5 - 0.02)), Vector3(width, WHEEL_RADIUS * 2.0 + 0.2, 0.06), 0.02, 1, ArtPalette.BLUE_DARK)
-	b.add_rounded_box(Transform3D(Basis(), Vector3(0.0, centre + hang * (WHEEL_RADIUS + 0.16), -BLOCK_DEPTH * 0.25)), Vector3(0.1, 0.2, 0.1), 0.0, 1, ArtPalette.INK)
-	for i in count:
-		add_wheel(b, Vector3((i - (count - 1) * 0.5) * WHEEL_RADIUS * 2.6, centre, 0.0))
-	if run_to != null:
-		var to: Vector3 = run_to
-		var y := centre + WHEEL_RADIUS
-		b.add_cylinder(Transform3D(Basis(Vector3.BACK, -PI * 0.5), Vector3(run_from, y, 0.0)), ROPE_RADIUS, ROPE_RADIUS, to.x - run_from, 6, ArtPalette.WHITE)
+	var plan := layout(n, load_x)
+	var y := -FIXED_DOWN
+	var lo: float = minf(plan.strands[0], plan.fixed[0] - RIM) - load_x - 0.12
+	var hi: float = plan.fixed[-1] + RIM - load_x + 0.12
+	b.add_rounded_box(Transform3D(Basis(), Vector3((lo + hi) * 0.5, y, -BLOCK_DEPTH * 0.5 - 0.02)), Vector3(hi - lo, WHEEL_RADIUS * 2.0 + 0.2, 0.06), 0.02, 1, ArtPalette.BLUE_DARK)
+	var strap_bottom := y + WHEEL_RADIUS + 0.1
+	b.add_rounded_box(Transform3D(Basis(), Vector3((lo + hi) * 0.5, (strap_bottom + beam_y - top_y) * 0.5, -BLOCK_DEPTH * 0.5 - 0.02)), Vector3(0.12, beam_y - top_y - strap_bottom, 0.06), 0.0, 1, ArtPalette.INK)
+	for x in plan.fixed:
+		add_wheel(b, Vector3(x - load_x, y, 0.0))
+	for path in fixed_rope(n, load_x, top_y, guide):
+		_rope_path(b, path)
+	if n > 1:
+		b.add_rounded_box(Transform3D(Basis(), Vector3(plan.strands[0] - load_x, y, -0.02)), Vector3(0.1, 0.1, 0.1), 0.0, 1, ArtPalette.INK)
 	return b.commit()
 
 
-## n strands of 1 m down from the origin at their x offsets (scaled along y to the gap).
+## The moving block for `n` strands at the hook (its origin, on the load's top): the plate, the wheels
+## (layout(), MOVING_UP above the hook) and the rope's half turn under each; n = 1 has no block, only
+## the hook's eye the strand is tied to.
+static func moving_block_mesh(n: int) -> Mesh:
+	var b := ArtKit.builder()
+	b.ao_min = 1.0
+	var plan := layout(n, 0.0)
+	if plan.moving.is_empty():
+		b.add_cylinder(Transform3D(Basis(), Vector3(0.0, -0.06, 0.0)), 0.07, 0.07, 0.08, 6, ArtPalette.INK)
+		b.add_sphere(Transform3D(Basis(), Vector3.ZERO), ROPE_RADIUS * 2.2, 3, 6, ArtPalette.WHITE)
+		return b.commit()
+	var lo: float = plan.moving[0] - RIM - 0.12
+	var hi: float = plan.moving[-1] + RIM + 0.12
+	b.add_rounded_box(Transform3D(Basis(), Vector3((lo + hi) * 0.5, MOVING_UP, -BLOCK_DEPTH * 0.5 - 0.02)), Vector3(hi - lo, WHEEL_RADIUS * 2.0 + 0.2, 0.06), 0.02, 1, ArtPalette.BLUE_DARK)
+	b.add_rounded_box(Transform3D(Basis(), Vector3(0.0, 0.0, -BLOCK_DEPTH * 0.25)), Vector3(0.12, 0.12, 0.1), 0.0, 1, ArtPalette.INK)
+	for x in plan.moving:
+		add_wheel(b, Vector3(x, MOVING_UP, 0.0))
+		_rope_path(b, arc(Vector2(x, MOVING_UP), PI, TAU))
+	return b.commit()
+
+
+## A rope along `points` (x-y, z = 0): one thin cylinder per piece, overlapping a little at the joints.
+static func _rope_path(b: ArtMeshBuilder, points: PackedVector2Array) -> void:
+	for i in points.size() - 1:
+		var a := Vector3(points[i].x, points[i].y, 0.0)
+		var c := Vector3(points[i + 1].x, points[i + 1].y, 0.0)
+		var d := c - a
+		if d.length() < 1e-5:
+			continue
+		var y := d.normalized()
+		var x := y.cross(Vector3.BACK).normalized()
+		b.add_cylinder(Transform3D(Basis(x, y, x.cross(y)), a - y * ROPE_RADIUS * 0.5), ROPE_RADIUS, ROPE_RADIUS, d.length() + ROPE_RADIUS, 5, ArtPalette.WHITE, false)
+
+
+## n strands of 1 m down from the origin (the fixed wheels' centre height over the load) at their x
+## offsets from the load (layout()), scaled along y to reach the moving wheels' centre height (or the hook).
 static func strands_mesh(n: int) -> Mesh:
 	var b := ArtKit.builder()
 	b.ao_min = 1.0
-	for i in n:
-		b.add_cylinder(Transform3D(Basis(Vector3.RIGHT, PI), Vector3(strand_x(0.0, i, n), 0.0, 0.0)), ROPE_RADIUS, ROPE_RADIUS, 1.0, 6, ArtPalette.WHITE)
+	for x in layout(n, 0.0).strands:
+		b.add_cylinder(Transform3D(Basis(Vector3.RIGHT, PI), Vector3(x, 0.0, 0.0)), ROPE_RADIUS, ROPE_RADIUS, 1.0, 6, ArtPalette.WHITE)
 	return b.commit()
 
 
@@ -159,11 +270,12 @@ func dress(experiment: Node3D, load_body: RigidBody3D, rope_end: StaticBody3D, s
 	strands = MeshInstance3D.new()
 	strands.name = "Strands"
 	strands.material_override = ArtKit.lit_material()
-	strands.position = Vector3(sizes.load_x, sizes.top_y, 0.0)
+	strands.position = Vector3(sizes.load_x, sizes.top_y - FIXED_DOWN, 0.0)
 	experiment.add_child(strands)
 	_guide = sizes.guide
 	_load_x = sizes.load_x
 	_top_y = sizes.top_y
+	_beam_y = sizes.beam_y
 	pull_link = ArtKit.instance(ArtKit.link_mesh(ROPE_RADIUS, ArtPalette.WHITE))
 	pull_link.name = "PullStrand"
 	experiment.add_child(pull_link)
@@ -217,29 +329,29 @@ func cat_let_go(grip_rest: Vector3, lifted: bool) -> void:
 		cat.cheer()
 
 
-## The blocks for n strands (n / 2 moving wheels, max(1, n / 2) fixed ones), rebuilt when n changed.
+## The blocks and the rope's turns for n strands, rebuilt when n changed.
 func show_strands(n: int) -> void:
 	if n == _n:
 		return
 	_n = n
-	var fixed := maxi(1, n / 2)
-	# The fixed block's run starts above its last wheel and ends over the guide wheel.
-	fixed_block.mesh = block_mesh(fixed, 1.0, (fixed - 1) * 0.5 * WHEEL_RADIUS * 2.6, _guide - Vector3(_load_x, _top_y, 0.0))
-	moving_block.mesh = block_mesh(n / 2, -1.0)
+	fixed_block.mesh = fixed_block_mesh(n, _load_x, _top_y, _beam_y, _guide)
+	moving_block.mesh = moving_block_mesh(n)
 	strands.mesh = strands_mesh(n)
 
 
-## x of supporting strand `i` of `n` around the load's x.
-static func strand_x(load_x: float, i: int, n: int) -> float:
-	return load_x + (i - (n - 1) * 0.5) * WHEEL_RADIUS * 1.3
+## Where the strands end below (y): the moving wheels' centre height over the hook at `hook_y` (the
+## rope turns under them), or the hook itself for one strand.
+func strand_bottom(hook_y: float) -> float:
+	return hook_y + (MOVING_UP if _n > 1 else 0.0)
 
 
-## The n strands between the fixed block (top_y) and the hook (hook_y), the pull strand from the
-## guide wheel to the rope end's top; the pile for `piled` m of rope; the arrows.
+## The n strands between the fixed wheels (FIXED_DOWN under top_y) and the moving wheels over the hook
+## (hook_y; strand_bottom), the pull strand from the guide wheel's right rim to the rope end's top; the
+## pile for `piled` m of rope; the arrows.
 func show_rope(top_y: float, hook_y: float, guide: Vector3, grip_top: Vector3, piled: float,
 		load_centre: Vector3, load_half: float, weight: float, pull: float) -> void:
-	strands.scale = Vector3(1.0, maxf(0.01, top_y - hook_y), 1.0)
-	ArtKit.stretch_link(pull_link, guide + Vector3(WHEEL_RADIUS, 0.0, 0.0), grip_top)
+	strands.scale = Vector3(1.0, maxf(0.01, top_y - FIXED_DOWN - strand_bottom(hook_y)), 1.0)
+	ArtKit.stretch_link(pull_link, guide + Vector3(RIM, 0.0, 0.0), grip_top)
 	pile.visible = piled > 0.001
 	pile.scale = Vector3(1.0, 0.04 + minf(piled, 10.0) * 0.03, 1.0)
 	var w := minf(ARROW_MAX, snappedf(weight * FORCE_SCALE, 0.02))

@@ -40,24 +40,27 @@
   ],
   "key_observations": ["depth", "floating_depth", "state"],
   "predict": {
-    "question": "무게가 같으면 어느 통이 잘 뜰까?",
+    "question": "보물 상자를 매단 큰 통은 물에 뜰까?",
     "question_face": "thinking",
     "choices": [
-      { "id": "big", "label": "큰 통", "picture": "drum_big" },
-      { "id": "small", "label": "작은 통", "picture": "drum_small" }
+      { "id": "floats", "label": "떠요", "picture": "drum_floats" },
+      { "id": "sinks", "label": "가라앉아요", "picture": "drum_sinks" }
     ],
-    "answer": "big",
-    "reason": "큰 통은 물을 많이 밀어내요. 그만큼 물이 통을 세게 밀어 올려서 잘 떠요."
+    "answer": "floats",
+    "reason": "큰 통은 물을 많이 밀어내요. 그만큼 물이 통을 밀어 올려서 상자를 매달아도 떠요.",
+    "bridge": "직접 띄워 보면 알 수 있어요!",
+    "bridge_face": "happy"
   },
   "missions": {
     "judge_on": ["floating"],
+    "miss_on": ["floating", "sunk", "staying"],
     "reveal_on": ["floating", "sunk", "staying"],
     "hidden_until_end": ["judgement", "density", "floating_depth"],
     "hidden_series_until_end": ["floating"],
     "stages": [
-      { "conditions": {"volume": "big"}, "text": "보물 상자를 매단 큰 통을 물에 띄우기!", "say": "통이 물을 밀어내면 물이 통을 밀어 올려요. 큰 통은 물을 많이 밀어내서 상자를 매달아도 떠요.", "say_face": "explain" },
-      { "conditions": {"volume": "big", "mass": {"min": 80.0}}, "text": "무거운 짐을 싣고도 큰 통 띄우기!", "say": "무거워도 큰 통은 물에 더 잠기면서 물을 더 밀어내요. 그래서 떠요.", "say_face": "explain" },
-      { "conditions": {"volume": "small", "mass": {"max": 45.0}}, "text": "작은 통은 가벼운 짐으로 띄우기!", "say": "작은 통은 물을 조금만 밀어내요. 그래서 가벼운 짐이어야 떠요. 무거운 짐을 실으면 가라앉아요.", "say_face": "thinking" }
+      { "conditions": {"volume": "big"}, "text": "보물 상자를 매단 큰 통을 물에 띄우기!", "say": "통이 물을 밀어내면 물이 통을 밀어 올려요. 큰 통은 물을 많이 밀어내서 상자를 매달아도 떠요.", "say_face": "explain", "win": "둥둥! 통이 떴어!", "win_face": "happy", "miss": "큰 통으로 바꿔 봐!", "miss_face": "thinking" },
+      { "conditions": {"volume": "big", "mass": {"min": 80.0}}, "text": "무거운 짐을 싣고도 큰 통 띄우기!", "say": "무거워도 큰 통은 물에 더 잠기면서 물을 더 밀어내요. 그래서 떠요.", "say_face": "explain", "win": "무거운 짐을 싣고도 둥둥!", "win_face": "happy", "miss": "큰 통에 무거운 짐을 실어 봐!", "miss_face": "thinking" },
+      { "conditions": {"volume": "small", "mass": {"max": 45.0}}, "text": "작은 통은 가벼운 짐으로 띄우기!", "say": "작은 통은 물을 조금만 밀어내요. 그래서 가벼운 짐이어야 떠요. 무거운 짐을 실으면 가라앉아요.", "say_face": "thinking", "win": "작은 통도 떴어! 상자가 보여!", "win_face": "surprised", "miss": "작은 통엔 가벼운 짐을 실어 봐!", "miss_face": "thinking" }
     ]
   },
   "story": { "clue": "물속 보물 상자에 조각이 있어! 통을 띄워서 상자를 건져 보자.", "clue_face": "surprised", "map_clue": "연못 물속에서 반짝여!", "map_clue_face": "explain" },
@@ -67,7 +70,7 @@
     "place": "물에 띄우기",
     "say": "물에 많이 잠길수록 물이 통을 더 세게 밀어 올려요. 큰 통은 물을 많이 밀어내서 무거워도 떠요.",
     "say_face": "explain",
-    "tip": "통을 위아래로 끌어 물에 넣어요.",
+    "tip": "통을 위아래로 끌었다가 놓아 봐요!",
     "picks": {
       "mass": [
         {"value": 45.0, "label": "가벼운 짐", "picture": "weight", "size": 0.78},

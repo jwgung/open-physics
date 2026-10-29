@@ -63,23 +63,26 @@
   ],
   "key_observations": ["before_a", "after_b", "impulse_b"],
   "predict": {
-    "question": "무거운 공이 가벼운 공을 치면?",
+    "question": "파란 공으로 주황 공을 세게 치면?",
     "question_face": "thinking",
     "choices": [
-      { "id": "light_fast", "label": "가벼운 공이 쌩", "picture": "light_flies" },
-      { "id": "both_stop", "label": "둘 다 멈춰요", "picture": "both_stop" }
+      { "id": "flies", "label": "주황 공이 쌩", "picture": "hit_flies" },
+      { "id": "stop", "label": "둘 다 멈춰요", "picture": "hit_stop" }
     ],
-    "answer": "light_fast",
-    "reason": "무거운 공은 힘차게 움직여요. 가벼운 공이 그 움직임을 받으면 쌩 날아가요."
+    "answer": "flies",
+    "reason": "부딪히면 파란 공의 움직임이 주황 공에게 넘어가요. 그래서 주황 공이 쌩 굴러가요.",
+    "bridge": "직접 부딪혀 보면 알 수 있어요!",
+    "bridge_face": "happy"
   },
   "missions": {
     "observe": "impulse_b",
     "judge_on": ["collided", "rest"],
+    "miss_on": ["collided", "rest"],
     "auto_conditions": true,
     "stages": [
-      { "threshold": 6.5, "conditions": {"mass_a": 1.0, "mass_b": 1.0}, "text": "같은 무게 공을 세게 부딪혀 얼음에 금 내기!", "say": "파란 공이 빠를수록 세게 부딪혀요. 부딪히는 힘이 클수록 주황 공의 움직임이 많이 바뀌어요.", "say_face": "explain" },
-      { "threshold": 12.0, "conditions": {"mass_a": {"min": 3.0}, "mass_b": 1.0}, "text": "무거운 파란 공으로 더 세게 부딪히기!", "say": "무거운 파란 공은 움직임이 많아요. 그래서 더 세게 밀어서 주황 공이 받는 충격이 커요.", "say_face": "explain" },
-      { "threshold": 18.0, "conditions": {"mass_a": {"min": 3.0}, "mass_b": 2.0}, "text": "무거운 주황 공을 세게 쳐서 얼음 깨기!", "say": "무거운 주황 공은 움직임을 크게 바꾸려면 큰 충격이 필요해요. 무거운 파란 공으로 세게 치면 큰 충격에 얼음이 깨져요!", "say_face": "happy" }
+      { "threshold": 6.5, "conditions": {"mass_a": 1.0, "mass_b": 1.0}, "text": "같은 무게 공을 세게 부딪혀 얼음에 금 내기!", "say": "파란 공이 빠를수록 세게 부딪혀요. 부딪히는 힘이 클수록 주황 공의 움직임이 많이 바뀌어요.", "say_face": "explain", "win": "쩍! 얼음에 금이 갔어!", "win_face": "surprised", "miss": "조금 더 세게 당겨 봐!", "miss_face": "thinking" },
+      { "threshold": 12.0, "conditions": {"mass_a": {"min": 3.0}, "mass_b": 1.0}, "text": "무거운 파란 공으로 더 세게 부딪히기!", "say": "무거운 파란 공은 움직임이 많아요. 그래서 더 세게 밀어서 주황 공이 받는 충격이 커요.", "say_face": "explain", "win": "쩌억! 금이 더 커졌어!", "win_face": "happy", "miss": "더 쭉 당겨서 세게 쳐 봐!", "miss_face": "thinking" },
+      { "threshold": 18.0, "conditions": {"mass_a": {"min": 3.0}, "mass_b": 2.0}, "text": "무거운 주황 공을 세게 쳐서 얼음 깨기!", "say": "무거운 주황 공은 움직임을 크게 바꾸려면 큰 충격이 필요해요. 무거운 파란 공으로 세게 치면 큰 충격에 얼음이 깨져요!", "say_face": "happy", "win": "와장창! 얼음이 깨졌어!", "win_face": "surprised", "miss": "끝까지 쭉 당겨서 쳐 봐!", "miss_face": "thinking" }
     ]
   },
   "story": { "clue": "얼음 속에 조각이 갇혔어! 공을 부딪혀서 저 얼음을 깨 보자!", "clue_face": "surprised", "map_clue": "공 두 개가 놓인 길쭉한 레일 쪽이야!", "map_clue_face": "explain" },

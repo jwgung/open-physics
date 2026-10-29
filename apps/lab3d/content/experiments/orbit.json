@@ -4,6 +4,7 @@
   "content": "orbit",
   "scene": "res://experiments/orbit/orbit.gd",
   "bench_id": "OR",
+  "time_scale": 2.5,
   "camera": {
     "target": [0.0, 1.6, 0.0],
     "distance": 12.5,
@@ -41,24 +42,27 @@
   ],
   "key_observations": ["state", "launch_speed", "escape_speed"],
   "predict": {
-    "question": "더 세게 쏘면 별을 떠날까?",
+    "question": "알맞게 쏘면 행성은 어떻게 될까?",
     "question_face": "thinking",
     "choices": [
-      { "id": "leave", "label": "떠나요", "picture": "orbit_leave" },
-      { "id": "stay", "label": "계속 돌아요", "picture": "orbit_stay" }
+      { "id": "stay", "label": "별 둘레를 돌아요", "picture": "orbit_stay" },
+      { "id": "leave", "label": "별을 떠나요", "picture": "orbit_leave" }
     ],
-    "answer": "leave",
-    "reason": "별은 행성을 끌어당겨요. 아주 빠르게 쏘면 별이 붙잡지 못해서 멀리 떠나요."
+    "answer": "stay",
+    "reason": "별이 행성을 끌어당겨요. 알맞은 빠르기면 별에 붙지도 떠나지도 않고 빙글빙글 돌아요.",
+    "bridge": "직접 쏴 보면 알 수 있어요!",
+    "bridge_face": "happy"
   },
   "missions": {
     "observe": "laps",
     "judge_on": ["orbiting"],
+    "miss_on": ["crash", "leaving", "far"],
     "reveal_on": ["orbiting", "leaving", "crash", "far"],
     "hidden_until_end": ["predicted", "escape_speed"],
     "stages": [
-      { "threshold": 1.0, "conditions": {"radius": 4.0}, "text": "별에서 4미터 떨어져 한 바퀴 돌기!", "say": "별이 행성을 끌어당겨요. 알맞게 쏘면 떨어지지 않고 별 둘레를 빙글 돌아요.", "say_face": "explain" },
-      { "threshold": 2.0, "conditions": {"radius": 2.0}, "text": "별 가까이 2미터에서 두 바퀴 돌기!", "say": "별 가까이에서는 끌어당기는 힘이 세요. 그래서 더 빨리 돌아요.", "say_face": "explain" },
-      { "observe": "launch_speed", "threshold": 3.67, "judge_on": ["far"], "conditions": {"radius": 4.0}, "text": "4미터에서 아주 세게 쏴서 멀리 있는 조각 데려오기!", "say": "아주 빠르면 별이 붙잡지 못해요. 그러면 행성이 별을 떠나 멀리 가요.", "say_face": "surprised" }
+      { "threshold": 1.0, "conditions": {"radius": 4.0}, "text": "별에서 4미터 떨어져 한 바퀴 돌기!", "say": "별이 행성을 끌어당겨요. 알맞게 쏘면 떨어지지 않고 별 둘레를 빙글 돌아요.", "say_face": "explain", "win": "빙글! 한 바퀴 돌았어!", "win_face": "happy", "miss": "옆으로 알맞게 쏴 봐!", "miss_face": "thinking" },
+      { "threshold": 2.0, "conditions": {"radius": 2.0}, "text": "별 가까이 2미터에서 두 바퀴 돌기!", "say": "별 가까이에서는 끌어당기는 힘이 세요. 그래서 더 빨리 돌아요.", "say_face": "explain", "win": "우와, 두 바퀴나 돌았어!", "win_face": "surprised", "miss": "가까이서 옆으로 알맞게 쏴 봐!", "miss_face": "thinking" },
+      { "observe": "launch_speed", "threshold": 3.67, "judge_on": ["far"], "conditions": {"radius": 4.0}, "text": "4미터에서 아주 세게 쏴서 멀리 있는 조각 데려오기!", "say": "아주 빠르면 별이 붙잡지 못해요. 그러면 행성이 별을 떠나 멀리 가요.", "say_face": "surprised", "win": "슝! 조각을 데려왔어!", "win_face": "surprised", "miss": "조금 더 세게 쏴 봐!", "miss_face": "thinking", "miss_on": ["crash", "orbiting"] }
     ]
   },
   "story": { "clue": "조각 하나가 저 멀리 우주에 떠 있어! 행성을 쏴서 데려오자!", "clue_face": "surprised", "map_clue": "마지막은 섬에서 제일 높은 전망대야!", "map_clue_face": "happy" },

@@ -106,8 +106,9 @@ func check_round() -> void:
 		"round: while Dugi asks nothing behind takes a touch (ball, 다시, main button, 자세히, 지도)", str(behind))
 	# The pick: the question goes at once, the strip shows the pick, the next touch reaches the ball.
 	(buttons[0] as Button).pressed.emit()
-	expect.call(screen._predict_pick == "slant" and not screen._asking and not box.active and screen._choices == null
-		and screen._mission_text.text == ExperimentScreen.PICK_PREFIX + "비스듬히",
+	# The pick goes at once; Dugi's bridge to the first mission follows (2026-10-29, its own box).
+	expect.call(screen._predict_pick == "near" and not screen._asking and not box.active and screen._choices == null
+		and screen._mission_text.text == ExperimentScreen.PICK_PREFIX + "가까이",
 		"round: a picked picture is kept and the question goes at once", screen._mission_text.text)
 	expect.call(screen.dialogue.get_index() == dialogue_home and screen._question_shield == null,
 		"round: after the pick the dim goes and the box is back in its place among the overlays", "%d %d" % [screen.dialogue.get_index(), dialogue_home])

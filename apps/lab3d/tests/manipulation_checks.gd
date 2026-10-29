@@ -312,9 +312,10 @@ func check_incline_drag(definition: Dictionary) -> void:
 	expect.call(m.mode == "drag" and box.freeze and held_lift > 0.0 and ok_marker_shown and m.valid,
 		"picking the box freezes it, lifts its mesh and shows the white footprint", "mode %s, lift %.2f" % [m.mode, held_lift])
 	_touch(screen, 0, _run_point(screen, 4.0), false)
-	expect.call(m.mode == "" and is_equal_approx(lab.run_length(), 4.0) and box.freeze and lab.status() == "ready"
+	# 2026-10-29 (no 상자 놓기): the box put down is let go there, from rest (on wood at 20 deg it holds).
+	expect.call(m.mode == "" and is_equal_approx(lab.run_length(), 4.0) and lab.released and not box.freeze and lab.status() in ["holding", "sliding"]
 		and absf(lab._pivot.to_local(box.global_position).x - 0.0) < 1e-4 and is_equal_approx(lab.observations().run, 4.0),
-		"putting the box down moves the start to run 4.0 m (box at rest on the incline)", "run %.3f, x %.3f" % [lab.run_length(), lab._pivot.to_local(box.global_position).x])
+		"putting the box down moves the start to run 4.0 m and lets it go there from rest", "run %.3f, x %.3f, %s" % [lab.run_length(), lab._pivot.to_local(box.global_position).x, lab.status()])
 	expect.call(absf(lab._mark.position.x - (0.0 - lab.BOX * 0.5)) < 1e-4 and not markers[0].visible, "start line follows the box; footprint hidden after", "")
 	# Snap: 5.2 m -> 5.0, 5.3 m -> 5.5.
 	for pair in [[5.2, 5.0], [5.3, 5.5]]:
@@ -838,7 +839,7 @@ func check_review3(definition: Dictionary) -> void:
 			m._process(1.0 / 60.0)
 			if i == 0:
 				goals_on_grid = goals_on_grid and absf(m._demo_goal.x / 0.3 - roundf(m._demo_goal.x / 0.3)) < 1e-4
-	expect.call(lab._start_snap() == 0.3 and surface_snap == Vector2(0.3, 0.3) and selected_snap == Vector2(0.3, 0.3) and goals_on_grid and m.demo_action == "release",
+	expect.call(lab._start_snap() == 0.3 and surface_snap == Vector2(0.3, 0.3) and selected_snap == Vector2(0.3, 0.3) and goals_on_grid and m.demo_action == "",   # 2026-10-29: the let-go is the run (no follow-up action)
 		"the grid step is read once (rule): experiment, selected surface and demo goals use it", "%s %s goals %s" % [str(surface_snap), str(selected_snap), goals_on_grid])
 	await _close(screen)
 	# Panel refresh: one per put-down, one per cancel.

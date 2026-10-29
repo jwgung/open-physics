@@ -421,6 +421,9 @@ func check_art() -> void:
 func check_first_launch_screen() -> void:
 	var screen: Control = await _open()
 	var lab: Experiment = screen.experiment
+	# Step by step against the TS samples: one model step a frame here (the screen shows the orbit 2.5x
+	# faster since 2026-10-29: 2-3 steps a frame of the same model, tests/hands_on_checks.gd).
+	lab.time_scale = 1.0
 	var c := _case("circular")
 	var waiting: Dictionary = lab.observations()
 	# The velocity arrow keeps its length through the launch (same speed, same length).

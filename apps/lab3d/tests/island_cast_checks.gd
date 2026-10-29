@@ -624,7 +624,8 @@ func check_dialogue() -> void:
 	# A long text (the shared one: two pages on a tablet) to turn pages: the round done (in memory), so
 	# Dugi says the lab's own words, here the long shared text.
 	screen._missions.stamps = MissionTracker.missions(screen.definition).stages.size()
-	cast.text = screen.definition.observe
+	# Twice the shared text: with only 다시 beside it (2026-10-29) the box is wider and one fits a page.
+	cast.text = screen.definition.observe + " " + screen.definition.observe
 	cast.dugi.explain(screen.experiment.explain_point)
 	for k in 3:
 		await tree.process_frame

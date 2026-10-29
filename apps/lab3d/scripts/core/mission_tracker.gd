@@ -111,6 +111,36 @@ static func reveal_on(definition: Dictionary) -> Array:
 	return missions(definition).get("reveal_on", judge_on(definition))
 
 
+## The statuses where an attempt of stage `stage` that earned no stamp is a miss (2026-10-29, Puppy's
+## hint): the stage's own `miss_on`, else the block's; [] when the definition names none (no hints).
+static func miss_on(definition: Dictionary, stage: int) -> Array:
+	var stages: Array = missions(definition).get("stages", [])
+	if stage >= 0 and stage < stages.size() and stages[stage] is Dictionary and (stages[stage] as Dictionary).has("miss_on"):
+		return stages[stage].miss_on
+	return missions(definition).get("miss_on", [])
+
+
+## A miss of stage `stage` is told once the run, seen in `status` (settled), has its result: the status
+## is one of miss_on and the block's `miss_needs` observation (a swing's result) is a number.
+static func missed(definition: Dictionary, stage: int, status: String, observations: Dictionary) -> bool:
+	if status not in miss_on(definition, stage):
+		return false
+	var needs := str(missions(definition).get("miss_needs", ""))
+	return needs == "" or _number(observations.get(needs))
+
+
+## Puppy's result line of stage `stage` [text, face]: `win` (face win_face, else happy) after its stamp,
+## `miss` (miss_face, else thinking) after a miss; ["", ""] when the stage has none.
+static func result_line(definition: Dictionary, stage: int, won: bool) -> Array:
+	var stages: Array = missions(definition).get("stages", [])
+	if stage < 0 or stage >= stages.size() or not stages[stage] is Dictionary:
+		return ["", ""]
+	var key := "win" if won else "miss"
+	var text := str(stages[stage].get(key, ""))
+	var face: Variant = stages[stage].get(key + "_face")
+	return [text, str(face) if face is String and face in Story.FACES else ("happy" if won else "thinking")]
+
+
 ## The run has its result: the status is a reveal_on one and, with `observe`, its value is a number.
 static func result_in(definition: Dictionary, status: String, observations: Dictionary) -> bool:
 	if status not in reveal_on(definition):

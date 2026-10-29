@@ -231,8 +231,16 @@ func check_lab_faces() -> void:
 				other = str(choice.id)
 		screen._predict_pick_choice(answer if pick == "right" else other)
 		screen._predict_finish()
+		# 2026-10-29: Dugi's bridge to the first mission first (its face), the reason only after the first
+		# attempt's result line (here a miss), then at once.
+		for k in int(DugiActor.RAISE_S * 60.0) + 4:
+			await tree.process_frame
+		var bridge_ok: bool = box.active and box.text == "%s %s" % [predict.bridge, ExperimentScreen.BRIDGE_FIRST] and box.face == str(predict.bridge_face)
+		box.close(true)
+		screen.cast.dugi.stop(true)
 		await tree.process_frame
-		screen.cast.dugi.explain(screen.experiment.explain_point)
+		await tree.process_frame
+		screen.show_result(0, false)
 		for k in int(DugiActor.RAISE_S * 60.0) + 4:
 			await tree.process_frame
 		var want_face := "happy" if pick == "right" else "thinking"
@@ -247,9 +255,9 @@ func check_lab_faces() -> void:
 			await tree.process_frame
 		var stage: Dictionary = MissionTracker.missions(screen.definition).stages[0]
 		var say_ok: bool = box.active and box.text == str(stage.say) and box.face == str(stage.say_face)
-		expect.call(clue_ok and question_ok and reason_ok and say_ok,
-			"faces (%s guess): Puppy's clue (surprised), Dugi's question (thinking), the reason (%s), then the stage's say with its face" % [pick, want_face],
-			"clue %s question %s reason %s (%s '%s') say %s (%s '%s')" % [clue_ok, question_ok, reason_ok, box.face, box.text, say_ok, box.face, box.text])
+		expect.call(clue_ok and question_ok and bridge_ok and reason_ok and say_ok,
+			"faces (%s guess): Puppy's clue (surprised), Dugi's question (thinking), his bridge (happy), the reason after the first result (%s), then the stage's say with its face" % [pick, want_face],
+			"clue %s question %s bridge %s reason %s (%s '%s') say %s (%s '%s')" % [clue_ok, question_ok, bridge_ok, reason_ok, box.face, box.text, say_ok, box.face, box.text])
 		await _free(screen)
 	Story.enabled = was
 	DirAccess.remove_absolute(ProgressStore.path)

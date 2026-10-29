@@ -36,6 +36,11 @@ var _resync: BodyResync
 ## The piece game (2026-10-29, LabGame): the lab's game object and its star piece, visual only.
 ## Null in a lab without one. The screen hands it the stamps (set_game_stage).
 var game: LabGame = null
+## The pace a run is shown at (2026-10-29 user: the orbit 2.5x faster): the screen sets the
+## definition's `time_scale` before the lab enters the tree. A lab that honours it (the orbit) steps its
+## model at the same fixed dt, time_scale steps per frame on average, so every displayed number (time,
+## period, speed) stays the model's; only the playback is faster. Tests that drive a lab directly keep 1.
+var time_scale := 1.0
 ## begin_batch() depth: while open, _restart() only marks the run for one restart in end_batch().
 var _batch := 0
 var _batch_dirty := false

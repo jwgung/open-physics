@@ -46,26 +46,29 @@
   ],
   "key_observations": ["state", "start_force", "distance"],
   "predict": {
-    "question": "무거운 상자는 더 세게 밀어야 할까?",
+    "question": "상자를 꾹 누르면 바로 움직일까?",
     "question_face": "thinking",
     "choices": [
-      { "id": "harder", "label": "더 세게", "picture": "push_harder" },
-      { "id": "same", "label": "똑같이", "picture": "push_same" }
+      { "id": "wait", "label": "버티다가 움직여요", "picture": "push_wait" },
+      { "id": "now", "label": "바로 움직여요", "picture": "push_now" }
     ],
-    "answer": "harder",
-    "reason": "무거운 상자일수록 바닥이 더 꽉 붙잡아요. 그래서 더 세게 밀어야 움직여요."
+    "answer": "wait",
+    "reason": "바닥이 상자를 붙잡고 버텨요. 미는 힘이 그보다 세지면 그때 움직여요.",
+    "bridge": "직접 꾹 밀어 보면 알 수 있어요!",
+    "bridge_face": "happy"
   },
   "missions": {
     "observe": "distance",
     "compare": "greater",
     "judge_on": ["sliding", "holding", "end"],
+    "miss_on": ["holding", "end"],
     "reveal_on": ["sliding", "end"],
     "hidden_until_end": ["max_static", "kinetic"],
     "hidden_series_until_end": ["max_static"],
     "stages": [
-      { "threshold": 1.5, "conditions": {"mass": "light"}, "text": "가벼운 상자를 밀어서 길 열기!", "say": "바닥이 상자를 붙잡고 버텨요. 그보다 세게 밀면 상자가 미끄러져서 길에서 비켜요.", "say_face": "explain" },
-      { "threshold": 1.5, "conditions": {"mass": "normal"}, "text": "보통 상자도 길에서 밀어 치우기!", "say": "상자가 무거우면 바닥이 더 꽉 붙잡아요. 그래서 더 오래 꾹 눌러야 움직여요.", "say_face": "thinking" },
-      { "threshold": 1.5, "conditions": {"mass": "heavy"}, "text": "무거운 상자까지 치우고 조각에게 가기!", "say": "제일 무거운 상자는 바닥이 제일 꽉 붙잡아요. 그래서 제일 세게 밀어야 길이 열려요.", "say_face": "explain" }
+      { "threshold": 1.5, "conditions": {"mass": "light"}, "text": "가벼운 상자를 밀어서 길 열기!", "say": "바닥이 상자를 붙잡고 버텨요. 그보다 세게 밀면 상자가 미끄러져서 길에서 비켜요.", "say_face": "explain", "win": "상자가 길을 비켰어!", "win_face": "happy", "miss": "상자가 꿈쩍 안 해. 더 오래 눌러 봐!", "miss_face": "worried" },
+      { "threshold": 1.5, "conditions": {"mass": "normal"}, "text": "보통 상자도 길에서 밀어 치우기!", "say": "상자가 무거우면 바닥이 더 꽉 붙잡아요. 그래서 더 오래 꾹 눌러야 움직여요.", "say_face": "thinking", "win": "보통 상자도 비켰어! 문이 열렸어!", "win_face": "happy", "miss": "아직 길이 막혔어. 더 오래 눌러 봐!", "miss_face": "thinking" },
+      { "threshold": 1.5, "conditions": {"mass": "heavy"}, "text": "무거운 상자까지 치우고 조각에게 가기!", "say": "제일 무거운 상자는 바닥이 제일 꽉 붙잡아요. 그래서 제일 세게 밀어야 길이 열려요.", "say_face": "explain", "win": "길이 열렸어! 조각에게 가자!", "win_face": "surprised", "miss": "무거운 상자야! 아주 오래 눌러 봐!", "miss_face": "worried" }
     ]
   },
   "story": { "clue": "상자가 길을 막고 있어! 상자를 치우면 조각까지 갈 수 있겠어!", "clue_face": "surprised", "map_clue": "빨간 화살표가 상자를 미는 곳이야!", "map_clue_face": "explain" },

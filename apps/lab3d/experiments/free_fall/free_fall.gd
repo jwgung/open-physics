@@ -384,7 +384,9 @@ func placement_allowed(id: String, transform: Transform3D) -> bool:
 
 func manipulation_placed(id: String, transform: Transform3D) -> void:
 	if id.begins_with(DROP):
-		# A ball let go on its drop line starts at that height, the others stay (2026-10-29).
+		# A ball let go on its drop line starts at that height, the others stay (2026-10-29), and the
+		# lifted finger drops both balls together (2026-10-29 user: no "공 놓기" button; a new drag after
+		# a drop starts a fresh run, manipulation_started). A restored placement (a batch) only places.
 		var ball_id := id.trim_prefix(DROP)
 		var step := _grid_step(id) if _grid_step(id) > 0.0 else 1.0
 		var h := _clamp_to_control("height", snappedf(transform.origin.y - BALL_RADIUS, step))
@@ -392,6 +394,8 @@ func manipulation_placed(id: String, transform: Transform3D) -> void:
 			return
 		fall_props().finger = ""
 		manipulation_placed(ball_id, Transform3D(Basis(), Vector3(starts[ball_id].x, h + BALL_RADIUS, starts[ball_id].z)))
+		if _batch == 0:
+			release()
 		return
 	_placed = true
 	starts[id] = transform.origin - Vector3.UP * BALL_RADIUS

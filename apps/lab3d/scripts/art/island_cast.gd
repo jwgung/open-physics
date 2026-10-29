@@ -103,6 +103,13 @@ func rearm() -> void:
 	_inside = 0.0
 
 
+## The screen had Dugi explain this run itself (the prediction's reason, 2026-10-29): the cast's own
+## explanation waits until the status leaves explain_on for REARM_S or the user changes the run.
+func hold_explanation() -> void:
+	_armed = false
+	_inside = 0.0
+
+
 ## 처음으로: at once back to rest.
 func reset() -> void:
 	if dugi != null:

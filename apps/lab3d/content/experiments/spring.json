@@ -40,22 +40,26 @@
   ],
   "key_observations": ["extension", "pull", "bell_reach"],
   "predict": {
-    "question": "무거운 공은 종까지 못 갈까?",
+    "question": "공을 당겼다 놓으면 반대쪽으로 얼마나 갈까?",
     "question_face": "thinking",
     "choices": [
-      { "id": "short", "label": "못 가요", "picture": "spring_slow" },
-      { "id": "same", "label": "똑같이 가요", "picture": "spring_even" }
+      { "id": "full", "label": "당긴 만큼", "picture": "spring_reach_full" },
+      { "id": "short", "label": "조금만", "picture": "spring_reach_short" }
     ],
-    "answer": "same",
-    "reason": "당긴 만큼 반대쪽으로 가요. 무거운 공은 천천히 가지만 같은 데까지 가요."
+    "answer": "full",
+    "reason": "용수철은 당긴 만큼 공을 다시 당겨요. 그래서 공이 반대쪽으로도 당긴 만큼 가요.",
+    "bridge": "직접 당겼다 놓아 보면 알 수 있어요!",
+    "bridge_face": "happy"
   },
   "missions": {
     "observe": "bell_reach",
     "judge_on": ["moving", "rest"],
+    "miss_on": ["moving", "rest"],
+    "miss_needs": "bell_reach",
     "stages": [
-      { "threshold": 0.45, "conditions": {"mass": {"max": 1.0}}, "text": "가벼운 공을 당겨 가까운 종 치기!", "say": "당긴 만큼 용수철이 공을 다시 당겨요. 그래서 공이 반대쪽으로 당긴 만큼 가서 종을 쳐요.", "say_face": "explain" },
-      { "threshold": 0.95, "conditions": {"mass": {"max": 1.0}}, "text": "더 멀리 당겨서 먼 종 치기!", "say": "멀리 당길수록 반대쪽으로도 멀리 가요. 먼 종에 닿으려면 그만큼 당겨요.", "say_face": "thinking" },
-      { "threshold": 1.45, "conditions": {"mass": {"min": 2.5}}, "text": "무거운 공으로 제일 먼 종 치기!", "say": "무거운 공도 같은 길이만큼 당기면 종에 닿아요. 천천히 갈 뿐 가는 거리는 같아요.", "say_face": "happy" }
+      { "threshold": 0.45, "conditions": {"mass": {"max": 1.0}}, "text": "가벼운 공을 당겨 가까운 종 치기!", "say": "당긴 만큼 용수철이 공을 다시 당겨요. 그래서 공이 반대쪽으로 당긴 만큼 가서 종을 쳐요.", "say_face": "explain", "win": "딩! 종이 울렸어!", "win_face": "happy", "miss": "종까지 조금 모자라! 더 당겨 봐!", "miss_face": "thinking" },
+      { "threshold": 0.95, "conditions": {"mass": {"max": 1.0}}, "text": "더 멀리 당겨서 먼 종 치기!", "say": "멀리 당길수록 반대쪽으로도 멀리 가요. 먼 종에 닿으려면 그만큼 당겨요.", "say_face": "thinking", "win": "딩동! 먼 종도 울렸어!", "win_face": "happy", "miss": "더 멀리 당겨 봐!", "miss_face": "thinking" },
+      { "threshold": 1.45, "conditions": {"mass": {"min": 2.5}}, "text": "무거운 공으로 제일 먼 종 치기!", "say": "무거운 공도 같은 길이만큼 당기면 종에 닿아요. 천천히 갈 뿐 가는 거리는 같아요.", "say_face": "happy", "win": "땡! 제일 먼 종이 울렸어!", "win_face": "surprised", "miss": "무거운 공으로 끝까지 당겨 봐!", "miss_face": "thinking" }
     ]
   },
   "story": { "clue": "종 안에 조각이 매달려 있어! 공으로 종을 땡 쳐 보자!", "clue_face": "explain", "map_clue": "울타리 안, 통통 튀는 용수철 쪽이야!", "map_clue_face": "explain" },

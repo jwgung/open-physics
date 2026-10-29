@@ -29,11 +29,14 @@ const ZONES := {
 		["incline-friction", [3.3, 6.2], -25.0],
 		["friction", [6.6, 3.0], 0.0],
 	]},
-	"놀이터": {"at": [0.3, -5.2], "ground": "yard", "size": [8.8, 4.9], "spots": [
-		["spring", [-1.3, -4.0], 0.0],
-		["rotation", [1.9, -4.0], 0.0],
-		["pulley", [3.2, -6.5], 0.0],
-		["constraints", [-2.8, -6.5], 0.0],
+	# The yard (2026-10-29 user: "놀이터 네 곳이 너무 붙어 있어"): wider (8.8 x 4.9 -> 10.4 x 5.0 m) and
+	# its four spots staggered: two in front either side of the middle path, two at the back out to
+	# the sides (the order found with the map camera: no name on another name or on a model).
+	"놀이터": {"at": [0.4, -5.05], "ground": "yard", "size": [10.4, 5.0], "spots": [
+		["spring", [-1.5, -3.95], 0.0],
+		["rotation", [1.9, -3.95], 0.0],
+		["pulley", [-3.55, -6.35], 0.0],
+		["constraints", [4.35, -6.35], 0.0],
 	]},
 	"연못": {"at": [-7.5, -3.0], "ground": "pond", "radius": 2.0, "spots": [
 		["buoyancy", [-6.9, -2.4], -45.0],
@@ -52,6 +55,11 @@ const PATHS := [
 	[[0.5, 2.0], [1.9, 3.9], [3.3, 6.2]],
 	[[3.3, 6.2], [5.6, 5.6], [6.6, 3.0]],
 	[[0.5, 2.0], [0.4, -0.1], [0.3, -2.75]],
+	# Inside the yard (2026-10-29): up the middle between the front spots, then out to the back ones
+	# (their bend is the path point nearest to where the cat stands, so the walk never crosses a stage).
+	[[0.3, -2.75], [0.35, -5.6]],
+	[[0.35, -5.6], [-2.7, -5.75], [-3.55, -6.35]],
+	[[0.35, -5.6], [3.6, -5.75], [4.35, -6.35]],
 	[[0.4, -0.1], [-3.0, -0.4], [-5.6, -1.1]],
 	[[0.4, -0.1], [4.0, -0.7], [6.6, -2.2], [8.4, -3.9]],
 ]

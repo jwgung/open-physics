@@ -547,6 +547,7 @@ func _check_art_is_visual_only() -> void:
 ## appears below it, not along the body's own y axis.
 func _check_juice_rotated_landing() -> void:
 	var world := Node3D.new()
+	world.position = Vector3(0.0, 0.0, 30.0)   # clear of the incline lab's slide (same physics space)
 	root.add_child(world)
 	var floor_body := StaticBody3D.new()
 	var floor_shape := CollisionShape3D.new()
@@ -565,7 +566,7 @@ func _check_juice_rotated_landing() -> void:
 	var visual := ArtKit.instance(ArtKit.parcel_mesh(0.4))
 	body.add_child(visual)
 	world.add_child(body)
-	body.global_transform = Transform3D(Basis(Vector3.BACK, PI * 0.5), Vector3(0.0, 2.5, 0.0))
+	body.global_transform = Transform3D(Basis(Vector3.BACK, PI * 0.5), Vector3(0.0, 2.5, 30.0))
 	var juice := ArtJuice.new()
 	world.add_child(juice)
 	juice.setup(body, visual, 0.4)
@@ -591,7 +592,9 @@ func _check_juice_rotated_landing() -> void:
 
 
 ## The hinge: at every angle up to the slider's maximum the post top lies inside the axle's circle
-## (no gap), under the incline's underside (no crossing), and the axle/lugs touch the underside.
+## (no gap), under the incline's underside (no crossing), and the axle/lugs touch the underside. The
+## slide's lower end stays put (2026-10-29): the post stands from 15° on (a flatter slide's hinge is
+## near the ground and the post is hidden), its foot fixed.
 func _check_stand_clearance() -> void:
 	var max_angle := 0.0
 	for control in _lab.definition.controls:
@@ -605,9 +608,18 @@ func _check_stand_clearance() -> void:
 		and InclineProps.AXLE_DEPTH - InclineProps.AXLE_RADIUS < InclineProps.INCLINE_THICKNESS
 	var worst_circle := -INF
 	var worst_under := INF
+	var shown_from := INF
+	var hidden_steep := false
+	var end_moved := 0.0
 	var angle := 0.0
 	while angle <= max_angle + 0.001:
 		_lab.set_angle(angle)
+		end_moved = maxf(end_moved, (_lab.lower_end() - Vector3(_lab.END_X, _lab.END_Y, 0.0)).length())
+		if not post.visible:
+			hidden_steep = hidden_steep or angle >= 15.0
+			angle += 2.5
+			continue
+		shown_from = minf(shown_from, angle)
 		var axle: Vector3 = _lab._pivot.global_transform * Vector3(0.0, -InclineProps.AXLE_DEPTH, 0.0)
 		var top_y: float = post.mesh.get_aabb().end.y
 		for cx in [-0.25, 0.25]:
@@ -617,9 +629,9 @@ func _check_stand_clearance() -> void:
 			worst_under = minf(worst_under, -InclineProps.INCLINE_THICKNESS - local.y)
 		angle += 2.5
 	_lab.set_angle(20.0)
-	_expect(max_angle >= 45.0 and touches and worst_circle < 0.0 and worst_under > 0.0,
-		"post top stays inside the hinge axle and under the incline at every angle",
-		"max angle %.0f, axle touches %s, circle margin %.3f m, underside clearance %.3f m" % [max_angle, touches, -worst_circle, worst_under])
+	_expect(max_angle >= 45.0 and touches and worst_circle < 0.0 and worst_under > 0.0 and not hidden_steep and end_moved < 1e-6,
+		"post top stays inside the hinge axle and under the incline at every angle it stands (from 15° on); the slide's lower end stays put",
+		"max angle %.0f, axle touches %s, circle margin %.3f m, underside clearance %.3f m, post from %.1f°, end moved %.6f m" % [max_angle, touches, -worst_circle, worst_under, shown_from, end_moved])
 
 
 ## Button look and press feedback: a pressed face moves down as a whole, disabled buttons keep the

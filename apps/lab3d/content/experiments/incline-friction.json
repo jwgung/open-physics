@@ -5,7 +5,7 @@
   "scene": "res://experiments/incline_friction/incline_friction.gd",
   "bench_id": "S3",
   "camera": {
-    "target": [-1.8, 2.8, 0.0],
+    "target": [-2.8, 2.6, 0.0],
     "distance": 8.5,
     "distance_range": [3.0, 20.0],
     "yaw_range_deg": [-100.0, 100.0],
@@ -13,7 +13,7 @@
     "pan_radius": 5.0,
     "default_mode": "front",
     "views": {
-      "front": { "yaw_deg": 0.0, "pitch_deg": -6.0, "distance": 9.5 },
+      "front": { "yaw_deg": 0.0, "pitch_deg": -6.0, "distance": 11.2 },
       "three_quarter": { "yaw_deg": 35.0, "pitch_deg": -24.0 },
       "top": { "yaw_deg": 0.0, "pitch_deg": -89.0 },
       "side": { "yaw_deg": 90.0, "pitch_deg": -10.0, "distance": 12.0 },
@@ -61,7 +61,7 @@
     "hidden_until_end": ["acceleration", "critical_angle", "tangential", "max_static", "bottom_speed", "reach_1", "reach_2", "reach_3"],
     "hidden_series_until_end": ["formula"],
     "stages": [
-      { "observe": "reach_1", "threshold": 0.5, "conditions": {"material": "steel"}, "text": "강철 미끄럼틀로 작은 도미노 넘어뜨리기!", "say": "강철은 미끄러워서 상자를 조금만 붙잡아요. 그래서 끝까지 쌩 내려가 도미노를 쓰러뜨려요.", "say_face": "explain", "win": "와르르! 작은 도미노가 넘어졌어!", "win_face": "happy", "miss": "강철을 조금 기울여 꼭대기에서 놓아 봐!", "miss_face": "thinking" },
+      { "observe": "reach_1", "threshold": 0.5, "conditions": {"material": "steel"}, "text": "강철 미끄럼틀로 작은 도미노 넘어뜨리기!", "say": "강철은 미끄러워서 상자를 조금만 붙잡아요. 그래서 끝까지 쌩 내려가 도미노를 쓰러뜨려요.", "say_face": "explain", "win": "와르르! 작은 도미노가 넘어졌어!", "win_face": "happy", "miss": "강철 미끄럼틀 꼭대기에서 놓아 봐!", "miss_face": "thinking" },
       { "observe": "reach_2", "threshold": 0.5, "conditions": {"material": "wood", "angle": {"min": 30, "max": 45}}, "text": "나무 미끄럼틀을 더 기울여 큰 도미노 넘어뜨리기!", "say": "나무는 상자를 더 붙잡아요. 더 기울이면 아래로 끄는 힘이 커져서 끝에서 더 빨라요.", "say_face": "thinking", "win": "큰 도미노도 넘어졌어!", "win_face": "happy", "miss": "나무를 더 기울여 꼭대기에서 놓아 봐!", "miss_face": "thinking" },
       { "observe": "reach_3", "threshold": 0.5, "conditions": {"material": "rubber", "angle": {"min": 40, "max": 45}}, "text": "고무 미끄럼틀을 많이 기울여 빨간 기둥 넘어뜨리기!", "say": "고무는 상자를 꽉 붙잡아요. 그래도 많이 기울이면 끄는 힘이 이겨서 쌩 내려가요.", "say_face": "explain", "win": "빨간 기둥이 넘어졌어!", "win_face": "surprised", "miss": "고무를 많이 기울여 꼭대기에서 놓아 봐!", "miss_face": "thinking" }
     ]
@@ -101,8 +101,8 @@
     "graph": true
   },
   "cast": {
-    "dugi": { "at": [1.0, 2.5], "explain_on": ["sliding", "left"], "delay_s": 4.5 },
-    "puppy": { "at": [5.2, -7.3] }
+    "dugi": { "at": [-9.0, -4.0], "explain_on": ["sliding", "left"], "delay_s": 4.5 },
+    "puppy": { "at": [-4.0, -8.0] }
   },
   "observations": [
     { "id": "critical_angle", "label": "임계각 θc (tan θc = μs)", "unit": "°", "digits": 1 },

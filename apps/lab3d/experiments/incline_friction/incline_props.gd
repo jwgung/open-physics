@@ -21,6 +21,7 @@ const AXLE_RADIUS := 0.34           # the hinge axle under the incline (z direct
 const AXLE_DEPTH := 0.68            # axle centre below the incline's top face / pivot (incline-local, m)
 const AXLE_LENGTH := 1.0
 const POST_INSET := 0.1             # the post top sits this far short of the axle centre
+const POST_MIN := 0.25              # a shorter post (a nearly flat slide, its hinge at the ground) is hidden
 ## The cat: its base z (behind the box, on the 2 m wide incline), its paws on the box top near its
 ## back edge (z) either side of its middle (along the incline), the wedge's rim beyond its bag and
 ## how deep the wedge reaches into the slope (no gap at its low corner).
@@ -148,11 +149,12 @@ static func axle_offset(angle_deg: float) -> Vector2:
 	return Vector2(AXLE_DEPTH * sin(t), -AXLE_DEPTH * cos(t))
 
 
-## Post from its foot centre to just short of the axle centre: z rotation (rad) and the length.
-## The axle circle then always contains the post top (half width 0.25 < AXLE_RADIUS).
-static func post_pose(pivot_height: float, angle_deg: float) -> Vector2:
+## Post from its foot centre to just short of the axle centre (`pivot` is the pivot from the foot,
+## x/y): z rotation (rad) and the length. The axle circle then always contains the post top (half
+## width 0.25 < AXLE_RADIUS).
+static func post_pose(pivot: Vector3, angle_deg: float) -> Vector2:
 	var c := axle_offset(angle_deg)
-	var to_axle := Vector2(c.x, pivot_height + c.y)
+	var to_axle := Vector2(pivot.x + c.x, pivot.y + c.y)
 	return Vector2(-atan2(to_axle.x, to_axle.y), to_axle.length() - POST_INSET)
 
 
@@ -235,12 +237,14 @@ func _ramp_shadow_half(angle_deg: float) -> float:
 	return _incline_length * 0.5 * cos(deg_to_rad(angle_deg)) - 0.3
 
 
-## The incline casts a soft shadow straight below it (its footprint shrinks as it tilts): the mesh
-## made in dress() is scaled along x, not rebuilt.
-func angle_changed(angle_deg: float) -> void:
+## The incline casts a soft shadow straight below it (its footprint shrinks as it tilts and its
+## middle `middle_x` moves, the lower end staying put): the mesh made in dress() is scaled along x
+## and moved, not rebuilt.
+func angle_changed(angle_deg: float, middle_x: float) -> void:
 	if _ramp_shadow == null:
 		return
 	_ramp_shadow.scale.x = _ramp_shadow_half(angle_deg) / _ramp_shadow_half(0.0)
+	_ramp_shadow.position.x = middle_x
 
 
 ## Experiment status change -> reactions: placed = pop, let go = stretch, starts sliding = puff.

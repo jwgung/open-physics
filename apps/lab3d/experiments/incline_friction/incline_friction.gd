@@ -16,10 +16,23 @@ const BOX := 0.4
 const INCLINE_LENGTH := 8.0
 const START_X := 3.5          # default release point along the incline (pivot local x), uphill end is +x
 const MIN_RUN := 1.0          # shortest run (m) the box can be placed at (start to the lower end)
-const PIVOT_HEIGHT := 3.2
-const STAND_HEIGHT := PIVOT_HEIGHT - 0.15   # full height of the support post mesh
+## The slide's lower end (the middle of its top face's lower edge, world x/y) stays here at every
+## angle (2026-10-29 user: "더 기울이면 더 빨리, 더 멀리"): only the top rises as the slide tilts,
+## so a steeper slide starts the box higher and it leaves the end faster. Before, the slide turned
+## about its middle 3.2 m up and a steeper slide lowered its end (the box landed nearer). END_Y is
+## the top face's height there: the slide's 0.5 m thick body reaches the ground, and the box drops
+## the last 0.3 m onto the floor (lower, its corner catches the floor's edge and the engine box runs
+## up to 9 cm off the formula; from 0.2 m on it stays within 1 cm).
+const END_X := -2.6
+const END_Y := 0.3
+const STAND_X := END_X + INCLINE_LENGTH * 0.5  # the support post's foot (world x): under the flat slide's middle; it leans to the hinge
+const STAND_HEIGHT := 3.3     # full height of the support post mesh (scaled to the hinge)
 const GRAPH_EVERY_STEPS := 6  # graph sample every 6 fixed steps (10 Hz)
-const FLOOR_DAMP := 4.0       # 1/s braking of a box lying on the floor after leaving the incline
+## The floor's kinetic friction on the box past the slide's end (2026-10-29, with the fixed lower end):
+## from the formula landing the box's floor speed drops by μ g each second (Coulomb friction, the
+## same law as on the slide), so it stops after v²/(2μg): a faster box goes clearly farther. Before,
+## a 4/s velocity damp stopped it after about v/4, too little apart between the slopes.
+const FLOOR_MU := 0.6
 const EDGE_SLIDE := 0.25      # of BOX: the run over the slide's frictionless edge (arrival())
 const FALL_LIMIT_Y := -3.0    # below this the box is stopped (it left the floor)
 
@@ -43,6 +56,8 @@ var _incline_body: StaticBody3D
 var _mark: MeshInstance3D
 var _placed := false          # the user dragged the box to start_x (kept across a screen rebuild)
 var _brake_step := -1         # the step (corrector.steps) of the formula landing: the floor brake starts
+var _braking := false         # the floor's friction slows the box (from _brake_step on)
+var _landing_speed := 0.0     # the formula's floor speed v cos θ at the landing (arrival().vx)
 var _graph_points := PackedVector2Array()
 var _graph_revision := 0
 var _reach_key := []
@@ -82,8 +97,8 @@ func run_action(id: String) -> void:
 
 func set_angle(degrees: float) -> void:
 	angle_deg = clampf(degrees, 0.0, 45.0)
-	_pivot.rotation = Vector3(0.0, 0.0, deg_to_rad(angle_deg))
-	props.angle_changed(angle_deg)
+	_place_slide()
+	props.angle_changed(angle_deg, _pivot.position.x)
 	_fit_stand()
 	reset_box()   # the dominoes follow (InclineGame.place through run_reset)
 
@@ -139,7 +154,7 @@ func reset_box() -> void:
 ## Ends the run at the box's current place: not released, no floor brake, history and graph cleared.
 func _stop_run() -> void:
 	released = false
-	box.linear_damp = 0.0
+	_braking = false
 	_brake_step = -1
 	corrector.reset(box.global_position)
 	_graph_points.clear()
@@ -156,6 +171,7 @@ func release() -> void:
 	released = true
 	var way := arrival()
 	_brake_step = int(way.brake_step) if way.has("brake_step") else -1
+	_landing_speed = float(way.get("vx", 0.0))
 	box.freeze = false
 	box.sleeping = false
 	props.cat_let_go(_pivot.global_transform.basis * Vector3.LEFT)
@@ -195,9 +211,11 @@ func bottom_speed() -> float:
 ## - it leaves the end at t_L = √(2d/a) with v = a t_L along the slope (d = run_length());
 ## - its centre flies on g from the end (the box's centre BOX/2 above the top face) and lands when it
 ##   is BOX/2 above the floor (t_f, x_land): the projectile p = p₀ + v t − ½ g t² ŷ;
-## - the frictionless floor keeps its horizontal speed v cos θ; the floor brake starts at the formula
-##   landing's step (brake_step) and takes v (1 − c Δt) each step, so it comes to rest
-##   v cos θ · Δt · r/(1 − r) (r = 1 − c Δt) further on (rest_x).
+## - the landing keeps its horizontal speed v cos θ; the floor's friction (FLOOR_MU) starts at the
+##   formula landing's step (brake_step) and takes μ g Δt off that speed each step until it stops
+##   (brake_steps later, rest_x): about (v cos θ)²/(2 μ g) further on.
+## The lower end stays at (END_X, END_Y) for every slope, so the steeper slide leaves the box faster
+## at the same place: from the top, steeper goes farther (every material, the picks 20°/30°/40°).
 ## {} when the box holds (a ≤ 0). World x (downhill is −x).
 func arrival() -> Dictionary:
 	var a := formula_acceleration()
@@ -216,12 +234,25 @@ func arrival() -> Dictionary:
 	var t_fly := (vy + sqrt(vy * vy + 2.0 * G * drop)) / G
 	var brake_step := ceili((t_left + t_fly) / dt - 1e-6)
 	var at_brake := from.x - vx * (brake_step * dt - t_left)
-	var r := 1.0 - FLOOR_DAMP * dt
+	var slow := floor_brake() * dt
+	var steps := floori(vx / slow)   # steps with speed left after their slowing
 	return {
 		"t_left": t_left, "t_land": t_left + t_fly, "x_land": from.x - vx * t_fly, "from_x": from.x,
-		"from_y": from.y, "vx": vx, "vy": vy, "brake_step": brake_step,
-		"rest_x": at_brake - vx * dt * r / (1.0 - r),
+		"from_y": from.y, "vx": vx, "vy": vy, "brake_step": brake_step, "brake_steps": steps,
+		"rest_x": at_brake - _floor_run(vx, slow, steps),
 	}
+
+
+## The floor friction's slowing (m/s²): μ g.
+static func floor_brake() -> float:
+	return FLOOR_MU * G
+
+
+## How far a box at speed `speed` runs in `n` steps on the floor slowing by `slow` (m/s) each step
+## (the slowing comes before each step's move; the speed stays at 0 once it is used up).
+static func _floor_run(speed: float, slow: float, n: int) -> float:
+	var k := mini(n, floori(speed / slow))
+	return (k * speed - slow * k * (k + 1) * 0.5) / Engine.physics_ticks_per_second
 
 
 ## The box centre's x (world) after `step` steps from the release on arrival()'s way past the end
@@ -233,8 +264,7 @@ static func arrival_x(way: Dictionary, step: int) -> float:
 	var brake: int = way.brake_step
 	var x: float = way.from_x - way.vx * (mini(step, brake) * dt - way.t_left)
 	if step > brake:
-		var r := 1.0 - FLOOR_DAMP * dt
-		x -= way.vx * dt * r * (1.0 - pow(r, step - brake)) / (1.0 - r)
+		x -= _floor_run(float(way.vx), floor_brake() * dt, step - brake)
 	return x
 
 
@@ -265,14 +295,14 @@ static func contact_step(way: Dictionary, row: int) -> int:
 	var nearest: float = pivots[0] + (InclineGame.ROWS[row][1] as Vector3).x
 	var step := ceili(float(way.t_left) / dt - 1e-6)
 	var last := -INF
-	while step < int(way.brake_step) + 1200:
+	while step <= int(way.brake_step) + int(way.brake_steps) + 1:
 		var x := arrival_x(way, step)
 		var y := arrival_y(way, step)
 		if x - half <= nearest:
 			for p: float in pivots:
 				if InclineGame.overlaps(row, p, x - half, x + half, y - half):
 					return step
-		if step > int(way.brake_step) and absf(x - last) < 1e-5:
+		if step > int(way.brake_step) + int(way.brake_steps):
 			return -1   # at rest
 		last = x
 		step += 1
@@ -316,11 +346,11 @@ func _physics_process(_delta: float) -> void:
 	_settle_off_incline()
 
 
-## The floor is frictionless like the incline (so the formula layer owns all friction), but a box
-## that has left the incline must not run off the end of the finite floor: it brakes from the
-## formula landing's step (arrival(); 2026-10-29: before, from when its centre dropped below
-## BOX/2 + 0.05 m, which the landing's tumbles and hops moved by up to 1.7 m of rest point) and is
-## stopped if it ever drops far below it. Does not touch the displayed numbers.
+## The floor is frictionless like the incline (so the formula layer owns all friction): the floor's
+## friction FLOOR_MU acts from the formula landing's step (arrival(); 2026-10-29: before, from when
+## its centre dropped below BOX/2 + 0.05 m, which the landing's tumbles and hops moved by up to 1.7 m
+## of rest point) on the box's floor speed, and a box that drops far below the floor is stopped.
+## Does not touch the displayed numbers.
 func _settle_off_incline() -> void:
 	if box.freeze:
 		return
@@ -330,9 +360,24 @@ func _settle_off_incline() -> void:
 		box.angular_velocity = Vector3.ZERO
 		box.freeze = true
 	elif status() == "left" and _brake_step >= 0 and corrector.steps >= _brake_step:
-		# The formula landing (arrival()): from this step on the floor brakes the box (a fixed step,
-		# not the box's own hops after it lands, so its rest point is the formula's).
-		box.linear_damp = FLOOR_DAMP
+		# The formula landing (arrival()): from this step on the floor's friction slows the box (a
+		# fixed step, not the box's own hops after it lands, so its rest point is the formula's).
+		var v := box.linear_velocity
+		var floor_speed := Vector2(v.x, v.z).length()
+		if not _braking:
+			# The landing keeps the formula's floor speed v cos θ (the engine's tumbling landing is off by
+			# up to 0.5 %, which the friction's v²/(2μg) run would stretch to centimetres).
+			floor_speed = _landing_speed
+			v = Vector3(-_landing_speed, v.y, 0.0)
+		_braking = true
+		var left := maxf(floor_speed - floor_brake() / Engine.physics_ticks_per_second, 0.0)
+		var keep := left / floor_speed if floor_speed > 0.0 else 0.0
+		box.linear_velocity = Vector3(v.x * keep, v.y, v.z * keep)
+
+
+## The floor's friction is slowing the box (past the formula landing; InclineGame's stop watch).
+func braking() -> bool:
+	return _braking
 
 
 func observations() -> Dictionary:
@@ -387,8 +432,8 @@ func _build_world() -> void:
 	_add_floor(frictionless)
 
 	_pivot = Node3D.new()
-	_pivot.position = Vector3(0.0, PIVOT_HEIGHT, 0.0)
 	add_child(_pivot)
+	_place_slide()
 	var incline_size := Vector3(INCLINE_LENGTH, 0.3, 2.0)
 	var incline := StaticBody3D.new()
 	_incline_body = incline
@@ -412,7 +457,7 @@ func _build_world() -> void:
 	_post = ArtKit.instance(props.post_mesh(STAND_HEIGHT))
 	_post.name = "Post"
 	_stand.add_child(_post)
-	_stand.position = Vector3(0.0, 0.0, InclineProps.STAND_Z)
+	_stand.position = Vector3(STAND_X, 0.0, InclineProps.STAND_Z)
 	add_child(_stand)
 	_fit_stand()
 
@@ -442,12 +487,22 @@ func _build_world() -> void:
 	props.juice.landed.connect(impact.emit)
 
 
-## The post leans and shortens with the incline so its top stays inside the hinge axle's circle.
+## The slide at angle_deg with its lower end at (END_X, END_Y): the pivot (the middle of its top
+## face, the frame every along-the-slide position is in) half the length up the slope from the end.
+func _place_slide() -> void:
+	var theta := deg_to_rad(angle_deg)
+	_pivot.rotation = Vector3(0.0, 0.0, theta)
+	_pivot.position = Vector3(END_X, END_Y, 0.0) + INCLINE_LENGTH * 0.5 * Vector3(cos(theta), sin(theta), 0.0)
+
+
+## The post leans from its foot (STAND_X) and stretches with the incline so its top stays inside the
+## hinge axle's circle; on a slope so gentle that the hinge is near the ground there is no post.
 func _fit_stand() -> void:
 	if _post != null:
-		var pose := InclineProps.post_pose(PIVOT_HEIGHT, angle_deg)
+		var pose := InclineProps.post_pose(_pivot.position - _stand.position, angle_deg)
 		_post.rotation.z = pose.x
-		_post.scale.y = pose.y / STAND_HEIGHT
+		_post.scale.y = maxf(pose.y, 0.01) / STAND_HEIGHT
+		_post.visible = pose.y >= InclineProps.POST_MIN
 
 
 # --- manipulation (Task 2b) -------------------------------------------------------------------

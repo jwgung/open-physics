@@ -1,19 +1,20 @@
 ## The slide's piece game (2026-10-29 "조각 꺼내기"): three rows of dominoes, small, bigger and the big
-## pillar with the star piece on top. A stage asks for the box to reach the end fast enough
-## (MissionTracker: bottom_speed, the formula's v = √(2 a d) with a = g (sin θ − μk cos θ) and d the
-## run from the start to the end, past 5 → 6 → 6.5 m/s on steel → steeper wood → steepest rubber).
+## pillar with the star piece on top. A stage asks for the box to get to its row past the slide's end
+## (reach_n below): the faster it leaves the end (v = √(2 a d), a = g (sin θ − μk cos θ), d the run
+## from the start to the end), the farther it goes, on steel → steeper wood → steepest rubber.
 ##
 ## Where the box arrives (2026-10-29 user, twice: "미끄럼틀은 여전히 착지 지점과 도미노의 위치가
-## 안맞다"): past the slide's end the box flies on g from the end, lands on the frictionless floor and
-## the floor brake stops it (InclineFriction.arrival(): the formula's projectile and the brake, which
-## the engine box follows within 2 cm).
+## 안맞다"): past the slide's end the box drops on g from the end (fixed 0.3 m over the ground at
+## every slope, 2026-10-29), lands on the floor and the floor's friction stops it
+## (InclineFriction.arrival(): the formula's projectile and v²/(2μg) on the floor, which the engine
+## box follows within 1 cm).
 ##
 ## One fixed row per stage (2026-10-29 user: the row that moved to where the box would stop gave the
 ## answer away before the release): the stage's row stands in the box's lane (z 0) at LANE_FACE (its
 ## first domino's near face), whatever the material, slope or start. The stage is judged by whether
 ## the formula's way meets the row (the lab's contact_step() and reach_1–3): the box's square on its
-## flight and floor run against the standing dominoes' boxes. So a box can fall short, or fly over a
-## row and land past it. Where it meets the row:
+## flight and floor run against the standing dominoes' boxes. So a box can fall short. Where it meets
+## the row:
 ## - the moment the engine box's square reaches a standing domino (touched()) the row's chain starts
 ##   (each domino NEXT_S after the one before), stamped or not (a setting the stage does not want
 ##   knocks it over too: it stands again at the next attempt), and the box shoves each domino it
@@ -35,11 +36,12 @@ const ROWS := [
 ]
 const GAP := 0.3                         # m from the slide's lower end (x) to a waiting row's start
 const ROW_Z := -1.15                     # the waiting rows' middle (z): beside the box's lane, behind it
-## Per stage: the world x of its row's first domino's near (+x) face in the lane, fixed (m). Steel
-## from the top at 20° or 30° gets to −6.8 (wood 30° stops 0.12 m short, steel 40° 1.06 m: the
-## steeper slide ends lower, so the box flies less far); wood from the top at 30° or 40° to −5.2;
-## rubber at 40° or 45° to −4.45 (README "고정 도미노 줄").
-const LANE_FACE := [-6.8, -5.2, -4.45]
+## Per stage: the world x of its row's first domino's near (+x) face in the lane, fixed (m), 3.8,
+## 3.45 and 2.8 m past the slide's lower end (x −2.6, the same at every slope). From the top steeper
+## goes farther: steel at 20°/30°/40° gets to −6.4 (20°: 0.14 m past its face; wood 30° stops 0.13 m
+## short); wood at 30°/40° to −6.05 (30°: 0.22 m past; rubber 45° 0.24 m short); rubber at 40°/45°
+## to −5.4 (40°: 0.26 m past; clay 45° 0.28 m short). README "고정 도미노 줄".
+const LANE_FACE := [-6.4, -6.05, -5.4]
 const NEAR_MISS := 0.5                   # m: a box stopping this close short of the row makes it wobble
 const FALL_S := 0.35
 const NEXT_S := 0.12                     # the next domino starts falling this long after the one before
@@ -47,7 +49,7 @@ const TOUCH_KEEP_S := 0.5                # a stamp this soon after the box's tou
 const STOP_SPEED := 0.05                 # m/s: the braked box has stopped (settled, the near-miss wobble)
 
 ## The x of the slide's lower end (world) the waiting rows start from (place()).
-var end_x := -3.76
+var end_x := -2.6
 ## The row standing in the box's lane (-1: none, the round is done) and its first domino's near face (x).
 var lane := -1
 var face_x := 0.0
@@ -199,7 +201,7 @@ func _watch_box() -> void:
 		if _fall_at[lane] < 0.0:
 			_start_chain(lane, _t)   # the box knocks the row over, stamped or not
 		SoundBoard.play(&"stop")
-	elif l.box.freeze or (l.box.linear_damp > 0.0 and l.box.linear_velocity.length() < STOP_SPEED):
+	elif l.box.freeze or (l.braking() and l.box.linear_velocity.length() < STOP_SPEED):
 		_stopped = true
 		var short := _box_front() - face_x
 		if lane >= 0 and short > 0.0 and short <= NEAR_MISS:

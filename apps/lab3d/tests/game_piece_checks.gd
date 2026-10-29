@@ -34,6 +34,7 @@ func run() -> void:
 	await check_free_fall()
 	await check_incline()
 	await check_incline_dominoes()
+	await check_incline_hit_view()
 	await check_push_path()
 	await check_spring()
 	await check_lever()
@@ -402,11 +403,14 @@ func check_free_fall() -> void:
 # --- the slide: the box's way meets the stage's fixed row ---------------------------------------------
 
 ## The slide's stages (2026-10-29 user: one fixed row per stage, found out by sliding): a stage is
-## the formula's way past the end (InclineFriction.arrival(): the flight, then the braked floor run)
-## meeting the stage's row at InclineGame.LANE_FACE (reach_n), with the stage's conditions. From the
-## top: steel at 20° and 30° get to the small dominoes, steel 40° and the wood and rubber picks do
-## not; wood at the steeper picks (30°, 40°) to the big dominoes, the gentle pick holds; rubber at
-## 40° (and the sidebar's 45°) to the pillar, the gentler picks hold. A low start falls short. The
+## the formula's way past the end (InclineFriction.arrival(): the drop from the end, then the floor
+## run on the floor's friction) meeting the stage's row at InclineGame.LANE_FACE (reach_n), with the
+## stage's conditions. The slide's lower end stays put (2026-10-29 user: "더 기울이면 더 빨리, 더
+## 멀리"), so from the top every material's steeper pick leaves the end faster and goes farther. Steel
+## at 20°/30°/40° gets to the small dominoes, wood 30° and rubber do not (wood 40° does: no stamp);
+## wood at the steeper picks (30°, 40°) to the big dominoes, the gentle pick holds, rubber does not;
+## rubber at 40° (and the sidebar's 45°) to the pillar, clay does not. A low start falls short. The
+## engine box rests where the formula says (2 cm) at every material's sliding picks from the top. The
 ## margins (how far the box at rest would get past the row's face) are in the report.
 func check_incline() -> void:
 	var definition := ExperimentRegistry.find("incline-friction")
@@ -418,13 +422,13 @@ func check_incline() -> void:
 	var faces: Array = InclineGame.LANE_FACE
 	# [stage, material, angle, run, reaches the stage's row, stamped]
 	var cases := [
-		[0, "steel", 20.0, 7.5, true, true], [0, "steel", 30.0, 7.5, true, true], [0, "steel", 40.0, 7.5, false, false],
-		[0, "steel", 20.0, 3.5, true, true], [0, "steel", 20.0, 2.0, false, false],
-		[0, "wood", 30.0, 7.5, false, false], [0, "wood", 40.0, 7.5, false, false], [0, "rubber", 40.0, 7.5, false, false],
-		[1, "wood", 30.0, 7.5, true, true], [1, "wood", 40.0, 7.5, true, true], [1, "wood", 40.0, 2.0, false, false],
-		[1, "steel", 30.0, 7.5, true, false],
-		[2, "rubber", 40.0, 7.5, true, true], [2, "rubber", 45.0, 7.5, true, true], [2, "rubber", 45.0, 2.0, false, false],
-		[2, "steel", 20.0, 7.5, false, false],   # flies over the pillar and lands past it
+		[0, "steel", 20.0, 7.5, true, true], [0, "steel", 30.0, 7.5, true, true], [0, "steel", 40.0, 7.5, true, true],
+		[0, "steel", 20.0, 6.0, false, false], [0, "steel", 40.0, 5.0, false, false],
+		[0, "wood", 30.0, 7.5, false, false], [0, "wood", 40.0, 7.5, true, false], [0, "rubber", 40.0, 7.5, false, false],
+		[1, "wood", 30.0, 7.5, true, true], [1, "wood", 40.0, 7.5, true, true], [1, "wood", 40.0, 5.0, false, false],
+		[1, "steel", 30.0, 7.5, true, false], [1, "rubber", 45.0, 7.5, false, false],
+		[2, "rubber", 40.0, 7.5, true, true], [2, "rubber", 45.0, 7.5, true, true], [2, "rubber", 45.0, 5.0, false, false],
+		[2, "wood", 40.0, 7.5, true, false], [2, "clay", 45.0, 7.5, false, false],
 	]
 	for c: Array in cases:
 		var stage: int = c[0]
@@ -453,9 +457,45 @@ func check_incline() -> void:
 			lab.set_control("angle", float(angle))
 			if lab.formula_acceleration() > 0.0:
 				problems.append("stage %d: the other slope %s° does not hold" % [i + 1, angle])
-	# The rows differ from stage to stage.
-	if not (faces[0] < faces[1] - 0.5 and faces[1] < faces[2] - 0.5):
+	# The rows differ from stage to stage (the faster stage's row farther).
+	if not (faces[0] < faces[1] - 0.3 and faces[1] < faces[2] - 0.3):
 		problems.append("the rows stand at %s" % str(faces))
+	# From the top, steeper goes farther (every material, the picture buttons' slopes that slide): the
+	# lower end stays put, the box leaves it faster and comes to rest farther.
+	var farther := []
+	for material in ["steel", "wood", "rubber", "clay"]:
+		lab.set_control("material", material)
+		lab.set_run_length(7.5)
+		var last := [INF, 0.0, 0.0]   # rest x, speed at the end, start height
+		var seen := []
+		for angle in [20.0, 30.0, 40.0]:
+			lab.set_control("angle", angle)
+			var way: Dictionary = lab.arrival()
+			if way.is_empty():
+				continue
+			var start: float = (lab._pivot.global_transform * Vector3(lab.start_x, 0.0, 0.0)).y
+			if not (float(way.rest_x) < last[0] and lab.bottom_speed() > last[1] and start > last[2]) \
+					or absf(lab.lower_end().x - lab.END_X) > 1e-6 or absf(lab.lower_end().y - lab.END_Y) > 1e-6:
+				problems.append("%s %s° from the top: rest %.3f, speed %.2f, start %.2f m up after %s" % [material, angle, way.rest_x, lab.bottom_speed(), start, str(last)])
+			last = [float(way.rest_x), lab.bottom_speed(), start]
+			seen.append("%s° %.2f m" % [angle, lab.lower_end().x - (float(way.rest_x) - lab.BOX * 0.5)])
+		farther.append("%s %s" % [material, " < ".join(seen)])
+	# The engine box rests where the formula's way does (every material's sliding picks from the top).
+	var rests := []
+	for setting: Array in [["steel", 20.0], ["steel", 40.0], ["wood", 30.0], ["wood", 40.0], ["rubber", 40.0], ["rubber", 45.0], ["clay", 40.0], ["clay", 45.0]]:
+		lab.set_control("material", setting[0])
+		lab.set_control("angle", setting[1])
+		lab.set_run_length(7.5)
+		var way: Dictionary = lab.arrival()
+		lab.release()
+		var k := 0
+		while k < 600 and not (lab.braking() and lab.box.linear_velocity.length() < 1e-3):
+			await tree.physics_frame
+			k += 1
+		var off: float = lab.box.global_position.x - float(way.rest_x)
+		rests.append("%s %s° %+.3f" % [setting[0], setting[1], off])
+		if absf(off) > 0.02:
+			problems.append("%s %s°: the engine box rests at %.3f, the formula's %.3f" % [setting[0], setting[1], lab.box.global_position.x, way.rest_x])
 	# The bottom speed is still the card's v = √(2ad).
 	lab.set_control("material", "wood")
 	lab.set_control("angle", 30.0)
@@ -476,7 +516,7 @@ func check_incline() -> void:
 		problems.append("steel 25°: left after %.3f s (formula %.3f s)" % [steps / 60.0, t])
 	lab.queue_free()
 	expect.call(problems.is_empty(),
-		"piece game (slide): a stage is the formula's way (the flight from the end, the braked floor run) meeting its fixed row at x %s with the stage's conditions: steel 20°/30° from the top, wood 30°/40°, rubber 40°/45° reach; steel 40°, the other materials' picks, a 2 m start fall short; the other slopes hold; steel 20° flies over the pillar; the box reaches the end at the formula's time — margins past the row's face: %s" % [str(InclineGame.LANE_FACE), ", ".join(margins)],
+		"piece game (slide): a stage is the formula's way (the drop from the fixed end, the floor's friction) meeting its fixed row at x %s with the stage's conditions: steel 20°/30°/40° from the top, wood 30°/40°, rubber 40°/45° reach; the slower material's picks and a low start fall short; the other slopes hold; from the top steeper goes farther (%s); the engine box rests at the formula's rest (%s); the box reaches the end at the formula's time — margins past the row's face: %s" % [str(InclineGame.LANE_FACE), "; ".join(farther), ", ".join(rests), ", ".join(margins)],
 		"; ".join(problems))
 
 
@@ -582,9 +622,9 @@ func check_push_path() -> void:
 ## right after it, or not at all: a setting the stage does not want knocks it over too), no domino
 ## ever overlaps the box (before the touch, falling, pushed, fallen), and the run is settled at the
 ## touch. A setting that falls short stops at the formula's rest (2 cm) without a touch (a wobble when
-## within NEAR_MISS); one that flies over the row lands past it, the row standing. The waiting rows
-## stand beside the lane past the slide's end. At the default camera every domino is in the view and
-## clear of the picture buttons on the tablet and the phone.
+## within NEAR_MISS). The waiting rows stand beside the lane past the slide's end. At the default
+## camera every domino is in the view and clear of the picture buttons and of Dugi's box and portrait
+## on the tablet and the phone.
 func check_incline_dominoes() -> void:
 	var lab: Experiment = await _lab("incline-friction")
 	var game := lab.game as InclineGame
@@ -606,11 +646,11 @@ func check_incline_dominoes() -> void:
 				problems.append("stage %d %s: first face %.3f" % [stage + 1, str(setting), first_face])
 	# [stage, material, angle, run, "left" (stamped at the end) / "touch" (the judging poll after) /
 	#  "free" (no stamp: the stage wants another setting) / "miss" (stops short) / "over" (flies over)]
-	var runs := [[0, "steel", 20.0, 7.5, "left"], [0, "steel", 30.0, 7.5, "touch"], [0, "steel", 20.0, 3.5, "left"],
-		[0, "steel", 40.0, 7.5, "miss"], [0, "wood", 30.0, 7.5, "miss"], [1, "wood", 30.0, 7.5, "left"],
-		[1, "wood", 40.0, 7.5, "touch"], [1, "wood", 40.0, 2.0, "miss"], [1, "steel", 30.0, 7.5, "free"],
-		[2, "rubber", 40.0, 7.5, "left"], [2, "rubber", 45.0, 7.5, "touch"], [2, "rubber", 45.0, 2.0, "miss"],
-		[2, "wood", 40.0, 7.5, "free"], [2, "steel", 20.0, 7.5, "over"]]
+	var runs := [[0, "steel", 20.0, 7.5, "left"], [0, "steel", 40.0, 7.5, "touch"], [0, "steel", 20.0, 5.0, "miss"],
+		[0, "wood", 30.0, 7.5, "miss"], [0, "wood", 40.0, 7.5, "free"], [1, "wood", 30.0, 7.5, "left"],
+		[1, "wood", 40.0, 7.5, "touch"], [1, "wood", 40.0, 5.0, "miss"], [1, "steel", 30.0, 7.5, "free"],
+		[1, "rubber", 45.0, 7.5, "miss"], [2, "rubber", 40.0, 7.5, "left"], [2, "rubber", 45.0, 7.5, "touch"],
+		[2, "rubber", 45.0, 5.0, "miss"], [2, "wood", 40.0, 7.5, "free"], [2, "clay", 45.0, 7.5, "miss"]]
 	for run: Array in runs:
 		var stage: int = run[0]
 		var mode: String = run[4]
@@ -712,8 +752,81 @@ func check_incline_dominoes() -> void:
 		await _free(screen)
 	DirAccess.remove_absolute(ProgressStore.path)
 	expect.call(problems.is_empty(),
-		"piece game (slide): the stage's row stands in the box's lane at its fixed place for every setting; where the formula's way (flight, floor brake) meets it the engine box reaches it within 3 steps and the chain starts at that touch (stamped or not), no domino ever overlaps the box, a short setting stops at the formula's rest, a fly-over lands past the standing row; every domino in the default view and clear of the picture buttons (tablet, phone) — %s" % ", ".join(touches),
+		"piece game (slide): the stage's row stands in the box's lane at its fixed place for every setting; where the formula's way (flight, floor brake) meets it the engine box reaches it within 3 steps and the chain starts at that touch (stamped or not), no domino ever overlaps the box, a short setting stops at the formula's rest; every domino in the default view and clear of the picture buttons (tablet, phone) — %s" % ", ".join(touches),
 		"; ".join(problems.slice(0, 8)))
+
+
+## The first hit stays in sight (2026-10-29 user: Dugi's portrait of the prediction's reason, which
+## opens right after the first result, hid the stage-1 row at the bottom left): on the tablet and the
+## phone, for each stage's fitting pick from the top in the real screen flow (the reason still to be
+## told), the stage's row (its dominoes as they stand and fall) is clear of the picture buttons,
+## Dugi's box and portrait and Puppy's result bubble from the box's touch until the chain has fallen,
+## and the reason does open in that time.
+func check_incline_hit_view() -> void:
+	var definition := ExperimentRegistry.find("incline-friction")
+	var predict := MissionTracker.predict(definition)
+	var problems := []
+	var seen := []
+	for size in [TABLET, Vector2(1560, 720)]:
+		for stage in 3:
+			DirAccess.remove_absolute(ProgressStore.path)
+			if stage > 0:
+				ProgressStore.save({"incline-friction": stage})   # the earlier stages' stamps
+			var screen := await _open(definition, size)
+			screen._end_question()
+			screen._reason_pending = str(predict.reason)   # answered: told after the first result
+			await _frames(3)
+			var lab: Experiment = screen.experiment
+			var game := lab.game as InclineGame
+			var pick: Array = [["steel", 20.0], ["wood", 30.0], ["rubber", 40.0]][stage]
+			lab.set_control("material", pick[0])
+			lab.set_control("angle", pick[1])
+			lab.set_run_length(7.5)
+			await _frames(2)
+			lab.release()
+			var told := false
+			var clear_frames := 0
+			var touched_at := -1
+			for k in 600:
+				await _frames(1)
+				if not game.touched():
+					continue
+				if touched_at < 0:
+					touched_at = k
+				var row := Rect2()
+				var first := true
+				var boxes := game.domino_boxes()
+				var start := 0
+				for r in stage:
+					start += (InclineGame.ROWS[r][0] as Array).size()
+				for i in (InclineGame.ROWS[stage][0] as Array).size():
+					var on_view: Rect2 = screen.view_rect_of(boxes[start + i])
+					row = on_view if first else row.merge(on_view)
+					first = false
+				var covers: Array[Rect2] = []
+				if screen.picks_shown():
+					covers.append(screen._picks_row.get_rect())
+				if screen.dialogue.active and screen.dialogue.visible:
+					covers.append_array(screen.dialogue.rects())
+					told = told or screen.dialogue.text == str(predict.reason)
+				var bubble: ResultBubble = screen.result_bubble()
+				if bubble != null:
+					covers.append(bubble.get_rect())
+				for c: Rect2 in covers:
+					if c.intersects(row):
+						problems.append("%s stage %d %s %s°: the row %s under %s, %d frames after the touch" % [size, stage + 1, pick[0], pick[1], row, c, k - touched_at])
+						break
+				clear_frames += 1
+				if told and game._t - game.chain_started(stage) > InclineGame.FALL_S + InclineGame.NEXT_S * 3.0 + 0.5:
+					break
+			if touched_at < 0 or not told:
+				problems.append("%s stage %d: touched %s, the reason told %s" % [size, stage + 1, touched_at >= 0, told])
+			seen.append("%s stage %d %d frames" % [size, stage + 1, clear_frames])
+			await _free(screen)
+	DirAccess.remove_absolute(ProgressStore.path)
+	expect.call(problems.is_empty(),
+		"piece game (slide): from the box's touch until the chain has fallen and Dugi tells the prediction's reason, the stage's row is clear of the picture buttons, his box and portrait and Puppy's bubble (tablet, phone; %s)" % ", ".join(seen),
+		"; ".join(problems.slice(0, 6)))
 
 
 # --- spring: ring the bell --------------------------------------------------------------------------

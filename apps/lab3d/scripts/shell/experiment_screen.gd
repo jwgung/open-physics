@@ -144,6 +144,7 @@ var _question_face := Story.DEFAULT_FACE  # the question's face (predict.questio
 ## of the view, lifted over Dugi's box while he talks, hidden while he asks or when it has no room.
 var _picks_row: HBoxContainer = null
 var _picks: Array = []                # [{"control": id, "preset": kid.picks entry, "button": Button}]
+var _auto_pending := false            # missions.auto_conditions: the stage's conditions still to set (_apply_auto_conditions)
 var _picks_stage := -2                # the stage the row was built for
 var _picks_for := Vector4(NAN, 0, 0, 0)   # view width, height, talking, asking the row was laid out for (_fit_picks)
 ## The celebrations (2026-10-28): the stamp flying into its slot (StampSlam), the strip's filled
@@ -796,6 +797,26 @@ func _show_stamps(count: int) -> void:
 		_fit_overlays()
 	_fit_mission_strip()
 	_build_picks(count if count < stages.size() else -1)
+	if ConditionPicks.auto(definition):
+		_auto_pending = true   # a stage became current: its conditions are set once the lab is not mid-run
+		_apply_auto_conditions()
+
+
+## missions.auto_conditions (2026-10-29: the collision's ball weights): the current stage's conditions
+## are set through _set_control, the path a tap or the sidebar takes (so the model and the look follow
+## exactly as if the child chose them). Only while the lab is at "ready" or "rest" (a stamp earned in
+## the middle of a run does not snatch the balls back), only the values that differ, and once per
+## stage / reset: the child's own changes in 자세히 stay until the next one.
+func _apply_auto_conditions() -> void:
+	if not _auto_pending or _missions == null or experiment == null or not experiment.is_inside_tree():
+		return
+	if experiment.status() not in ["ready", "rest"]:
+		return
+	_auto_pending = false
+	var values := ConditionPicks.auto_values(definition, _missions.stage())
+	for id in values:
+		if not MissionTracker.condition_holds(values[id], experiment.control_value(id)):
+			_set_control(id, values[id])
 
 
 ## Dugi asks (Plan G4): his dialogue box with the question (portrait and name tag, held open until
@@ -1739,6 +1760,8 @@ func experiment_action(id: String) -> void:
 			cast.user_changed()
 	if id == "reset":
 		_snap_camera_home()
+		_auto_pending = ConditionPicks.auto(definition)
+		_apply_auto_conditions()
 	_refresh()
 
 
@@ -1915,6 +1938,7 @@ func _poll() -> void:
 	if experiment == null or not experiment.is_inside_tree():
 		return
 	_update_readouts(false)
+	_apply_auto_conditions()
 	_missions_judge()   # a run can end between state_changed events (the engine's settled report)
 
 

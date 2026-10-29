@@ -88,6 +88,8 @@ func _asked(definition: Dictionary, stage: int) -> Array:
 	var stages: Array = MissionTracker.missions(definition).get("stages", [])
 	var fixed := ConditionPicks.fixed_controls(definition)
 	var out := []
+	if ConditionPicks.auto(definition):
+		return out   # the lab sets the conditions itself: no buttons
 	for control in definition.controls:
 		if stages[stage].get("conditions", {}).has(control.id) and not control.id in fixed:
 			out.append(control.id)

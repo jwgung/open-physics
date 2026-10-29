@@ -15,6 +15,9 @@
 ## least one button that satisfies the stage and one that does not (the child still chooses);
 ## with two controls each shows two buttons (the satisfying one and its neighbour), so a row never
 ## has more than MAX_BUTTONS. No stage conditions (the projectile's throws, a finished round): no row.
+## `missions.auto_conditions: true` (2026-10-29, the collision's ball weights): the lab sets the stage's
+## conditions itself when a stage becomes current (ExperimentScreen, through its own _set_control), so
+## no row is built (groups() is empty) and auto_values() names the values to set.
 ## Read only: nothing here sets a control or moves a body.
 class_name ConditionPicks
 extends RefCounted
@@ -28,6 +31,34 @@ static func picks(definition: Dictionary) -> Dictionary:
 	var kid: Variant = definition.get("kid")
 	var p: Variant = kid.get("picks") if kid is Dictionary else null
 	return p if p is Dictionary else {}
+
+
+## The lab sets each stage's conditions itself (`missions.auto_conditions`), so it shows no buttons.
+static func auto(definition: Dictionary) -> bool:
+	return MissionTracker.missions(definition).get("auto_conditions", false) == true
+
+
+## What an auto_conditions lab sets for stage `stage` ({} for none or past the last): per condition the
+## exact value or option id; for a {min, max} range the first kid.picks value of the control that
+## fits it, else the range's own bound (min, else max).
+static func auto_values(definition: Dictionary, stage: int) -> Dictionary:
+	var stages: Array = MissionTracker.missions(definition).get("stages", [])
+	var out := {}
+	if not auto(definition) or stage < 0 or stage >= stages.size():
+		return out
+	var conditions: Dictionary = stages[stage].get("conditions", {})
+	for id in conditions:
+		var want: Variant = conditions[id]
+		if want is Dictionary:
+			var value: Variant = want.get("min", want.get("max"))
+			for preset in picks(definition).get(id, []):
+				if MissionTracker.condition_holds(want, preset.value):
+					value = preset.value
+					break
+			out[id] = value
+		else:
+			out[id] = want
+	return out
 
 
 ## The controls every stage asks the same value of (no choice for the child: no buttons).
@@ -46,7 +77,7 @@ static func fixed_controls(definition: Dictionary) -> Array:
 ## [{"control": id, "want": the stage's condition, "presets": [the kid.picks entries shown]}].
 static func groups(definition: Dictionary, stage: int) -> Array:
 	var stages: Array = MissionTracker.missions(definition).get("stages", [])
-	if stage < 0 or stage >= stages.size():
+	if auto(definition) or stage < 0 or stage >= stages.size():
 		return []
 	var conditions: Dictionary = stages[stage].get("conditions", {})
 	var fixed := fixed_controls(definition)
@@ -119,6 +150,11 @@ static func validate(definition: Dictionary) -> PackedStringArray:
 				break
 	var stages: Array = MissionTracker.missions(definition).get("stages", [])
 	var fixed := fixed_controls(definition)
+	if auto(definition):   # no buttons: every stage must name what the lab sets
+		for i in stages.size():
+			if auto_values(definition, i).is_empty():
+				problems.append("missions.stages[%d]: auto_conditions needs conditions" % i)
+		return problems
 	for i in stages.size():
 		var conditions: Dictionary = stages[i].get("conditions", {})
 		var asked := conditions.keys().filter(func(id: Variant) -> bool: return not id in fixed)

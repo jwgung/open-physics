@@ -154,7 +154,7 @@ func check_content_lint() -> void:
 		"free-fall": [MissionTracker.missions(ExperimentRegistry.find("free-fall")).stages.map(func(s: Dictionary) -> String: return s.text),
 			["빨간 공과 노란 공을 같이 떨어뜨려 버튼 누르기!", "달에서 두 공을 맨 위에서 같이 떨어뜨리기!", "목성에서 두 공을 같이 1초 안에 떨어뜨리기!"]],
 		"collision": [MissionTracker.missions(ExperimentRegistry.find("collision")).stages.map(func(s: Dictionary) -> String: return s.text),
-			["같은 무게 두 공으로 세게 쳐서 얼음에 금 내기!", "파란 공을 무겁게 해서 더 세게 부딪히기!", "무거운 주황 공을 세게 밀어 얼음 깨기!"]],
+			["같은 무게 공을 세게 부딪혀 얼음에 금 내기!", "무거운 파란 공으로 더 세게 부딪히기!", "무거운 주황 공을 세게 밀어 얼음 깨기!"]],
 		# Batch B (2026-10-29) and the throw's angle game.
 		"projectile": [MissionTracker.missions(ExperimentRegistry.find("projectile")).stages.map(func(s: Dictionary) -> String: return s.text),
 			["낮게 던져서 가까운 상자 맞히기!", "얼마나 기울여 던질까? 먼 상자 맞히기!", "높이 던져서 나무 위 상자 맞히기!"]],

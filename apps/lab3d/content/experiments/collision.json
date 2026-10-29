@@ -75,9 +75,10 @@
   "missions": {
     "observe": "impulse_b",
     "judge_on": ["collided", "rest"],
+    "auto_conditions": true,
     "stages": [
-      { "threshold": 6.5, "conditions": {"mass_a": 1.0, "mass_b": 1.0}, "text": "같은 무게 두 공으로 세게 쳐서 얼음에 금 내기!", "say": "파란 공이 빠를수록 세게 부딪혀요. 부딪히는 힘이 클수록 주황 공의 움직임이 많이 바뀌어요.", "say_face": "explain" },
-      { "threshold": 12.0, "conditions": {"mass_a": {"min": 3.0}, "mass_b": 1.0}, "text": "파란 공을 무겁게 해서 더 세게 부딪히기!", "say": "무거운 파란 공은 움직임이 많아요. 그래서 더 세게 밀어서 주황 공이 받는 충격이 커요.", "say_face": "explain" },
+      { "threshold": 6.5, "conditions": {"mass_a": 1.0, "mass_b": 1.0}, "text": "같은 무게 공을 세게 부딪혀 얼음에 금 내기!", "say": "파란 공이 빠를수록 세게 부딪혀요. 부딪히는 힘이 클수록 주황 공의 움직임이 많이 바뀌어요.", "say_face": "explain" },
+      { "threshold": 12.0, "conditions": {"mass_a": {"min": 3.0}, "mass_b": 1.0}, "text": "무거운 파란 공으로 더 세게 부딪히기!", "say": "무거운 파란 공은 움직임이 많아요. 그래서 더 세게 밀어서 주황 공이 받는 충격이 커요.", "say_face": "explain" },
       { "threshold": 18.0, "conditions": {"mass_a": {"min": 3.0}, "mass_b": 2.0}, "text": "무거운 주황 공을 세게 밀어 얼음 깨기!", "say": "무거운 주황 공은 움직임을 크게 바꾸려면 큰 충격이 필요해요. 무거운 파란 공으로 세게 밀면 큰 충격에 얼음이 깨져요!", "say_face": "happy" }
     ]
   },

@@ -365,6 +365,7 @@ static func _validate_series(missions: Variant, series: Array) -> PackedStringAr
 ##              "compare"?: ..., "judge_on"?: [...]}, ...],
 ##  "observe"?: <an observation id>, "compare"?: "greater" | "less",
 ##  "judge_on"?: [<status>, ...], "reveal_on"?: [<status>, ...],
+##  "auto_conditions"?: <bool: the screen sets each stage's `conditions` itself, ConditionPicks>,
 ##  "hidden_until_end"?: [<observation id>, ...], "hidden_series_until_end"?: [<graph series id>, ...]}.
 ## With `observe` every stage has its threshold; without it a stage is a state goal (no threshold).
 ## A stage's own observe / compare / judge_on replace the block's for that stage ("": no observe).
@@ -393,6 +394,8 @@ static func _validate_missions(missions: Variant, observations: Array, controls:
 		var statuses: Variant = missions.get(key, MissionTracker.DEFAULT_JUDGE_ON)
 		if not (statuses is Array and not statuses.is_empty() and statuses.all(func(v: Variant) -> bool: return v is String and v != "")):
 			problems.append("missions.%s must list statuses" % key)
+	if missions.has("auto_conditions") and not missions.auto_conditions is bool:
+		problems.append("missions.auto_conditions must be true or false")
 	var hidden: Variant = missions.get("hidden_until_end", [])
 	if not (hidden is Array and hidden.all(func(id: Variant) -> bool: return id is String and ids.has(id))):
 		problems.append("missions.hidden_until_end must list observation ids")

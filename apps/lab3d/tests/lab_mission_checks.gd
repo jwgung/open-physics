@@ -38,7 +38,7 @@ const ROUNDS := {
 		["Jupiter, the heavy red ball: together in 0.80 s", [["ctl", "mass", "heavy"], ["act", "release"]], 150, 3],
 	],
 	"collision": [
-		["the start conditions (B is 2 kg): not the two 1 kg balls", [["act", "release"]], 600, 0],
+		["the start: the two 1 kg balls set by the stage, 3.4 m/s: too gentle", [["act", "release"]], 600, 0],
 		["two 1 kg balls at 3.4 m/s: B gets a small push, not past 6.5", [["ctl", "mass_b", 1.0], ["act", "release"]], 600, 0],
 		["two 1 kg balls at 6 m/s: 6.25 N·s, not past 6.5", [["ctl", "velocity_a", 6.0], ["act", "release"]], 600, 0],
 		["two 1 kg balls at 6.5 m/s: 6.72 N·s", [["ctl", "velocity_a", 6.5], ["act", "release"]], 600, 1],
@@ -333,6 +333,9 @@ func _record(id: String, missions: bool) -> Array:
 		definition.erase("predict")
 	var screen := await _open(definition)
 	var lab: Experiment = screen.experiment
+	if not missions:   # a screen with auto_conditions sets the first stage's conditions itself: the plain one gets the same
+		for control_id in ConditionPicks.auto_values(ExperimentRegistry.find(id), 0):
+			screen._set_control(control_id, ConditionPicks.auto_values(ExperimentRegistry.find(id), 0)[control_id])
 	var rows := []
 	var bodies := lab.find_children("*", "RigidBody3D", true, false)
 	for attempt in ROUNDS[id].slice(0, 2):

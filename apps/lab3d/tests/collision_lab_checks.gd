@@ -21,6 +21,8 @@
 ##    velocity (PULL_SCALE m per m/s, 0.5 m/s grid, +-9 m/s; arrow, pull dots and the kid readout
 ##    while held) and letting go launches it towards B (= 출발; slider follows), then a run = formula.
 ## 8. the measurement demo (--auto-drag) pulls ball A and starts runs that collide.
+## 10. auto conditions (2026-10-29, missions.auto_conditions): a stage that becomes current sets the balls'
+##    masses itself (model, look, sliders), no mass picture buttons, each stage clears by the slingshot alone.
 ## 9. review fixes: signed graph ticks, reactions by the step's closing speed, engine record past the
 ##    history window (29 s run), arrows of slow balls, one restart per restored state, squash keeps
 ##    the ball on the rail, arrow cache key, knob factory (the projectile's).
@@ -55,6 +57,7 @@ func run() -> void:
 	await check_input_path()
 	await check_demo()
 	await check_review()
+	await check_auto_conditions()
 
 
 # --- helpers ----------------------------------------------------------------------------------
@@ -156,6 +159,14 @@ func _open() -> Control:
 	await tree.physics_frame
 	await tree.physics_frame
 	return screen
+
+
+## The web start (B 2 kg): the screen's first stage sets the two balls to 1 kg itself, so these older
+## checks of the web start put B back through the normal path.
+func _web_start(screen: Control) -> void:
+	screen._set_control("mass_b", 2.0)
+	await tree.physics_frame
+	await tree.physics_frame
 
 
 func _close(screen: Control) -> void:
@@ -370,6 +381,7 @@ func check_art() -> void:
 func check_first_collision_screen() -> void:
 	var screen: Control = await _open()
 	var lab: Experiment = screen.experiment
+	await _web_start(screen)
 	var c := _case("web start")
 	var first: Dictionary = c.first
 	var waiting: Dictionary = lab.observations()
@@ -404,6 +416,7 @@ func check_input_path() -> void:
 	var screen: Control = await _open()
 	var lab: Experiment = screen.experiment
 	var m: Manipulator = screen.manipulator
+	await _web_start(screen)
 	var ball: RigidBody3D = lab.ball_a
 	var start: float = lab.start_a
 	var at := _at(screen, ball.global_position)
@@ -550,12 +563,12 @@ func check_review() -> void:
 	screen.size = Vector2(1560, 720)
 	tree.root.add_child(screen)
 	var restored: Control = load(EXPERIMENT_SCREEN).new()
-	restored.setup(ExperimentRegistry.find("collision"), {"controls": {"mass_a": 2.0, "mass_b": 1.5, "material_a": "wood", "material_b": "steel", "velocity_a": 2.0, "velocity_b": -1.0},
+	restored.setup(ExperimentRegistry.find("collision"), {"controls": {"mass_a": 1.0, "mass_b": 1.0, "material_a": "wood", "material_b": "steel", "velocity_a": 2.0, "velocity_b": -1.0},
 		"placements": {"ball_a": Transform3D(Basis(), Vector3(-3.0, 0.4, 0.0)), "ball_b": Transform3D(Basis(), Vector3(3.0, 0.5, 0.0))}, "camera": {}})
 	screen.add_child(restored)
 	await tree.process_frame
 	var restored_lab: Experiment = restored.experiment
-	expect.call(fresh.reset_count == 1 and restored_lab.reset_count == 2 and restored_lab.mass_a == 2.0 and restored_lab.material_b == "steel"
+	expect.call(fresh.reset_count == 1 and restored_lab.reset_count == 2 and restored_lab.mass_a == 1.0 and restored_lab.material_b == "steel"
 		and restored_lab.start_a == -3.0 and restored_lab.start_b == 3.0 and is_equal_approx(restored_lab.ball_a.global_position.x, -3.0),
 		"collision: opening the screen restarts the run once (not once per control); restoring a saved state once more", "%d / %d" % [fresh.reset_count, restored_lab.reset_count])
 	screen.queue_free()
@@ -594,3 +607,70 @@ func check_review() -> void:
 	expect.call(ok, "the projectile builds its yellow arrow knob with the shared factory (layer, mask 0, shape, mesh)", "")
 	await _free(proj)
 	await _free(lab)
+
+
+# --- 10. auto conditions (2026-10-29) --------------------------------------------------------------
+
+## The stage's ball weights are set by the screen when the stage becomes current: after a stamp (once
+## the run is over), through the normal control path (model, look and sliders follow), no picture
+## buttons; a lab without the flag keeps its picks. Each stage then clears by the slingshot alone.
+func check_auto_conditions() -> void:
+	var screen: Control = await _open()
+	var lab: Experiment = screen.experiment
+	var stages: Array = MissionTracker.missions(screen.definition).stages
+	var want := [[1.0, 1.0], [3.0, 1.0], [3.0, 2.0]]
+	var problems := []
+	var cleared := [6.5, 8.0, 7.5]   # the slingshot speeds that beat each stage (6.72, 12.2, 18.4 N·s)
+	for stage in stages.size():
+		for i in 8:
+			await tree.process_frame
+		var look: Vector2 = MassLook.touching_radii(want[stage][0], want[stage][1], lab.RADIUS_A + lab.RADIUS_B)
+		if not (screen._missions.stage() == stage and lab.mass_a == want[stage][0] and lab.mass_b == want[stage][1]
+				and lab.model.mass_a == want[stage][0] and lab.model.mass_b == want[stage][1]
+				and lab.props.look.is_equal_approx(look)
+				and screen._control_widgets.mass_a.slider.value == want[stage][0] and screen._control_widgets.mass_b.slider.value == want[stage][1]
+				and screen.pick_buttons().is_empty() and not screen.picks_shown()):
+			problems.append("stage %d: masses %s / %s (model %s / %s), look %s want %s, picks %d" % [stage + 1, lab.mass_a, lab.mass_b,
+				lab.model.mass_a, lab.model.mass_b, str(lab.props.look), str(look), screen.pick_buttons().size()])
+		# The child's only control: the slingshot pull on the blue ball.
+		var from := _at(screen, lab.ball_a.global_position)
+		var pull_to := _at(screen, Vector3(lab.start_a - cleared[stage] * lab.PULL_SCALE, lab.RADIUS_A, 0.0))
+		_swipe(screen, from, pull_to)
+		_touch(screen, pull_to, false)
+		var guard := 0
+		while screen._missions.stamps == stage and guard < 900:
+			await tree.physics_frame
+			guard += 1
+		if screen._missions.stamps != stage + 1:
+			problems.append("stage %d: not cleared by a %.1f m/s pull (impulse %s)" % [stage + 1, cleared[stage], str(lab.observations().get("impulse_b"))])
+			break
+		guard = 0
+		while lab.status() != "rest" and guard < 1800:   # the run ends, then the next stage's weights are set
+			await tree.physics_frame
+			guard += 1
+	# After the last stage the weights stay (the sliders still change them).
+	for i in 30:
+		await tree.process_frame
+	if not (screen._missions.stage() == -1 and lab.mass_a == 3.0 and lab.mass_b == 2.0):
+		problems.append("after the round: masses %s / %s" % [lab.mass_a, lab.mass_b])
+	screen._set_control("mass_b", 1.0)
+	for i in 30:
+		await tree.process_frame
+	if lab.mass_b != 1.0:
+		problems.append("the child's own mass change after the round is overridden")
+	expect.call(problems.is_empty(), "collision: each stage sets its balls' weights itself (1+1, 3+1, 3+2 kg: model, look, sliders), no mass buttons, each stage clears by the slingshot alone, the last weights stay", "; ".join(problems))
+	# Reset sets the stage's weights again; another lab keeps its picture buttons (the flag is opt-in).
+	await _close(screen)
+	DirAccess.remove_absolute(ProgressStore.path)   # the round is not done: stage 1 again
+	screen = await _open()
+	lab = screen.experiment
+	screen._set_control("mass_a", 5.0)
+	screen.experiment_action("reset")
+	await tree.process_frame
+	expect.call(lab.mass_a == 1.0 and lab.mass_b == 1.0, "collision: 처음으로 sets the stage's weights again", "%s / %s" % [lab.mass_a, lab.mass_b])
+	await _close(screen)
+	var other := ExperimentRegistry.find("friction")
+	expect.call(not ConditionPicks.auto(other) and not ConditionPicks.groups(other, 0).is_empty() and ConditionPicks.auto_values(other, 0).is_empty(),
+		"collision: auto_conditions is opt-in (the friction lab keeps its picture buttons and sets nothing)", "")
+	var values := ConditionPicks.auto_values(ExperimentRegistry.find("collision"), 1)
+	expect.call(values == {"mass_a": 3.0, "mass_b": 1.0}, "collision: auto_values reads the stage's conditions (exact value, a range = the fitting pick)", str(values))

@@ -103,7 +103,7 @@ func check_round_done() -> void:
 	for run in [[4.0, 45.0], [6.0, 50.0], [8.0, 40.0]]:
 		stand_in.range_m = run[0]
 		stand_in.angle = run[1]
-		screen._missions.on_run_ended("landed", stand_in, {"range": run[0]})
+		screen._missions.on_run_ended("landed", stand_in, {"range": run[0], "hit_1": 1.0, "hit_2": 1.0, "hit_3": 1.0})
 		expect.call(screen._card_left < 0.0 and screen._done_card == null and screen._confetti == null,
 			"round done: nothing celebrates while the stamp %d still flies" % screen._missions.stamps, "")
 		screen._slam.advance(StampSlam.TOTAL_S)

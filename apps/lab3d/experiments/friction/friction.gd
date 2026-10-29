@@ -155,6 +155,9 @@ func reset_box() -> void:
 	if push.held:
 		push.start()   # a finger still on the box: the push counts from 0 again, no jump
 	props.reset()
+	if game != null:
+		(game as FrictionGame).box_half = BOX * 0.5 * look_factor()
+		game.run_reset()
 	_update_status(true)
 
 
@@ -330,6 +333,10 @@ func _build_world() -> void:
 
 	props.dress(self, box, box_visual, BOX, TRACK_HALF - BOX * 0.5 - END_PADDING)
 	props.set_look(look_factor())
+	game = FrictionGame.new(self)   # the piece game: the star piece under the box's start (visual only)
+	(game as FrictionGame).box_half = BOX * 0.5 * look_factor()
+	add_child(game)
+	game.build()
 	props.juice.landed.connect(impact.emit)
 
 

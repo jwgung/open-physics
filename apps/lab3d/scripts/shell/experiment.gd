@@ -33,6 +33,9 @@ var engine_g: float = ProjectSettings.get_setting("physics/3d/default_gravity", 
 var _last_status := ""
 ## Keeps the bodies an input-driven change moved where it put them until the next fixed step (BodyResync).
 var _resync: BodyResync
+## The piece game (2026-10-29, LabGame): the lab's game object and its star piece, visual only.
+## Null in a lab without one. The screen hands it the stamps (set_game_stage).
+var game: LabGame = null
 ## begin_batch() depth: while open, _restart() only marks the run for one restart in end_batch().
 var _batch := 0
 var _batch_dirty := false
@@ -167,6 +170,13 @@ func _restart() -> void:
 ## Starts the run over from its conditions (experiments with a restartable run).
 func reset_run() -> void:
 	pass
+
+
+## The screen's stamps for the piece game (LabGame.show_stage): the stage being played (-1: the
+## round is done), the stamps so far, and whether this stamp was earned just now. Visual only.
+func set_game_stage(stage: int, stamps: int, just_cleared: bool) -> void:
+	if game != null:
+		game.show_stage(stage, stamps, just_cleared)
 
 
 ## Sets a control declared in definition.controls. `value` is a float for sliders and the option

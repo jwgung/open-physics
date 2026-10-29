@@ -102,16 +102,20 @@ func check_content() -> void:
 	var definition := ExperimentRegistry.find("projectile")
 	expect.call(definition.has("missions") and definition.has("predict"), "projectile: has the missions and predict blocks", "")
 	var missions: Dictionary = definition.missions
-	expect.call(missions.observe == "range" and (missions.stages as Array).size() == 3,
-		"missions: judged by the formula range, three stages", str(missions.get("observe")))
+	# The piece game (2026-10-29): stage n hits crate n (the formula path through its box), judged
+	# when the throw has ended (landed, off the island or at the fence: the hit came before).
+	var observes := (missions.stages as Array).map(func(s: Dictionary) -> Variant: return s.get("observe"))
+	expect.call(missions.observe == "range" and (missions.stages as Array).size() == 3 and observes == ["hit_1", "hit_2", "hit_3"]
+		and missions.judge_on == ["landed", "out", "fence"],
+		"missions: three stages, each judged by its crate's formula hit when the throw has ended", str(observes))
 	var thresholds := (missions.stages as Array).map(func(s: Dictionary) -> Variant: return s.threshold)
-	expect.call(thresholds == [3.0, 5.0, 7.0] and thresholds.all(func(t: Variant) -> bool: return t <= 8.7),
-		"missions: 3 m -> 5 m -> 7 m, all inside the earth default-height maximum (~8.7 m)", str(thresholds))
+	expect.call(thresholds == [0.5, 0.5, 0.5],
+		"missions: a hit is 1, a miss 0 (the threshold sits between)", str(thresholds))
 	var rules := (missions.stages as Array).map(func(s: Dictionary) -> Variant: return [s.get("conditions", {}), s.get("change", [])])
-	expect.call(rules == [[{}, []], [{}, ["speed", "angle"]], [{}, ["angle"]]],
-		"missions: any throw -> another speed or angle than the first stamp's -> another angle than the second's", str(rules))
+	expect.call(rules == [[{}, []], [{}, []], [{}, []]],
+		"missions: no conditions and no change rule (each stage is another crate)", str(rules))
 	var texts := (missions.stages as Array).map(func(s: Dictionary) -> Variant: return s.text)
-	expect.call(texts == ["3미터 넘게 던지기!", "세기나 각도를 바꿔 5미터 넘기기!", "각도를 바꿔 7미터 넘기기!"],
+	expect.call(texts == ["가까운 상자를 공으로 맞히기!", "더 먼 상자를 맞히기!", "높은 상자를 맞혀 조각 떨어뜨리기!"],
 		"missions: the stage texts say the rule in a child's words", str(texts))
 	for stage in missions.stages:
 		expect.call(stage.text != "", "missions: every stage has its text", str(stage.get("threshold")))
@@ -132,6 +136,19 @@ func check_content() -> void:
 			(question.get("choices", []) as Array).map(func(c: Dictionary) -> Variant: return c.id) and str(question.get("reason", "")) != ""
 			and ExperimentRegistry.validate(other).is_empty(),
 			"%s: three stages, a question with two pictures, its answer and reason" % other.id, ", ".join(ExperimentRegistry.validate(other)))
+
+
+## The projectile with its round before the piece game (2026-10-28: 3 → 5 → 7 m on the formula range,
+## stage 2 another speed or angle, stage 3 another angle): the tracker's own checks (thresholds, the
+## `change` rule, a kept throw) keep this fixture.
+static func range_definition() -> Dictionary:
+	var definition := ExperimentRegistry.find("projectile").duplicate(true)
+	definition.missions.judge_on = ["landed"]
+	definition.missions.stages = [
+		{"threshold": 3.0, "text": "3미터 넘게 던지기!"},
+		{"threshold": 5.0, "change": ["speed", "angle"], "text": "세기나 각도를 바꿔 5미터 넘기기!"},
+		{"threshold": 7.0, "change": ["angle"], "text": "각도를 바꿔 7미터 넘기기!"}]
+	return definition
 
 
 ## Words a 7-year-old does not read (the formula's names and symbols): they stay in "자세히".
@@ -178,9 +195,10 @@ func check_kid_words() -> void:
 func check_registry_validation() -> void:
 	var base := ExperimentRegistry.find("incline-friction").duplicate(true)
 	# The base file has no observations list in its raw form: use a defined one.
-	var defined := ExperimentRegistry.find("projectile").duplicate(true)
-	var problems := ExperimentRegistry.validate(defined)
+	var problems := ExperimentRegistry.validate(ExperimentRegistry.find("projectile"))
 	expect.call(problems.is_empty(), "projectile (with its missions) is a valid definition", ", ".join(problems))
+	var defined := range_definition()   # a stage without its own observe (the threshold needs the block's)
+	expect.call(ExperimentRegistry.validate(defined).is_empty(), "the range round fixture is a valid definition", ", ".join(ExperimentRegistry.validate(defined)))
 	var broken := defined.duplicate(true)
 	broken.missions.observe = "no-such-observation"
 	var found := ExperimentRegistry.validate(broken)
@@ -247,7 +265,7 @@ func check_registry_validation() -> void:
 ## a run without a number and a not-yet-settled landing change nothing; all three stages -> done.
 func check_mission_tracker() -> void:
 	DirAccess.remove_absolute(ProgressStore.path)
-	var definition := ExperimentRegistry.find("projectile").duplicate(true)
+	var definition := range_definition()
 	var awarded := []
 	var tracker := MissionTracker.new()
 	tracker.definition = definition
@@ -525,10 +543,9 @@ func check_physics_unchanged() -> void:
 	var values: Dictionary = pulled[2]
 	expect.call(values.range is float and float(values.range) > 7.0 and pulled[1].has("landed"),
 		"the 40° 8.5 m/s throw lands past 7 m (formula range %s)" % str(values.range), str(pulled[1]))
-	# The first game screen's throw (past 3 m) earns the first stamp; the same throw again on the
-	# slingshot screen earns no second one (stage 2 wants another speed or angle); the plain screen
-	# judged nothing (game_round_checks earns them stage by stage).
-	expect.call(ProgressStore.load().get("projectile", 0) == 1,
-		"the game screens' 40° 8.5 m/s throws: the first earns the first stamp, the same throw again no second; the plain screen judged nothing",
+	# The 40° 8.5 m/s throw flies over the near crate (the piece game's first stage, 2026-10-29): no
+	# stamp on either game screen; the plain screen judged nothing (game_round_checks earns them).
+	expect.call(ProgressStore.load().get("projectile", 0) == 0 and float(values.hit_1) == 0.0 and float(values.hit_2) == 1.0,
+		"the game screens' 40° 8.5 m/s throws fly over the near crate (through the far one): no first stamp; the plain screen judged nothing",
 		"stored %s" % str(ProgressStore.load()))
 	DirAccess.remove_absolute(ProgressStore.path)

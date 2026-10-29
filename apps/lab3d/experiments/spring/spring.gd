@@ -103,6 +103,8 @@ func reset_run() -> void:
 		return
 	_clear_run()
 	props.reset()
+	if game != null:
+		game.run_reset()
 	_show()
 	_update_status(true)
 
@@ -226,6 +228,9 @@ func _build_world() -> void:
 	driver.reset()
 	props.dress(self, ball, BALL_RADIUS, ANCHOR_X, END_X, ROD_Y, ANCHOR_X + REST_LENGTH)
 	props.set_look(look_radius())
+	game = SpringGame.new(self)   # the piece game: the metronome clock with the star piece (visual only)
+	add_child(game)
+	game.build()
 
 
 # --- manipulation -------------------------------------------------------------------------------

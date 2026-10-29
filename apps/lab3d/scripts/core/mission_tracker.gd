@@ -31,6 +31,11 @@
 ## - a stage's `observe`, `compare`, `judge_on` (optional, 2026-10-28): that stage's own rule in
 ##   place of the block's ("빨리 떨어지게" is "less", "별을 떠나기" is the state "far" with no number:
 ##   `"observe": ""`). A key the stage leaves out is the block's (MissionTracker.rule).
+## - a stage's `compare` "near" (2026-10-29, the spring's beat): the shown number is within the
+##   stage's `tolerance` (> 0) of its `threshold` ("박자 맞추기": the swing matches the clock's beat).
+## - a stage's `also` (optional, 2026-10-29): [{"observe", "compare", "threshold", "tolerance"?}, ...]
+##   more numbers the same run must beat, each its own rule on its shown number ("2미터 넘게 당겨
+##   박자 맞추기": the pull and the swing). Every one must hold for the stamp.
 ## - `reveal_on` (default `judge_on`): the statuses where the run has its result: the
 ##   hidden_until_end values (the formula's answer) read "?" until then, and the prediction's question
 ##   is over. With `observe`, the result is in once that value is a number too (the pendulum's period
@@ -52,7 +57,7 @@ extends RefCounted
 
 ## The status that ends a run with a result when the definition names none (the projectile's landing).
 const DEFAULT_JUDGE_ON := ["landed"]
-const COMPARES := ["greater", "less"]
+const COMPARES := ["greater", "less", "near"]
 ## A number condition matches a control value within this (slider values sit on their grid).
 const CONDITION_EPS := 1e-6
 ## The decimals a child reads on a key card (ExperimentScreen.kid_value): a stage judges that number.
@@ -137,17 +142,29 @@ static func judge(definition: Dictionary, stamps: int, status: String, lab: Expe
 	var stage: Dictionary = stages[stamps]
 	if not conditions_met(stage.get("conditions", {}), lab) or not changed(stage.get("change", []), lab, cleared):
 		return stamps
-	if how.observe != "":
-		var value: Variant = observations.get(how.observe)
-		if not _number(value):
-			return stamps
-		var less: bool = how.compare == "less"
-		var threshold := float(stage.get("threshold", INF if less else -INF))
-		var number := shown(definition, how.observe, float(value))
-		var beaten := number < threshold if less else number > threshold
-		if not beaten:
+	if how.observe != "" and not beats(definition, how.observe, how.compare, stage, observations):
+		return stamps
+	for extra in stage.get("also", []):
+		if not beats(definition, str(extra.get("observe", "")), str(extra.get("compare", "greater")), extra, observations):
 			return stamps
 	return mini(stamps + 1, ProgressStore.MAX_STAMPS)
+
+
+## The shown number of observation `observe` beats `rule`'s threshold (a stage or one of its `also`
+## entries: "threshold", "tolerance") by `compare`: strictly past it ("greater", "less") or within
+## the tolerance of it ("near", inclusive). A value that is not a number never beats it.
+static func beats(definition: Dictionary, observe: String, compare: String, rule: Dictionary, observations: Dictionary) -> bool:
+	var value: Variant = observations.get(observe)
+	if not _number(value):
+		return false
+	var number := shown(definition, observe, float(value))
+	match compare:
+		"less":
+			return number < float(rule.get("threshold", INF))
+		"near":
+			# The shown number and the threshold both have one decimal: compare in tenths (no float slop).
+			return absf(number - float(rule.get("threshold", INF))) <= float(rule.get("tolerance", 0.0)) + 1e-9
+	return number > float(rule.get("threshold", -INF))
 
 
 ## The lab's control values match every condition (an option id, a number within CONDITION_EPS, or

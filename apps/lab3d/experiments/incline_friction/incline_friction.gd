@@ -127,6 +127,8 @@ func reset_box() -> void:
 	box.global_transform = _pivot.global_transform * local
 	_stop_run()
 	props.place_cat(_pivot.global_transform, start_x, BOX, angle_deg, true)
+	if game != null:
+		game.run_reset()
 	_update_status()
 
 
@@ -155,10 +157,18 @@ func release() -> void:
 
 func _status_changed(previous: String, current: String) -> void:
 	props.status_changed(previous, current)
+	if current == "left" and game != null:
+		(game as InclineGame).arrive()   # the formula box reached the slide's end: the dominoes' row reacts
 
 
 func formula_acceleration() -> float:
 	return PhysicsLaws.incline_acceleration(G, deg_to_rad(angle_deg), mu_s, mu_k)
+
+
+## The box's formula speed at the slide's lower end (the piece game, 2026-10-29): from rest over the
+## run d with the formula acceleration a, v² = 2 a d (0 when it holds). Read only.
+func bottom_speed() -> float:
+	return sqrt(2.0 * formula_acceleration() * run_length())
 
 
 func status() -> String:
@@ -218,6 +228,7 @@ func observations() -> Dictionary:
 		# Distance along the incline; after the box runs off the end it stays at the run length.
 		"distance": minf(corrector.last_sample, run_length()) if released else 0.0,
 		"run": run_length(),
+		"bottom_speed": bottom_speed(),
 	}
 
 
@@ -297,6 +308,9 @@ func _build_world() -> void:
 	box.corrector = corrector
 
 	props.dress(self, _stand.position, box, box_visual, BOX)
+	game = InclineGame.new(self)   # the piece game: the dominoes past the slide's end (visual only)
+	add_child(game)
+	game.build()
 	props.juice.landed.connect(impact.emit)
 
 

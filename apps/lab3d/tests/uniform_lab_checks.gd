@@ -289,7 +289,7 @@ func check_free_fall_art() -> void:
 	expect.call(deformed > 0.05 and runs[0].samples == runs[1].samples and runs[0].obs == runs[1].obs and runs[0].graph == runs[1].graph,
 		"free fall: same motion, panel and graph with and without the ball reactions (which do deform the meshes)", "max |scale - 1| %.3f" % deformed)
 	var draw_nodes := lab.find_children("*", "GeometryInstance3D", true, false).size()
-	expect.call(draw_nodes <= 24, "free fall: at most 24 drawn 3D nodes (art budget: 16 + the bread cat's 7 + its stand, 2026-10-27)", "%d" % draw_nodes)
+	expect.call(draw_nodes <= 29, "free fall: at most 29 drawn 3D nodes (art budget: 16 + the bread cat's 7 + its stand, 2026-10-27; + the piece game's 5: buttons, house, door, the piece's 2, 2026-10-29)", "%d" % draw_nodes)
 	await _free(lab)
 
 
@@ -729,7 +729,7 @@ func check_projectile_art() -> void:
 		and points[0].distance_to(Vector3(center.x + want.x, want.y + lab.BALL_RADIUS, center.z)) < 1e-4,
 		"projectile: the formula path is at most %d dots on x(t), y(t) (one MultiMesh)" % ProjectileProps.PATH_DOTS, "%d dots" % path.visible_instance_count)
 	var draw_nodes := lab.find_children("*", "GeometryInstance3D", true, false).size()
-	expect.call(draw_nodes <= 21, "projectile: at most 21 drawn 3D nodes (art budget: 13 + the bread cat's 7 + its stand, Task 4g)", "%d" % draw_nodes)
+	expect.call(draw_nodes <= 27, "projectile: at most 27 drawn 3D nodes (art budget: 13 + the bread cat's 7 + its stand, Task 4g; + the piece game's 6: three crates, the stumps, the piece's 2, 2026-10-29)", "%d" % draw_nodes)
 	await _free(lab)
 
 
@@ -748,9 +748,10 @@ func check_arrow_surface() -> void:
 
 # --- manipulation through the input path -----------------------------------------------------------
 
-## The free-fall drag (2026-10-27, one drag per lab): a ball dragged up or down sets the drop height
-## of all three (the "height" control: the slider follows) on its 0.5 m grid; no height handle shows.
-## The run is the slider's: the three land together at the formula time of the new height.
+## The free-fall drag (2026-10-27, one drag per lab; 2026-10-29 the piece game): a ball dragged up or
+## down sets its own drop height on its 0.5 m grid (the others stay; the "height" slider, all three,
+## stays too); no height handle shows. The run: each ball lands at the formula time of its own height,
+## and two different heights do not press the piece game's buttons together.
 func check_free_fall_manipulation() -> void:
 	var screen: Control = await _open(ExperimentRegistry.find("free-fall"))
 	var lab: Experiment = screen.experiment
@@ -760,26 +761,31 @@ func check_free_fall_manipulation() -> void:
 	_swipe(screen, _at(screen, red.global_position), _at(screen, goal))
 	var held: bool = m.mode == "drag" and m.active_id == "drop_red"
 	_touch(screen, 0, _at(screen, goal), false)
-	var synced: bool = screen._control_widgets.height.slider.value == 7.0
-	var level: bool = lab.ORDER.all(func(id: String) -> bool: return lab.starts[id].y == 7.0)
-	expect.call(held and lab.height == 7.0 and level and synced and is_equal_approx(red.global_position.x, 1.5) and m.selected_id == "" and not m._knob.visible,
-		"free fall: dragging a ball up sets the drop height of all three on the 0.5 m grid (the height slider follows, no height handle)",
+	var slider_kept: bool = screen._control_widgets.height.slider.value == 5.0
+	var own: bool = lab.starts.red.y == 7.0 and lab.starts.yellow.y == 5.0 and lab.starts.purple.y == 5.0
+	expect.call(held and lab.height == 5.0 and own and slider_kept and is_equal_approx(red.global_position.x, 1.5) and m.selected_id == "" and not m._knob.visible,
+		"free fall: dragging a ball up sets its own drop height on the 0.5 m grid (the others and the height slider stay, no height handle)",
 		"held %s, height %.2f, starts %s" % [held, lab.height, str(lab.starts)])
 	screen.experiment_action("release")
 	for i in 3 * STEP_HZ:
 		if lab.status() == "landed" and _engine_landed(lab):
 			break
 		await tree.physics_frame
-	var want := roundi(PhysicsLaws.landing_time(0.0, -9.81, 7.0) * STEP_HZ)
-	var lands: Array = lab.ORDER.map(func(id: String) -> int: return lab.corrector_of(id).landed_step)
-	expect.call(lands.all(func(k: int) -> bool: return absi(k - want) <= 2) and lands.min() == lands.max()
-		and float(lab.observations().fall_time) == PhysicsLaws.landing_time(0.0, -9.81, 7.0),
-		"free fall: after the drag the three balls land together at the formula time of the new height", "steps %s (formula %d)" % [str(lands), want])
+	var want := {"red": roundi(PhysicsLaws.landing_time(0.0, -9.81, 7.0) * STEP_HZ), "yellow": roundi(PhysicsLaws.landing_time(0.0, -9.81, 5.0) * STEP_HZ),
+		"purple": roundi(PhysicsLaws.landing_time(0.0, -9.81, 5.0) * STEP_HZ)}
+	var lands: Dictionary = {}
+	for id in lab.ORDER:
+		lands[id] = lab.corrector_of(id).landed_step
+	expect.call(lab.ORDER.all(func(id: String) -> bool: return absi(lands[id] - want[id]) <= 2)
+		and float(lab.observations().fall_time) == PhysicsLaws.landing_time(0.0, -9.81, 7.0)
+		and lab.observations().together_time == "따로 닿았어요" and lab.game.pressed("red") and lab.game.pressed("yellow"),
+		"free fall: after the drag each ball lands at the formula time of its own height; red 7 m and yellow 5 m press their buttons apart, not together",
+		"steps %s (formula %s), together %s" % [str(lands), str(want), str(lab.observations().together_time)])
 	# Picking up a landed ball stops the run (every ball back at its start).
 	_swipe(screen, _at(screen, red.global_position), _at(screen, red.global_position + Vector3(0, 0.05, 0)), 2)
 	var reset_ok: bool = not lab.released and lab.balls.purple.global_position.is_equal_approx(lab.starts.purple + Vector3.UP * lab.BALL_RADIUS)
 	_touch(screen, 0, _at(screen, red.global_position), false)
-	expect.call(reset_ok and lab.height == 7.0, "free fall: picking up a landed ball stops the run (every ball back at its start)", str(red.global_position))
+	expect.call(reset_ok and lab.starts.red.y == 7.0 and not lab.game.pressed("red"), "free fall: picking up a landed ball stops the run (every ball back at its start, the buttons up)", str(red.global_position))
 	await _close(screen)
 
 

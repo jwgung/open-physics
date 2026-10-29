@@ -288,7 +288,7 @@ static func _validate_kid_cards(definition: Dictionary) -> PackedStringArray:
 		problems.append("kid.card %s is not one of key_observations" % str(kid.card))
 	var stages: Array = MissionTracker.missions(definition).get("stages", [])
 	for i in stages.size():
-		if stages[i] is Dictionary and stages[i].has("card") and not stages[i].card in definition.key_observations:
+		if stages[i] is Dictionary and stages[i].has("card") and not _cards(stages[i].card).all(func(id: Variant) -> bool: return id in definition.key_observations):
 			problems.append("missions.stages[%d].card %s is not one of key_observations" % [i, str(stages[i].card)])
 	return problems
 
@@ -311,12 +311,19 @@ static func kid_text(definition: Dictionary, key: String) -> String:
 ## was pulled) replaces kid.card while that stage is the current one.
 static func shown_cards(definition: Dictionary, stage := -1) -> Array:
 	var stages: Array = MissionTracker.missions(definition).get("stages", [])
-	if stage >= 0 and stage < stages.size() and stages[stage] is Dictionary and stages[stage].get("card") is String:
-		return [stages[stage].card]
+	if stage >= 0 and stage < stages.size() and stages[stage] is Dictionary and stages[stage].has("card"):
+		return _cards(stages[stage].card)
 	var kid: Variant = definition.get("kid")
 	if kid is Dictionary and kid.get("card") is String:
 		return [kid.card]
 	return definition.get("key_observations", [])
+
+
+## A stage's `card`: one key observation id or a list of them (2026-10-29: the spring's pull and swing).
+static func _cards(card: Variant) -> Array:
+	if card is String:
+		return [card]
+	return card if card is Array and not card.is_empty() and card.all(func(id: Variant) -> bool: return id is String) else [null]
 
 
 ## The full-bar value of a key card shown as a bar (kid.bars), or 0 when the card is a number.
@@ -380,7 +387,7 @@ static func _validate_missions(missions: Variant, observations: Array, controls:
 	var observe: Variant = missions.get("observe")
 	if missions.has("observe") and not (observe is String and ids.has(observe)):
 		problems.append("missions.observe must be one of the observation ids")
-	if missions.get("compare", "greater") not in MissionTracker.COMPARES:
+	if missions.get("compare", "greater") not in ["greater", "less"]:
 		problems.append("missions.compare must be greater or less")
 	for key in ["judge_on", "reveal_on"]:
 		var statuses: Variant = missions.get(key, MissionTracker.DEFAULT_JUDGE_ON)
@@ -410,7 +417,11 @@ static func _validate_missions(missions: Variant, observations: Array, controls:
 		elif stage.has("observe") and not (own is String and (own == "" or ids.has(own))):
 			problems.append("missions.stages[%d].observe must be \"\" or one of the observation ids" % i)
 		elif stage.has("compare") and stage.compare not in MissionTracker.COMPARES:
-			problems.append("missions.stages[%d].compare must be greater or less" % i)
+			problems.append("missions.stages[%d].compare must be greater, less or near" % i)
+		elif MissionTracker.rule({"missions": missions}, i).compare == "near" and not ((stage.get("tolerance") is float or stage.get("tolerance") is int) and stage.tolerance > 0.0):
+			problems.append("missions.stages[%d].tolerance must be a number > 0 (compare near)" % i)
+		elif not _valid_also(stage.get("also", []), ids):
+			problems.append("missions.stages[%d].also must list {observe: an observation id, compare, threshold > 0, tolerance > 0 when near}" % i)
 		elif stage.has("judge_on") and not (stage.judge_on is Array and not stage.judge_on.is_empty() and stage.judge_on.all(func(v: Variant) -> bool: return v is String and v != "")):
 			problems.append("missions.stages[%d].judge_on must list statuses" % i)
 		elif observed and not ((threshold is int or threshold is float) and threshold > 0.0):
@@ -426,6 +437,20 @@ static func _validate_missions(missions: Variant, observations: Array, controls:
 			if not (change is Array and change.all(func(id: Variant) -> bool: return id in control_ids)):
 				problems.append("missions.stages[%d].change must list control ids" % i)
 	return problems
+
+
+## A stage's `also` (MissionTracker.judge): more rules of the same run, each on an observation.
+static func _valid_also(also: Variant, ids: Dictionary) -> bool:
+	if not also is Array:
+		return false
+	for extra in also:
+		if not (extra is Dictionary and extra.get("observe") is String and ids.has(extra.observe)
+				and str(extra.get("compare", "greater")) in MissionTracker.COMPARES
+				and (extra.get("threshold") is float or extra.get("threshold") is int) and extra.threshold > 0.0):
+			return false
+		if str(extra.get("compare", "greater")) == "near" and not ((extra.get("tolerance") is float or extra.get("tolerance") is int) and extra.tolerance > 0.0):
+			return false
+	return true
 
 
 ## A stage's `conditions`: {control id: option id (choice) | number or {"min"?, "max"?} (slider)}.

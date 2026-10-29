@@ -148,10 +148,15 @@ func check_content_lint() -> void:
 		"pulley": [ExperimentRegistry.kid_text(ExperimentRegistry.find("pulley"), "title"), "줄이 많으면 힘이 덜 들까?"],
 		"buoyancy": [MissionTracker.missions(ExperimentRegistry.find("buoyancy")).stages[0].text, "80킬로그램 통을 둥둥 띄우기!"],
 		"constraints": [ExperimentRegistry.find("constraints").story.clue, "조각이 매달린 공 근처에 있어. 공을 흔들어 보자!"],
-		"spring": [MissionTracker.missions(ExperimentRegistry.find("spring")).stages[0].text, "가벼운 공을 2미터 넘게 당겼다 놓기!"],
-		"free-fall": [MissionTracker.missions(ExperimentRegistry.find("free-fall")).stages[1].text, "달에서 빨간 공이 3초 넘게 떨어지게 하기!"],
+		# The piece game's stages (2026-10-29).
+		"spring": [MissionTracker.missions(ExperimentRegistry.find("spring")).stages.map(func(s: Dictionary) -> String: return s.text),
+			["가벼운 공을 2미터 넘게 당겨 빠른 박자 맞추기!", "무거운 공으로 느린 박자 맞추기!", "가벼운 공을 1미터 안으로 조금만 당겨 박자 맞추기!"]],
+		"free-fall": [MissionTracker.missions(ExperimentRegistry.find("free-fall")).stages.map(func(s: Dictionary) -> String: return s.text),
+			["빨간 공과 노란 공을 같이 떨어뜨려 버튼 누르기!", "달에서 두 공을 맨 위에서 같이 떨어뜨리기!", "목성에서 두 공을 같이 1초 안에 떨어뜨리기!"]],
 		"collision": [MissionTracker.missions(ExperimentRegistry.find("collision")).stages.map(func(s: Dictionary) -> String: return s.text),
-			["두 공을 같은 무게로 하고 세게 부딪히기!", "파란 공을 무겁게 해서 세게 치기!", "주황 공을 제일 가볍게 해서 쌩 날리기!"]],
+			["같은 무게 두 공으로 세게 쳐서 얼음에 금 내기!", "파란 공을 무겁게 해서 얼음에 금 더 내기!", "주황 공을 가볍게 해서 얼음 깨기!"]],
+		"incline-friction": [MissionTracker.missions(ExperimentRegistry.find("incline-friction")).stages.map(func(s: Dictionary) -> String: return s.text),
+			["강철 미끄럼틀로 작은 도미노 넘어뜨리기!", "나무 미끄럼틀을 더 기울여 큰 도미노 넘어뜨리기!", "고무 미끄럼틀을 많이 기울여 빨간 기둥 넘어뜨리기!"]],
 	}
 	for id in want:
 		if want[id][0] != want[id][1]:

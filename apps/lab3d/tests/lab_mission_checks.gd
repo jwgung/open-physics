@@ -18,6 +18,8 @@ const UI_THEME := "res://scripts/app/ui_theme.gd"
 const EXPERIMENT_SCREEN := "res://scripts/shell/experiment_screen.gd"
 const TABLET := Vector2(1152, 720)
 const AFTER_STAMP := 40          # frames an attempt runs on after its stamp (no second stamp)
+## The labs with the piece game (2026-10-29, LabGame) in this round (the projectile: game_piece_checks).
+const PIECE_LABS := ["free-fall", "collision", "spring", "friction", "incline-friction"]
 
 ## Per lab: the attempts in order, [what, ops, frames, stamps after]. Ops: ["ctl", id, value],
 ## ["act", id], ["place", object, pull m] (the spring ball let go there), ["force", N] (the push),
@@ -25,32 +27,35 @@ const AFTER_STAMP := 40          # frames an attempt runs on after its stamp (no
 ## load), ["stroke", cells] (one pulley stroke let go).
 const ROUNDS := {
 	"free-fall": [
-		["the start (the heavy red ball): not the light red ball", [["act", "release"]], 240, 0],
-		["the light red ball on the earth: all three land together", [["ctl", "mass", "light"], ["act", "release"]], 240, 1],
-		["the light red ball again: the same setup earns nothing", [["act", "release"]], 240, 1],
-		["the moon, 7 m: 2.94 s, not past 3", [["ctl", "gravity", "moon"], ["ctl", "height", 7.0], ["act", "release"]], 300, 1],
-		["the moon, 7.5 m: 3.04 s, the card reads 3.0초: not past 3 (the number shown is judged)", [["ctl", "height", 7.5], ["act", "release"]], 300, 1],
-		["the moon, 8 m: 3.14 s (3.1초)", [["ctl", "height", 8.0], ["act", "release"]], 300, 2],
-		["the earth, 4.5 m: 0.96 s, under 1 s but not Jupiter", [["ctl", "gravity", "earth"], ["ctl", "height", 4.5], ["act", "release"]], 150, 2],
-		["Jupiter, 8 m: 0.80 s", [["ctl", "gravity", "jupiter"], ["ctl", "height", 8.0], ["act", "release"]], 150, 3],
+		["the red ball dragged up to 8 m alone: it lands after the yellow one, no button pair", [["drop", "red", 8.0], ["act", "release"]], 240, 0],
+		["the yellow ball up to 8 m too: the heavy red and the light yellow land together on the earth", [["drop", "yellow", 8.0], ["act", "release"]], 240, 1],
+		["the same again: the earth earns nothing (the Moon is next)", [["act", "release"]], 240, 1],
+		["the Moon, both at 7.5 m: together in 3.04 s, the card reads 3.0초: not past 3", [["ctl", "gravity", "moon"], ["drop", "red", 7.5], ["drop", "yellow", 7.5], ["act", "release"]], 300, 1],
+		["the Moon, red at 8 m, yellow at 7.5 m: not together", [["drop", "red", 8.0], ["act", "release"]], 300, 1],
+		["the Moon, both at 8 m: together in 3.14 s (3.1초)", [["drop", "yellow", 8.0], ["act", "release"]], 300, 2],
+		["Jupiter with the light red ball: together, but not two different balls", [["ctl", "gravity", "jupiter"], ["ctl", "mass", "light"], ["act", "release"]], 150, 2],
+		["Jupiter, the heavy red ball: together in 0.80 s", [["ctl", "mass", "heavy"], ["act", "release"]], 150, 3],
 	],
 	"collision": [
 		["the start conditions (B is 2 kg): not the two 1 kg balls", [["act", "release"]], 600, 0],
-		["two 1 kg balls: B at 2.5 m/s", [["ctl", "mass_b", 1.0], ["act", "release"]], 600, 1],
+		["two 1 kg balls at 3.4 m/s: B at 2.4 m/s, not past 5", [["ctl", "mass_b", 1.0], ["act", "release"]], 600, 0],
+		["two 1 kg balls at 6.5 m/s: B at 5.2 m/s", [["ctl", "velocity_a", 6.5], ["act", "release"]], 600, 1],
 		["the same two balls again: nothing", [["act", "release"]], 600, 1],
-		["a 10 kg A on the 1 kg B: 5.6 m/s", [["ctl", "mass_a", 10.0], ["act", "release"]], 600, 2],
-		["again (5.6 m/s, past 5): B is not the lightest, nothing", [["act", "release"]], 600, 2],
-		["the 0.5 kg B: 5.9 m/s", [["ctl", "mass_b", 0.5], ["act", "release"]], 600, 3],
+		["a 3 kg A on the 1 kg B at 6.5 m/s: 8.6 m/s, not past 9", [["ctl", "mass_a", 3.0], ["act", "release"]], 600, 1],
+		["a 3 kg A on the 1 kg B at 7 m/s: 9.3 m/s", [["ctl", "velocity_a", 7.0], ["act", "release"]], 600, 2],
+		["the 0.5 kg B at 8 m/s: 12.4 m/s, not past 13", [["ctl", "mass_b", 0.5], ["ctl", "velocity_a", 8.0], ["act", "release"]], 600, 2],
+		["the 0.5 kg B at 8.5 m/s: 13.2 m/s", [["ctl", "velocity_a", 8.5], ["act", "release"]], 600, 3],
 	],
 	"spring": [
-		["놓기 from the start pull 1.2 m: not past 2", [["act", "release"]], 90, 0],
-		["a 3 kg ball let go at 2.2 m: not a light ball", [["ctl", "mass", 3.0], ["place", "ball", 2.2]], 90, 0],
-		["the 1 kg ball let go at 2 m: the card reads 2.0미터, not past 2", [["ctl", "mass", 1.0], ["place", "ball", 2.0]], 90, 0],
-		["the 1 kg ball let go at 2.1 m: past 2", [["place", "ball", 2.1]], 90, 1],
-		["the 1 kg ball again (2.81 s a swing): not a heavy ball", [["place", "ball", 2.1]], 220, 1],
-		["the 3 kg ball: one swing in 4.87 s", [["ctl", "mass", 3.0], ["place", "ball", 1.6]], 340, 2],
-		["the 3 kg ball again (4.87 s): not under 3 s", [["place", "ball", 1.0]], 340, 2],
-		["the 1 kg ball: one swing in 2.81 s", [["ctl", "mass", 1.0], ["place", "ball", 1.0]], 220, 3],
+		["놓기 from the start pull 1.2 m (1 kg on the quick beat): not past 2 m", [["act", "release"]], 220, 0],
+		["a 3 kg ball let go at 2.2 m: not a light ball, not the quick beat", [["ctl", "mass", 3.0], ["place", "ball", 2.2]], 340, 0],
+		["the 1 kg ball let go at 2 m: the card reads 2.0미터, not past 2", [["ctl", "mass", 1.0], ["place", "ball", 2.0]], 220, 0],
+		["the 1 kg ball let go at 2.1 m: past 2, one swing in 2.81 s on the 2.8 s beat", [["place", "ball", 2.1]], 220, 1],
+		["the 1 kg ball again: not a heavy ball", [["place", "ball", 2.1]], 220, 1],
+		["the 2.5 kg ball: 4.44 s, off the 4.9 s beat", [["ctl", "mass", 2.5], ["place", "ball", 1.6]], 340, 1],
+		["the 3 kg ball: one swing in 4.87 s on the beat", [["ctl", "mass", 3.0], ["place", "ball", 1.6]], 340, 2],
+		["the 1 kg ball pulled 1.5 m: on the beat, but not a little pull", [["ctl", "mass", 1.0], ["place", "ball", 1.5]], 220, 2],
+		["the 1 kg ball pulled 0.6 m: the same beat (the pull does not change it)", [["place", "ball", 0.6]], 220, 3],
 	],
 	"friction": [
 		["the 8 kg start box pushed loose: not the light box", [["force", 40.0]], 90, 0],
@@ -105,12 +110,13 @@ const ROUNDS := {
 	],
 	"incline-friction": [
 		["20° on wood holds", [["act", "release"]], 90, 0],
-		["25° on wood: 2.19 m/s², not the steel slope", [["ctl", "angle", 25.0], ["act", "release"]], 90, 0],
-		["steel at 25°: 3.43 m/s²", [["ctl", "material", "steel"], ["act", "release"]], 90, 1],
-		["steel at 25° again: nothing", [["act", "release"]], 90, 1],
-		["wood at 25°: 2.19 m/s²", [["ctl", "material", "wood"], ["act", "release"]], 90, 2],
-		["rubber at 35°: 2.25 m/s², not past 3", [["ctl", "material", "rubber"], ["ctl", "angle", 35.0], ["act", "release"]], 90, 2],
-		["rubber at 40°: 3.15 m/s²", [["ctl", "angle", 40.0], ["act", "release"]], 90, 3],
+		["25° on wood: 5.7 m/s at the end, not the steel slope", [["ctl", "angle", 25.0], ["act", "release"]], 200, 0],
+		["steel at 25°: 7.2 m/s at the end", [["ctl", "material", "steel"], ["act", "release"]], 200, 1],
+		["steel at 25° again: nothing", [["act", "release"]], 200, 1],
+		["wood at 25°: 5.7 m/s, not steep enough", [["ctl", "material", "wood"], ["act", "release"]], 200, 1],
+		["wood at 30°: 6.7 m/s", [["ctl", "angle", 30.0], ["act", "release"]], 200, 2],
+		["rubber at 35°: 5.8 m/s, not past 6.5", [["ctl", "material", "rubber"], ["ctl", "angle", 35.0], ["act", "release"]], 220, 2],
+		["rubber at 40°: 6.9 m/s", [["ctl", "angle", 40.0], ["act", "release"]], 220, 3],
 	],
 }
 
@@ -140,8 +146,11 @@ func check_conditions() -> void:
 	for definition in ExperimentRegistry.load_all():
 		var stages: Array = MissionTracker.missions(definition).get("stages", [])
 		for i in stages.size() - 1:
-			# A stage with `change` wants another throw than the one that cleared the stage before.
-			if (stages[i + 1].get("change", []) as Array).is_empty() and not _disjoint(stages[i].get("conditions", {}), stages[i + 1].get("conditions", {})):
+			# A stage with `change` wants another throw than the one that cleared the stage before; one
+			# that judges another goal of its own (the throw's next crate, 2026-10-29) is another task.
+			var other_goal: bool = str(stages[i].get("observe", "")) != "" and str(stages[i + 1].get("observe", "")) != "" \
+				and stages[i].observe != stages[i + 1].observe and stages[i].get("conditions", {}).is_empty() and stages[i + 1].get("conditions", {}).is_empty()
+			if not other_goal and (stages[i + 1].get("change", []) as Array).is_empty() and not _disjoint(stages[i].get("conditions", {}), stages[i + 1].get("conditions", {})):
 				shared.append("%s %d-%d" % [definition.id, i + 1, i + 2])
 	expect.call(shared.is_empty(), "every lab: the next stage asks for another condition (no setup meets two stages in a row)", ", ".join(shared))
 
@@ -191,6 +200,12 @@ func check_round(id: String) -> void:
 		"%s: the round opens with Dugi's question; the hidden answers read ? and no answer line or path is drawn" % id,
 		"%s %s" % [str(missions.get("hidden_until_end", [])), str(missions.get("hidden_series_until_end", []))])
 	var problems := []
+	# The piece game (2026-10-29): the star piece is in the lab from the start, held by its object.
+	var game: LabGame = lab.game
+	if (id in PIECE_LABS) != (game != null):
+		problems.append("a piece game where none was made, or none where one was")
+	elif game != null and (game.piece == null or not game.piece.visible or game.piece_state != "held"):
+		problems.append("the piece is not in its object at the start")
 	for attempt in ROUNDS[id]:
 		var before := ProgressStore.stamps(ProgressStore.load(), id)
 		await _ops(screen, attempt[1])
@@ -219,6 +234,15 @@ func check_round(id: String) -> void:
 		var stored := ProgressStore.stamps(ProgressStore.load(), id)
 		if stored != want or screen._missions.stamps != want:
 			problems.append("%s: stamps %d (want %d, status %s, %s)" % [attempt[0], stored, want, lab.status(), _observed(lab)])
+		if game != null and stored < 3 and (game.piece_state != "held" or not game.piece.visible):
+			problems.append("%s: the piece left its object before the last stamp (%s)" % [attempt[0], game.piece_state])
+	# The last stamp let the piece out (the ice waits for the ball's knock; the push for the box to leave).
+	for k in 150:
+		if game == null or game.piece_state != "held":
+			break
+		await tree.process_frame
+	if game != null and not (game.piece_state in ["flying", "out"] and game.piece.visible):
+		problems.append("the last stamp did not release the piece (%s)" % game.piece_state)
 	expect.call(problems.is_empty() and ProgressStore.stamps(ProgressStore.load(), id) == 3 and screen._mission_text.text == ExperimentScreen.DONE_TEXT,
 		"%s: a missed stage earns nothing, each of the 3 stages is reachable in the control ranges and earns one stamp per attempt" % id,
 		"; ".join(problems))
@@ -255,6 +279,17 @@ func _ops(screen: Control, ops: Array) -> void:
 					lab.manipulation_placed(op[1], xf))
 				m.notifying = false
 				m.changed.emit()
+			"drop":
+				# A free-fall ball let go on its drop line at a height (its own, 2026-10-29), like a finger.
+				var drop_id := "drop_" + str(op[1])
+				var at: Vector3 = lab.starts[op[1]]
+				var drop_xf := Transform3D(Basis.IDENTITY, Vector3(at.x, float(op[2]) + lab.BALL_RADIUS, at.z))
+				var m2: Manipulator = screen.manipulator
+				m2.notifying = true
+				lab.change_from_input(lab.manipulation_started.bind(drop_id))
+				lab.change_from_input(lab.manipulation_placed.bind(drop_id, drop_xf))
+				m2.notifying = false
+				m2.changed.emit()
 			"force":
 				lab.set_applied_force(float(op[1]))
 			"hand":

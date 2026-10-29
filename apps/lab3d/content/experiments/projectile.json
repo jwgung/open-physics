@@ -60,17 +60,17 @@
   },
   "missions": {
     "observe": "range",
-    "judge_on": ["landed"],
+    "judge_on": ["landed", "out", "fence"],
     "reveal_on": ["landed", "out", "fence"],
-    "hidden_until_end": ["range", "flight_time", "apex"],
+    "hidden_until_end": ["range", "flight_time", "apex", "hit_1", "hit_2", "hit_3"],
     "hidden_series_until_end": ["formula"],
     "stages": [
-      { "threshold": 3.0, "text": "3미터 넘게 던지기!", "say": "세게 당길수록 공이 빨리 날아가요. 빠른 공은 땅에 닿기 전에 더 멀리 가요.", "say_face": "explain" },
-      { "threshold": 5.0, "change": ["speed", "angle"], "text": "세기나 각도를 바꿔 5미터 넘기기!", "say": "더 세게 쏘거나 각도를 바꿔 봐요. 둘 다 공이 날아가는 거리를 바꿔요.", "say_face": "thinking" },
-      { "threshold": 7.0, "change": ["angle"], "text": "각도를 바꿔 7미터 넘기기!", "say": "너무 눕히거나 세우면 가까이 떨어져요. 그 중간쯤 비스듬히 던지면 제일 멀리 가요.", "say_face": "explain" }
+      { "observe": "hit_1", "threshold": 0.5, "text": "가까운 상자를 공으로 맞히기!", "say": "공은 앞으로 가면서 아래로 떨어져요. 가까운 상자는 살살 던져도 닿아요.", "say_face": "explain" },
+      { "observe": "hit_2", "threshold": 0.5, "text": "더 먼 상자를 맞히기!", "say": "먼 상자는 더 세게 던져야 닿아요. 빠른 공은 땅에 닿기 전에 더 멀리 가요.", "say_face": "thinking" },
+      { "observe": "hit_3", "threshold": 0.5, "text": "높은 상자를 맞혀 조각 떨어뜨리기!", "say": "높고 먼 상자는 세게, 비스듬히 던져요. 너무 눕히면 낮게 가고, 너무 세우면 가까이 떨어져요.", "say_face": "explain" }
     ]
   },
-  "story": { "clue": "조각이 저 멀리 떨어졌어! 공을 멀리 던져 보자.", "clue_face": "surprised", "map_clue": "과녁 근처 풀밭에 뭔가 떨어졌어!", "map_clue_face": "surprised" },
+  "story": { "clue": "저 높은 상자 위에 조각이 있어! 상자를 맞히면 조각이 떨어질 것 같아!", "clue_face": "surprised", "map_clue": "과녁 근처 풀밭에 뭔가 떨어졌어!", "map_clue_face": "surprised" },
   "kid": {
     "card": "range",
     "title": "공을 멀리 던져 보자!",
@@ -107,7 +107,10 @@
     { "id": "y", "label": "높이 y", "unit": "m", "digits": 2 },
     { "id": "vx", "label": "옆 방향 속도", "unit": "m/s", "digits": 2 },
     { "id": "vy", "label": "위아래 속도 (위 +)", "unit": "m/s", "digits": 2 },
-    { "id": "landing", "label": "착지 거리 (시뮬레이션)", "unit": "m", "digits": 2 }
+    { "id": "landing", "label": "착지 거리 (시뮬레이션)", "unit": "m", "digits": 2 },
+    { "id": "hit_1", "label": "가까운 상자를 맞혔나 (공식 경로, 1 = 맞힘)", "digits": 0 },
+    { "id": "hit_2", "label": "먼 상자를 맞혔나 (공식 경로, 1 = 맞힘)", "digits": 0 },
+    { "id": "hit_3", "label": "높은 상자를 맞혔나 (공식 경로, 1 = 맞힘)", "digits": 0 }
   ],
   "graph": {
     "title": "발사체의 높이",

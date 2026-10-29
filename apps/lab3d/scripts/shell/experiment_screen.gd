@@ -166,6 +166,8 @@ var _piece: Node3D = null              # the found piece over the bread cat
 var _piece_t := 0.0
 const PIECE_HOLD_S := 1.4              # the card waits this much longer: the piece is seen first
 const PIECE_POP_S := 0.4
+const PIECE_FLY_S := 0.7               # the lab's piece flies into the cat's paws (LabGame)
+var _piece_from := Vector3.INF          # where it flew from (INF: popped in over the cat)
 const DEMO_STAMP_EVERY_S := 1.6
 
 
@@ -675,6 +677,7 @@ func _setup_game() -> void:
 	_stamps_landed = _missions.stamps
 	_make_mission_strip()
 	_show_stamps(_missions.stamps)
+	experiment.set_game_stage(_missions.stage(), _missions.stamps, false)   # the piece game (LabGame): the saved stamps
 	var predict := MissionTracker.predict(definition)
 	if _missions.stage() < 0 or dialogue == null:
 		_predict_ended = true   # the round is done (or no Dugi to ask): no question, no clue
@@ -898,6 +901,8 @@ func _mission_progress(_id: String, stamps: int) -> void:
 	if _slam != null:
 		_slam.finish()
 	_show_stamps(stamps)
+	# The piece game reacts now (a crate tips, the ice cracks; the last stamp lets the piece out).
+	experiment.set_game_stage(_missions.stage() if _missions != null else -1, stamps, true)
 	_slam = StampSlam.new()
 	var slot := clampi(stamps - 1, 0, maxi(0, _stamp_labels.size() - 1))
 	_slam.slot = _stamp_slot_center.bind(slot)
@@ -965,7 +970,11 @@ func _show_piece() -> void:
 	_piece = StarArt.make(true, clampf(height * 0.32, 0.25, 1.0))   # big enough to see its face
 	_piece.name = "FoundPiece"
 	_piece_t = 0.0
-	_piece.scale = Vector3.ONE * 0.01
+	# The piece game's piece (LabGame, 2026-10-29): the one the child got out flies from where it lies
+	# into the cat's raised paws; a lab without one pops it in over the cat as before.
+	var from: Variant = experiment.game.take_piece() if experiment.game != null else null
+	_piece_from = from if from is Vector3 else Vector3.INF
+	_piece.scale = Vector3.ONE * (LabGame.PIECE_SIZE / clampf(height * 0.32, 0.25, 1.0) if from is Vector3 else 0.01)
 	view.viewport.add_child(_piece)
 	_place_piece(0.0)
 	SoundBoard.play(&"glint")
@@ -983,10 +992,22 @@ func _place_piece(delta: float) -> void:
 		var box := cat.bounds()
 		height = box.size.y
 		at = Vector3(box.get_center().x, box.end.y + height * 0.32, box.get_center().z)
-	_piece.position = at + Vector3.UP * height * 0.05 * sin(_piece_t * 5.0)
+	at += Vector3.UP * height * 0.05 * sin(_piece_t * 5.0)
 	StarArt.face_camera(_piece, view.rig, _piece_t)
-	var k := clampf(_piece_t / PIECE_POP_S, 0.0, 1.0)
-	_piece.scale = Vector3.ONE * maxf(0.01, 1.0 + 0.35 * sin(PI * k) - (1.0 - k) * (1.0 - k))
+	if _piece_from != Vector3.INF and _piece_t < PIECE_FLY_S:
+		# From the lab's piece to the paws on an arc (a hop up of a third of the way), growing to full size.
+		var k := LabGame.smooth(_piece_t / PIECE_FLY_S)
+		var lift := maxf(1.0, _piece_from.distance_to(at) * 0.35)
+		_piece.position = _piece_from.lerp(at, k) + Vector3.UP * lift * sin(PI * k)
+		var small := LabGame.PIECE_SIZE / clampf(height * 0.32, 0.25, 1.0)
+		_piece.scale = Vector3.ONE * lerpf(small, 1.0, k)
+		return
+	_piece.position = at
+	var k := clampf((_piece_t - (PIECE_FLY_S if _piece_from != Vector3.INF else 0.0)) / PIECE_POP_S, 0.0, 1.0)
+	if _piece_from != Vector3.INF:
+		_piece.scale = Vector3.ONE * (1.0 + 0.2 * sin(PI * k))   # it arrived: a small happy bounce
+	else:
+		_piece.scale = Vector3.ONE * maxf(0.01, 1.0 + 0.35 * sin(PI * k) - (1.0 - k) * (1.0 - k))
 
 
 ## The found piece over the cat (tests; null when none).

@@ -123,7 +123,7 @@ func check_round() -> void:
 	touch.canceled = true
 	tree.root.push_input(touch)
 	await tree.process_frame
-	# First throw (45°, 6 m/s: past 3 m): one stamp, then Dugi tells the reason.
+	# First throw (45°, 6 m/s: it hits the near crate, the piece game of 2026-10-29): one stamp, then Dugi tells the reason.
 	await _throw(screen, lab, 45.0, 6.0)
 	await _run_to_end(lab)
 	screen._update_readouts(false)
@@ -135,11 +135,11 @@ func check_round() -> void:
 		"round: once the ball landed the formula range shows (card: one decimal in words; sidebar: full precision)",
 		"%s / %s" % [screen._key_labels["range"].text, range_text])
 	expect.call(ProgressStore.stamps(ProgressStore.load(), "projectile") == 1 and screen._mission_text.text == str(stages[1].text),
-		"round: the first throw past 3 m earns the first stamp; the next stage shows",
+		"round: the first throw onto the near crate earns the first stamp; the next stage shows",
 		"stamps %d, '%s'" % [ProgressStore.stamps(ProgressStore.load(), "projectile"), screen._mission_text.text])
 	var said := await _next_explanation(screen)
 	expect.call(said == str(predict.reason), "round: after the first throw Dugi tells the prediction's reason", said)
-	# Second throw straight away (no 처음으로): 7.5 m/s, past 5 m.
+	# Second throw straight away (no 처음으로): 7.5 m/s, onto the far crate.
 	await _throw(screen, lab, 45.0, 7.5)
 	await _run_to_end(lab)
 	expect.call(ProgressStore.stamps(ProgressStore.load(), "projectile") == 2, "round: the second throw (no 처음으로 between) earns the second stamp",
@@ -147,14 +147,14 @@ func check_round() -> void:
 	said = await _next_explanation(screen)
 	expect.call(said == str(stages[1].say), "round: later explanations are Dugi's say for the stage (here the one just cleared; the reason was told once)", said)
 	expect.call(not screen.cast.puppy.celebrating(), "round: no celebration before the last stamp", "")
-	# The third stage wants another angle: 45° again, even thrown harder past 7 m, earns nothing.
-	await _throw(screen, lab, 45.0, 9.0)
+	# The third stage wants the high crate: the far crate's throw again (45°, 7.5 m/s) earns nothing.
+	await _throw(screen, lab, 45.0, 7.5)
 	await _run_to_end(lab)
-	expect.call(ProgressStore.stamps(ProgressStore.load(), "projectile") == 2 and float(lab.observations().range) > 7.0,
-		"round: the second stage's angle again (45°, past 7 m) earns no third stamp",
+	expect.call(ProgressStore.stamps(ProgressStore.load(), "projectile") == 2 and float(lab.observations().hit_3) == 0.0,
+		"round: the far crate's throw again (45°, 7.5 m/s, under the high crate) earns no third stamp",
 		"stamps %d, range %s" % [ProgressStore.stamps(ProgressStore.load(), "projectile"), str(lab.observations().range)])
-	# Third throw at another angle (40°, 9 m/s: past 7 m) after 처음으로: the last stamp, the done
-	# text, the puppy hops and waves.
+	# Third throw (40°, 9 m/s: onto the high crate) after 처음으로: the last stamp, the done text, the
+	# puppy hops and waves.
 	screen.experiment_action("reset")
 	for i in 4:
 		await tree.process_frame
@@ -169,7 +169,7 @@ func check_round() -> void:
 		if hopped and ProgressStore.stamps(ProgressStore.load(), "projectile") == 3:
 			break
 	expect.call(ProgressStore.stamps(ProgressStore.load(), "projectile") == 3 and screen._mission_text.text == ExperimentScreen.DONE_TEXT,
-		"round: the third throw past 7 m earns the last stamp; the done text shows", screen._mission_text.text)
+		"round: the third throw onto the high crate earns the last stamp; the done text shows", screen._mission_text.text)
 	expect.call(hopped and screen.cast.puppy.celebrating(), "round: on the last stamp the puppy hops and waves the flag fast", "hopped %s" % str(hopped))
 	await _free(screen)
 	# A reopened finished place: the stamps, no question, and no celebration on another long throw.
@@ -199,7 +199,7 @@ func check_late_settle() -> void:
 	var script := GDScript.new()
 	script.source_code = "extends Experiment\nvar now := \"landed\"\nvar done := false\n" \
 		+ "func status() -> String:\n\treturn now\nfunc settled() -> bool:\n\treturn done\n" \
-		+ "func observations() -> Dictionary:\n\treturn {\"range\": 4.2}\n" \
+		+ "func observations() -> Dictionary:\n\treturn {\"range\": 4.2, \"hit_1\": 1.0}\n" \
 		+ "func control_value(_id: String) -> Variant:\n\treturn 6.0\n"   # any throw past 3 m clears the first stage
 	script.reload()
 	var stand_in: Experiment = script.new()

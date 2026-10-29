@@ -64,6 +64,8 @@ var _shown_knob := Vector3.INF      # knob position the arrow preview was made f
 ## throw; the dots are the last throw's trail, drawn up to the formula time as the ball flies and
 ## kept until the next throw.
 var trail_only := false
+var _hit_key: Array = []
+var _hit_times: Array = []
 
 
 func _init() -> void:
@@ -127,6 +129,8 @@ func ball_center() -> Vector3:
 
 func reset_run() -> void:
 	close_up_ended.emit(0.0)   # a throw in progress stops: no close-up either
+	if game != null:
+		game.run_reset()
 	hold_ball(ball, ball_center())
 	apply_field(ball)
 	_ball_visual.visible = true
@@ -317,7 +321,28 @@ func observations() -> Dictionary:
 		"vx": PhysicsLaws.constant_acceleration_velocity(launch_vx(), 0.0, t),
 		"vy": vy,
 		"landing": measured_range(),
+		# The piece game (2026-10-29): this throw's formula path touches crate n (1) or not (0).
+		"hit_1": 1.0 if is_finite(hit_times()[0]) else 0.0,
+		"hit_2": 1.0 if is_finite(hit_times()[1]) else 0.0,
+		"hit_3": 1.0 if is_finite(hit_times()[2]) else 0.0,
 	}
+
+
+## The formula times (s) at which this throw's path touches each crate of the piece game
+## (ProjectileGame.hit_time: INF = never, before the landing, the fence or PATH_MAX_S). Read only:
+## from the launch (start, angle, speed, g), cached until one of them changes.
+func hit_times() -> Array:
+	var key := [start, angle_deg, speed, g]
+	if key != _hit_key:
+		_hit_key = key
+		var c := ball_center()
+		var vx := launch_vx()
+		var vy := launch_vy()
+		var end := minf(minf(flight_time(), fence_time_for(c.x, vx, vy, launch_height())), PATH_MAX_S)
+		_hit_times = []
+		for i in ProjectileGame.TARGETS.size():
+			_hit_times.append(ProjectileGame.hit_time(i, Vector2(c.x, c.y), vx, vy, g, BALL_RADIUS, end))
+	return _hit_times
 
 
 ## Engine landing distance from the launch point (the "시뮬레이션" readout): the engine x at the
@@ -429,6 +454,10 @@ func _process(_delta: float) -> void:
 	if released or not ball.freeze:
 		if released and trail_only:
 			_show_trail()
+		if released and game != null and game.stage < ProjectileGame.TARGETS.size():
+			var t: float = hit_times()[game.stage]
+			if is_finite(t) and clock() >= t:
+				(game as ProjectileGame).hit(game.stage, g)   # the formula ball reached the crate: it tips
 		if status() == "landed":
 			_update_status()   # the rest frame: report the landing once (status "landed")
 		return
@@ -497,6 +526,9 @@ func _build_world() -> void:
 	knob = _make_knob("ArrowKnob", KNOB_LAYER, KNOB_SIZE)
 	_knob_visual = knob.get_node("Visual")
 	projectile_props().dress(self, ball, _ball_visual, BALL_RADIUS * 2.0)
+	game = ProjectileGame.new(self)   # the piece game: the crates and the star piece (visual only)
+	add_child(game)
+	game.build()
 	projectile_props().juice.landed.connect(impact.emit)
 
 

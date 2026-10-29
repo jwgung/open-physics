@@ -67,6 +67,10 @@
 ##    orbit, friction, lever and pulley labs; the slingshot of ball A and the planet, the press and hold
 ##    of the box, the effort end and the rope end (rates per stage, the heaviest within ~3 s); the same
 ##    runs as the forces / values given without the hand; empty space does nothing; one tap is one.
+## 18b. the piece game (tests/game_piece_checks.gd, 2026-10-29): six labs' game objects judged on the
+##     formula (crate hit, B's speed, landing together, speed at the slide's end, the swing on the beat),
+##     each stage reachable with its fitting picks and not with a non-fitting one; the piece in its
+##     object until the last stamp, then on the ground, handed to the bread cat.
 ## 20b. kid words and the science note (tests/kid_words_checks.gd, 2026-10-28): a stage judges the
 ##    number its card shows, the free fall's card is the red ball's time, the spring's first stage shows
 ##    the pull, the push's card is a bar, no 뉴턴 / 초속 / decimals in the kid texts, and every lab's
@@ -294,6 +298,11 @@ func _run() -> void:
 	_expect(goals != null and goals.can_instantiate(), "goal mission checks compile", "")
 	if goals != null and goals.can_instantiate():
 		await goals.new(self, _expect).run()
+	print("== the piece game (2026-10-29): judge functions, stages reachable by the formula and not with the other button, the piece in its object until the last stamp ==")
+	var pieces: GDScript = load("res://tests/game_piece_checks.gd")
+	_expect(pieces != null and pieces.can_instantiate(), "piece game checks compile", "")
+	if pieces != null and pieces.can_instantiate():
+		await pieces.new(self, _expect).run()
 	print("== kid words and the science note (2026-10-28): the number shown is judged, the red ball's card, the pull card, the push bar, the content lint, 법칙 / 숫자 / 더 보기 per lab ==")
 	var words: GDScript = load("res://tests/kid_words_checks.gd")
 	_expect(words != null and words.can_instantiate(), "kid words checks compile", "")
@@ -895,8 +904,9 @@ func _check_content() -> Dictionary:
 	_expect(ExperimentRegistry.validate(views_missing).size() == 1 and "follow" in ExperimentRegistry.validate(views_missing)[0],
 		"registry requires a view for every preset camera mode", ", ".join(ExperimentRegistry.validate(views_missing)))
 	# Task 2d: key_observations are 2-3 distinct observation ids; a view target is [x, y, z].
-	var key_cases := {"one": ["state"], "four": ["state", "critical_angle", "distance", "run"], "unknown": ["state", "speed"],
-		"duplicate": ["state", "state"], "missing": null}
+	# (Each list keeps the slide's one kid card, bottom_speed since 2026-10-29, so only the list is wrong.)
+	var key_cases := {"one": ["bottom_speed"], "four": ["bottom_speed", "critical_angle", "distance", "run"], "unknown": ["bottom_speed", "speed"],
+		"duplicate": ["bottom_speed", "bottom_speed"], "missing": null}
 	var key_problems := PackedStringArray()
 	for case in key_cases:
 		var keyed := definition.duplicate(true)

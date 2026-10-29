@@ -153,6 +153,8 @@ func reset_run() -> void:
 	_clear_run()
 	_shown = Vector4.INF
 	props.reset()
+	if game != null:
+		game.run_reset()
 	_show_arrows()
 	_update_status(true)
 
@@ -166,9 +168,12 @@ func _physics_process(_delta: float) -> void:
 	if not released or holding != "":
 		return
 	var collisions := model.collisions
+	var vb_before := model.vb
 	driver.step(1.0 / float(Engine.physics_ticks_per_second))
 	if model.collisions != collisions:
 		_hit()
+	if game != null and vb_before > 0.0 and model.vb <= 0.0 and model.xb > 0.0:
+		(game as CollisionGame).knock(vb_before)   # the formula orange ball reached the right bumper (the ice)
 	if _graph_due(model.steps, _clock()):
 		_add_graph_point()
 	if status() != _last_status:
@@ -326,6 +331,11 @@ func _build_world() -> void:
 	driver.reset()
 	props.dress(self, ball_a, RADIUS_A, ball_b, RADIUS_B, WALL)
 	props.set_sizes(mass_a, mass_b)
+	var ice := CollisionGame.new(self)   # the piece game: the ice block on the right bumper (visual only)
+	ice.bumper = props.bumper_right
+	game = ice
+	add_child(game)
+	game.build()
 
 
 ## A ball on the rail: a sphere the manipulator can pick (its own layer) that touches nothing.

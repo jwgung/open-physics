@@ -53,12 +53,12 @@
     "observe": "swing_period",
     "judge_on": ["moving", "rest"],
     "stages": [
-      { "observe": "pull", "threshold": 2.0, "card": "pull", "conditions": {"mass": {"max": 1.0}}, "text": "가벼운 공을 2미터 넘게 당겼다 놓기!", "say": "많이 당길수록 용수철이 공을 더 세게 다시 당겨요.", "say_face": "explain" },
-      { "threshold": 4.0, "conditions": {"mass": {"min": 2.5}}, "text": "무거운 공으로 4초 넘게 천천히 흔들기!", "say": "무거운 공은 잘 안 움직여요. 그래서 천천히 왔다 갔다 해요.", "say_face": "explain" },
-      { "compare": "less", "threshold": 3.0, "conditions": {"mass": {"max": 1.0}}, "text": "가벼운 공으로 3초 안에 빨리 흔들기!", "say": "가벼운 공은 용수철이 금방 당겨 와요. 그래서 빨리 왔다 갔다 해요.", "say_face": "happy" }
+      { "compare": "near", "threshold": 2.8, "tolerance": 0.2, "also": [{"observe": "pull", "compare": "greater", "threshold": 2.0}], "card": "pull", "conditions": {"mass": {"max": 1.0}}, "text": "가벼운 공을 2미터 넘게 당겨 빠른 박자 맞추기!", "say": "가벼운 공은 용수철이 금방 당겨 와요. 그래서 빨리 왔다 갔다 해서 빠른 박자에 맞아요.", "say_face": "explain" },
+      { "compare": "near", "threshold": 4.9, "tolerance": 0.2, "conditions": {"mass": {"min": 2.5}}, "text": "무거운 공으로 느린 박자 맞추기!", "say": "무거운 공은 잘 안 움직여요. 그래서 천천히 왔다 갔다 해서 느린 박자에 맞아요.", "say_face": "explain" },
+      { "compare": "near", "threshold": 2.8, "tolerance": 0.2, "also": [{"observe": "pull", "compare": "greater", "threshold": 0.05}, {"observe": "pull", "compare": "less", "threshold": 1.0}], "conditions": {"mass": {"max": 1.0}}, "text": "가벼운 공을 1미터 안으로 조금만 당겨 박자 맞추기!", "say": "조금 당겨도 많이 당겨도 같은 박자예요. 많이 당기면 더 멀리, 더 빨리 가서 같은 시간에 돌아와요.", "say_face": "happy" }
     ]
   },
-  "story": { "clue": "용수철이 조각을 물고 있어. 공을 당겼다 놓아 보자!", "clue_face": "explain", "map_clue": "울타리 안, 통통 튀는 용수철 쪽이야!", "map_clue_face": "explain" },
+  "story": { "clue": "시계 속에 조각이 있어! 공을 시계 박자에 맞춰 흔들어 보자!", "clue_face": "explain", "map_clue": "울타리 안, 통통 튀는 용수철 쪽이야!", "map_clue_face": "explain" },
   "kid": {
     "card": "swing_period",
     "title": "용수철을 당겼다 놓아 보자!",

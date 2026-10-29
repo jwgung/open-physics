@@ -76,12 +76,12 @@
     "observe": "after_b",
     "judge_on": ["collided", "rest"],
     "stages": [
-      { "threshold": 2.0, "conditions": {"mass_a": 1.0, "mass_b": 1.0}, "text": "두 공을 같은 무게로 하고 세게 부딪히기!", "say": "같은 무게 공끼리 부딪히면 파란 공의 움직임이 주황 공으로 거의 다 넘어가요.", "say_face": "explain" },
-      { "threshold": 4.0, "conditions": {"mass_a": {"min": 3.0}, "mass_b": {"min": 1.0}}, "text": "파란 공을 무겁게 해서 세게 치기!", "say": "무거운 공은 움직임이 많아요. 그 움직임을 받은 주황 공이 더 빨리 나가요.", "say_face": "explain" },
-      { "threshold": 5.0, "conditions": {"mass_b": 0.5}, "text": "주황 공을 제일 가볍게 해서 쌩 날리기!", "say": "받는 공이 가벼울수록 같은 움직임을 받아도 더 빨리 쌩 날아가요.", "say_face": "happy" }
+      { "threshold": 5.0, "conditions": {"mass_a": 1.0, "mass_b": 1.0}, "text": "같은 무게 두 공으로 세게 쳐서 얼음에 금 내기!", "say": "같은 무게 공끼리 부딪히면 파란 공의 움직임이 주황 공으로 거의 다 넘어가요. 세게 칠수록 주황 공이 빨라요.", "say_face": "explain" },
+      { "threshold": 9.0, "conditions": {"mass_a": {"min": 3.0}, "mass_b": 1.0}, "text": "파란 공을 무겁게 해서 얼음에 금 더 내기!", "say": "무거운 공은 움직임이 많아요. 그 움직임을 받은 주황 공이 더 빨리 날아가요.", "say_face": "explain" },
+      { "threshold": 13.0, "conditions": {"mass_a": {"min": 3.0}, "mass_b": 0.5}, "text": "주황 공을 가볍게 해서 얼음 깨기!", "say": "가벼운 공은 같은 움직임을 받아도 훨씬 빨라져요. 쌩 날아가서 얼음을 깨요!", "say_face": "happy" }
     ]
   },
-  "story": { "clue": "조각이 레일 끝에 있어. 공끼리 부딪혀서 쌩 보내 보자!", "clue_face": "explain", "map_clue": "공 두 개가 놓인 길쭉한 레일 쪽이야!", "map_clue_face": "explain" },
+  "story": { "clue": "얼음 속에 조각이 갇혔어! 공을 부딪혀서 저 얼음을 깨 보자!", "clue_face": "surprised", "map_clue": "공 두 개가 놓인 길쭉한 레일 쪽이야!", "map_clue_face": "explain" },
   "kid": {
     "card": "after_b",
     "title": "공끼리 부딪히면 어떻게 될까?",
@@ -114,7 +114,7 @@
     "graph": true
   },
   "cast": {
-    "dugi": { "at": [8.5, 0.5], "explain_on": ["collided", "rest"], "delay_s": 0.6 },
+    "dugi": { "at": [7.5, -2.5], "explain_on": ["collided", "rest"], "delay_s": 0.6 },
     "puppy": { "at": [-2.0, -10.0] }
   },
   "observations": [

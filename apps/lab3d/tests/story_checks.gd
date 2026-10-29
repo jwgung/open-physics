@@ -16,12 +16,12 @@ const EXPERIMENT_SCREEN := "res://scripts/shell/experiment_screen.gd"
 const HOME_SCREEN := "res://scripts/app/island_home_screen.gd"
 const SETTINGS_SCREEN := "res://scripts/app/settings_screen.gd"
 const CLUES := {
-	"projectile": "조각이 저 멀리 떨어졌어! 공을 멀리 던져 보자.",
-	"collision": "조각이 레일 끝에 있어. 공끼리 부딪혀서 쌩 보내 보자!",
-	"free-fall": "조각이 탑 위에 걸렸어! 공을 떨어뜨려서 맞혀 보자.",
-	"incline-friction": "조각이 미끄럼틀 아래 숨었어. 상자를 쭉 미끄러뜨려 보자!",
+	"projectile": "저 높은 상자 위에 조각이 있어! 상자를 맞히면 조각이 떨어질 것 같아!",
+	"collision": "얼음 속에 조각이 갇혔어! 공을 부딪혀서 저 얼음을 깨 보자!",
+	"free-fall": "조각이 파란 집에 갇혔어! 버튼 두 개를 같이 누르면 문이 열릴 것 같아!",
+	"incline-friction": "조각이 빨간 기둥 꼭대기에 있어! 상자로 도미노를 쓰러뜨려 보자!",
 	"friction": "조각이 상자 밑에 깔렸어! 무거운 상자도 밀어 보자.",
-	"spring": "용수철이 조각을 물고 있어. 공을 당겼다 놓아 보자!",
+	"spring": "시계 속에 조각이 있어! 공을 시계 박자에 맞춰 흔들어 보자!",
 	"rotation": "무거운 짐 밑에 조각이 있어! 막대로 짐을 들어 보자.",
 	"pulley": "조각이 높은 곳에 있어. 줄을 당겨 짐을 올려 보자!",
 	"constraints": "조각이 매달린 공 근처에 있어. 공을 흔들어 보자!",
@@ -64,7 +64,8 @@ func run() -> void:
 	DirAccess.remove_absolute(ProgressStore.path)
 
 
-## The words are the approved ones, exactly: the 11 clues in the labs' content, the prologue and finale.
+## The words are the approved ones, exactly: the 11 clues in the labs' content (five pointing at the
+## piece game's object since 2026-10-29), the prologue and finale.
 func check_content() -> void:
 	var wrong := []
 	for id in CLUES:
@@ -265,7 +266,7 @@ func check_piece_found() -> void:
 	for run in [[4.0, 45.0], [6.0, 50.0], [8.0, 40.0]]:
 		stand_in.range_m = run[0]
 		stand_in.angle = run[1]
-		screen._missions.on_run_ended("landed", stand_in, {"range": run[0]})
+		screen._missions.on_run_ended("landed", stand_in, {"range": run[0], "hit_1": 1.0, "hit_2": 1.0, "hit_3": 1.0})
 		if screen._missions.stamps < 3:
 			screen._slam.advance(StampSlam.TOTAL_S)
 			early = early and screen.found_piece() == null and ProgressStore.pending(ProgressStore.PIECES).is_empty()
@@ -275,7 +276,7 @@ func check_piece_found() -> void:
 	stand_in.queue_free()
 	var piece: Node3D = screen.found_piece()
 	var cat: CatActor = screen.lab_cat()
-	screen._run_celebration(0.5)
+	screen._run_celebration(screen.PIECE_FLY_S + 0.1)   # the lab's piece flies into the paws (the piece game, 2026-10-29)
 	var above: bool = piece != null and cat != null and piece.global_position.y > cat.bounds().end.y and cat.cheers >= 1
 	expect.call(above and ProgressStore.pending(ProgressStore.PIECES) == ["projectile"],
 		"piece: the round's last stamp finds the star piece; the bread cat lifts it (it shines over the cat); the map will fly it", "")

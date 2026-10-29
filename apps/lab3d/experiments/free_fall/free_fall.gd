@@ -3,10 +3,10 @@
 ## reference / heavy balls) are dropped together in the chosen field and land at the same time.
 ## Conditions: gravity (the web's buttons), the drop height of all three (slider) and the red ball's
 ## mass. A finger drags any ball up or down (2026-10-27, one drag per lab: "drop_<ball>" objects on a
-## vertical line through the ball): letting go sets the drop height of all three, the "height"
-## control (the "자세히" slider), so the three still start level (web step 1: "세 공의 높이를 맞춰요").
-## The per-ball placements (manipulation_placed with a ball id: a restored state, tests) stay; a
-## finger no longer moves one ball sideways or raises one alone (definition: "drag": false).
+## vertical line through the ball). Since 2026-10-29 (the piece game "두 공을 같이 떨어뜨려 버튼
+## 누르기", FreeFallGame) letting go sets that ball's own drop height (the others stay), so the child
+## starts two balls level or not; the "height" control (the "자세히" slider) still sets all three.
+## A finger does not move a ball sideways (definition: "drag": false).
 ## Motion: Jolt + UniformFieldCorrector (uniform_field_lab.gd). Displayed numbers: PhysicsLaws at the formula time (the landing at landing_time(0, -g, h0)); the engine is
 ## only the graph's "시뮬레이션" points and the measured landing times.
 ## Each ball looks as heavy as it is (2026-10-28, look_radius): the red ball grows and shrinks with
@@ -25,6 +25,10 @@ const DROP := "drop_"             # the finger's object of a ball: "drop_red" dr
 const BOUNCE := 0.5               # the web's wood balls (restitution 0.5)
 const LOOK_MASS := 1.0            # kg: the ball that looks BALL_RADIUS round (the violet one)
 const SIGN_AT := Vector3(-5.0, 0.0, -2.2)   # the gravity's signpost (PlanetSign), left of the ruler
+## The piece game's two balls (the heavy red and the light yellow one) press their buttons "together"
+## when their formula landings are this close (one fixed step: the same height lands at the same step).
+const TOGETHER_S := 1.0 / 60.0
+const PAIR := ["red", "yellow"]
 
 var balls: Dictionary = {}        # id -> FormulaBody
 ## id -> start point of the ball's bottom (x, height above the floor, z).
@@ -34,6 +38,7 @@ var height := 5.0
 var mass_id := "heavy"
 ## The signpost showing which world the gravity is (2026-10-28).
 var planet_sign: PlanetSign
+var _pressed := {}                # the piece game: the balls whose formula landing pressed their button this run
 
 
 func _init() -> void:
@@ -97,6 +102,10 @@ func look_radius(id: String) -> float:
 
 
 func reset_run() -> void:
+	_pressed = {}
+	if game != null:
+		game.run_reset()
+		(game as FreeFallGame).place_buttons(starts)
 	for id in ORDER:
 		var ball: FormulaBody = balls[id]
 		hold_ball(ball, starts[id] + Vector3.UP * BALL_RADIUS)
@@ -217,7 +226,24 @@ func observations() -> Dictionary:
 		"kinetic": PhysicsLaws.kinetic_energy(m, speed),
 		"potential": PhysicsLaws.gravitational_potential_energy(m, g, h_red),
 		"landing": measured_landings(),
+		"together_time": together_time(),
 	}
+
+
+## The piece game's value (2026-10-29): once the red and the yellow ball have both landed, their
+## common formula landing time √(2h/g) when the two landings are within TOGETHER_S of each other
+## (mass does not enter it: the same height lands together), else "따로 닿았어요". Read only.
+func together_time() -> Variant:
+	if not released:
+		return "—"
+	if g <= 0.0:
+		return "닿지 않아요"
+	if not (has_landed("red") and has_landed("yellow")):
+		return "떨어지는 중"
+	var t_red := landing_time("red")
+	if absf(t_red - landing_time("yellow")) > TOGETHER_S:
+		return "따로 닿았어요"
+	return t_red
 
 
 ## Engine landing times of the three balls (the "시뮬레이션" readout): "노랑 1.02 · 보라 … s"; a
@@ -264,6 +290,23 @@ func _build_world() -> void:
 		fall_props().set_look(id, look_radius(id))
 	for juice: ArtJuice in fall_props().juices.values():
 		juice.landed.connect(impact.emit)
+	game = FreeFallGame.new(self)   # the piece game: two floor buttons and the barred house (visual only)
+	add_child(game)
+	game.build()
+	(game as FreeFallGame).place_buttons(starts)
+
+
+## The piece game's buttons light when their formula ball lands (has_landed); two that do not land
+## together rattle the house's door.
+func _process(_delta: float) -> void:
+	if game == null or not released:
+		return
+	for id in PAIR:
+		if not _pressed.has(id) and has_landed(id):
+			_pressed[id] = true
+			(game as FreeFallGame).press(id)
+			if _pressed.size() == PAIR.size() and together_time() is String:
+				(game as FreeFallGame).rattle()
 
 
 # --- manipulation -----------------------------------------------------------------------------
@@ -327,9 +370,14 @@ func placement_allowed(id: String, transform: Transform3D) -> bool:
 
 func manipulation_placed(id: String, transform: Transform3D) -> void:
 	if id.begins_with(DROP):
-		# A ball let go on its drop line: all three start at that height (the "height" control).
+		# A ball let go on its drop line starts at that height, the others stay (2026-10-29).
+		var ball_id := id.trim_prefix(DROP)
+		var step := _grid_step(id) if _grid_step(id) > 0.0 else 0.5
+		var h := _clamp_to_control("height", snappedf(transform.origin.y - BALL_RADIUS, step))
+		if is_nan(h):
+			return
 		fall_props().finger = ""
-		set_height(transform.origin.y - BALL_RADIUS)
+		manipulation_placed(ball_id, Transform3D(Basis(), Vector3(starts[ball_id].x, h + BALL_RADIUS, starts[ball_id].z)))
 		return
 	_placed = true
 	starts[id] = transform.origin - Vector3.UP * BALL_RADIUS
@@ -339,6 +387,8 @@ func manipulation_placed(id: String, transform: Transform3D) -> void:
 	apply_field(ball)
 	fall_props().place_pad(id, starts[id])
 	fall_props().set_finger("", starts)
+	if game != null:
+		(game as FreeFallGame).place_buttons(starts)
 	_graph_revision += 1
 	_update_status(true)
 

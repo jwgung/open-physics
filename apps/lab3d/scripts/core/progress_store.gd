@@ -2,7 +2,7 @@
 ## id; each keeps 0..MAX_STAMPS. Stored in user://progress.cfg (ConfigFile, the app's own storage:
 ## device only, no account). A missing or corrupt file (a broken section, a non-number stamp, a
 ## value out of range) reads back as no progress at all: the child starts over, nothing else fails.
-## This module never touches physics or display: it only counts a stamp when MissionTracker hands
+## This module never touches physics or display: it only counts a stamp when MissionRound hands
 ## one over (Plan: 판정 값은 공식값, 도장은 진행 저장뿐).
 class_name ProgressStore
 extends RefCounted
@@ -19,7 +19,7 @@ const BENCH_PATH := "user://progress-bench.cfg"
 static var load_count := 0
 ## Sections the store owns (a corrupt one is ignored: a future section name is never read here).
 const SECTIONS := ["progress"]
-## The control values of the run that cleared each spot's last stage (MissionTracker `change`).
+## The control values of the run that cleared each spot's last stage (MissionRound `change`).
 const CLEARED := "cleared"
 ## The map's flag raise (2026-10-28): a spot whose round is completed now gets `false` here (its
 ## flag still to be raised on the map); the map raises it once and writes `true`. A missing key
@@ -81,7 +81,7 @@ static func save(progress: Dictionary) -> void:
 
 
 ## The control values of the run that cleared `id`'s last stage ({} when none is stored or the
-## stored value is not an object): MissionTracker's `change` compares the next stage's run with it.
+## stored value is not an object): MissionRound's `change` compares the next stage's run with it.
 static func cleared(id: String) -> Dictionary:
 	var value: Variant = _read().get_value(CLEARED, id, {})
 	return value if value is Dictionary else {}

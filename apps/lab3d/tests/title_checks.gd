@@ -136,7 +136,7 @@ func check_back_press(quality_script: GDScript) -> void:
 				return "lab+sidebar"
 			if lab.clue_telling():
 				return "lab+clue"
-			if lab._asking and lab.dialogue.active:
+			if lab.mission_round.asking() and lab.dialogue.active:
 				return "lab+question"
 			if lab.dialogue.active:
 				return "lab+dugi"
@@ -176,7 +176,7 @@ func check_back_press(quality_script: GDScript) -> void:
 	app.show_experiment(ExperimentRegistry.find("projectile"))
 	await settle.call(4)
 	var lab := app._screen as ExperimentScreen
-	lab._end_question()
+	lab.mission_round.end_question()
 	lab.cast.dugi.explain(lab.experiment.explain_point)
 	for i in 120:
 		if lab.dialogue.active:

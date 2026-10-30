@@ -52,7 +52,7 @@ func run() -> void:
 func check_no_action_buttons() -> void:
 	var problems := []
 	for definition in ExperimentRegistry.load_all():
-		if MissionTracker.missions(definition).is_empty():
+		if MissionRound.missions(definition).is_empty():
 			continue
 		var screen := await _open(definition, TABLET)
 		var row: Array = screen._action_row.get_children()
@@ -72,7 +72,7 @@ func check_release_on_lift() -> void:
 	var problems := []
 	# Free fall: the red ball up to 8 m and let go: both balls drop together from their own heights.
 	var screen := await _open(ExperimentRegistry.find("free-fall"), TABLET)
-	screen._end_question()
+	screen.mission_round.end_question()
 	var lab: Experiment = screen.experiment
 	var r: float = lab.BALL_RADIUS
 	await _drag_to(screen, lab.balls.red.global_position, Vector3(lab.starts.red.x, 8.0 + r, lab.starts.red.z))
@@ -100,7 +100,7 @@ func check_release_on_lift() -> void:
 	await _free(screen)
 	# The slide: the box dragged up the slide and let go slides from there.
 	screen = await _open(ExperimentRegistry.find("incline-friction"), TABLET)
-	screen._end_question()
+	screen.mission_round.end_question()
 	lab = screen.experiment
 	screen._set_control("material", "steel")
 	var box_to: Vector3 = lab._pivot.global_transform * Vector3(6.0 - lab.INCLINE_LENGTH * 0.5, lab.BOX * 0.5, 0.0)
@@ -112,7 +112,7 @@ func check_release_on_lift() -> void:
 	await _free(screen)
 	# The drum, the spring ball, the bob: let go = released (already so before; kept).
 	screen = await _open(ExperimentRegistry.find("buoyancy"), TABLET)
-	screen._end_question()
+	screen.mission_round.end_question()
 	lab = screen.experiment
 	await _drag_to(screen, lab.drum.global_position, lab.drum.global_position + Vector3(0.0, -0.6, 0.0))
 	await tree.physics_frame
@@ -120,7 +120,7 @@ func check_release_on_lift() -> void:
 		problems.append("drum: not released on the lift")
 	await _free(screen)
 	screen = await _open(ExperimentRegistry.find("spring"), TABLET)
-	screen._end_question()
+	screen.mission_round.end_question()
 	lab = screen.experiment
 	await _drag_to(screen, lab.manipulation_body("ball").global_position, Vector3(lab.ANCHOR_X + lab.REST_LENGTH + 0.6, lab.ROD_Y, 0.0))
 	await tree.physics_frame
@@ -128,7 +128,7 @@ func check_release_on_lift() -> void:
 		problems.append("spring: released %s at %.2f" % [lab.released, lab.pull])
 	await _free(screen)
 	screen = await _open(ExperimentRegistry.find("constraints"), TABLET)
-	screen._end_question()
+	screen.mission_round.end_question()
 	lab = screen.experiment
 	var bob: Vector3 = lab.manipulation_body("rope").global_position
 	var a := deg_to_rad(30.0)
@@ -146,7 +146,7 @@ func check_demo_and_auto_release() -> void:
 	var problems := []
 	for id in ["free-fall", "incline-friction"]:
 		var screen := await _open(ExperimentRegistry.find(id), TABLET)
-		screen._end_question()
+		screen.mission_round.end_question()
 		var lab: Experiment = screen.experiment
 		var m: Manipulator = screen.manipulator
 		if m.demo_action != "":
@@ -174,14 +174,14 @@ func check_result_lines() -> void:
 	var problems := []
 	var count := 0
 	for definition in ExperimentRegistry.load_all():
-		var stages: Array = MissionTracker.missions(definition).get("stages", [])
+		var stages: Array = MissionRound.missions(definition).get("stages", [])
 		if stages.is_empty():
 			continue
-		if MissionTracker.missions(definition).get("miss_on", []).is_empty():
+		if MissionRound.missions(definition).get("miss_on", []).is_empty():
 			problems.append("%s: no miss_on" % definition.id)
 		for i in stages.size():
 			for won in [true, false]:
-				var line := MissionTracker.result_line(definition, i, won)
+				var line := MissionRound.result_line(definition, i, won)
 				var text := str(line[0])
 				count += 1 if text != "" else 0
 				if text == "" or text.length() > LINE_MAX or text == str(stages[i].text) or not str(line[1]) in Story.FACES:
@@ -202,12 +202,12 @@ func check_result_bubbles() -> void:
 	var problems := []
 	# Free fall: different heights miss stage 1 (the buttons apart), the same height wins it.
 	var screen := await _open(ExperimentRegistry.find("free-fall"), TABLET)
-	screen._end_question()
+	screen.mission_round.end_question()
 	var lab: Experiment = screen.experiment
 	var r: float = lab.BALL_RADIUS
 	await _drag_to(screen, lab.balls.red.global_position, Vector3(lab.starts.red.x, 6.0 + r, lab.starts.red.z))
 	var bubble: ResultBubble = await _wait_bubble(screen, 300)
-	var stage0: Dictionary = MissionTracker.missions(lab.definition).stages[0]
+	var stage0: Dictionary = MissionRound.missions(lab.definition).stages[0]
 	if bubble == null or bubble.text != str(stage0.miss) or bubble.won or screen.result_count.miss != 1:
 		problems.append("free fall: the miss line after the first drop (%s)" % (bubble.text if bubble != null else "none"))
 	else:
@@ -219,8 +219,8 @@ func check_result_bubbles() -> void:
 		problems.append("free fall: the bubble stays or a second line came (%s)" % str(screen.result_count))
 	await _drop_drag(screen, "yellow", 6.0)
 	bubble = await _wait_bubble(screen, 300, true)
-	if bubble == null or bubble.text != str(stage0.win) or not bubble.won or screen._missions.stamps != 1:
-		problems.append("free fall: the win line with the stamp (%s, %d stamps)" % [bubble.text if bubble != null else "none", screen._missions.stamps])
+	if bubble == null or bubble.text != str(stage0.win) or not bubble.won or screen.mission_round.stamps != 1:
+		problems.append("free fall: the win line with the stamp (%s, %d stamps)" % [bubble.text if bubble != null else "none", screen.mission_round.stamps])
 	else:
 		problems.append_array(_bubble_place(screen, bubble, "free fall win"))
 	for i in 60:
@@ -231,9 +231,9 @@ func check_result_bubbles() -> void:
 	DirAccess.remove_absolute(ProgressStore.path)
 	# The spring: let go short of the near bell -> the miss after the half swing (its number), then the win.
 	screen = await _open(ExperimentRegistry.find("spring"), TABLET)
-	screen._end_question()
+	screen.mission_round.end_question()
 	lab = screen.experiment
-	var spring_stage: Dictionary = MissionTracker.missions(lab.definition).stages[0]
+	var spring_stage: Dictionary = MissionRound.missions(lab.definition).stages[0]
 	await _drag_to(screen, lab.manipulation_body("ball").global_position, Vector3(lab.ANCHOR_X + lab.REST_LENGTH + 0.4, lab.ROD_Y, 0.0))
 	var early := screen.result_bubble() != null
 	bubble = await _wait_bubble(screen, 300)
@@ -247,7 +247,7 @@ func check_result_bubbles() -> void:
 	DirAccess.remove_absolute(ProgressStore.path)
 	# The push: a short press and lift leaves the box where it is -> "꿈쩍 안 해" (the hold's miss).
 	screen = await _open(ExperimentRegistry.find("friction"), TABLET)
-	screen._end_question()
+	screen.mission_round.end_question()
 	lab = screen.experiment
 	screen._set_control("mass", "light")
 	var at := _at(screen, lab.manipulation_pick_point("box"))
@@ -257,12 +257,12 @@ func check_result_bubbles() -> void:
 	var pressing := screen.result_bubble() == null
 	_touch(screen, at, false)
 	bubble = await _wait_bubble(screen, 120)
-	if not pressing or bubble == null or bubble.text != str(MissionTracker.missions(lab.definition).stages[0].miss):
+	if not pressing or bubble == null or bubble.text != str(MissionRound.missions(lab.definition).stages[0].miss):
 		problems.append("push: a tap's miss (%s)" % (bubble.text if bubble != null else "none"))
 	# A control change before the result drops the attempt (no line).
 	await _free(screen)
 	screen = await _open(ExperimentRegistry.find("free-fall"), TABLET)
-	screen._end_question()
+	screen.mission_round.end_question()
 	lab = screen.experiment
 	await _drag_to(screen, lab.balls.red.global_position, Vector3(lab.starts.red.x, 7.0 + r, lab.starts.red.z))
 	screen._set_control("gravity", "moon")
@@ -312,7 +312,7 @@ func _bubble_place(screen: Control, bubble: ResultBubble, what: String) -> Array
 func check_bridge_and_reason() -> void:
 	var problems := []
 	var definition := ExperimentRegistry.find("free-fall")
-	var predict := MissionTracker.predict(definition)
+	var predict := MissionRound.predict(definition)
 	var screen := await _open(definition, TABLET)
 	var lab: Experiment = screen.experiment
 	var box: DialogueBox = screen.dialogue
@@ -324,7 +324,7 @@ func check_bridge_and_reason() -> void:
 		grew = grew or screen._mission_pill.scale.x > 1.05
 		if box.active and box.visible and said == "":
 			said = box.text
-	var want := "%s %s" % [predict.bridge, ExperimentScreen.BRIDGE_FIRST]
+	var want := "%s %s" % [predict.bridge, MissionRound.BRIDGE_FIRST]
 	if said != want or box.speaker != "dugi" or box.face != str(predict.bridge_face) or screen.strip_pulses != 1 or not grew:
 		problems.append("bridge: said '%s' (want '%s'), %s %s, pulses %d, grew %s" % [said, want, box.speaker, box.face, screen.strip_pulses, grew])
 	for i in roundi(ExperimentScreen.PULSE_S * 60.0) + 5:
@@ -354,8 +354,8 @@ func check_bridge_and_reason() -> void:
 	ProgressStore.save(store)
 	screen = await _open(definition, TABLET)
 	screen._predict_pick_choice(str(predict.answer))
-	if screen.bridge_text() != "%s %s" % [predict.bridge, ExperimentScreen.BRIDGE_NEXT]:
-		problems.append("bridge at stage 2: '%s'" % screen.bridge_text())
+	if screen.mission_round.bridge_line() != "%s %s" % [predict.bridge, MissionRound.BRIDGE_NEXT]:
+		problems.append("bridge at stage 2: '%s'" % screen.mission_round.bridge_line())
 	await _free(screen)
 	DirAccess.remove_absolute(ProgressStore.path)
 	expect.call(problems.is_empty(), "bridge: after the answer Dugi says the lab's bridge (첫 번째 미션 / 다음 미션) and the strip pulses once; the prediction's reason only after the first attempt's line", "; ".join(problems))
@@ -368,8 +368,8 @@ func check_stage1_answers() -> void:
 	var g := 9.81
 	var answers := {}
 	for definition in ExperimentRegistry.load_all():
-		answers[definition.id] = str(MissionTracker.predict(definition).get("answer", ""))
-	var stage := func(id: String) -> Dictionary: return MissionTracker.missions(ExperimentRegistry.find(id)).stages[0]
+		answers[definition.id] = str(MissionRound.predict(definition).get("answer", ""))
+	var stage := func(id: String) -> Dictionary: return MissionRound.missions(ExperimentRegistry.find(id)).stages[0]
 	# The throw: stage 1's low throws (0-20 deg, 8 m/s) land nearer than the slanted 45 deg one.
 	var v := 8.0
 	var low := v * v * sin(2.0 * deg_to_rad(15.0)) / g
@@ -453,7 +453,7 @@ func check_orbit_pace() -> void:
 	var problems := []
 	var definition := ExperimentRegistry.find("orbit")
 	var screen := await _open(definition, TABLET)
-	screen._end_question()
+	screen.mission_round.end_question()
 	var lab: Experiment = screen.experiment
 	screen._set_control("radius", 4.0)
 	screen.experiment.run_action("circular")
@@ -486,13 +486,13 @@ func check_orbit_pace() -> void:
 		problems.append("steps per frame %s (total %d), same model %s, planet on it %s" % [str(steps.slice(0, 6)), total, same, posed])
 	# The first stage's lap is judged on the model's lap (stamp), sooner on the clock.
 	var frames := 0
-	while screen._missions.stamps == 0 and frames < 600:
+	while screen.mission_round.stamps == 0 and frames < 600:
 		await tree.physics_frame
 		await tree.process_frame
 		frames += 1
 	var lap: Variant = lab.observations().lap
-	if screen._missions.stamps != 1 or not (lap is float and lap > 9.0) or frames > 300:
-		problems.append("the lap stamp after %d frames (lap %s s, stamps %d)" % [frames, str(lap), screen._missions.stamps])
+	if screen.mission_round.stamps != 1 or not (lap is float and lap > 9.0) or frames > 300:
+		problems.append("the lap stamp after %d frames (lap %s s, stamps %d)" % [frames, str(lap), screen.mission_round.stamps])
 	var note: Label = screen.find_child("TimeScaleNote", true, false)
 	if note == null or not note.text.contains("2.5배"):
 		problems.append("the note has no 2.5x line")

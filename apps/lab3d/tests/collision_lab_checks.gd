@@ -617,7 +617,7 @@ func check_review() -> void:
 func check_auto_conditions() -> void:
 	var screen: Control = await _open()
 	var lab: Experiment = screen.experiment
-	var stages: Array = MissionTracker.missions(screen.definition).stages
+	var stages: Array = MissionRound.missions(screen.definition).stages
 	var want := [[1.0, 1.0], [3.0, 1.0], [3.0, 2.0]]
 	var problems := []
 	var cleared := [6.5, 8.0, 7.5]   # the slingshot speeds that beat each stage (6.72, 12.2, 18.4 N·s)
@@ -625,7 +625,7 @@ func check_auto_conditions() -> void:
 		for i in 8:
 			await tree.process_frame
 		var look: Vector2 = MassLook.touching_radii(want[stage][0], want[stage][1], lab.RADIUS_A + lab.RADIUS_B)
-		if not (screen._missions.stage() == stage and lab.mass_a == want[stage][0] and lab.mass_b == want[stage][1]
+		if not (screen.mission_round.stage() == stage and lab.mass_a == want[stage][0] and lab.mass_b == want[stage][1]
 				and lab.model.mass_a == want[stage][0] and lab.model.mass_b == want[stage][1]
 				and lab.props.look.is_equal_approx(look)
 				and screen._control_widgets.mass_a.slider.value == want[stage][0] and screen._control_widgets.mass_b.slider.value == want[stage][1]
@@ -638,10 +638,10 @@ func check_auto_conditions() -> void:
 		_swipe(screen, from, pull_to)
 		_touch(screen, pull_to, false)
 		var guard := 0
-		while screen._missions.stamps == stage and guard < 900:
+		while screen.mission_round.stamps == stage and guard < 900:
 			await tree.physics_frame
 			guard += 1
-		if screen._missions.stamps != stage + 1:
+		if screen.mission_round.stamps != stage + 1:
 			problems.append("stage %d: not cleared by a %.1f m/s pull (impulse %s)" % [stage + 1, cleared[stage], str(lab.observations().get("impulse_b"))])
 			break
 		guard = 0
@@ -651,7 +651,7 @@ func check_auto_conditions() -> void:
 	# After the last stage the weights stay (the sliders still change them).
 	for i in 30:
 		await tree.process_frame
-	if not (screen._missions.stage() == -1 and lab.mass_a == 3.0 and lab.mass_b == 2.0):
+	if not (screen.mission_round.stage() == -1 and lab.mass_a == 3.0 and lab.mass_b == 2.0):
 		problems.append("after the round: masses %s / %s" % [lab.mass_a, lab.mass_b])
 	screen._set_control("mass_b", 1.0)
 	for i in 30:

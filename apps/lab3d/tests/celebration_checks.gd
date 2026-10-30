@@ -40,9 +40,9 @@ func check_stamp_slam() -> void:
 	await tree.process_frame
 	var cat: CatActor = screen.lab_cat()
 	var cheers := cat.cheers if cat != null else -1
-	var stages: Array = MissionTracker.missions(lab.definition).stages
-	screen._missions.stamps = 1
-	screen._mission_progress("projectile", 1)
+	var stages: Array = MissionRound.missions(lab.definition).stages
+	screen.mission_round.stamps = 1
+	screen.mission_round.demo_stamp(1)
 	var slam: StampSlam = screen._slam
 	var flying: bool = slam != null and slam.get_parent() == screen.view and slam.mouse_filter == Control.MOUSE_FILTER_IGNORE \
 		and slam.get_rect().encloses(Rect2(Vector2.ZERO, screen.view.size))
@@ -71,11 +71,11 @@ func check_stamp_slam() -> void:
 	expect.call(not is_instance_valid(slam) and screen._slam == null and (screen._stamp_labels[0] as Label).text == "●",
 		"stamp: it ends in its slot, which fills; the stamp node is freed", (screen._stamp_labels[0] as Label).text)
 	# Two in a row: the first lands at once, only one flies.
-	screen._missions.stamps = 2
-	screen._mission_progress("projectile", 2)
+	screen.mission_round.stamps = 2
+	screen.mission_round.demo_stamp(2)
 	var first: StampSlam = screen._slam
-	screen._missions.stamps = 3
-	screen._mission_progress("projectile", 3)
+	screen.mission_round.stamps = 3
+	screen.mission_round.demo_stamp(3)
 	await tree.process_frame
 	var slams: int = screen.view.get_children().filter(func(n: Node) -> bool: return n is StampSlam).size()
 	expect.call(not is_instance_valid(first) and slams == 1 and (screen._stamp_labels[1] as Label).text == "●"
@@ -97,15 +97,15 @@ func check_round_done() -> void:
 	var lab: Experiment = screen.experiment
 	(screen._choices.get_child(0) as Button).pressed.emit()
 	await tree.process_frame
-	# The round through the real tracker (a stand-in lab's results: 4, 6 and 8 m, other angles).
+	# The round through the real MissionRound (a stand-in lab's results: 4, 6 and 8 m, other angles).
 	var stand_in := _stand_in()
 	tree.root.add_child(stand_in)
 	for run in [[4.0, 45.0], [6.0, 50.0], [8.0, 40.0]]:
 		stand_in.range_m = run[0]
 		stand_in.angle = run[1]
-		screen._missions.on_run_ended("landed", stand_in, {"range": run[0], "hit_1": 1.0, "hit_2": 1.0, "hit_3": 1.0})
+		screen.mission_round.on_run_ended("landed", stand_in, {"range": run[0], "hit_1": 1.0, "hit_2": 1.0, "hit_3": 1.0})
 		expect.call(screen._card_left < 0.0 and screen._done_card == null and screen._confetti == null,
-			"round done: nothing celebrates while the stamp %d still flies" % screen._missions.stamps, "")
+			"round done: nothing celebrates while the stamp %d still flies" % screen.mission_round.stamps, "")
 		screen._slam.advance(StampSlam.TOTAL_S)
 	stand_in.queue_free()
 	await tree.process_frame

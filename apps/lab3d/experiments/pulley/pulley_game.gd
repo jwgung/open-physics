@@ -2,7 +2,7 @@
 ## look's mesh, the same size and mass look as the parcel it replaces) with the star piece behind a
 ## barred window in its front, and a shelf with three lamps stands on the gantry's left post at the
 ## height the chest reaches at the top (PulleyLab MAX_LIFT). A stage asks for the chest to be pulled
-## up to the shelf with the stage's strands (MissionTracker: the state "top", the required force
+## up to the shelf with the stage's strands (MissionRound: the state "top", the required force
 ## F = m g / n under the stage's threshold: 1 → 2 → 4 strands, the 20 kg load). The chest goes where
 ## the pulley model puts it (lift = rope pulled / n); a stamp lights a lamp, the last one swings the
 ## window's bars open and the piece hops out onto the shelf's side and down on uniform gravity

@@ -568,7 +568,7 @@ func check_story_places() -> void:
 	ProgressStore.set_mark(ProgressStore.STORY, "prologue", true)
 	var store := {}
 	for id in Story.spots():
-		store[id] = MissionTracker.missions(ExperimentRegistry.find(id)).stages.size()
+		store[id] = MissionRound.missions(ExperimentRegistry.find(id)).stages.size()
 	ProgressStore.save(store)
 	ProgressStore.set_last_spot("orbit")
 	home = await _home(TABLET, false)

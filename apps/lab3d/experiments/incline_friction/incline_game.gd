@@ -93,18 +93,18 @@ func build() -> void:
 	_jump(0)
 
 
-## The stage being played earns its stamp with the lab's setting now (MissionTracker's own rule:
+## The stage being played earns its stamp with the lab's setting now (MissionRound's own rule:
 ## the stage's conditions and its formula value, reach_n: the box's way meets the stage's row).
 func fits() -> bool:
 	var definition: Dictionary = lab.definition
-	var all: Array = MissionTracker.missions(definition).get("stages", [])
+	var all: Array = MissionRound.missions(definition).get("stages", [])
 	if stage < 0 or stage >= all.size():
 		return false
 	var entry: Dictionary = all[stage]
-	var how := MissionTracker.rule(definition, stage)
-	if not MissionTracker.conditions_met(entry.get("conditions", {}), lab):
+	var how := MissionRound.rule(definition, stage)
+	if not MissionRound.conditions_met(entry.get("conditions", {}), lab):
 		return false
-	return how.observe == "" or MissionTracker.beats(definition, how.observe, how.compare, entry, lab.observations())
+	return how.observe == "" or MissionRound.beats(definition, how.observe, how.compare, entry, lab.observations())
 
 
 ## Puts the rows (the lab calls it on every reset: an angle, a material, a new start, a new attempt).

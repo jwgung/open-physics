@@ -56,7 +56,7 @@ func _open(id: String) -> Control:
 	host.add_child(screen)
 	for i in 3:
 		await tree.process_frame
-	screen._end_question()
+	screen.mission_round.end_question()
 	return screen
 
 

@@ -1,7 +1,7 @@
 ## The lever's piece game (2026-10-29 "조각 꺼내기", batch B): the load is a heavy treasure chest
 ## (the load look's mesh, the same size and mass look as the parcel it replaces) and the star piece
 ## is stuck in a little pit in the ground under the chest's side of the beam. A stage asks for the
-## chest to be lifted with the stage's effort point (MissionTracker: "lifted", the force on the
+## chest to be lifted with the stage's effort point (MissionRound: "lifted", the force on the
 ## beam under the stage's threshold, the 20 kg load, near → mid → far). The beam turns to the lever
 ## model's one lift angle every time (the chest goes up the same way: LeverLabModel); the progress is
 ## the piece: each stamp wiggles it a step up out of its pit (it gets a little air while the chest is

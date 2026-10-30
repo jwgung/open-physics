@@ -368,7 +368,7 @@ func _demo_flag() -> void:
 	_demo_flag_done = true
 	ProgressStore.path = ProgressStore.BENCH_PATH   # never the child's progress
 	var store := ProgressStore.load()
-	store[id] = MissionTracker.missions(ExperimentRegistry.find(id)).get("stages", []).size()
+	store[id] = MissionRound.missions(ExperimentRegistry.find(id)).get("stages", []).size()
 	ProgressStore.save(store)
 	ProgressStore.mark_flag_pending(id)
 
@@ -825,7 +825,7 @@ func _refresh_flag(spot: Dictionary) -> void:
 	var flag: Node3D = _flags.get(spot.id)
 	if flag == null:
 		return
-	var stages: Array = MissionTracker.missions(spot.definition).get("stages", [])
+	var stages: Array = MissionRound.missions(spot.definition).get("stages", [])
 	if stages.is_empty():
 		flag.visible = false
 		return

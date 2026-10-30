@@ -85,7 +85,7 @@ func _close(screen: Control) -> void:
 ## The controls stage `stage` asks the child to set (its conditions, without the ones every stage
 ## asks the same of).
 func _asked(definition: Dictionary, stage: int) -> Array:
-	var stages: Array = MissionTracker.missions(definition).get("stages", [])
+	var stages: Array = MissionRound.missions(definition).get("stages", [])
 	var fixed := ConditionPicks.fixed_controls(definition)
 	var out := []
 	if ConditionPicks.auto(definition):
@@ -101,11 +101,11 @@ func _asked(definition: Dictionary, stage: int) -> Array:
 func check_rows(id: String) -> void:
 	var screen := await _open(id)
 	var definition: Dictionary = screen.definition
-	var stages: Array = MissionTracker.missions(definition).get("stages", [])
+	var stages: Array = MissionRound.missions(definition).get("stages", [])
 	var problems := []
-	if screen._asking and screen.picks_shown():
+	if screen.mission_round.asking() and screen.picks_shown():
 		problems.append("shown while Dugi asks")
-	screen._end_question()
+	screen.mission_round.end_question()
 	for stage in stages.size() + 1:
 		screen._show_stamps(stage)
 		for i in 2:
@@ -126,7 +126,7 @@ func check_rows(id: String) -> void:
 			problems.append("stage %d: row shown %s with %d buttons" % [stage + 1, screen.picks_shown(), buttons.size()])
 		for control in want:
 			var holds: Array = buttons.filter(func(p: Dictionary) -> bool: return p.control == control) \
-				.map(func(p: Dictionary) -> bool: return MissionTracker.condition_holds(stages[stage].conditions[control], p.preset.value))
+				.map(func(p: Dictionary) -> bool: return MissionRound.condition_holds(stages[stage].conditions[control], p.preset.value))
 			if not (holds.has(true) and holds.has(false)):
 				problems.append("stage %d: %s needs a button that fits and one that does not" % [stage + 1, control])
 		for pick in buttons:
@@ -144,7 +144,7 @@ func check_rows(id: String) -> void:
 
 func check_tap_is_sidebar(id: String) -> void:
 	var definition := ExperimentRegistry.find(id)
-	var stages: Array = MissionTracker.missions(definition).get("stages", [])
+	var stages: Array = MissionRound.missions(definition).get("stages", [])
 	var stage := -1
 	for i in stages.size():
 		if not ConditionPicks.groups(definition, i).is_empty():
@@ -152,7 +152,7 @@ func check_tap_is_sidebar(id: String) -> void:
 			break
 	if stage < 0:
 		var none := await _open(id)
-		none._end_question()
+		none.mission_round.end_question()
 		expect.call(none.pick_buttons().is_empty() and not none.picks_shown(), "easy controls (%s): no stage asks a condition: no picture buttons" % id, "")
 		await _close(none)
 		return
@@ -168,7 +168,7 @@ func check_tap_is_sidebar(id: String) -> void:
 				problems.append("%s = %s: tap %s, sidebar %s" % [group.control, str(preset.value), str(by_tap.slice(0, 2)), str(by_sidebar.slice(0, 2))])
 	# A sidebar change lights the matching button.
 	var screen := await _open(id)
-	screen._end_question()
+	screen.mission_round.end_question()
 	screen._show_stamps(stage)
 	var last: Dictionary = screen.pick_buttons()[-1]
 	_sidebar_change(screen, last.control, last.preset.value)
@@ -184,7 +184,7 @@ func check_tap_is_sidebar(id: String) -> void:
 ## for FRAMES_AFTER physics steps] of `control` = `preset` made by a tap (`tap`) or the sidebar.
 func _run_change(id: String, stage: int, control: String, preset: Dictionary, tap: bool) -> Array:
 	var screen := await _open(id)
-	screen._end_question()
+	screen.mission_round.end_question()
 	screen._show_stamps(stage)
 	if tap:
 		for pick in screen.pick_buttons():
@@ -222,24 +222,24 @@ func check_layout(id: String, size: Vector2) -> void:
 	var screen := await _open(id, size)
 	var problems := []
 	if screen.pick_buttons().is_empty():
-		screen._end_question()
+		screen.mission_round.end_question()
 		expect.call(not screen.picks_shown(), "easy controls (%s, %s): no picture buttons to lay out" % [id, size], "")
 		await _close(screen)
 		return
 	var lab: Experiment = screen.experiment
 	# The widest stage (most buttons).
-	var stages: Array = MissionTracker.missions(screen.definition).get("stages", [])
+	var stages: Array = MissionRound.missions(screen.definition).get("stages", [])
 	var widest := 0
 	for i in stages.size():
 		if ConditionPicks.groups(screen.definition, i).reduce(func(n: int, g: Dictionary) -> int: return n + g.presets.size(), 0) \
 				> ConditionPicks.groups(screen.definition, widest).reduce(func(n: int, g: Dictionary) -> int: return n + g.presets.size(), 0):
 			widest = i
 	# While Dugi asks: his question and picture buttons, no row.
-	if screen._asking and screen.picks_shown():
+	if screen.mission_round.asking() and screen.picks_shown():
 		problems.append("row shown with Dugi's question")
 	if screen._choices != null and screen.picks_shown() and screen._picks_row.get_rect().intersects(screen._choices.get_rect()):
 		problems.append("row over Dugi's picture buttons")
-	screen._end_question()
+	screen.mission_round.end_question()
 	screen._show_stamps(widest)
 	for i in 2:
 		await tree.process_frame
@@ -282,7 +282,7 @@ func check_layout(id: String, size: Vector2) -> void:
 	await _close(screen)
 	# Beside the open sidebar: shown only where it does not reach the actions.
 	var side := await _open(id, size, true)
-	side._end_question()
+	side.mission_round.end_question()
 	side._show_stamps(widest)
 	for i in 2:
 		await tree.process_frame
@@ -297,7 +297,7 @@ func check_layout(id: String, size: Vector2) -> void:
 
 func check_drags(id: String) -> void:
 	var screen := await _open(id)
-	screen._end_question()
+	screen.mission_round.end_question()
 	var lab: Experiment = screen.experiment
 	var m: Manipulator = screen.manipulator
 	var problems := []

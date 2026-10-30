@@ -63,7 +63,7 @@ func check_tags() -> void:
 		problems.append("map_wrong_face")
 	var labs := 0
 	for definition in ExperimentRegistry.load_all():
-		var stages: Array = MissionTracker.missions(definition).get("stages", [])
+		var stages: Array = MissionRound.missions(definition).get("stages", [])
 		if stages.is_empty():
 			continue
 		labs += 1
@@ -73,7 +73,7 @@ func check_tags() -> void:
 		for key in ["clue_face", "map_clue_face"]:
 			if not str(definition.get("story", {}).get(key, "")) in Story.FACES:
 				problems.append("%s story.%s" % [definition.id, key])
-		if not str(MissionTracker.predict(definition).get("question_face", "")) in Story.FACES:
+		if not str(MissionRound.predict(definition).get("question_face", "")) in Story.FACES:
 			problems.append("%s predict.question_face" % definition.id)
 		if not str(definition.get("kid", {}).get("say_face", "")) in Story.FACES:
 			problems.append("%s kid.say_face" % definition.id)
@@ -98,7 +98,7 @@ func check_puppy_words() -> void:
 	# The list is not vacuous: Dugi's own words use it (and are allowed to).
 	var dugi_uses := false
 	for definition in ExperimentRegistry.load_all():
-		for stage in MissionTracker.missions(definition).get("stages", []):
+		for stage in MissionRound.missions(definition).get("stages", []):
 			dugi_uses = dugi_uses or Story.SCIENCE_WORDS.any(func(w: String) -> bool: return str(stage.get("say", "")).contains(w))
 	expect.call(hits.is_empty() and lines.size() >= 27 and dugi_uses,
 		"faces: Puppy's %d lines (clues, riddles, not-here, story pages) explain no science (Dugi's lines may)" % lines.size(), "; ".join(hits))
@@ -222,7 +222,7 @@ func check_lab_faces() -> void:
 			box.advance()
 		await tree.process_frame
 		await tree.process_frame
-		var predict := MissionTracker.predict(screen.definition)
+		var predict := MissionRound.predict(screen.definition)
 		var question_ok: bool = box.speaker == "dugi" and box.text == str(predict.question) and box.face == "thinking"
 		var answer := str(predict.answer)
 		var other := ""
@@ -230,12 +230,12 @@ func check_lab_faces() -> void:
 			if str(choice.id) != answer:
 				other = str(choice.id)
 		screen._predict_pick_choice(answer if pick == "right" else other)
-		screen._predict_finish()
+		screen.mission_round.reveal()
 		# 2026-10-29: Dugi's bridge to the first mission first (its face), the reason only after the first
 		# attempt's result line (here a miss), then at once.
 		for k in int(DugiActor.RAISE_S * 60.0) + 4:
 			await tree.process_frame
-		var bridge_ok: bool = box.active and box.text == "%s %s" % [predict.bridge, ExperimentScreen.BRIDGE_FIRST] and box.face == str(predict.bridge_face)
+		var bridge_ok: bool = box.active and box.text == "%s %s" % [predict.bridge, MissionRound.BRIDGE_FIRST] and box.face == str(predict.bridge_face)
 		box.close(true)
 		screen.cast.dugi.stop(true)
 		await tree.process_frame
@@ -253,7 +253,7 @@ func check_lab_faces() -> void:
 		screen.cast.dugi.explain(screen.experiment.explain_point)
 		for k in int(DugiActor.RAISE_S * 60.0) + 4:
 			await tree.process_frame
-		var stage: Dictionary = MissionTracker.missions(screen.definition).stages[0]
+		var stage: Dictionary = MissionRound.missions(screen.definition).stages[0]
 		var say_ok: bool = box.active and box.text == str(stage.say) and box.face == str(stage.say_face)
 		expect.call(clue_ok and question_ok and bridge_ok and reason_ok and say_ok,
 			"faces (%s guess): Puppy's clue (surprised), Dugi's question (thinking), his bridge (happy), the reason after the first result (%s), then the stage's say with its face" % [pick, want_face],
@@ -268,23 +268,23 @@ func check_lab_faces() -> void:
 func check_stage_says() -> void:
 	var wrong := []
 	for definition in ExperimentRegistry.load_all():
-		var stages: Array = MissionTracker.missions(definition).get("stages", [])
+		var stages: Array = MissionRound.missions(definition).get("stages", [])
 		if stages.is_empty():
 			continue
 		DirAccess.remove_absolute(ProgressStore.path)
 		var screen := await _lab(str(definition.id), TABLET)
 		for k in stages.size() + 1:
-			screen._missions.stamps = k   # in memory only
-			screen._judged_run = false
+			screen.mission_round.stamps = k   # in memory only
+			screen.mission_round.judged_run = false
 			var want: Array = [str(stages[k].say), str(stages[k].say_face)] if k < stages.size() \
 				else [ExperimentRegistry.kid_text(definition, "say"), str(definition.kid.say_face)]
 			if str(screen.explain_say()) != str(want):
 				wrong.append("%s playing %d: %s" % [definition.id, k, str(screen.explain_say())])
 			if k > 0:
-				screen._judged_run = true   # the stamp of stage k-1 just came: its say
+				screen.mission_round.judged_run = true   # the stamp of stage k-1 just came: its say
 				if str(screen.explain_say()) != str([str(stages[k - 1].say), str(stages[k - 1].say_face)]):
 					wrong.append("%s cleared %d: %s" % [definition.id, k - 1, str(screen.explain_say())])
-		screen._missions.stamps = 0
+		screen.mission_round.stamps = 0
 		await _free(screen)
 	expect.call(wrong.is_empty(), "stage says: in all 11 labs Dugi explains the stage being played (or just cleared), kid.say once all are done", "; ".join(wrong))
 
@@ -294,12 +294,12 @@ func check_fit() -> void:
 	var over := []
 	for size in [PHONE, TABLET]:
 		for definition in ExperimentRegistry.load_all():
-			var stages: Array = MissionTracker.missions(definition).get("stages", [])
+			var stages: Array = MissionRound.missions(definition).get("stages", [])
 			if stages.is_empty():
 				continue
 			var screen := await _lab(str(definition.id), size)
 			var box: DialogueBox = screen.dialogue
-			var predict := MissionTracker.predict(definition)
+			var predict := MissionRound.predict(definition)
 			var texts := stages.map(func(s: Dictionary) -> String: return str(s.say)) + [str(predict.question), str(predict.reason), Story.clue(definition)]
 			for text in texts:
 				box.set_words(text)

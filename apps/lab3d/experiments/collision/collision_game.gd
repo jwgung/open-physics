@@ -1,6 +1,6 @@
 ## The collision's piece game (2026-10-29 "조각 꺼내기"): the star piece is frozen in an ice block on
 ## the right bumper, where the orange ball ends its run. A stage asks for the orange ball to leave
-## a hard enough push (MissionTracker: impulse_b, the formula's J_B = m_B Δv_B the orange ball gets in
+## a hard enough push (MissionRound: impulse_b, the formula's J_B = m_B Δv_B the orange ball gets in
 ## the hit, past 6.5 → 12 → 18 N·s since 2026-10-29; before: its speed after the hit). The ice shakes whenever the formula orange ball reaches the bumper (knock);
 ## a stamp cracks it (stages 1 and 2) at that knock, and the last one breaks it: the chunks and the
 ## piece fly out on uniform gravity (LabGame.launch_piece). Visual only: the ice is a picture on the

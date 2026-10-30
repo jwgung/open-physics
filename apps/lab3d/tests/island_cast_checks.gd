@@ -389,8 +389,8 @@ func check_projectile_explains() -> void:
 	var screen := await _open("projectile", TABLET)
 	var lab: Experiment = screen.experiment
 	var cast: IslandCast = screen.cast
-	screen._end_question()        # the prediction round is not under test here (game_round_checks):
-	screen._reason_pending = ""   # no question, and no reason told first
+	screen.mission_round.end_question()        # the prediction round is not under test here (game_round_checks):
+	screen.mission_round.reason = ""   # no question, and no reason told first
 	screen.experiment_action("release")
 	var guard := 0
 	while not cast.dugi.speaking() and guard < 600:
@@ -601,12 +601,12 @@ func check_dialogue() -> void:
 				# the question goes and his kid say text and the prediction's reason are checked the same way.
 				var say := ExperimentRegistry.kid_text(definition, "say")
 				var texts: Array = [say]
-				if screen._asking:
-					texts.push_front(str(MissionTracker.predict(definition).question))
-					texts.append(str(MissionTracker.predict(definition).reason))
+				if screen.mission_round.asking():
+					texts.push_front(str(MissionRound.predict(definition).question))
+					texts.append(str(MissionRound.predict(definition).reason))
 				for text in texts:
-					if text != texts[0] or not screen._asking:
-						screen._end_question()
+					if text != texts[0] or not screen.mission_round.asking():
+						screen.mission_round.end_question()
 						box.open(text)
 						screen._layout_dialogue()
 					split_problems.append_array(_page_problems(box, definition.id, text))
@@ -616,14 +616,14 @@ func check_dialogue() -> void:
 		"; ".join(split_problems) if not split_problems.is_empty() else "up to %d pages" % max_pages)
 
 	var screen := await _open("collision", TABLET)
-	screen._end_question()   # the prediction's question first goes (the round is not under test here)
-	screen._reason_pending = ""
+	screen.mission_round.end_question()   # the prediction's question first goes (the round is not under test here)
+	screen.mission_round.reason = ""
 	var cast: IslandCast = screen.cast
 	var box: DialogueBox = screen.dialogue
 	box.set_process(false)
 	# A long text (the shared one: two pages on a tablet) to turn pages: the round done (in memory), so
 	# Dugi says the lab's own words, here the long shared text.
-	screen._missions.stamps = MissionTracker.missions(screen.definition).stages.size()
+	screen.mission_round.stamps = MissionRound.missions(screen.definition).stages.size()
 	# Twice the shared text: with only 다시 beside it (2026-10-29) the box is wider and one fits a page.
 	cast.text = screen.definition.observe + " " + screen.definition.observe
 	cast.dugi.explain(screen.experiment.explain_point)
@@ -659,8 +659,8 @@ func check_dialogue() -> void:
 	# left (to clear him) but never back (it grew and shrank every frame, 2026-10-27 user report).
 	for screen_size in [PHONE, TABLET]:
 		var wide := await _open("rotation", screen_size)
-		wide._end_question()
-		wide._reason_pending = ""
+		wide.mission_round.end_question()
+		wide.mission_round.reason = ""
 		var wbox: DialogueBox = wide.dialogue
 		wbox.set_process(false)
 		wbox.words = wide.definition.observe

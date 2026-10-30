@@ -154,7 +154,7 @@ func run() -> void:
 func check_conditions() -> void:
 	var shared := []
 	for definition in ExperimentRegistry.load_all():
-		var stages: Array = MissionTracker.missions(definition).get("stages", [])
+		var stages: Array = MissionRound.missions(definition).get("stages", [])
 		for i in stages.size() - 1:
 			# A stage with `change` wants another throw than the one that cleared the stage before; one
 			# that judges another goal of its own (the throw's next crate, 2026-10-29) is another task.
@@ -179,7 +179,7 @@ static func _disjoint(a: Dictionary, b: Dictionary) -> bool:
 			continue
 		var ra := _range(a[id])
 		var rb := _range(b[id])
-		if ra.y < rb.x - MissionTracker.CONDITION_EPS or rb.y < ra.x - MissionTracker.CONDITION_EPS:
+		if ra.y < rb.x - MissionRound.CONDITION_EPS or rb.y < ra.x - MissionRound.CONDITION_EPS:
 			return true
 	return false
 
@@ -196,7 +196,7 @@ func check_round(id: String) -> void:
 	DirAccess.remove_absolute(ProgressStore.path)
 	var screen := await _open(ExperimentRegistry.find(id))
 	var lab: Experiment = screen.experiment
-	var missions := MissionTracker.missions(lab.definition)
+	var missions := MissionRound.missions(lab.definition)
 	# Before any run the formula answers read "?" (key cards and the sidebar).
 	screen._update_readouts(false)
 	var hidden_ok := true
@@ -209,7 +209,7 @@ func check_round(id: String) -> void:
 	if id == "orbit":
 		var props: OrbitProps = lab.props
 		hidden_ok = hidden_ok and props.path.multimesh.visible_instance_count == 0 and props.guide.multimesh.visible_instance_count == 0
-	expect.call(hidden_ok and screen._missions != null and screen._asking,
+	expect.call(hidden_ok and screen.mission_round != null and screen.mission_round.asking(),
 		"%s: the round opens with Dugi's question; the hidden answers read ? and no answer line or path is drawn" % id,
 		"%s %s" % [str(missions.get("hidden_until_end", [])), str(missions.get("hidden_series_until_end", []))])
 	var problems := []
@@ -228,7 +228,7 @@ func check_round(id: String) -> void:
 		for k in frames:
 			await tree.physics_frame
 			await tree.process_frame
-			if stamped_at < 0 and screen._missions.stamps != before:
+			if stamped_at < 0 and screen.mission_round.stamps != before:
 				stamped_at = k
 				# The run has its result: the hidden answers show (the panel's own text).
 				screen._update_readouts(false)
@@ -245,7 +245,7 @@ func check_round(id: String) -> void:
 			if stamped_at >= 0 and k >= stamped_at + AFTER_STAMP:
 				break
 		var stored := ProgressStore.stamps(ProgressStore.load(), id)
-		if stored != want or screen._missions.stamps != want:
+		if stored != want or screen.mission_round.stamps != want:
 			problems.append("%s: stamps %d (want %d, status %s, %s)" % [attempt[0], stored, want, lab.status(), _observed(lab)])
 		if game != null and stored < 3 and (game.piece_state != "held" or not game.piece.visible):
 			problems.append("%s: the piece left its object before the last stamp (%s)" % [attempt[0], game.piece_state])
@@ -266,7 +266,7 @@ func check_round(id: String) -> void:
 
 ## The mission's value now (for a failure message).
 func _observed(lab: Experiment) -> String:
-	var observe := str(MissionTracker.missions(lab.definition).get("observe", ""))
+	var observe := str(MissionRound.missions(lab.definition).get("observe", ""))
 	return "%s = %s" % [observe, str(lab.observations().get(observe))] if observe != "" else "state goal"
 
 
@@ -327,7 +327,7 @@ func _ops(screen: Control, ops: Array) -> void:
 # --- physics unchanged ----------------------------------------------------------------------------
 
 ## The first two attempts of the round on a screen with the round and on one without the missions /
-## predict blocks (no tracker): the formula values, the status and every engine body at each step.
+## predict blocks (no round): the formula values, the status and every engine body at each step.
 func check_physics_unchanged(id: String, beside := "") -> void:
 	DirAccess.remove_absolute(ProgressStore.path)
 	var plain: Array = await _record(id, false)
@@ -349,7 +349,7 @@ func check_physics_unchanged(id: String, beside := "") -> void:
 ## differently at step 268 of 290 in a full run (the flaky "missions on/off" comparison).
 func check_isolated_worlds() -> void:
 	var other := await _open(ExperimentRegistry.find("free-fall"))
-	other._end_question()
+	other.mission_round.end_question()
 	other.experiment_action("release")
 	await check_physics_unchanged("incline-friction", " — with a free-fall screen open beside it (each screen its own physics world)")
 	await _free(other)
@@ -405,7 +405,7 @@ func check_pictures() -> void:
 	canvas.queue_free()
 	var pictured := true
 	for definition in ExperimentRegistry.load_all():
-		var choices: Array = MissionTracker.predict(definition).get("choices", [])
+		var choices: Array = MissionRound.predict(definition).get("choices", [])
 		pictured = pictured and choices.size() == 2 and choices[0].picture != choices[1].picture
 	expect.call(drawn == PredictPictures.KINDS and pictured,
 		"pictures: every kind draws; every lab's two choices are two different pictures", str(drawn.size()))

@@ -163,8 +163,8 @@ func _open(definition: Dictionary) -> Control:
 		await tree.process_frame
 	await tree.physics_frame
 	await tree.process_frame
-	if screen._asking:
-		screen._end_question()   # the child answers Dugi first: his question takes every touch
+	if screen.mission_round.asking():
+		screen.mission_round.end_question()   # the child answers Dugi first: his question takes every touch
 	return screen
 
 
@@ -355,8 +355,8 @@ func _case(definition: Dictionary, wait: int, sidebar: bool, hold_box: bool) -> 
 	await tree.process_frame
 	# The child answers Dugi first (2026-10-29): his question's shield takes every touch, so before this
 	# the taps on the run button and on 처음으로 below never reached them in the game labs.
-	if screen._asking:
-		screen._end_question()
+	if screen.mission_round.asking():
+		screen.mission_round.end_question()
 	var lab: Experiment = screen.experiment
 	var bodies0 := _bodies(lab)
 	var obs0 := str(lab.observations())

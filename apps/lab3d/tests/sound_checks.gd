@@ -198,8 +198,8 @@ func check_question_and_celebration() -> void:
 	board.requests.clear()
 	(screen._choices.get_child(0) as Button).pressed.emit()
 	var answered := _last()
-	screen._missions.stamps = 1
-	screen._mission_progress("projectile", 1)
+	screen.mission_round.stamps = 1
+	screen.mission_round.demo_stamp(1)
 	var slam: StampSlam = screen._slam
 	board.requests.clear()
 	slam.advance(StampSlam.DROP_S * 0.5)

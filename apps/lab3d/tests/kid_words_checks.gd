@@ -1,6 +1,6 @@
 ## The kid screen's words and the science note (2026-10-28 user decisions "어려운 말들은 세부 쪽으로
 ## 빼자", "세부쪽도 좀 정리가 필요해"):
-## - the number judged is the number shown (MissionTracker.shown: the card's one decimal),
+## - the number judged is the number shown (MissionRound.shown: the card's one decimal),
 ## - the free fall's card and stamps are the red ball's own time (not the slowest ball's),
 ## - the spring's first stage shows how far the ball was pulled, the later stages the swing,
 ## - the push's card is a bar (no "뉴턴" on the kid screen), its number in "자세히",
@@ -75,7 +75,7 @@ func check_shown_number() -> void:
 	tree.root.add_child(lab)
 	var seen := []
 	for value in [3.04, 3.06, 0.96, 0.94]:
-		seen.append(MissionTracker.judge(definition, 0 if value > 2.0 else 1, "landed", lab, {"t": value}))
+		seen.append(MissionRound.judge(definition, 0 if value > 2.0 else 1, "landed", lab, {"t": value}))
 	var cards := [3.04, 3.06, 0.96, 0.94].map(func(v: float) -> String: return ExperimentScreen.card_text(definition, definition.observations[0], v))
 	lab.free()
 	DirAccess.remove_absolute(ProgressStore.path)
@@ -96,7 +96,7 @@ static func kid_texts(definition: Dictionary) -> Array:
 	var kid: Dictionary = definition.get("kid", {}) if definition.get("kid") is Dictionary else {}
 	for key in ["cards", "states", "minus"]:
 		texts.append_array((kid.get(key, {}) as Dictionary).values())
-	var predict := MissionTracker.predict(definition)
+	var predict := MissionRound.predict(definition)
 	texts.append(str(predict.get("question", "")))
 	texts.append(str(predict.get("reason", "")))
 	for choice in predict.get("choices", []):
@@ -110,7 +110,7 @@ static func kid_texts(definition: Dictionary) -> Array:
 ## The stage texts and the picture buttons' labels (no decimals there: "2미터", "가벼운 공").
 static func stage_and_pick_texts(definition: Dictionary) -> Array:
 	var texts := []
-	for stage in MissionTracker.missions(definition).get("stages", []):
+	for stage in MissionRound.missions(definition).get("stages", []):
 		texts.append(str(stage.get("text", "")))
 	for presets in ConditionPicks.picks(definition).values():
 		for preset in presets:
@@ -146,23 +146,23 @@ func check_content_lint() -> void:
 	# The approved wordings (2026-10-28).
 	var want := {
 		"pulley": [ExperimentRegistry.kid_text(ExperimentRegistry.find("pulley"), "title"), "줄이 많으면 힘이 덜 들까?"],
-		"buoyancy": [MissionTracker.missions(ExperimentRegistry.find("buoyancy")).stages[0].text, "보물 상자를 매단 큰 통을 물에 띄우기!"],
+		"buoyancy": [MissionRound.missions(ExperimentRegistry.find("buoyancy")).stages[0].text, "보물 상자를 매단 큰 통을 물에 띄우기!"],
 		"constraints": [ExperimentRegistry.find("constraints").story.clue, "거북이 시계 속에 조각이 있어! 공을 시계 추랑 똑같이 흔들어 보자!"],
 		# The piece game's stages (2026-10-29).
-		"spring": [MissionTracker.missions(ExperimentRegistry.find("spring")).stages.map(func(s: Dictionary) -> String: return s.text),
+		"spring": [MissionRound.missions(ExperimentRegistry.find("spring")).stages.map(func(s: Dictionary) -> String: return s.text),
 			["가벼운 공을 당겨 가까운 종 치기!", "더 멀리 당겨서 먼 종 치기!", "무거운 공으로 제일 먼 종 치기!"]],
-		"free-fall": [MissionTracker.missions(ExperimentRegistry.find("free-fall")).stages.map(func(s: Dictionary) -> String: return s.text),
+		"free-fall": [MissionRound.missions(ExperimentRegistry.find("free-fall")).stages.map(func(s: Dictionary) -> String: return s.text),
 			["빨간 공과 분홍 공을 같이 떨어뜨려 버튼 누르기!", "달에서 두 공을 맨 위에서 같이 떨어뜨리기!", "목성에서 두 공을 같이 1초 안에 떨어뜨리기!"]],
-		"collision": [MissionTracker.missions(ExperimentRegistry.find("collision")).stages.map(func(s: Dictionary) -> String: return s.text),
+		"collision": [MissionRound.missions(ExperimentRegistry.find("collision")).stages.map(func(s: Dictionary) -> String: return s.text),
 			["같은 무게 공을 세게 부딪혀 얼음에 금 내기!", "무거운 파란 공으로 더 세게 부딪히기!", "무거운 주황 공을 세게 쳐서 얼음 깨기!"]],
 		# Batch B (2026-10-29) and the throw's angle game.
-		"projectile": [MissionTracker.missions(ExperimentRegistry.find("projectile")).stages.map(func(s: Dictionary) -> String: return s.text),
+		"projectile": [MissionRound.missions(ExperimentRegistry.find("projectile")).stages.map(func(s: Dictionary) -> String: return s.text),
 			["낮게 던져서 가까운 상자 맞히기!", "얼마나 기울여 던질까? 먼 상자 맞히기!", "높이 던져서 나무 위 상자 맞히기!"]],
-		"constraints_stages": [MissionTracker.missions(ExperimentRegistry.find("constraints")).stages.map(func(s: Dictionary) -> String: return s.text),
+		"constraints_stages": [MissionRound.missions(ExperimentRegistry.find("constraints")).stages.map(func(s: Dictionary) -> String: return s.text),
 			["지구에서 긴 줄로 거북이 박자 맞추기!", "달에서 짧은 줄로 느린 거북이 박자 맞추기!", "달에서 아주 긴 줄로 아주 느린 박자 맞추기!"]],
-		"pulley_stages": [MissionTracker.missions(ExperimentRegistry.find("pulley")).stages.map(func(s: Dictionary) -> String: return s.text),
+		"pulley_stages": [MissionRound.missions(ExperimentRegistry.find("pulley")).stages.map(func(s: Dictionary) -> String: return s.text),
 			["1줄로 보물 상자를 선반까지 올리기!", "2줄로 보물 상자를 선반까지 올리기!", "4줄로 가볍게 선반까지 올리기!"]],
-		"incline-friction": [MissionTracker.missions(ExperimentRegistry.find("incline-friction")).stages.map(func(s: Dictionary) -> String: return s.text),
+		"incline-friction": [MissionRound.missions(ExperimentRegistry.find("incline-friction")).stages.map(func(s: Dictionary) -> String: return s.text),
 			["강철 미끄럼틀로 작은 도미노 넘어뜨리기!", "나무 미끄럼틀을 더 기울여 큰 도미노 넘어뜨리기!", "고무 미끄럼틀을 많이 기울여 빨간 기둥 넘어뜨리기!"]],
 	}
 	for id in want:
@@ -191,7 +191,7 @@ func check_content_lint() -> void:
 ## while the slowest ball's time (`time`) runs on.
 func check_free_fall_card() -> void:
 	var screen := await _open("free-fall")
-	screen._end_question()
+	screen.mission_round.end_question()
 	var lab: Experiment = screen.experiment
 	screen._set_control("height", 2.0)
 	lab.manipulation_placed("yellow", Transform3D(Basis(), Vector3(lab.starts.yellow.x, 8.0 + 0.25, 0.0)))
@@ -212,7 +212,7 @@ func check_free_fall_card() -> void:
 ## past the rest ("반대쪽으로 간 길이"), "흔들면 보여요" until the ball got there, then the length in words.
 func check_spring_card() -> void:
 	var screen := await _open("spring")
-	screen._end_question()
+	screen.mission_round.end_question()
 	screen._poll()
 	var first: Array = screen.key_card_ids()
 	var caption := ExperimentRegistry.card_label(screen.definition, "bell_reach")
@@ -237,7 +237,7 @@ func check_spring_card() -> void:
 ## a heavier box, the number only in "자세히".
 func check_push_bar() -> void:
 	var screen := await _open("friction")
-	screen._end_question()
+	screen.mission_round.end_question()
 	var lab: Experiment = screen.experiment
 	var lengths := []
 	var problems := []

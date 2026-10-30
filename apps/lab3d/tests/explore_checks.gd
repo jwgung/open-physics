@@ -342,7 +342,7 @@ func check_bench_map() -> void:
 # --- helpers ---------------------------------------------------------------------------------------
 
 func _full(id: String) -> int:
-	return MissionTracker.missions(ExperimentRegistry.find(id)).get("stages", []).size()
+	return MissionRound.missions(ExperimentRegistry.find(id)).get("stages", []).size()
 
 
 ## The first `n` spots of the order complete.

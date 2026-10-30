@@ -237,7 +237,7 @@ func _demo_story(value: String) -> Dictionary:
 		ProgressStore.set_mark(ProgressStore.STORY, "prologue", true)
 	var store := {}
 	var full := func(spot: String) -> int:
-		return MissionTracker.missions(ExperimentRegistry.find(spot)).get("stages", []).size()
+		return MissionRound.missions(ExperimentRegistry.find(spot)).get("stages", []).size()
 	match kind:
 		"clue", "found":
 			if kind == "found":

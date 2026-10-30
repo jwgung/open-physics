@@ -3,7 +3,7 @@
 ## in front of the coil at the rod's height. Let go from a pull x₀ the ball swings to −x₀ (the formula
 ## SpringModel: no damping by default, the first turn at −x₀ e^(−γT/2) with damping) and pushes the
 ## knob when it gets past the bell's spot: the bell rings at the formula moment the ball's extension
-## reaches −d. A stage asks for the bell at d = 0.5, 1 and 1.5 m (MissionTracker: the lab's
+## reaches −d. A stage asks for the bell at d = 0.5, 1 and 1.5 m (MissionRound: the lab's
 ## `bell_reach` = how far the first swing goes past the rest, as shown, beyond the stage's threshold
 ## d − 0.05), the last with the heavy ball ("무거운 공도 같은 길이만큼 당기면 종에 닿아요": the swing's
 ## size does not depend on the mass). The piece hangs in the bell as its clapper; each stamp lights a
@@ -88,7 +88,7 @@ static func SpringLab_ROD_Y() -> float:
 ## Stage `i`'s bell distance d (m on the squeezed side): its threshold + 0.05 (a shown reach of d
 ## beats it, d − 0.1 does not).
 func stage_bell(i: int) -> float:
-	var stages_list: Array = MissionTracker.missions(lab.definition).get("stages", []) if lab != null else []
+	var stages_list: Array = MissionRound.missions(lab.definition).get("stages", []) if lab != null else []
 	if i >= 0 and i < stages_list.size():
 		return snappedf(float(stages_list[i].get("threshold", IDLE_BELL - 0.05)) + 0.05, 0.01)
 	return IDLE_BELL

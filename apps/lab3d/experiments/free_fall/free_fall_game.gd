@@ -1,6 +1,6 @@
 ## The free fall's piece game (2026-10-29 "조각 꺼내기"): a red and a yellow floor button under the red
 ## and the yellow ball, and a little barred house with the star piece inside. A stage asks for the two
-## balls (a heavy red one and the light yellow one) to press their buttons together: MissionTracker
+## balls (a heavy red one and the light yellow one) to press their buttons together: MissionRound
 ## judges "together_time", the formula landing time of both when their landings are within one fixed
 ## step of each other (|√(2h_red/g) − √(2h_yellow/g)| ≤ 1/60 s; the same height lands together
 ## whatever the mass), with the world of the stage (the earth, the Moon past 3 s, Jupiter under 1 s).

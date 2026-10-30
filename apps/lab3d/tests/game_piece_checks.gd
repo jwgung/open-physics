@@ -4,7 +4,7 @@
 ## - the judge functions: the projectile's crate hit (the formula path against the crate's box), the
 ##   collision's speed of B after the hit (CollisionModel), the free fall's landing together
 ##   (|√(2h₁/g) − √(2h₂/g)| ≤ one step), the slide's speed at its end (v = √(2ad)), the spring's
-##   period near the beat (T = 2π√(m/k), the same for every pull), MissionTracker's "near" / "also";
+##   period near the beat (T = 2π√(m/k), the same for every pull), MissionRound's "near" / "also";
 ## - each stage reachable with its fitting picture buttons (or throws) and not with a non-fitting one
 ##   where that is the lesson;
 ## - the piece in its object from the start, still there after stages 1 and 2, released by the last
@@ -56,9 +56,9 @@ func _goals() -> GDScript:
 
 ## The stage's rule beaten by `value` (shown number) for a stage's main observe.
 func _beats(definition: Dictionary, stage: int, value: float) -> bool:
-	var entry: Dictionary = MissionTracker.missions(definition).stages[stage]
-	var how := MissionTracker.rule(definition, stage)
-	return MissionTracker.beats(definition, how.observe, how.compare, entry, {how.observe: value})
+	var entry: Dictionary = MissionRound.missions(definition).stages[stage]
+	var how := MissionRound.rule(definition, stage)
+	return MissionRound.beats(definition, how.observe, how.compare, entry, {how.observe: value})
 
 
 func _lab(id: String) -> Experiment:
@@ -94,7 +94,7 @@ func _frames(n: int) -> void:
 		await tree.process_frame
 
 
-# --- MissionTracker: near and also ------------------------------------------------------------------
+# --- MissionRound: near and also ------------------------------------------------------------------
 
 func check_tracker_near_also() -> void:
 	DirAccess.remove_absolute(ProgressStore.path)
@@ -105,18 +105,18 @@ func check_tracker_near_also() -> void:
 			{"compare": "near", "threshold": 2.8, "tolerance": 0.2, "also": [{"observe": "x", "compare": "greater", "threshold": 0.05}, {"observe": "x", "compare": "less", "threshold": 1.0}], "text": "c"}]}}
 	var lab := Experiment.new()
 	tree.root.add_child(lab)
-	var tracker := MissionTracker.new()
+	var tracker := MissionRound.new()
 	tracker.definition = definition
 	var seen := []
 	for case in [[2.81, 1.2], [3.44, 2.4], [2.81, 2.0], [2.81, 2.1], [4.44, 1.0], [5.26, 1.0], [4.87, 1.0], [2.81, 1.5], [2.81, 0.0], [2.81, 0.6]]:
 		seen.append(tracker.on_run_ended("moving", lab, {"t": case[0], "x": case[1]}))
 	# The edges as shown (one decimal): 2.6 and 3.0 are near 2.8 (±0.2), 2.5 and 3.1 are not.
 	var edges := [2.6, 3.0, 2.54, 3.06].map(func(v: float) -> bool:
-		return MissionTracker.beats(definition, "t", "near", definition.missions.stages[0], {"t": v}))
+		return MissionRound.beats(definition, "t", "near", definition.missions.stages[0], {"t": v}))
 	lab.free()
 	DirAccess.remove_absolute(ProgressStore.path)
-	var registry := ExperimentRegistry._validate_missions({"observe": "t", "stages": [{"compare": "near", "threshold": 2.8, "text": "a"}]}, definition.observations)
-	var registry_also := ExperimentRegistry._validate_missions({"observe": "t", "stages": [{"threshold": 2.8, "also": [{"observe": "nope", "threshold": 1.0}], "text": "a"}]}, definition.observations)
+	var registry := MissionRound._validate_missions({"observe": "t", "stages": [{"compare": "near", "threshold": 2.8, "text": "a"}]}, definition.observations)
+	var registry_also := MissionRound._validate_missions({"observe": "t", "stages": [{"threshold": 2.8, "also": [{"observe": "nope", "threshold": 1.0}], "text": "a"}]}, definition.observations)
 	expect.call(seen == [false, false, false, true, false, false, true, false, false, true] and tracker.stamps == 3
 		and edges == [true, true, false, false] and not registry.is_empty() and not registry_also.is_empty(),
 		"piece game: a stage's \"near\" holds within its tolerance of the shown number and every \"also\" rule must hold too (the pull past 2 m with the 2.8 s beat; the 4.9 s beat; a little pull with the 2.8 s beat); the registry wants a tolerance and known also ids",
@@ -181,7 +181,7 @@ func check_projectile() -> void:
 func check_projectile_round() -> void:
 	DirAccess.remove_absolute(ProgressStore.path)
 	var screen := await _open(ExperimentRegistry.find("projectile"))
-	screen._end_question()
+	screen.mission_round.end_question()
 	var lab: Experiment = screen.experiment
 	var game: ProjectileGame = lab.game
 	var problems := []
@@ -194,12 +194,12 @@ func check_projectile_round() -> void:
 		for k in 240:
 			await tree.physics_frame
 			await tree.process_frame
-			var i: int = mini(screen._missions.stamps, 2)
+			var i: int = mini(screen.mission_round.stamps, 2)
 			if tipped_at < 0.0 and game._tipped[mini(throw[2], 3) - 1 if throw[2] > 0 else 0] and throw[2] > 0:
 				tipped_at = lab.clock()
-			if screen._missions.stamps >= throw[2] and lab.status() in ["landed", "out", "fence"] and k > 60:
+			if screen.mission_round.stamps >= throw[2] and lab.status() in ["landed", "out", "fence"] and k > 60:
 				break
-		var stamps: int = screen._missions.stamps
+		var stamps: int = screen.mission_round.stamps
 		if stamps != throw[2]:
 			problems.append("%s: stamps %d (want %d)" % [str(throw), stamps, throw[2]])
 		if throw[2] > 0 and throw != throws[2]:
@@ -298,7 +298,7 @@ func impulse_b(lab: Experiment, ma: float, mb: float, va: float) -> float:
 
 func check_collision() -> void:
 	var definition := ExperimentRegistry.find("collision")
-	var stages: Array = MissionTracker.missions(definition).stages
+	var stages: Array = MissionRound.missions(definition).stages
 	var lab: Experiment = await _lab("collision")
 	var problems := []
 	var pulls := []   # the slowest pull (0.5 m/s grid, from 5 m/s) that clears each stage with its fitting balls
@@ -391,7 +391,7 @@ func check_free_fall() -> void:
 	# Each stage wants the two different balls (the heavy red one: every stage alike, so it is no picture
 	# button, ConditionPicks) and its world (one button fits, the others not).
 	for i in 3:
-		var want: Dictionary = MissionTracker.missions(definition).stages[i].conditions
+		var want: Dictionary = MissionRound.missions(definition).stages[i].conditions
 		if want.get("mass") != "heavy" or (goals.call("picked", definition, i, "gravity", true) as Array) != [want.gravity] \
 				or (goals.call("picked", definition, i, "gravity", false) as Array).size() != 2:
 			problems.append("stage %d: the conditions / buttons" % (i + 1))
@@ -414,7 +414,7 @@ func check_free_fall() -> void:
 ## margins (how far the box at rest would get past the row's face) are in the report.
 func check_incline() -> void:
 	var definition := ExperimentRegistry.find("incline-friction")
-	var stages: Array = MissionTracker.missions(definition).stages
+	var stages: Array = MissionRound.missions(definition).stages
 	var goals := _goals()
 	var lab: Experiment = await _lab("incline-friction")
 	var problems := []
@@ -437,7 +437,7 @@ func check_incline() -> void:
 		lab.set_run_length(c[3])
 		var tag := "stage %d %s %s° run %s" % [stage + 1, c[1], c[2], c[3]]
 		var reach: float = lab.observations()["reach_%d" % (stage + 1)]
-		var stamped := MissionTracker.conditions_met(stages[stage].get("conditions", {}), lab) and _beats(definition, stage, reach)
+		var stamped := MissionRound.conditions_met(stages[stage].get("conditions", {}), lab) and _beats(definition, stage, reach)
 		if (reach > 0.5) != c[4] or stamped != c[5]:
 			problems.append("%s: reach %s, stamped %s" % [tag, reach, stamped])
 		var way: Dictionary = lab.arrival()
@@ -542,7 +542,7 @@ func push_hold_distance(lab: Experiment, seconds: float) -> float:
 
 func check_push_path() -> void:
 	var definition := ExperimentRegistry.find("friction")
-	var stages: Array = MissionTracker.missions(definition).stages
+	var stages: Array = MissionRound.missions(definition).stages
 	var lab: Experiment = await _lab("friction")
 	var problems := []
 	var shortest := {}
@@ -732,7 +732,7 @@ func check_incline_dominoes() -> void:
 	for size in [TABLET, Vector2(1560, 720)]:
 		DirAccess.remove_absolute(ProgressStore.path)
 		var screen := await _open(ExperimentRegistry.find("incline-friction"), size)
-		screen._end_question()
+		screen.mission_round.end_question()
 		var view: View3D = screen.view
 		var g2 := screen.experiment.game as InclineGame
 		for stage in 3:
@@ -764,7 +764,7 @@ func check_incline_dominoes() -> void:
 ## and the reason does open in that time.
 func check_incline_hit_view() -> void:
 	var definition := ExperimentRegistry.find("incline-friction")
-	var predict := MissionTracker.predict(definition)
+	var predict := MissionRound.predict(definition)
 	var problems := []
 	var seen := []
 	for size in [TABLET, Vector2(1560, 720)]:
@@ -773,8 +773,8 @@ func check_incline_hit_view() -> void:
 			if stage > 0:
 				ProgressStore.save({"incline-friction": stage})   # the earlier stages' stamps
 			var screen := await _open(definition, size)
-			screen._end_question()
-			screen._reason_pending = str(predict.reason)   # answered: told after the first result
+			screen.mission_round.end_question()
+			screen.mission_round.reason = str(predict.reason)   # answered: told after the first result
 			await _frames(3)
 			var lab: Experiment = screen.experiment
 			var game := lab.game as InclineGame
@@ -838,7 +838,7 @@ func check_incline_hit_view() -> void:
 ## extension gets to −d, never when the swing falls short.
 func check_spring() -> void:
 	var definition := ExperimentRegistry.find("spring")
-	var stages: Array = MissionTracker.missions(definition).stages
+	var stages: Array = MissionRound.missions(definition).stages
 	var problems := []
 	var reach := func(m: float, b: float, x0: float) -> float:
 		var model := SpringModel.new()
@@ -850,7 +850,7 @@ func check_spring() -> void:
 	for i in stages.size():
 		var d: float = bells[i]
 		for m in [1.0, 3.0]:
-			var fits := MissionTracker.condition_holds(stages[i].conditions.mass, m)
+			var fits := MissionRound.condition_holds(stages[i].conditions.mass, m)
 			# No damping: the swing reaches exactly the pull, whatever the mass.
 			if absf(reach.call(m, 0.0, d) - d) > 1e-9:
 				problems.append("%s kg from %s m reaches %s" % [m, d, reach.call(m, 0.0, d)])
@@ -904,7 +904,7 @@ func check_spring() -> void:
 ## load's look (the same node the mass look scales).
 func check_lever() -> void:
 	var definition := ExperimentRegistry.find("rotation")
-	var stages: Array = MissionTracker.missions(definition).stages
+	var stages: Array = MissionRound.missions(definition).stages
 	var lab: Experiment = await _lab("rotation")
 	var problems := []
 	var forces := []
@@ -914,7 +914,7 @@ func check_lever() -> void:
 			lab.set_control("mass", float(want.mass))
 			lab.set_control("effort", point)
 			var f: float = lab.model.required()
-			var lifted := _beats(definition, i, f) and MissionTracker.conditions_met(want, lab)
+			var lifted := _beats(definition, i, f) and MissionRound.conditions_met(want, lab)
 			if point == want.effort:
 				forces.append(snappedf(f, 0.1))
 			if lifted != (point == want.effort):
@@ -936,7 +936,7 @@ func check_lever() -> void:
 ## top) with its strands (F = m g / n under the threshold); halfway counts nothing.
 func check_pulley() -> void:
 	var definition := ExperimentRegistry.find("pulley")
-	var stages: Array = MissionTracker.missions(definition).stages
+	var stages: Array = MissionRound.missions(definition).stages
 	var lab: Experiment = await _lab("pulley")
 	var problems := []
 	var ropes := []
@@ -951,11 +951,11 @@ func check_pulley() -> void:
 			lab.set_stroke(half, false)
 			lab.let_go()
 			await tree.physics_frame
-			var judged_half := MissionTracker.judge(definition, i, lab.status(), lab, lab.observations()) > i
+			var judged_half := MissionRound.judge(definition, i, lab.status(), lab, lab.observations()) > i
 			lab.set_stroke(10000, false)
 			lab.let_go()
 			await tree.physics_frame
-			var judged_top := MissionTracker.judge(definition, i, lab.status(), lab, lab.observations()) > i
+			var judged_top := MissionRound.judge(definition, i, lab.status(), lab, lab.observations()) > i
 			if strands == want.strands:
 				ropes.append(snappedf(lab.model.pulled(), 0.01))
 			if judged_half or judged_top != (strands == want.strands) or lab.status() != "top" or absf(lab.model.lift() - lab.MAX_LIFT) > 1e-9:
@@ -987,7 +987,7 @@ static func half_swing(length: float, g: float, b: float, deg: float) -> float:
 ## rope anyway).
 func check_pendulum_beat() -> void:
 	var definition := ExperimentRegistry.find("constraints")
-	var stages: Array = MissionTracker.missions(definition).stages
+	var stages: Array = MissionRound.missions(definition).stages
 	var goals := _goals()
 	var problems := []
 	var seen := []
@@ -1021,7 +1021,7 @@ func check_pendulum_beat() -> void:
 ## the drum ROPE under its bottom and lies on the tank floor when the drum is low.
 func check_drum() -> void:
 	var definition := ExperimentRegistry.find("buoyancy")
-	var stages: Array = MissionTracker.missions(definition).stages
+	var stages: Array = MissionRound.missions(definition).stages
 	var goals := _goals()
 	var lab: Experiment = await _lab("buoyancy")
 	var problems := []
@@ -1039,7 +1039,7 @@ func check_drum() -> void:
 		var fitting := 0
 		for m in picks + [70.0]:
 			lab.set_control("mass", float(m))
-			var fits := MissionTracker.conditions_met(want, lab)
+			var fits := MissionRound.conditions_met(want, lab)
 			var floats: bool = lab.model.judgement() == "floats"
 			if fits:
 				fitting += 1
@@ -1051,7 +1051,7 @@ func check_drum() -> void:
 			problems.append("stage %d: no load fits" % [i + 1])
 	# Stage 1 any load in the big drum, stage 2 the heavy picks only, stage 3 the light pick only.
 	var fit_of := func(i: int) -> Array:
-		return picks.filter(func(m: float) -> bool: return MissionTracker.condition_holds(stages[i].conditions.get("mass", {}), m) if stages[i].conditions.has("mass") else true)
+		return picks.filter(func(m: float) -> bool: return MissionRound.condition_holds(stages[i].conditions.get("mass", {}), m) if stages[i].conditions.has("mass") else true)
 	if fit_of.call(0) != picks or fit_of.call(1) != [80.0, 95.0] or fit_of.call(2) != [45.0]:
 		problems.append("fitting picks %s / %s / %s" % [fit_of.call(0), fit_of.call(1), fit_of.call(2)])
 	# No number over the drum on the kid screen: the kilograms are in 자세히 only.
@@ -1109,7 +1109,7 @@ func check_orbit_piece() -> void:
 	# On the real screen: the circular lap at 4 m pops all the stage-1 sparkles.
 	DirAccess.remove_absolute(ProgressStore.path)
 	var screen := await _open(ExperimentRegistry.find("orbit"))
-	screen._end_question()
+	screen.mission_round.end_question()
 	var lab: Experiment = screen.experiment
 	screen._set_control("radius", 4.0)
 	screen.experiment_action("circular")
@@ -1118,16 +1118,16 @@ func check_orbit_piece() -> void:
 	for k in 700:   # until the lap's stamp (it lays the next stage's sparkles)
 		await tree.physics_frame
 		await tree.process_frame
-		if screen._missions.stamps >= 1:
+		if screen.mission_round.stamps >= 1:
 			break
 		taken = maxi(taken, (lab.game as OrbitGame).sparkles_taken())
-	if taken != OrbitGame.SPARKLES or screen._missions.stamps != 1:
-		problems.append("one lap at 4 m popped %d sparkles (stamps %d)" % [taken, screen._missions.stamps])
+	if taken != OrbitGame.SPARKLES or screen.mission_round.stamps != 1:
+		problems.append("one lap at 4 m popped %d sparkles (stamps %d)" % [taken, screen.mission_round.stamps])
 	# Stage 3 (two stamps saved): a 4.5 m/s tangent shot from 4 m takes the piece along and leaves it free.
 	await _free(screen)
 	ProgressStore.save({"orbit": 2})
 	screen = await _open(ExperimentRegistry.find("orbit"))
-	screen._end_question()
+	screen.mission_round.end_question()
 	lab = screen.experiment
 	var game := lab.game as OrbitGame
 	screen._set_control("radius", 4.0)
@@ -1139,11 +1139,11 @@ func check_orbit_piece() -> void:
 		await tree.physics_frame
 		await tree.process_frame
 		rode = rode or (game.attached and game.piece.global_position.distance_to(lab.planet.global_position) < OrbitGame.RIDE_UP + 0.01)
-		if screen._missions.stamps >= 3:
+		if screen.mission_round.stamps >= 3:
 			break
 	await _frames(10)
-	if not rode or screen._missions.stamps != 3 or game.piece_state != "out":
-		problems.append("stage 3: rode %s, stamps %d, piece %s" % [rode, screen._missions.stamps, game.piece_state])
+	if not rode or screen.mission_round.stamps != 3 or game.piece_state != "out":
+		problems.append("stage 3: rode %s, stamps %d, piece %s" % [rode, screen.mission_round.stamps, game.piece_state])
 	await _free(screen)
 	DirAccess.remove_absolute(ProgressStore.path)
 	expect.call(problems.is_empty(),
@@ -1158,7 +1158,7 @@ func check_pieces() -> void:
 	for id in PIECE_LABS:
 		DirAccess.remove_absolute(ProgressStore.path)
 		var screen := await _open(ExperimentRegistry.find(id))
-		screen._end_question()
+		screen.mission_round.end_question()
 		var lab: Experiment = screen.experiment
 		var game: LabGame = lab.game
 		if game == null or game.piece == null:
@@ -1169,8 +1169,8 @@ func check_pieces() -> void:
 		if not ((game.piece.visible or id == "projectile") and game.piece_state == "held" and game.piece.is_inside_tree()):
 			problems.append("%s: the piece is not shown in its object at the start" % id)
 		for stamps in [1, 2, 3]:
-			screen._missions.stamps = stamps   # the demo's way (in memory only)
-			screen._mission_progress(id, stamps)
+			screen.mission_round.stamps = stamps   # the demo's way (in memory only)
+			screen.mission_round.demo_stamp(stamps)
 			await _frames(120)
 			if stamps < 3 and game.piece_state != "held":
 				problems.append("%s: released after stamp %d" % [id, stamps])
@@ -1213,11 +1213,11 @@ func check_found_piece_flies() -> void:
 	Story.enabled = true
 	ProgressStore.set_mark(ProgressStore.CLUES, "free-fall", true)
 	var screen := await _open(ExperimentRegistry.find("free-fall"))
-	screen._end_question()
+	screen.mission_round.end_question()
 	var game: LabGame = screen.experiment.game
 	for stamps in [1, 2, 3]:
-		screen._missions.stamps = stamps
-		screen._mission_progress("free-fall", stamps)
+		screen.mission_round.stamps = stamps
+		screen.mission_round.demo_stamp(stamps)
 		await _frames(30)
 	screen._slam.advance(StampSlam.TOTAL_S)   # the last stamp lands
 	await _frames(60)                          # the piece hops out of the house
@@ -1279,7 +1279,7 @@ func check_clue_glow() -> void:
 		var closed: bool = screen.handle_back() and not screen.clue_telling()
 		await _frames(int((ClueGlow.FADE_OUT_S + 0.2) * 60.0))
 		var off: bool = not game.highlighting() and glows.all(func(glow: ClueGlow) -> bool: return not glow.visible)
-		var asks: bool = screen._asking and screen.dialogue.active and screen.dialogue.speaker == "dugi"
+		var asks: bool = screen.mission_round.asking() and screen.dialogue.active and screen.dialogue.speaker == "dugi"
 		if not (telling and on and near and faint and closed and off and asks):
 			problems.append("%s: telling %s on %s near %s faint %s closed %s off %s asks %s" % [id, telling, on, near, faint, closed, off, asks])
 		Story.enabled = was
@@ -1311,15 +1311,15 @@ func check_words() -> void:
 	var problems := []
 	for id in want:
 		var definition := ExperimentRegistry.find(id)
-		var stages: Array = MissionTracker.missions(definition).stages
+		var stages: Array = MissionRound.missions(definition).stages
 		if not stages.any(func(s: Dictionary) -> bool: return str(s.text).contains(want[id])):
 			problems.append("%s: no stage text names %s" % [id, want[id]])
 		if not Story.clue(definition).contains(clue[id]):
 			problems.append("%s: the clue does not point at %s" % [id, clue[id]])
-	var spring_says: Array = MissionTracker.missions(ExperimentRegistry.find("spring")).stages.map(func(s: Dictionary) -> String: return str(s.say))
+	var spring_says: Array = MissionRound.missions(ExperimentRegistry.find("spring")).stages.map(func(s: Dictionary) -> String: return str(s.say))
 	if not spring_says.any(func(s: String) -> bool: return s.contains("무거운 공도 같은 길이만큼 당기면 종에 닿아요")):
 		problems.append("spring: no say tells the heavy ball goes as far")
-	var push_texts: Array = MissionTracker.missions(ExperimentRegistry.find("friction")).stages.map(func(s: Dictionary) -> String: return str(s.text))
+	var push_texts: Array = MissionRound.missions(ExperimentRegistry.find("friction")).stages.map(func(s: Dictionary) -> String: return str(s.text))
 	if not push_texts.any(func(s: String) -> bool: return s.contains("길")):
 		problems.append("friction: no stage text names the path")
 	expect.call(problems.is_empty(), "piece game: the stage texts name the game, Puppy's clue points at the object (the push: the path the box blocks; the spring: the bell), the spring says the heavy ball goes as far",

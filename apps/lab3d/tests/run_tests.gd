@@ -49,9 +49,13 @@
 ##    the explain cycle (rest -> point -> rest, the stick hidden at rest), the status trigger, placement
 ##    and layout in every experiment, physics and panels unchanged with the cast.
 ## 17. game G1 (tests/mission_checks.gd): the missions / predict blocks of the content, the
-##    MissionTracker (a landed run judged by the formula value, a short throw changes nothing),
+##    MissionRound (a landed run judged by the formula value, a short throw changes nothing),
 ##    the ProgressStore (user://progress.cfg, a corrupt file starts over) and the physics
 ##    invariant: the trajectory and the displayed values are the same with or without the mission.
+## 17a. the mission round as a module (tests/mission_round_checks.gd): MissionRound driven through its
+##    own interface with a stand-in lab and a memory store (clue, question, answer, bridge, the win line
+##    before the stamp, the reason after the first result line, misses, a finished place, no Dugi,
+##    automatic conditions), never changing the lab.
 ## 18. game, the other 10 labs (tests/lab_mission_checks.gd): per lab a scripted round through the
 ##    screen (a missed stage earns nothing, each stage reachable in the control ranges, one stamp per
 ##    attempt, the hidden answers), the same steps with and without the round, every picture.
@@ -263,7 +267,7 @@ func _run() -> void:
 	_expect(cast_checks != null and cast_checks.can_instantiate(), "island cast checks compile", "")
 	if cast_checks != null and cast_checks.can_instantiate():
 		await cast_checks.new(self, _expect).run()
-	print("== game G1: missions and predict blocks, MissionTracker, ProgressStore, physics unchanged ==")
+	print("== game G1: missions and predict blocks, MissionRound, ProgressStore, physics unchanged ==")
 	var mission: GDScript = load("res://tests/mission_checks.gd")
 	_expect(mission != null and mission.can_instantiate(), "mission checks compile", "")
 	if mission != null and mission.can_instantiate():
@@ -278,6 +282,11 @@ func _run() -> void:
 	_expect(slingshot != null and slingshot.can_instantiate(), "slingshot checks compile", "")
 	if slingshot != null and slingshot.can_instantiate():
 		await slingshot.new(self, _expect).run()
+	print("== the mission round as a module (MissionRound: clue, question, bridge, stamps, reason, misses, auto conditions) ==")
+	var round_module: GDScript = load("res://tests/mission_round_checks.gd")
+	_expect(round_module != null and round_module.can_instantiate(), "mission round checks compile", "")
+	if round_module != null and round_module.can_instantiate():
+		await round_module.new(self, _expect).run()
 	print("== game G4: the mission round (strip, prediction question, reason, stamps, done) ==")
 	var round: GDScript = load("res://tests/game_round_checks.gd")
 	_expect(round != null and round.can_instantiate(), "game round checks compile", "")
@@ -1383,7 +1392,7 @@ func _check_layout(definition: Dictionary) -> void:
 			for j in range(i + 1, overlays.size()):
 				apart = apart and not overlays[i].get_rect().intersects(overlays[j].get_rect())
 		# A game lab draws only 다시 (2026-10-29: every run starts from the hand); another lab every action.
-		var game_lab := not MissionTracker.missions(definition).is_empty()
+		var game_lab := not MissionRound.missions(definition).is_empty()
 		var actions_ok: bool = definition.actions.all(func(a: Dictionary) -> bool: return (game_lab and a.id != "reset" and not screen._action_buttons.has(a.id)) \
 			or (screen._action_buttons.has(a.id) and (screen._action_buttons[a.id].get_parent() == screen._action_row or screen._extra_actions.has(screen._action_buttons[a.id]))))
 		var compact: bool = screen._key_row.size.y <= 160.0 and screen._key_row.size.x <= size.x - 470.0 - 24.0

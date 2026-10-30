@@ -1,7 +1,7 @@
 ## The orbit's piece game (2026-10-29 "조각 꺼내기", batch B): the star piece floats far out in space,
 ## at HOME_R from the star on the side where a planet shot hard from 4 m along its circle leaves
 ## (a tangent launch past the escape speed √(2GM/r) = 3.67 m/s crosses HOME_R between about 41° and
-## 53° round from its start). Stages 1 and 2 are laps (MissionTracker: the formula's laps at 4 m, then
+## 53° round from its start). Stages 1 and 2 are laps (MissionRound: the formula's laps at 4 m, then
 ## two at 2 m): little sparkles sit on the stage's circle and pop when the formula planet passes them
 ## (a picture of the way round; the stamp is the laps'). Stage 3 asks for the planet to leave the star
 ## from 4 m (the state "far" on a launch past 3.67 m/s): when the leaving planet's formula position
@@ -109,8 +109,8 @@ func _jump(stamps: int) -> void:
 func _try_attach(orbit_lab: Variant) -> void:
 	if attached or stage != stages - 1 or piece_state != "held" or orbit_lab.status() != "leaving":
 		return
-	var stages_list: Array = MissionTracker.missions(lab.definition).get("stages", [])
-	if stage < stages_list.size() and not MissionTracker.conditions_met(stages_list[stage].get("conditions", {}), lab):
+	var stages_list: Array = MissionRound.missions(lab.definition).get("stages", [])
+	if stage < stages_list.size() and not MissionRound.conditions_met(stages_list[stage].get("conditions", {}), lab):
 		return
 	if orbit_lab.planet.global_position.distance_to(piece.global_position) <= ATTACH:
 		attached = true

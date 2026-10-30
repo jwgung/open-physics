@@ -237,11 +237,11 @@ func check_clue() -> void:
 	await tree.process_frame
 	await tree.process_frame
 	var asked: bool = box.active and box.speaker == "dugi" and box.name_label.text == "두기두기" and box.hold \
-		and box.text == str(MissionTracker.predict(screen.definition).question) and screen._choices.visible
+		and box.text == str(MissionRound.predict(screen.definition).question) and screen._choices.visible
 	expect.call(asked, "clue: then Dugi asks his question with the picture buttons", box.text)
 	await _free(screen)
 	screen = await _lab("projectile")
-	expect.call(screen.dialogue.speaker == "dugi" and screen.dialogue.text == str(MissionTracker.predict(screen.definition).question),
+	expect.call(screen.dialogue.speaker == "dugi" and screen.dialogue.text == str(MissionRound.predict(screen.definition).question),
 		"clue: never again in the same lab (Dugi's question at once)", screen.dialogue.text)
 	await _free(screen)
 	Story.enabled = false
@@ -266,8 +266,8 @@ func check_piece_found() -> void:
 	for run in [[4.0, 45.0], [6.0, 50.0], [8.0, 40.0]]:
 		stand_in.range_m = run[0]
 		stand_in.angle = run[1]
-		screen._missions.on_run_ended("landed", stand_in, {"range": run[0], "hit_1": 1.0, "hit_2": 1.0, "hit_3": 1.0})
-		if screen._missions.stamps < 3:
+		screen.mission_round.on_run_ended("landed", stand_in, {"range": run[0], "hit_1": 1.0, "hit_2": 1.0, "hit_3": 1.0})
+		if screen.mission_round.stamps < 3:
 			screen._slam.advance(StampSlam.TOTAL_S)
 			early = early and screen.found_piece() == null and ProgressStore.pending(ProgressStore.PIECES).is_empty()
 	expect.call(early, "piece: a cleared stage finds no piece", "")
@@ -347,7 +347,7 @@ func check_finale() -> void:
 	ProgressStore.set_mark(ProgressStore.STORY, "prologue", true)
 	var store := {}
 	for id in Story.spots():
-		store[id] = MissionTracker.missions(ExperimentRegistry.find(id)).stages.size()
+		store[id] = MissionRound.missions(ExperimentRegistry.find(id)).stages.size()
 	ProgressStore.save(store)
 	var almost := store.duplicate()
 	var home := await _home(TABLET, false)
@@ -407,7 +407,7 @@ func check_measurements() -> void:
 		"story: off (a measurement) the map plays nothing and shows no emblem", "")
 	await _free(home)
 	var screen := await _lab("buoyancy")
-	expect.call(screen.dialogue.speaker == "dugi" and screen._clue == "", "story: off, a lab tells no clue", "")
+	expect.call(screen.dialogue.speaker == "dugi" and screen.mission_round.phase() != MissionRound.Phase.CLUE, "story: off, a lab tells no clue", "")
 	await _free(screen)
 
 

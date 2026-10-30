@@ -8,7 +8,7 @@
 ## Visual only, like every prop (art-direction.md section 1): meshes under the experiment, no body,
 ## no collision, nothing the formulas or the panels read. The objects react to formula results the
 ## lab already has (a hit time, a landing, the speed at the slide's end) and to the stamps the screen
-## hands over (show_stage); the stamp itself is MissionTracker's, judged on the formula values.
+## hands over (show_stage); the stamp itself is MissionRound's, judged on the formula values.
 class_name LabGame
 extends Node3D
 

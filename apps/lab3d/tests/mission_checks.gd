@@ -1,5 +1,5 @@
 ## Plan G1: the mission and progress model — the missions / predict blocks of the content, the
-## MissionTracker (a landed run is judged by the formula value; a throw that falls short changes
+## MissionRound (a landed run is judged by the formula value; a throw that falls short changes
 ## nothing), the ProgressStore (user://progress.cfg, 0..3 stamps per spot, a corrupt file starts
 ## over), and the physics invariant: with and without the tracker on, the projectile's trajectory
 ## and displayed values are the same at every step.
@@ -132,8 +132,8 @@ func check_content() -> void:
 	# Every listed lab has its round now (Plan G2): three stages, a question with two pictures and an
 	# answer, a reason, and every threshold / condition inside the lab's controls (the registry).
 	for other in ExperimentRegistry.load_all():
-		var block := MissionTracker.missions(other)
-		var question := MissionTracker.predict(other)
+		var block := MissionRound.missions(other)
+		var question := MissionRound.predict(other)
 		expect.call((block.get("stages", []) as Array).size() == 3 and question.get("answer") in
 			(question.get("choices", []) as Array).map(func(c: Dictionary) -> Variant: return c.id) and str(question.get("reason", "")) != ""
 			and ExperimentRegistry.validate(other).is_empty(),
@@ -178,11 +178,11 @@ func check_kid_words() -> void:
 			texts.append(ExperimentRegistry.card_label(definition, id))
 			if not definition.get("kid", {}).get("cards", {}).has(id):
 				found.append("%s: no kid caption for %s" % [definition.id, id])
-		for stage in MissionTracker.missions(definition).get("stages", []):
+		for stage in MissionRound.missions(definition).get("stages", []):
 			texts.append(str(stage.text))
 			texts.append(str(stage.get("win", "")))    # Puppy's result lines (2026-10-29)
 			texts.append(str(stage.get("miss", "")))
-		var predict := MissionTracker.predict(definition)
+		var predict := MissionRound.predict(definition)
 		texts.append(str(predict.get("question", "")))
 		texts.append(str(predict.get("reason", "")))
 		texts.append(str(predict.get("bridge", "")))   # Dugi's bridge to the first mission (2026-10-29)
@@ -276,13 +276,13 @@ func check_mission_tracker() -> void:
 	DirAccess.remove_absolute(ProgressStore.path)
 	var definition := range_definition()
 	var awarded := []
-	var tracker := MissionTracker.new()
+	var tracker := MissionRound.new()
 	tracker.definition = definition
-	tracker.progress = func(id: String, stamps: int) -> void:
-		awarded.append([id, stamps])
+	tracker.stamp_earned.connect(func(stamps: int) -> void:
+		awarded.append([str(definition.id), stamps])
 		var store := ProgressStore.load()
 		store["projectile"] = stamps
-		ProgressStore.save(store)
+		ProgressStore.save(store))
 	var stubs := [
 		["settled", "extends Experiment\nvar speed := 6.0\nvar angle := 45.0\nfunc status() -> String:\n\treturn \"landed\"\nfunc settled() -> bool:\n\treturn true\nfunc control_value(id: String) -> Variant:\n\treturn angle if id == \"angle\" else speed\n"],
 		["not_settled", "extends Experiment\nvar speed := 6.0\nvar angle := 45.0\nfunc status() -> String:\n\treturn \"landed\"\nfunc settled() -> bool:\n\treturn false\nfunc control_value(id: String) -> Variant:\n\treturn angle if id == \"angle\" else speed\n"],
@@ -320,7 +320,7 @@ func check_mission_tracker() -> void:
 	expect.call(tracker.stage() == 1 and awarded == [["projectile", 1]],
 		"the same throw again (45°, 9 m/s) earns no second stamp, even past 5 m", str(awarded))
 	# A reopened place reads the kept throw: the same throw still earns nothing there.
-	var reopened := MissionTracker.new()
+	var reopened := MissionRound.new()
 	reopened.definition = definition
 	ProgressStore.save({"projectile": 1})
 	reopened.start()
@@ -342,14 +342,14 @@ func check_mission_tracker() -> void:
 	await tree.process_frame
 	expect.call(tracker.stage() == -1 and tracker.text() == "" and awarded == [["projectile", 1], ["projectile", 2], ["projectile", 3]],
 		"another angle (45°) past 7 m clears the last stage; all three stamps, done", "stage %d, %s" % [tracker.stage(), str(awarded)])
-	# MissionTracker.changed alone: no ids or no kept run counts as changed.
-	expect.call(MissionTracker.changed([], labs.settled, {"angle": 45.0}) and MissionTracker.changed(["angle"], labs.settled, {})
-		and not MissionTracker.changed(["angle"], labs.settled, {"angle": 45.0}) and MissionTracker.changed(["angle"], labs.settled, {"angle": 40.0}),
+	# MissionRound.changed alone: no ids or no kept run counts as changed.
+	expect.call(MissionRound.changed([], labs.settled, {"angle": 45.0}) and MissionRound.changed(["angle"], labs.settled, {})
+		and not MissionRound.changed(["angle"], labs.settled, {"angle": 45.0}) and MissionRound.changed(["angle"], labs.settled, {"angle": 40.0}),
 		"change: nothing named or nothing kept is a change; the same value is not, another one is", "")
 	# A lab without missions: nothing to track.
 	var plain := ExperimentRegistry.find("free-fall").duplicate(true)
 	plain.erase("missions")
-	var bare := MissionTracker.new()
+	var bare := MissionRound.new()
 	bare.definition = plain
 	expect.call(bare.stage() == -1 and bare.text() == "", "a lab without missions has no stage", "")
 	bare.on_run_ended("landed", labs.settled, {"range": 99.0})
@@ -373,7 +373,7 @@ func _check_judge_kinds() -> void:
 	var definition := {"id": "kinds", "missions": {"observe": "force", "compare": "less", "judge_on": ["lifted"], "stages": [
 		{"threshold": 150.0, "text": "a", "conditions": {"mass": 20.0}},
 		{"threshold": 100.0, "text": "b", "conditions": {"mass": {"min": 15.0}, "size": "big"}}]}}
-	var tracker := MissionTracker.new()
+	var tracker := MissionRound.new()
 	tracker.definition = definition
 	var seen := []
 	seen.append(tracker.on_run_ended("lifted", lab, {"force": 186.9}))   # not less than 150
@@ -387,7 +387,7 @@ func _check_judge_kinds() -> void:
 	expect.call(seen == [false, false, false, false, true, true] and tracker.stamps == 2,
 		"tracker: compare less (strict), judge_on, the stage's control conditions (a value, a range, an option)", str(seen))
 	DirAccess.remove_absolute(ProgressStore.path)
-	var state := MissionTracker.new()
+	var state := MissionRound.new()
 	state.definition = {"id": "state", "missions": {"judge_on": ["floating"], "stages": [
 		{"text": "a", "conditions": {"size": "small"}}, {"text": "b"}]}}
 	lab.size = "big"
@@ -397,10 +397,10 @@ func _check_judge_kinds() -> void:
 	var third := state.on_run_ended("moving", lab, {})
 	expect.call(not first and second and not third and state.stamps == 1,
 		"tracker: a state goal clears on its judge_on status with its conditions (no observe)", "%s %s %s" % [first, second, third])
-	expect.call(MissionTracker.result_in(ExperimentRegistry.find("constraints"), "swinging", {"rope_half_swing": "한 번 왕복하면 보여요"}) == false
-		and MissionTracker.result_in(ExperimentRegistry.find("constraints"), "swinging", {"rope_half_swing": 2.9})
-		and MissionTracker.result_in(ExperimentRegistry.find("projectile"), "fence", {"range": 9.0})
-		and not MissionTracker.result_in(ExperimentRegistry.find("projectile"), "flying", {"range": 9.0}),
+	expect.call(MissionRound.result_in(ExperimentRegistry.find("constraints"), "swinging", {"rope_half_swing": "한 번 왕복하면 보여요"}) == false
+		and MissionRound.result_in(ExperimentRegistry.find("constraints"), "swinging", {"rope_half_swing": 2.9})
+		and MissionRound.result_in(ExperimentRegistry.find("projectile"), "fence", {"range": 9.0})
+		and not MissionRound.result_in(ExperimentRegistry.find("projectile"), "flying", {"range": 9.0}),
 		"tracker: the result is in on a reveal_on status once the observed value is a number", "")
 	lab.queue_free()
 	DirAccess.remove_absolute(ProgressStore.path)
@@ -443,7 +443,7 @@ func check_progress_store() -> void:
 	# The store is the app's own file: a save after a corrupt read replaces it.
 	ProgressStore.save({"projectile": 1})
 	expect.call(ProgressStore.load() == {"projectile": 1}, "a save after a corrupt read replaces the file", str(ProgressStore.load()))
-	# The kept throw (MissionTracker `change`) lives beside the stamps: a stamp save keeps it, a value
+	# The kept throw (MissionRound `change`) lives beside the stamps: a stamp save keeps it, a value
 	# that is not an object reads back as none.
 	ProgressStore.save({"projectile": 1})
 	ProgressStore.save_cleared("projectile", {"speed": 7.5, "angle": 40.0})
@@ -486,7 +486,7 @@ func _record(missions: bool, slingshot: bool) -> Array:
 	await tree.process_frame
 	await tree.physics_frame
 	var lab: Experiment = screen.experiment
-	var tracked: bool = screen._missions != null
+	var tracked: bool = screen.mission_round != null
 	var out := []
 	var statuses := []
 	var previous := lab.status()

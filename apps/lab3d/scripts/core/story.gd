@@ -177,7 +177,7 @@ static func spots() -> Array:
 ## The spots whose piece is found: every stage stamped (an old save counts too).
 static func found(progress: Dictionary) -> Array:
 	return spots().filter(func(id: String) -> bool:
-		var stages: Array = MissionTracker.missions(ExperimentRegistry.find(id)).get("stages", [])
+		var stages: Array = MissionRound.missions(ExperimentRegistry.find(id)).get("stages", [])
 		return not stages.is_empty() and ProgressStore.stamps(progress, id) >= stages.size())
 
 

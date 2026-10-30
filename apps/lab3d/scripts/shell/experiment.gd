@@ -114,7 +114,7 @@ func status() -> String:
 
 ## The run is settled: the engine bodies have finished what the status already reports (the
 ## projectile's ball has landed and stopped bouncing, not merely reached the formula landing
-## within the slack). Read-only; the MissionTracker judges a cleared stage on the settled state.
+## within the slack). Read-only; the MissionRound judges a cleared stage on the settled state.
 func settled() -> bool:
 	return true
 

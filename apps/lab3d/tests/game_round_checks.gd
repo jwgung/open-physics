@@ -32,8 +32,8 @@ func check_round() -> void:
 	var screen := await _lab()
 	var lab: Experiment = screen.experiment
 	var m: Manipulator = screen.manipulator
-	var stages: Array = MissionTracker.missions(lab.definition).get("stages", [])
-	var predict: Dictionary = MissionTracker.predict(lab.definition)
+	var stages: Array = MissionRound.missions(lab.definition).get("stages", [])
+	var predict: Dictionary = MissionRound.predict(lab.definition)
 	# The strip: one stamp per stage and the first stage's text.
 	expect.call(screen._mission_strip != null and screen._mission_strip.visible and screen._stamp_labels.size() == stages.size()
 		and screen._mission_text.text == str(stages[0].text),
@@ -48,10 +48,10 @@ func check_round() -> void:
 	# Dugi asks in his own box (portrait, name tag), the two picture buttons over it.
 	var box: DialogueBox = screen.dialogue
 	var buttons: Array = screen._choices.get_children() if screen._choices != null else []
-	expect.call(screen._asking and box.active and box.visible and box.text == str(predict.question)
+	expect.call(screen.mission_round.asking() and box.active and box.visible and box.text == str(predict.question)
 		and box.portrait.visible and box.name_label.text == "두기두기" and buttons.size() == 2 and screen._choices.visible,
 		"round: Dugi asks the prediction in his dialogue box with two picture buttons",
-		"asking %s box %s '%s' buttons %d" % [str(screen._asking), str(box.active), box.text, buttons.size()])
+		"asking %s box %s '%s' buttons %d" % [str(screen.mission_round.asking()), str(box.active), box.text, buttons.size()])
 	var strip_ok: bool = screen._stamp_labels.all(func(l: Label) -> bool: return l.size.x > 8.0) \
 		and screen._mission_strip.get_rect().end.x <= screen._mission_text.position.x
 	expect.call(strip_ok, "round: the stamps sit side by side, clear of the stage text", str(screen._mission_strip.get_rect()))
@@ -77,7 +77,7 @@ func check_round() -> void:
 	motion.position = screen.view_point(lab.ball_center()) + Vector2(30.0, -30.0)
 	screen.view._gui_input(motion)
 	await tree.process_frame
-	expect.call(screen._asking and box.active, "round: the question stays until it is answered (timer, a tap on the box, mouse motion)", "")
+	expect.call(screen.mission_round.asking() and box.active, "round: the question stays until it is answered (timer, a tap on the box, mouse motion)", "")
 	# Behind the question the view is dimmed; the box and the buttons stand above the dim.
 	var shield: ColorRect = screen._question_shield
 	var dimmed: bool = shield != null and shield.color.a > 0.2 and shield.get_index() < screen.dialogue.get_index() \
@@ -102,12 +102,12 @@ func check_round() -> void:
 		lift.position = at
 		tree.root.push_input(lift)
 		await tree.process_frame
-	expect.call(shielded and screen._asking and box.active and not screen.is_sidebar_open() and screen.is_inside_tree() and screen._question_shield != null,
+	expect.call(shielded and screen.mission_round.asking() and box.active and not screen.is_sidebar_open() and screen.is_inside_tree() and screen._question_shield != null,
 		"round: while Dugi asks nothing behind takes a touch (ball, 다시, main button, 자세히, 지도)", str(behind))
 	# The pick: the question goes at once, the strip shows the pick, the next touch reaches the ball.
 	(buttons[0] as Button).pressed.emit()
 	# The pick goes at once; Dugi's bridge to the first mission follows (2026-10-29, its own box).
-	expect.call(screen._predict_pick == "near" and not screen._asking and not box.active and screen._choices == null
+	expect.call(screen.mission_round.pick == "near" and not screen.mission_round.asking() and not box.active and screen._choices == null
 		and screen._mission_text.text == ExperimentScreen.PICK_PREFIX + "가까이",
 		"round: a picked picture is kept and the question goes at once", screen._mission_text.text)
 	expect.call(screen.dialogue.get_index() == dialogue_home and screen._question_shield == null,
@@ -188,8 +188,8 @@ func check_round() -> void:
 	var again := await _lab()
 	var lab2: Experiment = again.experiment
 	var awarded := []
-	again._missions.progress = func(id: String, stamps: int) -> void: awarded.append(stamps)
-	expect.call(again._mission_text.text == ExperimentScreen.DONE_TEXT and not again._asking and again._choices == null,
+	again.mission_round.stamp_earned.connect(func(stamps: int) -> void: awarded.append(stamps))
+	expect.call(again._mission_text.text == ExperimentScreen.DONE_TEXT and not again.mission_round.asking() and again._choices == null,
 		"round: a reopened finished place keeps its stamps and asks nothing", again._mission_text.text)
 	await _throw(again, lab2, 45.0, 8.0)
 	await _run_to_end(lab2)
@@ -216,15 +216,15 @@ func check_late_settle() -> void:
 	script.reload()
 	var stand_in: Experiment = script.new()
 	tree.root.add_child(stand_in)
-	screen.experiment = stand_in
-	screen._missions_judge()   # landed, not settled yet
+	screen.mission_round.lab = stand_in
+	screen.mission_round.judge_run()   # landed, not settled yet
 	var none_yet := ProgressStore.stamps(ProgressStore.load(), "projectile") == 0
 	stand_in.done = true
-	screen._missions_judge()   # the next poll: settled
+	screen.mission_round.judge_run()   # the next poll: settled
 	var stamped := ProgressStore.stamps(ProgressStore.load(), "projectile")
-	screen._missions_judge()   # and once per throw
+	screen.mission_round.judge_run()   # and once per throw
 	var once := ProgressStore.stamps(ProgressStore.load(), "projectile") == stamped
-	screen.experiment = real
+	screen.mission_round.lab = real
 	stand_in.queue_free()
 	expect.call(none_yet and stamped == 1 and once,
 		"round: a landing the engine reports after the status flip still earns its stamp (nothing latched before, judged once)",

@@ -2,7 +2,7 @@
 ## 이걸 치우면 별에 도달하는 길이 열리는 거로"): a dirt path crosses the track at the box's start and
 ## runs back-left to the star piece on a stump; the box sits on the path and blocks it, three little
 ## gates stand on its last leg. A stage asks for the light, the normal and the heavy box to be pushed
-## off the path (MissionTracker: the formula distance from the start past the stage's threshold,
+## off the path (MissionRound: the formula distance from the start past the stage's threshold,
 ## PushFrictionModel; the box's mass). Each stamp swings one gate open; after the last the bread cat
 ## walks the opened path to the piece (once the box is at rest) and the screen hands it the piece
 ## there (piece_ready). Visual only: the path, the gates and the piece are pictures (no body); the

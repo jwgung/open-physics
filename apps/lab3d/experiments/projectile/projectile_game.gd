@@ -1,6 +1,6 @@
 ## The throw's piece game (2026-10-29 "조각 꺼내기"): three wooden crates on tree stumps along the
 ## throw, nearer and lower to farther and higher; the star piece sits on the last, highest crate.
-## A stage asks for its crate to be hit (MissionTracker: the stage's "hit_<n>" is 1). The lab knows
+## A stage asks for its crate to be hit (MissionRound: the stage's "hit_<n>" is 1). The lab knows
 ## the hit from the formula path alone (hit_time: the ball's centre on x(t) = x0 + vx t,
 ## y(t) = y0 + vy t − ½ g t², closer than its radius to the crate's box, before the formula landing,
 ## the fence or the island's edge); the crate tips when the formula clock reaches that time. The

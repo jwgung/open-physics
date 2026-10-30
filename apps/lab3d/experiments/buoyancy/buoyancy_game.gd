@@ -2,7 +2,7 @@
 ## short rope to the drum's side and hangs under the water beside it; the star piece peeks out under
 ## its lid. The drum moves as BuoyancyModel says and the chest only follows it (it hangs ROPE below
 ## the drum's bottom, and lies on the tank floor when the drum is that low). A stage asks for the
-## drum with the chest to float (MissionTracker: "floating", the stage's mass and volume: the mass
+## drum with the chest to float (MissionRound: "floating", the stage's mass and volume: the mass
 ## is the drum's and the chest's together, the stage's words). A stamp opens the lid a notch; the
 ## last one throws it open and the piece jumps out of the water onto the grass on uniform gravity
 ## (LabGame.launch_piece).

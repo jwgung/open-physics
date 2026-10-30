@@ -1,6 +1,6 @@
 ## The pendulum's piece game (2026-10-29 "조각 꺼내기", batch B; the spring's metronome, slower:
 ## "거북이 박자"): a turtle clock stands behind the two stands, a little pendulum on its back ticking
-## the stage's slow beat (MissionTracker: the stage's threshold, the beat in seconds); the star piece
+## the stage's slow beat (MissionRound: the stage's threshold, the beat in seconds); the star piece
 ## waits in the barred porch on the front of its shell. A stage asks for the string bob's swing to
 ## match the beat (the half swing x 2 of the formula model, as shown, within the stage's tolerance:
 ## the earth's long rope 3.2 s, the Moon's short rope 6.3 s, the Moon's very long rope 8.8 s). During a
@@ -118,9 +118,9 @@ static func body_mesh(lit: int) -> Mesh:
 	return _body_meshes[lit]
 
 
-## The stage's beat (s): its threshold, the period a matching swing has (MissionTracker "near").
+## The stage's beat (s): its threshold, the period a matching swing has (MissionRound "near").
 func beat() -> float:
-	var stages_list: Array = MissionTracker.missions(lab.definition).get("stages", []) if lab != null else []
+	var stages_list: Array = MissionRound.missions(lab.definition).get("stages", []) if lab != null else []
 	if stage < stages_list.size():
 		return float(stages_list[stage].get("threshold", IDLE_BEAT))
 	return IDLE_BEAT

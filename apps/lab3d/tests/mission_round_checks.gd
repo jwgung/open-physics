@@ -269,3 +269,5 @@ func check_auto_conditions() -> void:
 	expect.call(set_now == [{"mass_a": 3.0}] and again.stamps == 1 and judged_after,
 		"round module: conditions set inside the stamp's hand-over leave the attempt judged (one stamp per run)",
 		"stamps %d, judged %s, set %s" % [again.stamps, str(judged_after), str(set_now)])
+	for connection in again.stamp_earned.get_connections():   # the handler holds the round: no cycle left behind
+		again.stamp_earned.disconnect(connection.callable)

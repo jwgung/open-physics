@@ -391,8 +391,7 @@ static func _validate_missions(missions: Variant, observations: Array, controls:
 	if missions.get("compare", "greater") not in ["greater", "less"]:
 		problems.append("missions.compare must be greater or less")
 	for key in ["judge_on", "reveal_on"]:
-		var statuses: Variant = missions.get(key, DEFAULT_JUDGE_ON)
-		if not (statuses is Array and not statuses.is_empty() and statuses.all(func(v: Variant) -> bool: return v is String and v != "")):
+		if not _statuses(missions.get(key, DEFAULT_JUDGE_ON)):
 			problems.append("missions.%s must list statuses" % key)
 	if missions.has("auto_conditions") and not missions.auto_conditions is bool:
 		problems.append("missions.auto_conditions must be true or false")
@@ -442,7 +441,7 @@ static func _validate_missions(missions: Variant, observations: Array, controls:
 			problems.append("missions.stages[%d].tolerance must be a number > 0 (compare near)" % i)
 		elif not _valid_also(stage.get("also", []), ids):
 			problems.append("missions.stages[%d].also must list {observe: an observation id, compare, threshold > 0, tolerance > 0 when near}" % i)
-		elif stage.has("judge_on") and not (stage.judge_on is Array and not stage.judge_on.is_empty() and stage.judge_on.all(func(v: Variant) -> bool: return v is String and v != "")):
+		elif stage.has("judge_on") and not _statuses(stage.judge_on):
 			problems.append("missions.stages[%d].judge_on must list statuses" % i)
 		elif observed and not ((threshold is int or threshold is float) and threshold > 0.0):
 			problems.append("missions.stages[%d].threshold must be a number > 0" % i)

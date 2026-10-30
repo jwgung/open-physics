@@ -8,6 +8,9 @@
 ## A block with its own owner is read by that owner from `raw`: `missions` and `predict`
 ## (MissionRound), `kid` (ExperimentRegistry's kid texts, ConditionPicks), `story` (Story), `note`
 ## (ExperimentRegistry.note), `cast` (IslandCast). Read-only: the queries never change `raw`.
+##
+## Not a Dictionary: `definition.get("key")` compiles (Object.get reads a property) and returns null.
+## Use a query, or `raw` for a block (tests/experiment_definition_checks.gd looks for such calls).
 class_name ExperimentDefinition
 extends RefCounted
 
@@ -19,11 +22,15 @@ func _init(content: Dictionary = {}) -> void:
 	raw = content
 
 
-## `content` as a definition: a Dictionary is wrapped, a definition is returned as it is.
+## `content` as a definition: a Dictionary is wrapped, a definition is returned as it is. Anything
+## else is a caller's mistake: reported here (not later, where the empty definition is first read).
 static func of(content: Variant) -> ExperimentDefinition:
 	if content is ExperimentDefinition:
 		return content
-	return ExperimentDefinition.new(content if content is Dictionary else {})
+	if not content is Dictionary:
+		push_error("ExperimentDefinition.of: a definition or a Dictionary, not %s" % type_string(typeof(content)))
+		return ExperimentDefinition.new()
+	return ExperimentDefinition.new(content)
 
 
 ## The experiment's id.

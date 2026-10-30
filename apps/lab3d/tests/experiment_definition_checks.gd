@@ -31,6 +31,7 @@ func run() -> void:
 	check_observations_and_rules()
 	check_wrapping()
 	check_real_definitions()
+	check_no_dictionary_calls()
 
 
 func check_controls() -> void:
@@ -71,8 +72,7 @@ func check_observations_and_rules() -> void:
 
 func check_wrapping() -> void:
 	var d := ExperimentDefinition.new(SAMPLE)
-	expect.call(ExperimentDefinition.of(d) == d and ExperimentDefinition.of(SAMPLE).raw == SAMPLE
-		and ExperimentDefinition.of(null).raw.is_empty(),
+	expect.call(ExperimentDefinition.of(d) == d and ExperimentDefinition.of(SAMPLE).raw == SAMPLE,
 		"definition: of() wraps a Dictionary and passes a definition through", "")
 	var before := SAMPLE.duplicate(true)
 	d.control("speed")
@@ -98,3 +98,46 @@ func check_real_definitions() -> void:
 			if not rules.has(object.id) or rules[object.id].snap != float(object.get("snap", 0.0)):
 				problems.append("%s.%s rule" % [raw.id, object.id])
 	expect.call(problems.is_empty(), "definition: every real definition's controls, observations and manipulation rules", str(problems))
+
+
+## No script treats a definition as a Dictionary: `<x>.definition.get(` / `.has(` / `[` on an Experiment's
+## or a screen's definition compiles (Object.get) and silently reads null. Block owners take `.raw`.
+func check_no_dictionary_calls() -> void:
+	var found := []
+	var pattern := RegEx.create_from_string("\\bdefinition\\.(get|has)\\(|\\bdefinition\\[")
+	for dir in ["res://scripts", "res://experiments"]:
+		for path in _scripts(dir):
+			var lines := FileAccess.get_file_as_string(path).split("\n")
+			if lines.has("var definition: Dictionary"):
+				continue   # its own member is a Dictionary (MissionRound)
+			for i in lines.size():
+				var line := lines[i].strip_edges()
+				if line.begins_with("#") or pattern.search(line) == null:
+					continue
+				if _dictionary_param(lines, i):
+					continue
+				found.append("%s:%d" % [path, i + 1])
+	expect.call(found.is_empty(), "definition: no script calls get / has / [] on an ExperimentDefinition (use a query or raw)", str(found))
+
+
+## In the enclosing function `definition` is a Dictionary: its parameter (a block owner's raw
+## definition) or a local declared before this line.
+static func _dictionary_param(lines: PackedStringArray, at: int) -> bool:
+	for i in range(at, -1, -1):
+		var line := lines[i]
+		if line.begins_with("func ") or line.begins_with("static func "):
+			return line.contains("definition: Dictionary")
+		var code := line.strip_edges()
+		if code.begins_with("var definition :=") or code.begins_with("var definition: Dictionary"):
+			return true
+	return false
+
+
+static func _scripts(dir: String) -> Array:
+	var out := []
+	for file in DirAccess.get_files_at(dir):
+		if file.ends_with(".gd"):
+			out.append(dir.path_join(file))
+	for sub in DirAccess.get_directories_at(dir):
+		out.append_array(_scripts(dir.path_join(sub)))
+	return out

@@ -26,7 +26,7 @@ func _init(scene_tree: SceneTree, expect_fn: Callable) -> void:
 
 
 func run() -> void:
-	check_tracker_near_also()
+	check_round_near_also()
 	await check_projectile()
 	await check_projectile_round()
 	await check_projectile_one_crate()
@@ -96,7 +96,7 @@ func _frames(n: int) -> void:
 
 # --- MissionRound: near and also ------------------------------------------------------------------
 
-func check_tracker_near_also() -> void:
+func check_round_near_also() -> void:
 	DirAccess.remove_absolute(ProgressStore.path)
 	var definition := {"id": "near-test", "observations": [{"id": "t", "digits": 2}, {"id": "x", "digits": 2}],
 		"missions": {"observe": "t", "judge_on": ["moving"], "stages": [
@@ -105,11 +105,11 @@ func check_tracker_near_also() -> void:
 			{"compare": "near", "threshold": 2.8, "tolerance": 0.2, "also": [{"observe": "x", "compare": "greater", "threshold": 0.05}, {"observe": "x", "compare": "less", "threshold": 1.0}], "text": "c"}]}}
 	var lab := Experiment.new()
 	tree.root.add_child(lab)
-	var tracker := MissionRound.new()
-	tracker.definition = definition
+	var mission := MissionRound.new()
+	mission.definition = definition
 	var seen := []
 	for case in [[2.81, 1.2], [3.44, 2.4], [2.81, 2.0], [2.81, 2.1], [4.44, 1.0], [5.26, 1.0], [4.87, 1.0], [2.81, 1.5], [2.81, 0.0], [2.81, 0.6]]:
-		seen.append(tracker.on_run_ended("moving", lab, {"t": case[0], "x": case[1]}))
+		seen.append(mission.on_run_ended("moving", lab, {"t": case[0], "x": case[1]}))
 	# The edges as shown (one decimal): 2.6 and 3.0 are near 2.8 (±0.2), 2.5 and 3.1 are not.
 	var edges := [2.6, 3.0, 2.54, 3.06].map(func(v: float) -> bool:
 		return MissionRound.beats(definition, "t", "near", definition.missions.stages[0], {"t": v}))
@@ -117,7 +117,7 @@ func check_tracker_near_also() -> void:
 	DirAccess.remove_absolute(ProgressStore.path)
 	var registry := MissionRound._validate_missions({"observe": "t", "stages": [{"compare": "near", "threshold": 2.8, "text": "a"}]}, definition.observations)
 	var registry_also := MissionRound._validate_missions({"observe": "t", "stages": [{"threshold": 2.8, "also": [{"observe": "nope", "threshold": 1.0}], "text": "a"}]}, definition.observations)
-	expect.call(seen == [false, false, false, true, false, false, true, false, false, true] and tracker.stamps == 3
+	expect.call(seen == [false, false, false, true, false, false, true, false, false, true] and mission.stamps == 3
 		and edges == [true, true, false, false] and not registry.is_empty() and not registry_also.is_empty(),
 		"piece game: a stage's \"near\" holds within its tolerance of the shown number and every \"also\" rule must hold too (the pull past 2 m with the 2.8 s beat; the 4.9 s beat; a little pull with the 2.8 s beat); the registry wants a tolerance and known also ids",
 		"%s, edges %s, registry %s / %s" % [str(seen), str(edges), str(registry), str(registry_also)])

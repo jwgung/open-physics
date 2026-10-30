@@ -276,9 +276,9 @@ func check_mission_round() -> void:
 	DirAccess.remove_absolute(ProgressStore.path)
 	var definition := range_definition()
 	var awarded := []
-	var judged := MissionRound.new()
-	judged.definition = definition
-	judged.stamp_earned.connect(func(stamps: int) -> void:
+	var mission := MissionRound.new()
+	mission.definition = definition
+	mission.stamp_earned.connect(func(stamps: int) -> void:
 		awarded.append([str(definition.id), stamps])
 		var store := ProgressStore.load()
 		store["projectile"] = stamps
@@ -296,28 +296,28 @@ func check_mission_round() -> void:
 		tree.root.add_child(lab)
 		labs[stub[0]] = lab
 	var stages: Array = definition.missions.stages
-	expect.call(judged.stage() == 0 and judged.text() == stages[0].text, "the first stage is 3 m", judged.text())
-	judged.on_run_ended("flying", labs.settled, {"range": 4.0})
-	expect.call(judged.stage() == 0 and awarded.is_empty(), "a throw in flight is not judged", str(awarded))
-	judged.on_run_ended("landed", labs.settled, {"range": 2.9})
-	expect.call(judged.stage() == 0 and awarded.is_empty(), "a throw that falls short (2.9 m < 3 m) changes nothing", str(awarded))
-	judged.on_run_ended("landed", labs.settled, {"range": "닿지 않아요"})
-	expect.call(judged.stage() == 0 and awarded.is_empty(), "a run with no number is not judged", str(awarded))
-	judged.on_run_ended("out", labs.settled, {"range": 9.0})
-	expect.call(judged.stage() == 0 and awarded.is_empty(), "a flight out of the island is not a stage clear", str(awarded))
-	judged.on_run_ended("landed", labs.not_settled, {"range": 9.0})
-	expect.call(judged.stage() == 0 and awarded.is_empty(), "a landing the engine has not finished is not judged yet", str(awarded))
-	judged.on_run_ended("landed", labs.settled, {"range": 3.0})
-	expect.call(judged.stage() == 0 and awarded.is_empty(), "exactly at the threshold is not farther", str(awarded))
+	expect.call(mission.stage() == 0 and mission.text() == stages[0].text, "the first stage is 3 m", mission.text())
+	mission.on_run_ended("flying", labs.settled, {"range": 4.0})
+	expect.call(mission.stage() == 0 and awarded.is_empty(), "a throw in flight is not judged", str(awarded))
+	mission.on_run_ended("landed", labs.settled, {"range": 2.9})
+	expect.call(mission.stage() == 0 and awarded.is_empty(), "a throw that falls short (2.9 m < 3 m) changes nothing", str(awarded))
+	mission.on_run_ended("landed", labs.settled, {"range": "닿지 않아요"})
+	expect.call(mission.stage() == 0 and awarded.is_empty(), "a run with no number is not judged", str(awarded))
+	mission.on_run_ended("out", labs.settled, {"range": 9.0})
+	expect.call(mission.stage() == 0 and awarded.is_empty(), "a flight out of the island is not a stage clear", str(awarded))
+	mission.on_run_ended("landed", labs.not_settled, {"range": 9.0})
+	expect.call(mission.stage() == 0 and awarded.is_empty(), "a landing the engine has not finished is not judged yet", str(awarded))
+	mission.on_run_ended("landed", labs.settled, {"range": 3.0})
+	expect.call(mission.stage() == 0 and awarded.is_empty(), "exactly at the threshold is not farther", str(awarded))
 	labs.settled.speed = 9.0
-	judged.on_run_ended("landed", labs.settled, {"range": 8.26})
+	mission.on_run_ended("landed", labs.settled, {"range": 8.26})
 	await tree.process_frame
-	expect.call(judged.stage() == 1 and judged.text() == stages[1].text and awarded == [["projectile", 1]]
+	expect.call(mission.stage() == 1 and mission.text() == stages[1].text and awarded == [["projectile", 1]]
 		and ProgressStore.cleared("projectile") == {"speed": 9.0, "angle": 45.0},
 		"any throw past 3 m (even the strongest, 9 m/s) clears the first stage; its speed and angle are kept",
-		"%d stage, %s, kept %s" % [judged.stage(), str(awarded), str(ProgressStore.cleared("projectile"))])
-	judged.on_run_ended("landed", labs.settled, {"range": 8.26})
-	expect.call(judged.stage() == 1 and awarded == [["projectile", 1]],
+		"%d stage, %s, kept %s" % [mission.stage(), str(awarded), str(ProgressStore.cleared("projectile"))])
+	mission.on_run_ended("landed", labs.settled, {"range": 8.26})
+	expect.call(mission.stage() == 1 and awarded == [["projectile", 1]],
 		"the same throw again (45°, 9 m/s) earns no second stamp, even past 5 m", str(awarded))
 	# A reopened place reads the kept throw: the same throw still earns nothing there.
 	var reopened := MissionRound.new()
@@ -328,20 +328,20 @@ func check_mission_round() -> void:
 	expect.call(reopened.stamps == 1 and reopened.cleared == {"speed": 9.0, "angle": 45.0},
 		"a reopened place keeps the first stamp's throw: the same throw again earns nothing", str(reopened.cleared))
 	labs.settled.angle = 40.0
-	judged.on_run_ended("landed", labs.settled, {"range": 4.9})
-	expect.call(judged.stage() == 1 and awarded.size() == 1, "a changed throw short of 5 m changes nothing", str(awarded))
-	judged.on_run_ended("landed", labs.settled, {"range": 8.13})
+	mission.on_run_ended("landed", labs.settled, {"range": 4.9})
+	expect.call(mission.stage() == 1 and awarded.size() == 1, "a changed throw short of 5 m changes nothing", str(awarded))
+	mission.on_run_ended("landed", labs.settled, {"range": 8.13})
 	await tree.process_frame
-	expect.call(judged.stage() == 2 and awarded.size() == 2, "another angle (40°) past 5 m clears the second stage", str(awarded))
+	expect.call(mission.stage() == 2 and awarded.size() == 2, "another angle (40°) past 5 m clears the second stage", str(awarded))
 	labs.settled.speed = 8.5
-	judged.on_run_ended("landed", labs.settled, {"range": 7.26})
-	expect.call(judged.stage() == 2 and awarded.size() == 2,
+	mission.on_run_ended("landed", labs.settled, {"range": 7.26})
+	expect.call(mission.stage() == 2 and awarded.size() == 2,
 		"the third stage wants another angle: the second stamp's 40° (only the speed changed) earns nothing, however far", str(awarded))
 	labs.settled.angle = 45.0
-	judged.on_run_ended("landed", labs.settled, {"range": 7.37})
+	mission.on_run_ended("landed", labs.settled, {"range": 7.37})
 	await tree.process_frame
-	expect.call(judged.stage() == -1 and judged.text() == "" and awarded == [["projectile", 1], ["projectile", 2], ["projectile", 3]],
-		"another angle (45°) past 7 m clears the last stage; all three stamps, done", "stage %d, %s" % [judged.stage(), str(awarded)])
+	expect.call(mission.stage() == -1 and mission.text() == "" and awarded == [["projectile", 1], ["projectile", 2], ["projectile", 3]],
+		"another angle (45°) past 7 m clears the last stage; all three stamps, done", "stage %d, %s" % [mission.stage(), str(awarded)])
 	# MissionRound.changed alone: no ids or no kept run counts as changed.
 	expect.call(MissionRound.changed([], labs.settled, {"angle": 45.0}) and MissionRound.changed(["angle"], labs.settled, {})
 		and not MissionRound.changed(["angle"], labs.settled, {"angle": 45.0}) and MissionRound.changed(["angle"], labs.settled, {"angle": 40.0}),
@@ -373,19 +373,19 @@ func _check_judge_kinds() -> void:
 	var definition := {"id": "kinds", "missions": {"observe": "force", "compare": "less", "judge_on": ["lifted"], "stages": [
 		{"threshold": 150.0, "text": "a", "conditions": {"mass": 20.0}},
 		{"threshold": 100.0, "text": "b", "conditions": {"mass": {"min": 15.0}, "size": "big"}}]}}
-	var judged := MissionRound.new()
-	judged.definition = definition
+	var mission := MissionRound.new()
+	mission.definition = definition
 	var seen := []
-	seen.append(judged.on_run_ended("lifted", lab, {"force": 186.9}))   # not less than 150
-	seen.append(judged.on_run_ended("lifted", lab, {"force": 150.0}))   # exactly at it: not less
-	seen.append(judged.on_run_ended("pressing", lab, {"force": 40.0}))  # not a judge_on status
+	seen.append(mission.on_run_ended("lifted", lab, {"force": 186.9}))   # not less than 150
+	seen.append(mission.on_run_ended("lifted", lab, {"force": 150.0}))   # exactly at it: not less
+	seen.append(mission.on_run_ended("pressing", lab, {"force": 40.0}))  # not a judge_on status
 	lab.mass = 19.0
-	seen.append(judged.on_run_ended("lifted", lab, {"force": 40.0}))    # another load (20 kg wanted)
+	seen.append(mission.on_run_ended("lifted", lab, {"force": 40.0}))    # another load (20 kg wanted)
 	lab.mass = 20.0
-	seen.append(judged.on_run_ended("lifted", lab, {"force": 124.6}))   # clears stage 1
-	seen.append(judged.on_run_ended("lifted", lab, {"force": 99.0}))    # stage 2 (min 15 kg, big)
-	expect.call(seen == [false, false, false, false, true, true] and judged.stamps == 2,
-		"judged: compare less (strict), judge_on, the stage's control conditions (a value, a range, an option)", str(seen))
+	seen.append(mission.on_run_ended("lifted", lab, {"force": 124.6}))   # clears stage 1
+	seen.append(mission.on_run_ended("lifted", lab, {"force": 99.0}))    # stage 2 (min 15 kg, big)
+	expect.call(seen == [false, false, false, false, true, true] and mission.stamps == 2,
+		"round: compare less (strict), judge_on, the stage's control conditions (a value, a range, an option)", str(seen))
 	DirAccess.remove_absolute(ProgressStore.path)
 	var state := MissionRound.new()
 	state.definition = {"id": "state", "missions": {"judge_on": ["floating"], "stages": [
@@ -396,12 +396,12 @@ func _check_judge_kinds() -> void:
 	var second := state.on_run_ended("floating", lab, {})
 	var third := state.on_run_ended("moving", lab, {})
 	expect.call(not first and second and not third and state.stamps == 1,
-		"judged: a state goal clears on its judge_on status with its conditions (no observe)", "%s %s %s" % [first, second, third])
+		"round: a state goal clears on its judge_on status with its conditions (no observe)", "%s %s %s" % [first, second, third])
 	expect.call(MissionRound.result_in(ExperimentRegistry.find("constraints"), "swinging", {"rope_half_swing": "한 번 왕복하면 보여요"}) == false
 		and MissionRound.result_in(ExperimentRegistry.find("constraints"), "swinging", {"rope_half_swing": 2.9})
 		and MissionRound.result_in(ExperimentRegistry.find("projectile"), "fence", {"range": 9.0})
 		and not MissionRound.result_in(ExperimentRegistry.find("projectile"), "flying", {"range": 9.0}),
-		"judged: the result is in on a reveal_on status once the observed value is a number", "")
+		"round: the result is in on a reveal_on status once the observed value is a number", "")
 	lab.queue_free()
 	DirAccess.remove_absolute(ProgressStore.path)
 
@@ -468,7 +468,7 @@ func check_progress_store() -> void:
 ## One recorded throw of 40 deg at the fixed 8 m/s on the projectile screen (earth, 0.5 m): from the frame of
 ## the throw on, every 5th physics step the status, the panel's values and the engine ball's
 ## transform. `missions`: the screen with its mission round (the round judging, the strip, Dugi's
-## question) or a definition without the missions / predict blocks (no judged at all).
+## question) or a definition without the missions / predict blocks (no mission round at all).
 ## `slingshot`: the throw is a real pull on the ball through the view's touch input, else the two
 ## sliders and "공 놓기" (the same frame either way).
 func _record(missions: bool, slingshot: bool) -> Array:
@@ -539,7 +539,7 @@ func check_physics_unchanged() -> void:
 	var plain: Array = await _record(false, false)
 	var game: Array = await _record(true, false)
 	var pulled: Array = await _record(true, true)
-	expect.call(not plain[3] and game[3] and pulled[3], "physics check: the plain screen has no judged, the game screens have one", "")
+	expect.call(not plain[3] and game[3] and pulled[3], "physics check: the plain screen has no mission round, the game screens have one", "")
 	var with_round := _first_difference(plain[0], game[0])
 	expect.call(with_round == -1 and plain[0].size() > 100,
 		"projectile: with or without the mission round, the trajectory and the displayed values are the same at every step",

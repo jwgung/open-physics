@@ -327,7 +327,7 @@ func _ops(screen: Control, ops: Array) -> void:
 # --- physics unchanged ----------------------------------------------------------------------------
 
 ## The first two attempts of the round on a screen with the round and on one without the missions /
-## predict blocks (no tracker): the formula values, the status and every engine body at each step.
+## predict blocks (no round): the formula values, the status and every engine body at each step.
 func check_physics_unchanged(id: String, beside := "") -> void:
 	DirAccess.remove_absolute(ProgressStore.path)
 	var plain: Array = await _record(id, false)

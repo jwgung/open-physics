@@ -112,16 +112,16 @@ func check_rule_overrides() -> void:
 		"goal rules: a stage's observe / compare / judge_on replace the block's, the rest is the block's", str(rules))
 	var lab := Experiment.new()
 	tree.root.add_child(lab)
-	var judged := MissionRound.new()
-	judged.definition = definition
+	var mission := MissionRound.new()
+	mission.definition = definition
 	var seen := []
-	seen.append(judged.on_run_ended("landed", lab, {"t": 1.5}))   # stage 1: greater 2 -> no
-	seen.append(judged.on_run_ended("landed", lab, {"t": 2.5}))   # stage 1 cleared
-	seen.append(judged.on_run_ended("landed", lab, {"t": 2.5}))   # stage 2 is less 1 -> no
-	seen.append(judged.on_run_ended("landed", lab, {"t": 0.8}))   # stage 2 cleared (less)
-	seen.append(judged.on_run_ended("landed", lab, {"t": 0.8}))   # stage 3 judges "far" only
-	seen.append(judged.on_run_ended("far", lab, {}))              # a state goal: no number needed
-	expect.call(seen == [false, true, false, true, false, true] and judged.stamps == 3,
+	seen.append(mission.on_run_ended("landed", lab, {"t": 1.5}))   # stage 1: greater 2 -> no
+	seen.append(mission.on_run_ended("landed", lab, {"t": 2.5}))   # stage 1 cleared
+	seen.append(mission.on_run_ended("landed", lab, {"t": 2.5}))   # stage 2 is less 1 -> no
+	seen.append(mission.on_run_ended("landed", lab, {"t": 0.8}))   # stage 2 cleared (less)
+	seen.append(mission.on_run_ended("landed", lab, {"t": 0.8}))   # stage 3 judges "far" only
+	seen.append(mission.on_run_ended("far", lab, {}))              # a state goal: no number needed
+	expect.call(seen == [false, true, false, true, false, true] and mission.stamps == 3,
 		"goal rules: the round judges each stage by its own rule (greater, then less, then the state far without a number)", str(seen))
 	lab.free()
 	DirAccess.remove_absolute(ProgressStore.path)

@@ -97,7 +97,7 @@ func check_round_done() -> void:
 	var lab: Experiment = screen.experiment
 	(screen._choices.get_child(0) as Button).pressed.emit()
 	await tree.process_frame
-	# The round through the real tracker (a stand-in lab's results: 4, 6 and 8 m, other angles).
+	# The round through the real MissionRound (a stand-in lab's results: 4, 6 and 8 m, other angles).
 	var stand_in := _stand_in()
 	tree.root.add_child(stand_in)
 	for run in [[4.0, 45.0], [6.0, 50.0], [8.0, 40.0]]:

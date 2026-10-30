@@ -282,6 +282,11 @@ func _run() -> void:
 	_expect(slingshot != null and slingshot.can_instantiate(), "slingshot checks compile", "")
 	if slingshot != null and slingshot.can_instantiate():
 		await slingshot.new(self, _expect).run()
+	print("== the experiment definition (ExperimentDefinition: controls, options, ranges, grids, observations, manipulation rules) ==")
+	var definition_checks: GDScript = load("res://tests/experiment_definition_checks.gd")
+	_expect(definition_checks != null and definition_checks.can_instantiate(), "experiment definition checks compile", "")
+	if definition_checks != null and definition_checks.can_instantiate():
+		await definition_checks.new(self, _expect).run()
 	print("== the mission round as a module (MissionRound: clue, question, bridge, stamps, reason, misses, auto conditions) ==")
 	var round_module: GDScript = load("res://tests/mission_round_checks.gd")
 	_expect(round_module != null and round_module.can_instantiate(), "mission round checks compile", "")

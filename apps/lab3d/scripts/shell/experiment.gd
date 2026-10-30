@@ -185,7 +185,7 @@ func set_game_stage(stage: int, stamps: int, just_cleared: bool) -> void:
 		game.show_stage(stage, stamps, just_cleared)
 
 
-## Sets a control declared in definition.controls. `value` is a float for sliders and the option
+## Sets a control declared in definition.controls(). `value` is a float for sliders and the option
 ## id (String) for choices. Called once per control with its default before the first frame.
 func set_control(_id: String, _value: Variant) -> void:
 	pass

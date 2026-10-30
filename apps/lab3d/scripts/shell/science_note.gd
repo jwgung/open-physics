@@ -108,13 +108,13 @@ static func condition_text(control: Dictionary, value: Variant) -> String:
 	return ""
 
 
-## The AI apps of the chooser in their order: {name, package} (content/ai_apps.json).
 ## The web address the chooser also offers (a browser opens it), "" when none.
 static func ai_web() -> String:
 	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(APPS_PATH))
 	return str(parsed.get("web", "")) if parsed is Dictionary else ""
 
 
+## The AI apps of the chooser in their order: {name, package} (content/ai_apps.json).
 static func ai_apps() -> Array:
 	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(APPS_PATH))
 	var apps: Array = []

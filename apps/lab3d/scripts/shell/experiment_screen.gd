@@ -1,6 +1,6 @@
 ## Experiment screen (Task 2d, landscape only): the 3D view fills the screen; over it sit the
 ## back / title / settings / sidebar buttons, the experiment's key observations as small cards
-## (definition.key_observations) and its action buttons. Everything else (question, camera modes,
+## (the definition's key_observations) and its action buttons. Everything else (question, camera modes,
 ## conditions, all observations, graph, steps, law, terms) is in the right sidebar, which slides
 ## in and out. When it is open the 3D view shrinks to the area left of it (nothing in the scene is
 ## hidden behind the sidebar, and the sidebar needs no background: the clear color shows through,
@@ -38,7 +38,7 @@ const PICK_GROUP_GAP := 22.0                # between two conditions' buttons
 const MORE_CLOSED := "더 보기"              # the science note's collapsed rest (_build_sidebar)
 const MORE_OPEN := "접기"
 const ASK_TEXT := "AI에게 더 물어보기"
-## The science note's line when a run is shown faster than it is (definition.time_scale).
+## The science note's line when a run is shown faster than it is (definition.time_scale()).
 const TIME_SCALE_NOTE := "시간을 %s배 빠르게 보여 줘요. 숫자는 실제 시간 그대로예요."
 const ASK_CAPTION := "이 실험의 조건과 숫자로 질문을 만들어, 고른 AI 앱에 보내요."
 

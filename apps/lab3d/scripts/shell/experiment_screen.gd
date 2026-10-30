@@ -875,7 +875,7 @@ func _predict_pick_choice(choice_id: String) -> void:
 ## ("직접 던져 보면 알 수 있어요! 첫 번째 미션이에요.", pointing at the lab) and the mission strip pulses
 ## once. A tap or the read timer closes the box; nothing waits for it.
 func _start_bridge() -> void:
-	if mission_round.bridge_line() != "":
+	if mission_round.bridge_line() != "" and cast != null and cast.dugi != null:
 		_dialogue_started = false
 		cast.dugi.explain(experiment.explain_point)
 	_pulse_strip()
@@ -953,6 +953,8 @@ func result_bubble() -> ResultBubble:
 ## The prediction's reason, after the first result line (MissionRound.reason_due): Dugi explains now
 ## (an explanation of the run that already started gives way), with the reason in his box.
 func _tell_reason() -> void:
+	if cast == null or cast.dugi == null:
+		return   # (never today: the round asks nothing without Dugi, MissionRound.open)
 	_close_dialogue()
 	cast.dugi.stop(true)
 	cast.hold_explanation()   # the cast's own explanation of this run would only repeat him

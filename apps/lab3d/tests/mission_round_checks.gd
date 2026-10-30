@@ -246,3 +246,26 @@ func check_auto_conditions() -> void:
 	round.acted(true)
 	expect.call(round.take_conditions() == {"mass_b": 1.0} and (lab.changes as Array).is_empty(),
 		"round module: 처음으로 asks for the stage's conditions again; the lab is not changed by the round", str(lab.changes))
+	# A stamp earned at rest: the screen's stamp_earned handler sets the next stage's conditions at once
+	# (a condition change, inside judge_run). The attempt that earned the stamp stays judged, so the
+	# same run never earns the next stamp too.
+	var again := _round("collision")
+	again.end_question()
+	var rest = again.lab
+	rest.now = "rest"
+	rest.controls = {"mass_a": 1.0, "mass_b": 1.0}
+	rest.values = {"impulse_b": 30.0}
+	var set_now := []
+	again.stamp_earned.connect(func(_stamps: int) -> void:
+		again.stage_shown()
+		var values := again.take_conditions()
+		set_now.append(values)
+		if not values.is_empty():
+			again.condition_changed())
+	again.threw()
+	again.judge_run()
+	var judged_after: bool = again.judged_run
+	again.judge_run()
+	expect.call(set_now == [{"mass_a": 3.0}] and again.stamps == 1 and judged_after,
+		"round module: conditions set inside the stamp's hand-over leave the attempt judged (one stamp per run)",
+		"stamps %d, judged %s, set %s" % [again.stamps, str(judged_after), str(set_now)])

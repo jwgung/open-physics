@@ -126,9 +126,9 @@ static func _dictionary_param(lines: PackedStringArray, at: int) -> bool:
 	for i in range(at, -1, -1):
 		var line := lines[i]
 		if line.begins_with("func ") or line.begins_with("static func "):
-			return line.contains("definition: Dictionary")
+			return RegEx.create_from_string("[(, ]definition: Dictionary").search(line) != null
 		var code := line.strip_edges()
-		if code.begins_with("var definition :=") or code.begins_with("var definition: Dictionary"):
+		if (code.begins_with("var definition :=") and not code.contains("ExperimentDefinition")) or code.begins_with("var definition: Dictionary"):
 			return true
 	return false
 

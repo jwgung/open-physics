@@ -1,8 +1,7 @@
 name: Deploy GitHub Pages
 
+# The 2D web labs are deprecated (2026-10-30): no deploy on push, only by hand (workflow_dispatch).
 on:
-  push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:

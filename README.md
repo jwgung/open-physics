@@ -4,6 +4,8 @@
 
 **Version 0.1.2**
 
+> **Project status (2026-10-30).** The product in this repository is the 3D app **Bread Cat Science Island** (빵고양이 과학섬) in [`apps/lab3d`](apps/lab3d/README.md). The 2D web physics labs (`src/app`, the Vite site) are **deprecated**: no new work, and GitHub Pages no longer deploys on push (`pages.yml` is manual only). `src/physics` stays: it is the reference formulas the 3D app's parity tests compare against.
+
 > AI agents working from this repository should read [`AGENTS.md`](AGENTS.md) first.
 
 Luna Chat Coder is a repository template with an embedded fallback skill for reliable software development from ordinary chat.

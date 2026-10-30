@@ -926,9 +926,11 @@ func _watch_touch() -> void:
 	_was_touching = touching
 
 
-## Puppy's `win` (after its stamp) or `miss` line of stage `stage` (MissionRound.tell; tests).
+## Puppy's `win` (after its stamp) or `miss` line of stage `stage` (MissionRound.tell; tests). Nothing
+## without missions.
 func show_result(stage: int, won: bool) -> void:
-	mission_round.tell(stage, won)
+	if mission_round != null:
+		mission_round.tell(stage, won)
 
 
 ## Puppy says the round's line in the small bubble near him for ResultBubble.SHOW_S.

@@ -44,13 +44,13 @@ func _init() -> void:
 func set_control(id: String, value: Variant) -> void:
 	match id:
 		"mass":
-			var clamped := _clamp_to_control(id, float(value))
+			var clamped := definition.clamp_value(id, float(value))
 			if is_nan(clamped):
 				return
 			mass = clamped
 			props.set_mass(mass)
 		"volume":
-			if _find_option(id, str(value)).is_empty():
+			if definition.option(id, str(value)).is_empty():
 				push_warning("buoyancy: unknown volume %s" % value)
 				return
 			volume_id = str(value)
@@ -81,11 +81,11 @@ func run_action(id: String) -> void:
 
 ## Volume (m^3) and height (m) of the chosen drum; its radius from V = pi r^2 h.
 func volume() -> float:
-	return float(_find_option("volume", volume_id).get("volume", 0.1))
+	return float(definition.option("volume", volume_id).get("volume", 0.1))
 
 
 func drum_height() -> float:
-	return float(_find_option("volume", volume_id).get("height", 0.5))
+	return float(definition.option("volume", volume_id).get("height", 0.5))
 
 
 func drum_radius() -> float:
@@ -263,7 +263,7 @@ func manipulation_surface(surface_id: String) -> ManipSurface:
 	if surface_id != "tank":
 		return null
 	var half := drum_height() * 0.5
-	var surface := UprightLineSurface.new(Vector3.ZERO, FLOOR_Y + half, WATERLINE + HOLD_ABOVE + half, _grid_step("drum"), half)
+	var surface := UprightLineSurface.new(Vector3.ZERO, FLOOR_Y + half, WATERLINE + HOLD_ABOVE + half, definition.grid_step("drum"), half)
 	surface.exclude = [_floor.get_rid(), _tank_floor.get_rid(), drum.get_rid()]
 	return surface
 

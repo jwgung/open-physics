@@ -38,36 +38,33 @@ const APPS_PATH := "res://content/ai_apps.json"
 ## note's numbers in format_observation's text ("before → after" for a pair). `hidden` are the
 ## observation ids a mission round hides until its result (ExperimentScreen._hidden_answers): they
 ## are left out, as the note shows only "?" for them, and so are numbers with no value yet ("—").
-static func question(definition: Dictionary, experiment: Experiment, hidden: Array = []) -> String:
-	var note := ExperimentRegistry.note(definition)
+static func question(definition: ExperimentDefinition, experiment: Experiment, hidden: Array = []) -> String:
+	var note := ExperimentRegistry.note(definition.raw)
 	var lines := PackedStringArray([ROLE, ""])
-	lines.append("실험: %s" % str(definition.get("title", "")))
-	var asked := str(definition.get("question", ""))
+	lines.append("실험: %s" % definition.text("title"))
+	var asked := definition.text("question")
 	if asked != "":
 		lines.append("실험 질문: %s" % asked)
 	lines.append("법칙: %s (공식: %s)" % [str(note.get("law", "")), str(note.get("formula", ""))])
 	var conditions := PackedStringArray()
-	for control in definition.get("controls", []):
+	for control in definition.controls():
 		var text := condition_text(control, experiment.control_value(control.id))
 		if text != "":
 			conditions.append("%s: %s" % [str(control.label), text])
 	if not conditions.is_empty():
 		lines.append("조건: " + " / ".join(conditions))
-	var observations := {}
-	for observation in definition.get("observations", []):
-		observations[observation.id] = observation
 	var values := experiment.observations()
 	var numbers := PackedStringArray()
 	for row in note.get("numbers", []):
 		var ids: Array = row.get("ids", [])
-		if not ids.all(func(id: Variant) -> bool: return shown_value(values.get(id)) and observations.has(id) and not hidden.has(id)):
+		if not ids.all(func(id: Variant) -> bool: return shown_value(values.get(id)) and not definition.observation(str(id)).is_empty() and not hidden.has(id)):
 			continue   # an answer hidden until the result, or no value yet ("—")
-		var texts := ids.map(func(id: Variant) -> String: return format_observation(observations[id], values.get(id)))
+		var texts := ids.map(func(id: Variant) -> String: return format_observation(definition.observation(str(id)), values.get(id)))
 		numbers.append("- %s: %s" % [str(row.get("label", "")), " → ".join(PackedStringArray(texts))])
 	if not numbers.is_empty():
 		lines.append("이번 실험 숫자:")
 		lines.append_array(numbers)
-	var say := ExperimentRegistry.kid_text(definition, "say")
+	var say := ExperimentRegistry.kid_text(definition.raw, "say")
 	if say != "":
 		lines.append("두기두기 설명: %s" % say)
 	lines.append("")
@@ -79,7 +76,7 @@ static func question(definition: Dictionary, experiment: Experiment, hidden: Arr
 ## the science note's text (ExperimentScreen.format_observation) and the question's.
 static func format_observation(observation: Dictionary, value: Variant) -> String:
 	if value is float or value is int:
-		var text := Ui.number(value, int(observation.get("digits", 2)))
+		var text := Ui.number(value, ExperimentDefinition.observation_digits(observation))
 		var unit: String = observation.get("unit", "")
 		if unit != "":
 			text += unit if unit == "°" else " " + unit
@@ -100,7 +97,7 @@ static func condition_text(control: Dictionary, value: Variant) -> String:
 	if control.get("type") == "slider":
 		if not (value is float or value is int):
 			return ""
-		return Ui.number(float(value), int(control.get("digits", 1))) + str(control.get("unit", ""))
+		return Ui.number(float(value), ExperimentDefinition.control_digits(control)) + str(control.get("unit", ""))
 	for option in control.get("options", []):
 		if option.get("id") != value:
 			continue
@@ -111,13 +108,13 @@ static func condition_text(control: Dictionary, value: Variant) -> String:
 	return ""
 
 
-## The AI apps of the chooser in their order: {name, package} (content/ai_apps.json).
 ## The web address the chooser also offers (a browser opens it), "" when none.
 static func ai_web() -> String:
 	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(APPS_PATH))
 	return str(parsed.get("web", "")) if parsed is Dictionary else ""
 
 
+## The AI apps of the chooser in their order: {name, package} (content/ai_apps.json).
 static func ai_apps() -> Array:
 	var parsed: Variant = JSON.parse_string(FileAccess.get_file_as_string(APPS_PATH))
 	var apps: Array = []

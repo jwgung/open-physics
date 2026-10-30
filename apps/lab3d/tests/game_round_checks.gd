@@ -32,8 +32,8 @@ func check_round() -> void:
 	var screen := await _lab()
 	var lab: Experiment = screen.experiment
 	var m: Manipulator = screen.manipulator
-	var stages: Array = MissionRound.missions(lab.definition).get("stages", [])
-	var predict: Dictionary = MissionRound.predict(lab.definition)
+	var stages: Array = MissionRound.missions(lab.definition.raw).get("stages", [])
+	var predict: Dictionary = MissionRound.predict(lab.definition.raw)
 	# The strip: one stamp per stage and the first stage's text.
 	expect.call(screen._mission_strip != null and screen._mission_strip.visible and screen._stamp_labels.size() == stages.size()
 		and screen._mission_text.text == str(stages[0].text),
@@ -310,7 +310,7 @@ func _free(screen: Control) -> void:
 
 ## The definition's observation entry with this id.
 func _observation(lab: Experiment, id: String) -> Dictionary:
-	for observation in lab.definition.observations:
+	for observation in lab.definition.observations():
 		if observation.id == id:
 			return observation
 	return {}

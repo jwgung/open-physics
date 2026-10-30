@@ -21,8 +21,9 @@ signal close_up_ended(after: float)
 ## frame (CameraRig.cut_focus; a jump only when it had not ended yet).
 signal close_up_cut
 
-## Parsed content JSON (see ExperimentRegistry). Read-only for the experiment.
-var definition: Dictionary = {}
+## The experiment's definition (ExperimentDefinition: content JSON resolved by ExperimentRegistry).
+## Read-only for the experiment.
+var definition := ExperimentDefinition.new()
 ## False in a game round (the definition has missions; the screen sets it before the lab enters
 ## the tree): the lab draws no answer preview before the run, such as the orbit's predicted path.
 ## Visual only: no body, formula value or status depends on it.
@@ -184,7 +185,7 @@ func set_game_stage(stage: int, stamps: int, just_cleared: bool) -> void:
 		game.show_stage(stage, stamps, just_cleared)
 
 
-## Sets a control declared in definition.controls. `value` is a float for sliders and the option
+## Sets a control declared in definition.controls(). `value` is a float for sliders and the option
 ## id (String) for choices. Called once per control with its default before the first frame.
 func set_control(_id: String, _value: Variant) -> void:
 	pass
@@ -192,42 +193,7 @@ func set_control(_id: String, _value: Variant) -> void:
 
 ## Current value of a control (the screen syncs sliders/chips from it after actions).
 func control_value(id: String) -> Variant:
-	for control in definition.get("controls", []):
-		if control.id == id:
-			return control.get("default")
-	return null
-
-
-## The control `id` of definition.controls ({} when there is none).
-func _find_control(id: String) -> Dictionary:
-	for control in definition.get("controls", []):
-		if control.id == id:
-			return control
-	return {}
-
-
-## The option `option_id` of the choice control `control_id` in definition.controls ({} when the
-## control or the option does not exist).
-func _find_option(control_id: String, option_id: String) -> Dictionary:
-	for control in definition.get("controls", []):
-		if control.id != control_id:
-			continue
-		for option in control.get("options", []):
-			if option.id == option_id:
-				return option
-	return {}
-
-
-## `value` limited to the min / max of the slider control `id` in definition.controls (a bound
-## the control does not declare stays open). A NaN or infinite `value` is refused: NaN comes back
-## and the caller (set_control) changes nothing, so a bad input leaves the run and the graph alone.
-func _clamp_to_control(id: String, value: float) -> float:
-	if not is_finite(value):
-		return NAN
-	for control in definition.get("controls", []):
-		if control.id == id:
-			return clampf(value, float(control.get("min", -INF)), float(control.get("max", INF)))
-	return value
+	return definition.default_value(id)
 
 
 ## Runs an action declared in definition.actions (buttons).
@@ -299,20 +265,10 @@ func manipulation_placed(_id: String, _transform: Transform3D) -> void:
 	pass
 
 
-## Grid step of the manipulation object `id` (m, or the lab's own unit): the one value, from the
-## definition's rule (the `snap` Manipulator.parse_rules reads), the lab's surface and its snapping
-## both use. (Read here, not through Manipulator: the shell's Experiment must not depend on it.)
-func _grid_step(id: String) -> float:
-	for object in definition.get("manipulation", {}).get("objects", []):
-		if object.get("id") == id:
-			return float(object.get("snap", 0.0))
-	return 0.0
-
-
 ## `offset` (from the grid's origin) on the grid of object `id`, in whole cells (64-bit), kept
 ## within lo..hi (the same bounds the lab's surface has).
 func _snap_to_grid(id: String, offset: float, lo: float, hi: float) -> float:
-	var step := _grid_step(id)
+	var step := definition.grid_step(id)
 	if step <= 0.0:
 		return clampf(offset, lo, hi)
 	var cells := roundf(1.0 / step)

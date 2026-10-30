@@ -351,7 +351,7 @@ func check_conditions() -> void:
 		"orbit: speed, direction and radius change the launch and put the planet back with a new prediction; 원 궤도 속력 = sqrt(GM / r); unknown ids are ignored", "")
 	var labels_ok := true
 	var ids := []
-	for item in lab.definition.observations:
+	for item in lab.definition.observations():
 		labels_ok = labels_ok and not str(item.label).contains("시뮬레이션")
 		ids.append(item.id)
 	expect.call(labels_ok and ids.all(func(id): return shown.has(id)) and ids.size() == shown.size(),

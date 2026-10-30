@@ -67,12 +67,12 @@ func _init() -> void:
 func set_control(id: String, value: Variant) -> void:
 	match id:
 		"radius":
-			var clamped := _clamp_to_control(id, float(value))
+			var clamped := definition.clamp_value(id, float(value))
 			if is_nan(clamped):
 				return
 			start_radius = clamped
 		"speed":
-			var clamped := _clamp_to_control(id, float(value))
+			var clamped := definition.clamp_value(id, float(value))
 			if is_nan(clamped):
 				return
 			speed = clamped
@@ -370,7 +370,7 @@ func manipulation_surface(surface_id: String) -> ManipSurface:
 	match surface_id:
 		"radius_line":
 			surface = ManipSurface.new(Transform3D(Basis(), Vector3(0.0, ORBIT_Y - PLANET_RADIUS, 0.0)),
-				Vector2(RADIUS_MIN, 0.0), Vector2(RADIUS_MAX, 0.0), Vector2(_grid_step("planet"), 0.0))
+				Vector2(RADIUS_MIN, 0.0), Vector2(RADIUS_MAX, 0.0), Vector2(definition.grid_step("planet"), 0.0))
 		"pull":
 			# The slingshot's pull: the level orbit plane through the planet's start.
 			surface = ManipSurface.new(Transform3D(Basis(), Vector3(start_radius, ORBIT_Y, 0.0)), Vector2(-30.0, -30.0), Vector2(30.0, 30.0))
@@ -388,7 +388,7 @@ func manipulation_juice(id: String) -> ArtJuice:
 ## and "speed" (pull_launch) and runs "launch" ("발사"); the next shot after a run is "rearm" (the
 ## run waits, the radius and the launch stay). The readout says the speed only, in a child's words.
 func slingshot_setup() -> Dictionary:
-	var spec: Dictionary = definition.get("manipulation", {}).get("slingshot", {})
+	var spec: Dictionary = definition.slingshot()
 	if spec.is_empty() or manipulation_body(str(spec.get("object", ""))) == null:
 		return {}
 	return {"object": str(spec.object), "surface": manipulation_surface("pull"), "launch": launch_point,

@@ -38,7 +38,7 @@ static func create(lab: Experiment) -> LabSounds:
 	var sounds := LabSounds.new()
 	sounds.name = "LabSounds"
 	sounds.experiment = lab
-	sounds.lab_id = str(lab.definition.get("id", ""))
+	sounds.lab_id = lab.definition.id()
 	return sounds
 
 

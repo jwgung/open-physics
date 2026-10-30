@@ -51,7 +51,7 @@ func _init() -> void:
 func set_control(id: String, value: Variant) -> void:
 	match id:
 		"gravity":
-			var option := _find_option(id, str(value))
+			var option := definition.option(id, str(value))
 			if option.is_empty():
 				push_warning("constraints: unknown gravity %s" % value)
 				return
@@ -59,12 +59,12 @@ func set_control(id: String, value: Variant) -> void:
 			g = float(option.g)
 			planet_sign.show_planet(gravity_id)
 		"length":
-			var clamped := _clamp_to_control(id, float(value))
+			var clamped := definition.clamp_value(id, float(value))
 			if is_nan(clamped):
 				return
 			length = clamped
 		"damping":
-			if _find_option(id, str(value)).is_empty():
+			if definition.option(id, str(value)).is_empty():
 				push_warning("constraints: unknown damping %s" % value)
 				return
 			damping_id = str(value)
@@ -96,7 +96,7 @@ func run_action(id: String) -> void:
 
 ## Damping (1/s) of pendulum `i` (0 string, 1 rod) for the damping option.
 func damping(i: int) -> float:
-	return float(_find_option("damping", damping_id).get("rope_b" if i == 0 else "rod_b", 0.0))
+	return float(definition.option("damping", damping_id).get("rope_b" if i == 0 else "rod_b", 0.0))
 
 
 func anchor(i: int) -> Vector3:
@@ -237,7 +237,7 @@ func _main_body() -> RigidBody3D:
 func angle_at(i: int, world: Vector3) -> float:
 	var d := world - anchor(i)
 	var deg := rad_to_deg(atan2(d.x, -d.y))
-	deg = PendulumArcSurface.snap_deg(deg, _grid_step(IDS[i]))
+	deg = PendulumArcSurface.snap_deg(deg, definition.grid_step(IDS[i]))
 	return deg_to_rad(clampf(deg, -MAX_DEG, MAX_DEG))
 
 
@@ -282,7 +282,7 @@ func manipulation_surface(surface_id: String) -> ManipSurface:
 	var i := SURFACES.find(surface_id)
 	if i < 0:
 		return null
-	var surface := PendulumArcSurface.new(anchor(i), length, _grid_step(IDS[i]), MAX_DEG, BOB_RADIUS)
+	var surface := PendulumArcSurface.new(anchor(i), length, definition.grid_step(IDS[i]), MAX_DEG, BOB_RADIUS)
 	surface.exclude = [_floor.get_rid()]
 	return surface
 

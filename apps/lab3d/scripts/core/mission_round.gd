@@ -320,11 +320,7 @@ static func change_controls(definition: Dictionary, lab: Experiment) -> Dictiona
 ## The number a child reads for observation `id` (the key card's rounding, ExperimentScreen.kid_value:
 ## the observation's digits, one decimal at most): what a stage compares with its threshold.
 static func shown(definition: Dictionary, id: String, value: float) -> float:
-	var digits := 2
-	for observation in definition.get("observations", []):
-		if observation.get("id") == id:
-			digits = int(observation.get("digits", 2))
-	return float(Ui.number(value, mini(digits, CARD_PLACES)))
+	return float(Ui.number(value, mini(ExperimentDefinition.new(definition).digits(id), CARD_PLACES)))
 
 
 static func _number(value: Variant) -> bool:

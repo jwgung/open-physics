@@ -89,7 +89,7 @@ func control_value(id: String) -> Variant:
 ## Both balls start `h` metres above the floor (their bottoms), limited to the slider's range (not
 ## snapped: the slider's 1 m step is the UI's; the web-parity cases drop from 2.5 m).
 func set_height(h: float) -> void:
-	var clamped := _clamp_to_control("height", h)
+	var clamped := definition.clamp_value("height", h)
 	if is_nan(clamped):
 		return
 	height = clamped
@@ -100,7 +100,7 @@ func set_height(h: float) -> void:
 
 
 func set_red_mass(option_id: String) -> void:
-	var option := _find_option("mass", option_id)
+	var option := definition.option("mass", option_id)
 	if option.is_empty():
 		push_warning("free-fall: unknown mass %s" % option_id)
 		return
@@ -140,7 +140,7 @@ func reset_run() -> void:
 	if _heights_pending and _heights_stage >= 0:
 		_heights_pending = false
 		for id in ORDER:
-			starts[id].y = _clamp_to_control("height", float(STAGE_HEIGHTS[_heights_stage][id]))
+			starts[id].y = definition.clamp_value("height", float(STAGE_HEIGHTS[_heights_stage][id]))
 	if game != null:
 		game.run_reset()
 		(game as FreeFallGame).place_buttons(starts)
@@ -362,7 +362,7 @@ func manipulation_surface(surface_id: String) -> ManipSurface:
 	if surface_id == "line":
 		surface = ManipSurface.new(Transform3D.IDENTITY, Vector2(-LINE_X, 0.0), Vector2(LINE_X, 0.0))
 	elif surface_id.begins_with(DROP) and starts.has(surface_id.trim_prefix(DROP)):
-		var control := _find_control("height")
+		var control := definition.control("height")
 		var x: float = starts[surface_id.trim_prefix(DROP)].x
 		var frame := Transform3D(Basis(Vector3.UP, Vector3.BACK, Vector3.RIGHT), Vector3(x, BALL_RADIUS, -BALL_RADIUS))
 		surface = ManipSurface.new(frame, Vector2(float(control.get("min", 0.5)), 0.0), Vector2(float(control.get("max", 8.0)), 0.0))
@@ -411,8 +411,9 @@ func manipulation_placed(id: String, transform: Transform3D) -> void:
 		# lifted finger drops both balls together (2026-10-29 user: no "공 놓기" button; a new drag after
 		# a drop starts a fresh run, manipulation_started). A restored placement (a batch) only places.
 		var ball_id := id.trim_prefix(DROP)
-		var step := _grid_step(id) if _grid_step(id) > 0.0 else 1.0
-		var h := _clamp_to_control("height", snappedf(transform.origin.y - BALL_RADIUS, step))
+		var grid := definition.grid_step(id)
+		var step := grid if grid > 0.0 else 1.0
+		var h := definition.clamp_value("height", snappedf(transform.origin.y - BALL_RADIUS, step))
 		if is_nan(h):
 			return
 		fall_props().finger = ""

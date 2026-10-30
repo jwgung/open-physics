@@ -1047,7 +1047,7 @@ static func _near(a: Color, b: Color) -> bool:
 
 func check_ball_colours() -> void:
 	var lab: Experiment = await _lab("free-fall")
-	var definition: Dictionary = lab.definition
+	var definition: Dictionary = lab.definition.raw
 	var problems := []
 	var series := {}
 	for entry in definition.graph.series:
@@ -1123,7 +1123,7 @@ func check_ball_colours() -> void:
 		problems.append("orbit planet: %s %s" % [yarn_o, _ball_colour(planet_yarn).to_html(false)])
 	await _free(orbit)
 	var dev: Experiment = await _lab("manipulation-dev")
-	for entry in dev.definition.observations:
+	for entry in dev.definition.observations():
 		var id: String = entry.id
 		if COLOURS.has(id):
 			if not str(entry.label).begins_with("%s 상자" % COLOUR_WORDS[id][1]):

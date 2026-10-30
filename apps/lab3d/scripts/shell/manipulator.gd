@@ -146,9 +146,9 @@ var _demo_hold := -1.0           # s the demo still holds a hold object
 func setup(target_view: View3D, target_experiment: Experiment) -> void:
 	view = target_view
 	experiment = target_experiment
-	rules = parse_rules(experiment.definition)
-	grab_radius = float(experiment.definition.get("manipulation", {}).get("grab_radius", PICK_RADIUS))
-	demo_action = str(experiment.definition.get("manipulation", {}).get("demo_action", ""))
+	rules = experiment.definition.manipulation_rules()
+	grab_radius = float(experiment.definition.manipulation().get("grab_radius", PICK_RADIUS))
+	demo_action = str(experiment.definition.manipulation().get("demo_action", ""))
 	_ray.collide_with_areas = false
 	_query.collide_with_areas = false
 	experiment.state_changed.connect(_forget_handle_surface)
@@ -162,24 +162,6 @@ func setup(target_view: View3D, target_experiment: Experiment) -> void:
 	_knob.name = "HeightKnob"
 	_knob.visible = false
 	add_child(_knob)
-
-
-## The manipulation rules of an experiment definition (the one reading of the JSON: the experiment
-## takes its grid step from here too): id -> {"surface", "snap", "height_max", "height_step", "drag"}.
-static func parse_rules(definition: Dictionary) -> Dictionary:
-	var result := {}
-	for object in definition.get("manipulation", {}).get("objects", []):
-		var h: Variant = object.get("height", false)
-		var height_rule: Dictionary = h if h is Dictionary else {}
-		result[object.id] = {
-			"surface": str(object.get("surface", "")),
-			"snap": float(object.get("snap", 0.0)),
-			"height_max": float(height_rule.get("max", 0.0)),
-			"height_step": float(height_rule.get("step", 0.0)),
-			"drag": object.get("drag", true) != false,
-			"hold": object.get("hold", false) == true,
-		}
-	return result
 
 
 ## The objects a finger may pick up (rules with drag), in the definition's order.

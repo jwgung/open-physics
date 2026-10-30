@@ -197,7 +197,7 @@ static func _hits_cells(box: AABB, cells: Dictionary) -> bool:
 func _motion(screen: Control) -> Array:
 	var lab: Experiment = screen.experiment
 	var primary := ""
-	for action in screen.definition.actions:
+	for action in screen.definition.actions():
 		if action.get("style") == "primary":
 			primary = action.id
 	if primary != "":
@@ -434,7 +434,7 @@ func check_placement(id: String) -> void:
 	screen.experiment_action("reset")
 	await tree.physics_frame
 	var problems := []
-	var eye := IslandCast.front_eye(screen.definition.camera)
+	var eye := IslandCast.front_eye(screen.definition.camera())
 	for actor: Node3D in [cast.dugi, cast.puppy]:
 		var to_eye := Vector2(eye.x - actor.global_position.x, eye.z - actor.global_position.z).normalized()
 		var front := Vector2(actor.global_basis.z.x, actor.global_basis.z.z).normalized()
@@ -623,9 +623,9 @@ func check_dialogue() -> void:
 	box.set_process(false)
 	# A long text (the shared one: two pages on a tablet) to turn pages: the round done (in memory), so
 	# Dugi says the lab's own words, here the long shared text.
-	screen.mission_round.stamps = MissionRound.missions(screen.definition).stages.size()
+	screen.mission_round.stamps = MissionRound.missions(screen.definition.raw).stages.size()
 	# Twice the shared text: with only 다시 beside it (2026-10-29) the box is wider and one fits a page.
-	cast.text = screen.definition.observe + " " + screen.definition.observe
+	cast.text = screen.definition.text("observe") + " " + screen.definition.text("observe")
 	cast.dugi.explain(screen.experiment.explain_point)
 	for k in 3:
 		await tree.process_frame
@@ -663,7 +663,7 @@ func check_dialogue() -> void:
 		wide.mission_round.reason = ""
 		var wbox: DialogueBox = wide.dialogue
 		wbox.set_process(false)
-		wbox.words = wide.definition.observe
+		wbox.words = wide.definition.text("observe")
 		wide.cast.dugi.explain(wide.experiment.explain_point)
 		var widths := []
 		for k in 600:
@@ -742,7 +742,7 @@ func _record(id: String, with_cast: bool) -> Array:
 	var lab: Experiment = screen.experiment
 	var out := []
 	var primary := ""
-	for action in screen.definition.actions:
+	for action in screen.definition.actions():
 		if action.get("style") == "primary":
 			primary = action.id
 	if primary != "":

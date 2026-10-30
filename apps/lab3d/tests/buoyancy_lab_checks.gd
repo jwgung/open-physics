@@ -335,7 +335,7 @@ func check_conditions() -> void:
 		"buoyancy: mass and volume change the conditions (the drum's shape too) and put it back; unknown ids are ignored", "")
 	var labels_ok := true
 	var ids := []
-	for item in lab.definition.observations:
+	for item in lab.definition.observations():
 		labels_ok = labels_ok and not str(item.label).contains("시뮬레이션")
 		ids.append(item.id)
 	expect.call(labels_ok and ids.all(func(id): return shown.has(id)) and ids.size() == shown.size(),

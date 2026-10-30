@@ -207,7 +207,7 @@ func check_result_bubbles() -> void:
 	var r: float = lab.BALL_RADIUS
 	await _drag_to(screen, lab.balls.red.global_position, Vector3(lab.starts.red.x, 6.0 + r, lab.starts.red.z))
 	var bubble: ResultBubble = await _wait_bubble(screen, 300)
-	var stage0: Dictionary = MissionRound.missions(lab.definition).stages[0]
+	var stage0: Dictionary = MissionRound.missions(lab.definition.raw).stages[0]
 	if bubble == null or bubble.text != str(stage0.miss) or bubble.won or screen.result_count.miss != 1:
 		problems.append("free fall: the miss line after the first drop (%s)" % (bubble.text if bubble != null else "none"))
 	else:
@@ -233,7 +233,7 @@ func check_result_bubbles() -> void:
 	screen = await _open(ExperimentRegistry.find("spring"), TABLET)
 	screen.mission_round.end_question()
 	lab = screen.experiment
-	var spring_stage: Dictionary = MissionRound.missions(lab.definition).stages[0]
+	var spring_stage: Dictionary = MissionRound.missions(lab.definition.raw).stages[0]
 	await _drag_to(screen, lab.manipulation_body("ball").global_position, Vector3(lab.ANCHOR_X + lab.REST_LENGTH + 0.4, lab.ROD_Y, 0.0))
 	var early := screen.result_bubble() != null
 	bubble = await _wait_bubble(screen, 300)
@@ -257,7 +257,7 @@ func check_result_bubbles() -> void:
 	var pressing := screen.result_bubble() == null
 	_touch(screen, at, false)
 	bubble = await _wait_bubble(screen, 120)
-	if not pressing or bubble == null or bubble.text != str(MissionRound.missions(lab.definition).stages[0].miss):
+	if not pressing or bubble == null or bubble.text != str(MissionRound.missions(lab.definition.raw).stages[0].miss):
 		problems.append("push: a tap's miss (%s)" % (bubble.text if bubble != null else "none"))
 	# A control change before the result drops the attempt (no line).
 	await _free(screen)

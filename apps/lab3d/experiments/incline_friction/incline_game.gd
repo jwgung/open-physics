@@ -96,7 +96,7 @@ func build() -> void:
 ## The stage being played earns its stamp with the lab's setting now (MissionRound's own rule:
 ## the stage's conditions and its formula value, reach_n: the box's way meets the stage's row).
 func fits() -> bool:
-	var definition: Dictionary = lab.definition
+	var definition: Dictionary = lab.definition.raw
 	var all: Array = MissionRound.missions(definition).get("stages", [])
 	if stage < 0 or stage >= all.size():
 		return false

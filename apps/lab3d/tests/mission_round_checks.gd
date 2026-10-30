@@ -52,7 +52,7 @@ func _stand_in(definition: Dictionary) -> Experiment:
 	script.source_code = STAND_IN
 	script.reload()
 	var lab: Experiment = script.new()
-	lab.definition = definition
+	lab.definition = ExperimentDefinition.new(definition)
 	_labs.append(lab)
 	return lab
 

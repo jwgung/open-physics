@@ -163,7 +163,7 @@ func check_definition() -> void:
 			for option in control.options:
 				ns.append(int(option.n))
 	var consts: Dictionary = (load(definition.scene) as GDScript).get_script_constant_map()
-	var rule: Dictionary = Manipulator.parse_rules(definition).rope
+	var rule: Dictionary = ExperimentDefinition.new(definition).manipulation_rules().rope
 	expect.call(defaults.strands == _strands_id(int(start.strands)) and float(defaults.mass) == float(start.mass) and ns == [1, 2, 4]
 		and float(consts.MAX_LIFT) == float(vectors.max_lift) and PulleyLabModel.CELLS_PER_M == int(vectors.cells_per_m) and rule.snap * PulleyLabModel.CELLS_PER_M == 1.0
 		and rule.hold and float(consts.PULL_RATE) == 65.0 and float(consts.PULL_MAX) == 250.0 and float(consts.ROPE_SPEED) == 1.0,
@@ -246,7 +246,7 @@ func check_conditions() -> void:
 	var labels_ok := true
 	var ids := []
 	var shown: Dictionary = lab.observations()
-	for item in lab.definition.observations:
+	for item in lab.definition.observations():
 		labels_ok = labels_ok and not str(item.label).contains("시뮬레이션")
 		ids.append(item.id)
 	expect.call(labels_ok and ids.all(func(id): return shown.has(id)) and ids.size() == shown.size(),
@@ -503,7 +503,7 @@ func check_review_fixes_2() -> void:
 	await tree.process_frame
 	var from_snap: bool = other.model.cells_per_m == 10 and other.model.stroke_limit() == 24
 	var default_lab: Experiment = await _lab()
-	var snap: float = Manipulator.parse_rules(default_lab.definition).rope.snap
+	var snap: float = default_lab.definition.manipulation_rules().rope.snap
 	var same_source: bool = default_lab.model.cells_per_m == roundi(1.0 / snap) and default_lab.model.cells_per_m == int(vectors.cells_per_m)
 	expect.call(from_snap and same_source, "pulley: the cell size comes from the definition's rope snap (0.05 -> 20 per metre, 0.1 -> 10)",
 		"default %d, snap 0.1 -> %d" % [default_lab.model.cells_per_m, other.model.cells_per_m])

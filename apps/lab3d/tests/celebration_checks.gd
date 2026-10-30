@@ -40,7 +40,7 @@ func check_stamp_slam() -> void:
 	await tree.process_frame
 	var cat: CatActor = screen.lab_cat()
 	var cheers := cat.cheers if cat != null else -1
-	var stages: Array = MissionRound.missions(lab.definition).stages
+	var stages: Array = MissionRound.missions(lab.definition.raw).stages
 	screen.mission_round.stamps = 1
 	screen.mission_round.demo_stamp(1)
 	var slam: StampSlam = screen._slam

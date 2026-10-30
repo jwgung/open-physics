@@ -100,7 +100,7 @@ func _asked(definition: Dictionary, stage: int) -> Array:
 
 func check_rows(id: String) -> void:
 	var screen := await _open(id)
-	var definition: Dictionary = screen.definition
+	var definition: Dictionary = screen.definition.raw
 	var stages: Array = MissionRound.missions(definition).get("stages", [])
 	var problems := []
 	if screen.mission_round.asking() and screen.picks_shown():
@@ -228,11 +228,11 @@ func check_layout(id: String, size: Vector2) -> void:
 		return
 	var lab: Experiment = screen.experiment
 	# The widest stage (most buttons).
-	var stages: Array = MissionRound.missions(screen.definition).get("stages", [])
+	var stages: Array = MissionRound.missions(screen.definition.raw).get("stages", [])
 	var widest := 0
 	for i in stages.size():
-		if ConditionPicks.groups(screen.definition, i).reduce(func(n: int, g: Dictionary) -> int: return n + g.presets.size(), 0) \
-				> ConditionPicks.groups(screen.definition, widest).reduce(func(n: int, g: Dictionary) -> int: return n + g.presets.size(), 0):
+		if ConditionPicks.groups(screen.definition.raw, i).reduce(func(n: int, g: Dictionary) -> int: return n + g.presets.size(), 0) \
+				> ConditionPicks.groups(screen.definition.raw, widest).reduce(func(n: int, g: Dictionary) -> int: return n + g.presets.size(), 0):
 			widest = i
 	# While Dugi asks: his question and picture buttons, no row.
 	if screen.mission_round.asking() and screen.picks_shown():

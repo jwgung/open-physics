@@ -1,5 +1,7 @@
 # Open Physics — Product Guidelines
 
+> **웹 2D 시절 문서 (2026-10-30):** 웹 2D 앱을 지웠다([ADR 0002](adr/0002-drop-web-2d.md)). 제품 방향의 참고로만 남긴다. 지금 제품은 [`apps/lab3d`](../apps/lab3d/README.md)다.
+
 > **Status:** Foundational guideline  
 > **Purpose:** Define the product goal, simulation philosophy, and content navigation before implementation decisions are made.
 

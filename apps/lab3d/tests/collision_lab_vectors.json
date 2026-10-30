@@ -1,5 +1,5 @@
 {
-  "source": "src/physics/simulation.ts PhysicsSimulation (world.ts resolveCollisions), src/app/physics-playground.ts collision preset damping / bounds, src/physics/laws/mechanics.ts",
+  "source": "src/physics/simulation.ts PhysicsSimulation (world.ts resolveCollisions), the web playground's collision preset damping / bounds (removed 2026-10-30), src/physics/laws/mechanics.ts",
   "tolerance": 1e-9,
   "step_hz": 60,
   "threshold": 1,

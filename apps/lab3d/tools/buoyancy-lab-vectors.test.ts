@@ -34,7 +34,6 @@ const HIT_SPEED = 0.05; // m/s: a floor contact faster than this is a hit (resti
 const BIG = { volume: 0.1, height: 0.5 }; // 100 L drum
 const SMALL = { volume: 0.05, height: 0.4 }; // 50 L drum
 const vectorsPath = fileURLToPath(new URL("../tests/buoyancy_lab_vectors.json", import.meta.url));
-const playgroundPath = fileURLToPath(new URL("../../../src/app/physics-playground.ts", import.meta.url));
 const context: PhysicsContext = { time: 0, dt: DT };
 
 type Drum = { volume: number; height: number };
@@ -194,14 +193,6 @@ function buildVectors() {
 }
 
 describe("buoyancy lab vectors", () => {
-  it("use the web's buoyancy and floor constants", () => {
-    const source = readFileSync(playgroundPath, "utf8");
-    expect(source).toMatch(/const RESTING_REBOUND_SPEED = PIXELS_PER_METER;/);
-    expect(source).toMatch(/wood: \{[^}]*restitution: 0\.5/);
-    expect(source).toMatch(/label: "물에 띄울 공",\n\s+color: "#f27a54",\n\s+mass: 1,\n\s+material: "wood",/);
-    expect(new BuoyancyRegionLaw({ bodyId: "b", waterline: 0, displacedMass: 1 }).drag).toBe(DRAG);
-  });
-
   it("match the committed JSON generated from the TS core", () => {
     const vectors = buildVectors();
     if (process.env.UPDATE_BUOYANCY_VECTORS === "1") {

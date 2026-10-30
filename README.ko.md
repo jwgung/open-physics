@@ -4,7 +4,7 @@
 
 **Version 0.1.2**
 
-> **프로젝트 상태 (2026-10-30).** 이 리포지토리의 제품은 [`apps/lab3d`](apps/lab3d/README.md)의 3D 앱 **빵고양이 과학섬**입니다. 웹 2D 물리 실험(`src/app`, Vite 사이트)은 **deprecated**입니다. 새 작업은 하지 않고, GitHub Pages도 푸시로 배포하지 않습니다(`pages.yml`은 수동 실행만). `src/physics`는 3D 앱의 공식 검증이 기준값으로 쓰므로 남깁니다.
+> **프로젝트 상태 (2026-10-30).** 이 리포지토리의 제품은 [`apps/lab3d`](apps/lab3d/README.md)의 3D 앱 **빵고양이 과학섬**입니다. 웹 2D 물리 실험(`src/app`, Vite 사이트)은 2026-10-30에 지웠습니다([ADR 0002](docs/adr/0002-drop-web-2d.md)). `src/physics`는 3D 앱의 공식 검증이 기준값으로 쓰므로 남깁니다([`src/README.md`](src/README.md)).
 
 > 이 리포지토리에서 작업하는 AI agent는 먼저 [`AGENTS.md`](AGENTS.md)를 읽어야 합니다.
 

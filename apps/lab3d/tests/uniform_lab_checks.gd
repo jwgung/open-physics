@@ -148,11 +148,11 @@ func check_definitions() -> void:
 	for id in ["free-fall", "projectile"]:
 		var definition := ExperimentRegistry.find(id)
 		var problems := ExperimentRegistry.validate(definition) if not definition.is_empty() else PackedStringArray(["missing"])
-		ok = ok and problems.is_empty() and definition.get("content") == id and definition.has("tip")
+		ok = ok and problems.is_empty() and not definition.has("content") and definition.has("tip")
 		detail.append("%s: %s" % [id, ", ".join(problems)])
 	var listed := ExperimentRegistry.load_all().map(func(d: Dictionary) -> String: return d.id)
 	expect.call(ok and listed.has("free-fall") and listed.has("projectile"),
-		"uniform labs: free-fall and projectile definitions valid, listed, texts from the shared content", "; ".join(detail))
+		"uniform labs: free-fall and projectile definitions valid, listed, texts in the experiment file", "; ".join(detail))
 
 
 # --- free fall --------------------------------------------------------------------------------

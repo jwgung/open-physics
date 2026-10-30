@@ -1,9 +1,10 @@
 // Generates and guards the formula parity vectors for the 10 guided mechanics experiments, consumed
 // by the GDScript port (apps/lab3d/scripts/core/physics_laws.gd, checked in tests/run_tests.gd).
 // The TS core is the oracle: every expected value comes from the TS law function or model class
-// named next to it (src/physics/laws, src/physics/world.ts, src/app/mechanics-scenes.ts,
-// src/app/mechanics-challenges.ts), never from re-typed formulas.
-// - experiments: lab id -> the PhysicsLaws functions that lab uses (all 10 labs of MECHANICS_LABS).
+// named next to it (src/physics/laws, src/physics/world.ts, src/physics/mechanics-scenes.ts,
+// src/physics/mechanics-challenges.ts), never from re-typed formulas.
+// - experiments: lab id -> the PhysicsLaws functions that lab uses (every listed lab of
+//   content/experiments/index.json except the incline, which has its own incline-vectors).
 // - cases: { law, args, expect } where law is the PhysicsLaws function name; args are scalars in SI
 //   units (the web app uses 48 px = 1 m; the formulas are the same).
 // - scenes: TS-computed targets for the representative headless scenes of each correction method
@@ -12,10 +13,9 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { LeverChallenge, OrbitChallenge, PulleyAdvantageChallenge, type SupportStrands } from "../../../src/app/mechanics-challenges";
-import { MECHANICS_LABS } from "../../../src/app/mechanics-labs";
-import { PendulumModel } from "../../../src/app/mechanics-scenes";
-import { MATERIALS, type PlaygroundMaterial } from "../../../src/app/physics-playground";
+import { LeverChallenge, OrbitChallenge, PulleyAdvantageChallenge, type SupportStrands } from "../../../src/physics/mechanics-challenges";
+import { PendulumModel } from "../../../src/physics/mechanics-scenes";
+import { MATERIALS, type PlaygroundMaterial } from "../../../src/physics/materials";
 import { collisionContact, MultiBodyWorld, type Body } from "../../../src/physics/world";
 import type { BodyState } from "../../../src/physics/core";
 import { elasticCollision1D } from "../../../src/physics/laws/collision";
@@ -57,6 +57,7 @@ const GRAVITIES = [1.62, 9.81, 24.79]; // web app gravity buttons (moon, earth, 
 const MASSES = [0.5, 1, 3]; // web app mass buttons
 const RESTITUTION_THRESHOLD = 48 / PX; // physics-playground RESTING_REBOUND_SPEED (48 px/s) in m/s
 const vectorsPath = fileURLToPath(new URL("../tests/formula_vectors.json", import.meta.url));
+const indexPath = fileURLToPath(new URL("../content/experiments/index.json", import.meta.url));
 
 const state = (x: number, y: number, vx: number, vy: number, mass: number): BodyState => ({
   position: { x, y },
@@ -504,13 +505,13 @@ const GROUPS: Record<string, () => Case[]> = {
 function buildVectors() {
   const experiments: Record<string, string[]> = {};
   const cases: (Case & { experiment: string })[] = [];
-  for (const lab of MECHANICS_LABS) {
-    const group = GROUPS[lab.id]();
-    experiments[lab.id] = [...new Set(group.map((entry) => entry.law))];
-    cases.push(...group.map((entry) => ({ experiment: lab.id, ...entry })));
+  for (const [id, make] of Object.entries(GROUPS)) {
+    const group = make();
+    experiments[id] = [...new Set(group.map((entry) => entry.law))];
+    cases.push(...group.map((entry) => ({ experiment: id, ...entry })));
   }
   return {
-    source: "src/physics/laws, src/physics/world.ts, src/app/mechanics-scenes.ts, src/app/mechanics-challenges.ts",
+    source: "src/physics/laws, src/physics/world.ts, src/physics/mechanics-scenes.ts, src/physics/mechanics-challenges.ts",
     tolerance: 1e-9,
     dt: DT,
     experiments,
@@ -529,10 +530,12 @@ describe("formula parity vectors for the 3D guided mechanics experiments", () =>
     expect(committed).toEqual(JSON.parse(JSON.stringify(vectors)));
   });
 
-  it("cover all 10 guided mechanics labs with at least one law each", () => {
+  it("cover every listed guided lab (but the incline, own vectors) with at least one law each", () => {
     const vectors = buildVectors();
-    expect(Object.keys(vectors.experiments).sort()).toEqual(MECHANICS_LABS.map((lab) => lab.id).sort());
-    expect(MECHANICS_LABS).toHaveLength(10);
+    const index = JSON.parse(readFileSync(indexPath, "utf8")) as { experiments: string[] };
+    const listed = index.experiments.map((file) => file.replace(/\.json$/, "")).filter((id) => id !== "incline-friction");
+    expect(Object.keys(vectors.experiments).sort()).toEqual(listed.sort());
+    expect(listed).toHaveLength(10);
     for (const laws of Object.values(vectors.experiments)) expect(laws.length).toBeGreaterThan(0);
     expect(vectors.cases.every((entry) => entry.args.every(Number.isFinite))).toBe(true);
   });

@@ -3,7 +3,7 @@
 ## web's PhysicsSimulation with the collision preset's damping and the rail's walls, 60 Hz).
 ## Physics first (the user's priority): the balls' engine motion is checked step by step, not only the
 ## numbers on the panel.
-## 1. definition: valid, listed, texts from the shared content; materials' e = TS MATERIALS; the start
+## 1. definition: valid, listed, texts in the experiment file; materials' e = TS MATERIALS; the start
 ##    (1 kg / 2 kg rubber, 3.4 / -1.7 m/s, 8 m apart) = the TS "web start" case.
 ## 2. model = TS (no engine): positions, velocities and momenta at every sample step, the first
 ##    collision (step, velocities before / after, e, impulses, momentum and kinetic energy sums) and
@@ -202,10 +202,9 @@ func check_definition() -> void:
 	var definition := ExperimentRegistry.find("collision")
 	var problems := ExperimentRegistry.validate(definition) if not definition.is_empty() else PackedStringArray(["missing"])
 	var listed := ExperimentRegistry.load_all().map(func(d: Dictionary) -> String: return d.id)
-	var shared: Dictionary = ExperimentRegistry.shared_labs().get("collision", {})
-	expect.call(problems.is_empty() and listed.has("collision") and definition.get("content") == "collision"
-		and definition.get("title") == shared.get("title") and definition.get("tip", "") == shared.get("app", {}).get("tip", "") and definition.tip.contains("파란 공") and not definition.tip.contains("손잡이"),
-		"collision: definition valid, listed, texts and the app tip from the shared content", ", ".join(problems))
+	expect.call(problems.is_empty() and listed.has("collision") and not definition.has("content")
+		and definition.get("title", "") != "" and definition.get("tip", "") != "" and definition.tip.contains("파란 공") and not definition.tip.contains("손잡이"),
+		"collision: definition valid, listed, its texts and the app tip in the experiment file", ", ".join(problems))
 	# Materials: every vector case's (material, e) pair is the option's e.
 	var ok := true
 	var seen := {}

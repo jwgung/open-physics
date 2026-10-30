@@ -1,6 +1,6 @@
 // Generates and guards the vectors of the lever lab (Phase 1 Task 4e, web preset "rotation",
 // "지렛대로 무거운 짐을 들 수 있을까?"), consumed by apps/lab3d/tests/rotation_lab_checks.gd.
-// The law is the web's LeverChallenge (src/app/mechanics-challenges.ts): required force
+// The law is the web's LeverChallenge (src/physics/mechanics-challenges.ts): required force
 // F = m g r_load / r_effort, lifting when the force on the beam reaches it; the web caps the force at
 // the required force (Math.min(requiredForce, drag * rate)) and turns the beam to LEVER_LIFT_ANGLE
 // (0.18 rad) when lifting. Torques: rotation.ts torque about the fulcrum. Weight: gravity.ts
@@ -11,7 +11,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { LeverChallenge } from "../../../src/app/mechanics-challenges";
+import { LeverChallenge } from "../../../src/physics/mechanics-challenges";
 import { torque } from "../../../src/physics/laws/rotation";
 import { UniformGravity } from "../../../src/physics/laws/gravity";
 
@@ -23,7 +23,6 @@ const LIFT_ANGLE = 0.18;
 const FORCE_STEP = 5; // N per handle cell
 const CELLS = 50; // 1 m of press
 const vectorsPath = fileURLToPath(new URL("../tests/rotation_lab_vectors.json", import.meta.url));
-const playgroundPath = fileURLToPath(new URL("../../../src/app/physics-playground.ts", import.meta.url));
 
 const weight = (mass: number) => -new UniformGravity({ x: 0, y: -G }).force({ position: { x: 0, y: 0 }, velocity: { x: 0, y: 0 }, acceleration: { x: 0, y: 0 }, mass }, { time: 0, dt: 1 / 60 }).vector.y;
 
@@ -71,7 +70,7 @@ function leverCase(name: string, mass: number, pivot: number, loadX: number, fra
 
 function buildVectors() {
   return {
-    source: "src/app/mechanics-challenges.ts LeverChallenge, src/physics/laws/rotation.ts torque, gravity.ts UniformGravity; physics-playground.ts LEVER_LIFT_ANGLE",
+    source: "src/physics/mechanics-challenges.ts LeverChallenge, src/physics/laws/rotation.ts torque, gravity.ts UniformGravity; physics-playground.ts LEVER_LIFT_ANGLE",
     tolerance: 1e-9,
     g: G,
     beam_half: BEAM_HALF,
@@ -95,13 +94,6 @@ function buildVectors() {
 }
 
 describe("rotation lab vectors", () => {
-  it("use the web's lift angle and the cap at the required force", () => {
-    const source = readFileSync(playgroundPath, "utf8");
-    expect(source).toMatch(/const LEVER_LIFT_ANGLE = 0\.18;/);
-    expect(source).toMatch(/scene\.appliedForce = Math\.min\(scene\.model\.requiredForce, dy \* LEVER_FORCE_PER_PIXEL\);/);
-    expect(source).toMatch(/label: "무거운 짐",[^}]*mass: 20,/);
-  });
-
   it("match the committed JSON generated from the TS core", () => {
     const vectors = buildVectors();
     if (process.env.UPDATE_ROTATION_VECTORS === "1") {

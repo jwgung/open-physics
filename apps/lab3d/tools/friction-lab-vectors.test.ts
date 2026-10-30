@@ -16,7 +16,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { MATERIALS, type PlaygroundMaterial } from "../../../src/app/physics-playground";
+import { MATERIALS, type PlaygroundMaterial } from "../../../src/physics/materials";
 import type { BodyState } from "../../../src/physics/core";
 import { kineticEnergy, work } from "../../../src/physics/laws/mechanics";
 import { PushFrictionLaw } from "../../../src/physics/laws/world-mechanics";

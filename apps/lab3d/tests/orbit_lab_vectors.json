@@ -1,5 +1,5 @@
 {
-  "source": "src/physics/fields.ts PointGravityField, core.ts accelerationFromForce, orbit.ts circularOrbitSpeed / circularOrbitPeriod / escapeSpeed, src/app/mechanics-challenges.ts OrbitChallenge",
+  "source": "src/physics/fields.ts PointGravityField, core.ts accelerationFromForce, orbit.ts circularOrbitSpeed / circularOrbitPeriod / escapeSpeed, src/physics/mechanics-challenges.ts OrbitChallenge",
   "tolerance": 1e-9,
   "step_hz": 60,
   "substeps": 8,

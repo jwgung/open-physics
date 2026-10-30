@@ -2,7 +2,7 @@
 ## are the TS-core vectors in tests/friction_lab_vectors.json (tools/friction-lab-vectors.test.ts:
 ## PushFrictionLaw in the web's px units, the app's stepping rule); motion is measured from the
 ## engine box.
-## 1. definition: valid, listed, texts from the shared content, materials and the start box = the TS
+## 1. definition: valid, listed, texts in the experiment file, materials and the start box = the TS
 ##    vectors (the kid boxes are heavier than the web's, KID_MASSES; the law runs on the web's masses).
 ## 2. force schedules (4 materials x masses): the panel (state, F, friction, v, distance, heat, K)
 ##    after fixed steps = TS (1e-9); the engine box follows the formula displacement (1e-4 m); heat =
@@ -130,10 +130,9 @@ func check_definition() -> void:
 	var definition := ExperimentRegistry.find("friction")
 	var problems := ExperimentRegistry.validate(definition) if not definition.is_empty() else PackedStringArray(["missing"])
 	var listed := ExperimentRegistry.load_all().map(func(d: Dictionary) -> String: return d.id)
-	var shared: Dictionary = ExperimentRegistry.shared_labs().get("friction", {})
-	expect.call(problems.is_empty() and listed.has("friction") and definition.get("content") == "friction"
-		and definition.get("title") == shared.get("title") and definition.get("tip", "") == shared.get("app", {}).get("tip", "") and definition.tip.contains("상자") and not definition.tip.contains("손잡이"),
-		"friction: definition valid, listed, texts and the app tip from the shared content", ", ".join(problems))
+	expect.call(problems.is_empty() and listed.has("friction") and not definition.has("content")
+		and definition.get("title", "") != "" and definition.get("tip", "") != "" and definition.tip.contains("상자") and not definition.tip.contains("손잡이"),
+		"friction: definition valid, listed, its texts and the app tip in the experiment file", ", ".join(problems))
 	var ok := true
 	var materials := {}
 	for case in vectors.push:

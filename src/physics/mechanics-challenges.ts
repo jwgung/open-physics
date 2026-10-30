@@ -1,4 +1,4 @@
-import type { Vector2 } from "../physics/core";
+import type { Vector2 } from "./core";
 
 const requirePositive = (label: string, value: number): number => {
   if (!Number.isFinite(value) || value <= 0) throw new RangeError(`${label} must be greater than zero.`);

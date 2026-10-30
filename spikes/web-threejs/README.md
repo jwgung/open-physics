@@ -80,7 +80,7 @@ spikes/bench/collect.sh web-threejs S2 sustained $PKG 600   # 10분 지속
 
 ### S2 역학 빈 실험실
 
-- 바닥, 30° 빗면, 고정 블록 3개. 상자 25 + 공 25(한 변/지름 0.4 m), 재질 고무·나무·금속 3종은 `src/app/physics-playground.ts`의 `MATERIALS`에서 반발·마찰을 그대로 가져온다(금속 = `steel`).
+- 바닥, 30° 빗면, 고정 블록 3개. 상자 25 + 공 25(한 변/지름 0.4 m), 재질 고무·나무·금속 3종은 `src/physics/materials.ts`의 `MATERIALS`(예전 `src/app/physics-playground.ts`)에서 반발·마찰을 그대로 가져온다(금속 = `steel`).
 - 방향광 실시간 그림자 1개(2048² 그림자 맵, PCF) + 반구광·환경광, 물체 PBR. 금속이 검게 보이지 않도록 절차 생성 `RoomEnvironment` IBL을 쓴다.
 - 고정 seed(20260)로 높이 3~6 m에서 낙하, 20초마다 10개씩 순서대로 다시 낙하.
 - 조작: 한 손가락으로 물체를 잡으면 kinematic으로 바꾸고, 바닥 평면 교차점 아래로 Rapier ray를 쏴서 바닥·빗면·블록 윗면 위로 끌고 간다. 놓으면 0.25 m 격자로 스냅하고 dynamic으로 되돌린다. 빈 곳 한 손가락·두 손가락은 카메라 회전, 핀치·휠은 확대.

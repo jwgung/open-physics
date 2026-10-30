@@ -1,6 +1,6 @@
 # Open Physics 3D (apps/lab3d)
 
-역학 3D 실험 앱이다. Godot 4.7.2 + Jolt, GDScript. Phase 1 Task 2a에서 셸 뼈대(실험 등록, 카메라·제스처, 2D 패널, 품질 설정)와 첫 실험(빗면 마찰)을 만들었고, Task 2c에서 시각 스타일(잔디 섬: 선명한 원색, 각진 로우폴리, 하늘에 뜬 잔디 섬)과 연출을 정했다. Task 2b에서 한 손가락으로 물체를 집어 정해진 면 위로 옮기는 조작(조작 평면·스냅·높이 손잡이·보조 시점)을 더했다. Task 3에서 역학 안내형 10개 실험이 쓸 공식 보정 계층(`scripts/formula/`)과 TS↔GDScript parity, CI를 만들었다([공식 보정](docs/formula-correction.md)). Task 4a에서 실험 문구를 웹 2D와 공유하는 JSON으로 빼고(1절 "콘텐츠 공유"), 균일장 실험 두 개(자유 낙하, 던지기)를 더했다(1절 "실험 목록"). Task 4b에서 접촉 힘 실험 마찰 밀기를, Task 4c에서 충돌 실험을, Task 4d에서 공식 모델 구동 실험 셋(용수철, 부력, 궤도: `BodyModelDriver`. 힘 주입 보정기는 대표 장면·빈 실험실용)을, Task 4e에서 해석 모델 구동 실험 셋(줄·막대 진자, 지렛대, 도르래)을 더했다. Task 2d에서 앱을 가로 전용으로 바꾸고 실험 화면을 3D 전체 + 핵심 관찰값 카드 + 오른쪽 사이드바로 개편했다(1절 "레이아웃과 해상도"). 기준은 [아트 디렉션](docs/art-direction.md)이다. 계획과 진행은 [Phase 1 문서](../../docs/3d-phase1/README.md), 스택 결정은 [ADR 0001](../../docs/adr/0001-3d-app-stack.md)에 있다.
+역학 3D 실험 앱이다. Godot 4.7.2 + Jolt, GDScript. Phase 1 Task 2a에서 셸 뼈대(실험 등록, 카메라·제스처, 2D 패널, 품질 설정)와 첫 실험(빗면 마찰)을 만들었고, Task 2c에서 시각 스타일(잔디 섬: 선명한 원색, 각진 로우폴리, 하늘에 뜬 잔디 섬)과 연출을 정했다. Task 2b에서 한 손가락으로 물체를 집어 정해진 면 위로 옮기는 조작(조작 평면·스냅·높이 손잡이·보조 시점)을 더했다. Task 3에서 역학 안내형 10개 실험이 쓸 공식 보정 계층(`scripts/formula/`)과 TS↔GDScript parity, CI를 만들었다([공식 보정](docs/formula-correction.md)). Task 4a에서 실험 문구를 웹 2D와 공유하는 JSON으로 뺐다가 2026-10-30 웹 2D를 지우며 실험 파일로 되돌리고(1절 "실험 문구"), 균일장 실험 두 개(자유 낙하, 던지기)를 더했다(1절 "실험 목록"). Task 4b에서 접촉 힘 실험 마찰 밀기를, Task 4c에서 충돌 실험을, Task 4d에서 공식 모델 구동 실험 셋(용수철, 부력, 궤도: `BodyModelDriver`. 힘 주입 보정기는 대표 장면·빈 실험실용)을, Task 4e에서 해석 모델 구동 실험 셋(줄·막대 진자, 지렛대, 도르래)을 더했다. Task 2d에서 앱을 가로 전용으로 바꾸고 실험 화면을 3D 전체 + 핵심 관찰값 카드 + 오른쪽 사이드바로 개편했다(1절 "레이아웃과 해상도"). 기준은 [아트 디렉션](docs/art-direction.md)이다. 계획과 진행은 [Phase 1 문서](../../docs/3d-phase1/README.md), 스택 결정은 [ADR 0001](../../docs/adr/0001-3d-app-stack.md)에 있다.
 
 - Android: arm64-v8a release APK(디버그 키스토어 서명, 배포용 아님). 렌더러는 품질 단계가 정한다(low = Compatibility, medium·high = Mobile).
 - 모든 작업은 헤드리스 CLI(`godot --headless`)로 한다. 에디터 GUI를 쓰지 않는다.
@@ -42,8 +42,7 @@ apps/lab3d/
   experiments/rotation/               지렛대 실험(장면, LeverLabModel = 웹 LeverChallenge, LeverLabDriver = 막대·짐 구동, RotationProps 소품)
   experiments/pulley/                 도르래 실험(장면, PulleyLabModel = 웹 PulleyAdvantageChallenge, PulleyLabDriver = 짐 구동, PulleyProps 소품)
   experiments/manipulation_dev/       조작 확인용 개발 장면(목록에 없음, --experiment=manipulation-dev)
-  content/mechanics-labs.json         역학 실험 문구(웹 2D와 공유, "콘텐츠 공유")
-  content/experiments/                실험 정의 JSON(index.json + 실험별 파일: 3D 전용 필드)
+  content/experiments/                실험 정의 JSON(index.json + 실험별 파일: 문구와 3D 필드)
   assets/characters/                  빵고양이·두기두기·퍼피 glb + 텍스처 아틀라스(소스: art_src/characters/bread_cat.py, dugi.py, puppy.py, Blender 스크립트), 두기두기 대화창 초상화 portraits/(모델 렌더, dugi_portrait.py)
   assets/props/                       털실 공·택배 박스 glb + 텍스처(소스: art_src/props/yarn_ball.py, parcel_box.py)
   art_src/                            캐릭터·소품 생성 Blender 스크립트(외부 .blend 없음)
@@ -73,13 +72,13 @@ apps/lab3d/
 | 착지 때 카메라를 살짝 흔든다(`CameraRig.nudge`) | `impact(strength)` 신호(연출용, 선택) |
 | 한 손가락 조작: 집기·끌기·스냅·미리보기·높이 손잡이·취소·보조 시점, 새총 당기기, 꾹 누르기(`Manipulator`) | JSON `manipulation`의 규칙, `manipulation_body`·`manipulation_surface`·`manipulation_juice`·`manipulation_pick_point`, 결과 통보(`manipulation_started`·`_placed`·`_cancelled`, `hold_started`·`hold_ended`), 새총 `slingshot_setup()`, 추가 규칙 `placement_allowed`, 화면 재구성 때 유지할 `placements()` |
 
-콘텐츠(문구·조건·관찰값·그래프·시점)는 JSON 데이터다. 문구는 웹 2D와 같은 파일을 쓴다(아래 "콘텐츠 공유").
+콘텐츠(문구·조건·관찰값·그래프·시점)는 실험마다 JSON 파일 하나다(아래 "실험 문구").
 
 실험과 화면은 정의를 `ExperimentDefinition`(`scripts/shell/experiment_definition.gd`)으로 읽는다(2026-10-30). 조건과 선택지(`control`·`option`·`default_value`), 슬라이더 범위와 눈금(`clamp_value`·`on_grid`), 관찰값(`observation`·`digits`), 조작 규칙과 격자 간격(`manipulation_rules`·`grid_step`·`slingshot`), 카메라·그래프·액션·문구를 이름 붙은 질의로 묻고, 기본값도 그 안에서 정한다. 자기 블록을 가진 module은 `raw`에서 그 블록을 읽는다: `missions`·`predict`는 `MissionRound`, `kid`는 `ExperimentRegistry`의 kid 함수와 `ConditionPicks`, `story`는 `Story`, `note`는 `ExperimentRegistry.note`, `cast`는 `IslandCast`. `ExperimentScreen.setup()`과 `ExperimentRegistry.instantiate()`는 Dictionary도 받아 안에서 감싼다.
 
 ### 실험 목록
 
-목록 화면 순서는 `content/experiments/index.json`이다. 문구는 모두 `content/mechanics-labs.json`(웹 2D와 공유)에서 온다.
+목록 화면 순서는 `content/experiments/index.json`이다. 문구는 각 실험 파일에 있다.
 
 | 실험 (id) | 웹 2D | 보정 방식 | 조건 | 조작 | 관찰값(공식) · 시뮬레이션 | 그래프 | Task |
 |---|---|---|---|---|---|---|---|
@@ -129,20 +128,12 @@ apps/lab3d/
 - 개발 장면(`manipulation-dev`, 목록에 없음)은 바닥 조작 확인용이라 3/4 시점을 유지했다(정면은 바닥을 스치듯 본다). 핵심 값은 세 상자 높이다.
 
 
-### 콘텐츠 공유 (Task 4a)
+### 실험 문구 (Task 4a, 2026-10-30부터 실험 파일에)
 
-역학 안내형 실험의 문구는 `content/mechanics-labs.json` 한 파일에 있고, 웹 2D와 3D 앱이 함께 읽는다.
+실험의 문구(`title`·`category`·`icon`·`question`·`steps`(3개)·`observe`·`terms`·`law`(`title`·`description`·`equation`), 사이드바의 조작 안내 `tip`, 처음에만 잠깐 뜨는 한 줄 `tip_short`)는 `content/experiments/<id>.json`에 3D 필드와 함께 있다. 아이에게 보이는 짧은 문구는 같은 파일의 `kid` 블록에 있다(아래 "게임 문구").
 
-| 위치 | 내용 | 읽는 곳 |
-|---|---|---|
-| `content/mechanics-labs.json` `labs` | 웹 2D의 10개 실험(웹 목록 순서): `id`, `title`, `category`, `icon`, `question`, `steps`(3개), `observe`, `terms`, `law`, 플랫폼별 조작 안내 `web`(`controls` = 웹 조건 패널, `tip`)·`app`(`tip` = 사이드바의 전체 문구, `tip_short` = 처음에만 잠깐 뜨는 한 줄, 3D로 옮긴 실험만. 3D 동작이 웹과 달라 공유 문구가 맞지 않으면 `steps`(3개)·`observe`로 3D 앱 전용 문구를 덮어씀: 도르래, 지렛대. 웹은 `app`을 읽지 않아 웹 문구·SHA 불변) | 웹 `src/app/mechanics-labs.ts`(`import { labs }`, `parseMechanicsLabs`가 id·분류·단계 수·조건을 검사), 앱 `ExperimentRegistry` |
-| 같은 파일 `app_labs` | 3D 앱에만 있는 실험(빗면 마찰) | 앱 |
-| `content/experiments/<id>.json` | 3D 전용 필드: `content`(공유 실험 id), `scene`, `bench_id`, `camera`, `controls`, `actions`, `observations`, `graph`, `manipulation`, 게임 층 `predict`·`missions`·`kid`(7살 눈높이 문구, 아래 "게임 문구") | 앱 |
-
-- `ExperimentRegistry.resolve()`가 `content`의 문구(`title`·`category`·`icon`·`question`·`steps`·`observe`·`terms`·`law`, `tip` = `app.tip`)를 실험 정의에 합친다. 실험 파일에 문구를 함께 쓰면 오류로 빼고, 없는 id도 오류다. `content`가 없는 파일(개발 장면)은 문구를 직접 쓴다.
-- 웹의 조작 안내(`web.tip`)와 앱의 조작 안내(`app.tip`)는 조작 방식이 달라 따로 둔다. 질문·단계·관찰·용어·법칙은 하나다.
-- 웹 불변 확인: `src/app/mechanics-labs.test.ts`가 웹이 읽은 10개 실험과 조작 팁의 SHA-256이 옮기기 전(4cb04a4) TS 리터럴과 같은지 본다(한 글자 바꾸면 실패). 웹 빌드(`vite build`)의 한글 문자열 2,083개는 옮기기 전과 같다(압축된 변수 이름만 다름). `import { labs }`라 `app_labs`·설명 문구는 웹 번들에 들어가지 않는다.
-- 공유 파일의 기호 중 Noto Sans CJK에 없는 것(`x₀`의 아래 첨자, `⚖`·`⌁`·`▰` 아이콘)은 DejaVu Sans 서브셋을 대체 글꼴로 그린다(`tools/subset_font.sh`가 두 서브셋을 함께 만든다).
+- 예전(Task 4a ~ 2026-10-30)에는 웹 2D와 문구를 나누려고 `content/mechanics-labs.json`에 따로 두고 `ExperimentRegistry.resolve()`가 합쳤다. 웹 2D를 지우면서 합친 결과를 그대로 각 실험 파일에 옮겼다([ADR 0002](../../docs/adr/0002-drop-web-2d.md)). 옮기기 전후 레지스트리가 읽은 정의는 `content` 키 말고는 같다.
+- 문구의 기호 중 Noto Sans CJK에 없는 것(`x₀`의 아래 첨자, `⚖`·`⌁`·`▰` 아이콘)은 DejaVu Sans 서브셋을 대체 글꼴로 그린다(`tools/subset_font.sh`가 두 서브셋을 함께 만든다).
 
 ### 공식 보정 계층 (Task 3)
 
@@ -677,7 +668,7 @@ Android 뒤로가기 한 번이 두 번 오는 문제(2026-10-29, SM-X115 Androi
 
 ### 게임 문구 (7살 눈높이, 2026-10-27)
 
-게임 층에서 아이가 읽는 문구는 짧은 일상어로 쓴다(한 줄 20자 안팎, 공식 이름·기호 없음: 가속도·탈출 속력·반지름·질량·구속·주기·마찰 계수·임계각·v₀ 등). 공식 이름과 값은 `자세히` 사이드바에 그대로 있다. 웹과 나누는 `content/mechanics-labs.json`은 바꾸지 않고, 3D 실험 JSON에 넣는다.
+게임 층에서 아이가 읽는 문구는 짧은 일상어로 쓴다(한 줄 20자 안팎, 공식 이름·기호 없음: 가속도·탈출 속력·반지름·질량·구속·주기·마찰 계수·임계각·v₀ 등). 공식 이름과 값은 `자세히` 사이드바에 그대로 있다. 아이 문구는 실험 JSON의 `kid` 블록에 넣는다.
 
 - `kid` 블록: `title`(3D 화면 제목 줄), `place`(지도 장소 이름), `say`(두기두기 대화창 설명: 미션을 다 깬 뒤나 미션 없는 실험, 단계마다는 `missions.stages[i].say`, 1절 "단계마다 다른 두기두기 설명") + `say_face`(표정), `tip`(처음 열 때 잠깐 뜨는 몸짓 안내), `cards`(핵심 카드 제목, observation id → 문구), `states`(실험 상태 문구 → 카드에 보일 아이 말, 예: "버티는 중 · 마찰이 막고 있어요" → "꼼짝 안 해요"), `minus`(음수 값을 읽는 말, observation id → "눌려서"·"왼쪽으로": "눌려서 0.3미터"). 없는 키는 공유 문구로 돌아간다(`ExperimentRegistry.kid_text`·`card_label`). 사이드바의 관찰 타일·설명 카드는 공유 문구, 공식 이름, 실험 코드의 상태 문구와 전체 자릿수 값을 쓴다.
 - 대상은 7~10세다(2026-10-27): 7살이 읽는 말, 숫자와 도전은 10살에게도 지루하지 않게. 3D 화면의 숫자는 공식값을 소수 한 자리로 반올림하고 단위를 말로 쓴다(핵심 카드, 새총 큰 글씨 "40도 · 1초에 8.5미터"). 아이 화면에는 "뉴턴"·"초속"·소수 있는 미션 문구·그림 단추가 없다(`tests/kid_words_checks.gd` 문구 검사). 기호(N, m/s², J, √, θ, v₀, °)는 3D 화면에 쓰지 않는다.
@@ -825,7 +816,7 @@ npm test                           # 루트: TS 테스트 + apps/lab3d/tools/{in
 | 공식 벡터 생성·감시 (Task 3) | `tools/formula-vectors.test.ts`(루트 `npm test`) | TS 코어 함수·클래스(`src/physics/laws`, `world.ts` 충돌, `PendulumModel`, `Lever`·`Pulley`·`OrbitChallenge`)로 10개 실험의 법칙 사례 587개와 대표 장면 목표값을 만들어 `tests/formula_vectors.json`과 비교. 10개 실험이 모두 법칙을 갖는지 |
 | 공식 parity (Task 3) | `tests/formula_checks.gd`(`run_tests.gd`가 부름) | 실험마다 그 실험이 쓰는 `PhysicsLaws` 함수가 벡터와 상대 오차 1e-9 이내(측정 최대 3e-13), 벡터의 법칙에 포트가 모두 있음 |
 | 보정 방식별 대표 장면 (Task 3) | `tests/formula_checks.gd` | 실제 Jolt 바디로: 자유 낙하·던지기 위치 = ½at²(≤ 1e-4 m, 질량 무관), 밀기 정지·s(t), 던지기·테이블 가장자리 출발 접촉은 착지 아님, 표시 공식은 엔진 장(달 중력·기울어진 장), 접촉 모니터가 꺼져 있어도 착지, 탄성·고무 충돌 뒤 속도(재질 반발 0·0.88, 느린 접근, 깊은 겹침, 중력 하 공중 충돌)·운동량, 충돌 보정이 재질·바닥 반발을 바꾸지 않음, 벽에 튕기는 옆 공·`apply_central_force` 접근·눌린 쌍·세 공 동시 접촉은 충돌 아님, 접촉 중 `apply_*` 힘 유지, 용수철 주기 ±0.1%·에너지 ±0.5%·감쇠 시 현재 상태 에너지·출발 속도 포함 전체 에너지, 원 궤도 주기·반지름 ±0.1%, 부력 평형 깊이 ±0.5%·가라앉음·중성 판정, 진자 각도 = TS 모델(≤ 1e-5 rad, 기본 감쇠 포함)·길이·주기·다른 바디 밀기, 도르래 높이·힘, 지렛대 들림. 기준은 [공식 보정 4절](docs/formula-correction.md#4-실험별-보정-방식) |
-| 콘텐츠 공유 (Task 4a) | `src/app/mechanics-labs.test.ts`(루트 `npm test`), `tests/run_tests.gd` | 웹이 읽은 10개 실험·조작 팁의 SHA-256이 옮기기 전 TS 리터럴과 같음, 잘못된 공유 항목(없는 실험·분류, 단계 2개, 모르는 조건) 거부. 앱: 목록의 실험은 문구를 모두 공유 파일에서 가져오고 실험 파일에 쓰지 않음, 빗면 문구 불변, `content`와 문구를 같이 쓰거나 없는 id면 거부, 글꼴(대체 글꼴 포함)이 모든 글자를 덮음 |
+| 실험 문구 | `tests/run_tests.gd` | 목록의 실험마다 자기 파일에 문구(제목·세 단계·관찰·조작 안내·법칙)가 있고 `content` 키·공유 파일이 없음, 빗면 문구 불변, 글꼴(대체 글꼴 포함)이 모든 글자를 덮음 |
 | 균일장 실험 (Task 4a) | `tools/uniform-labs-vectors.test.ts` → `tests/uniform_labs_vectors.json`, `tests/uniform_lab_checks.gd`(`run_tests.gd`가 부름), 착지 시간·최고점 parity는 `formula_vectors.json` | 자유 낙하 6가지(달·지구·목성 × 높이): 고정 스텝의 표시 t·두 공 높이·v·p·K·U = TS(1e-9), 공 위치 = h₀ − gt²/2(1e-4 m), 0.5·3 kg가 같이 떨어짐(1e-6 m; 2026-10-29 두 공이 된 뒤에도 TS 벡터 파일은 그대로, 2.5 m 경우는 조건 값으로 그대로 넣음: 슬라이더 눈금만 1 m), 엔진 착지 = TS 착지 시간 ±2스텝, 착지 뒤 표시 = 공식 착지 값, 빨간 공 무게를 바꿔도 같은 운동, 무중력이면 그대로 떠 있음(바닥의 공도 시간은 시계), 그래프 점이 공식 선 위. 던지기 6가지(45°·30°·60°·15°·90°·0°, 높이 0–3 m): 표시 R·T·H와 x·y·속도 = TS(1e-9), 위치 = TS(1e-4 m), 착지 ±2스텝, 착지 거리 ±2스텝 이동, 최고점 ±2 mm, 착지 뒤 표시, 무중력 섬 밖 정지, 다음 던지기 같은 비행. 아트는 보이는 것만(충돌 객체, 연출 끈 실행과 같음), 3D 노드 16개 이하, 경로 점 = 공식. 실제 입력 경로: 공 끌기(선·0.5 m)·높이 손잡이·떨어진 공 집기, 화살표 손잡이(15°·0.5 m/s 스냅, 끄는 동안 미리보기, 슬라이더 동기화, 0–90° 밖은 막힘), 발사 선·높이. 착지 규칙(PR #9 리뷰): 처음 연 실험의 첫 바닥 던지기(45°)·바닥 위 공은 첫 스텝 착지 아님, 옆에 붙은 공끼리 닿지 않고 바닥에만 착지, 장 안 바닥 공·수평 바닥 던지기는 즉시 착지(시간 0, 그래프 리비전 멈춤), 낙하선 위 배치 막힘·옆 격자 허용, 1 mm 밖 발사 높이 스냅이 엔진·그래프·공식에 같음(`formula_checks.gd`: 얼어 있던 바닥 공 던지기, 지면 밖 바디 접촉은 착지 아님). 2차 리뷰: 바닥에서 15°·1 m/s 던지기(약 3스텝, 엔진 보고 없음)가 공식 시각에 한 번 착지·측정 거리·착지 뒤 그래프 점 없음, 5 mm 낙하의 측정 시각·그래프 점, 120 Hz에서 1 mm 낙하가 놓은 직후 깜빡이지 않음(`release()` 직후 스텝 길이 1/120), `landing_time` 정의역 밖 경계(위쪽 장·장 없음·출발보다 높은 착지면) parity. 돌연변이 9종(도약 출발 끔, 착지 시간 기준점, `gravity_scale` 미적용·이중 적용, 거리 식, 화살표 스냅 10°, 착지 표시, 집을 때 리셋, 미리보기) 실패 확인 |
 | 충돌 실험 (Task 4c) | `tools/collision-lab-vectors.test.ts` → `tests/collision_lab_vectors.json`, `tests/collision_lab_checks.gd`(`run_tests.gd`가 부름) | 웹 `PhysicsSimulation`(world.ts 충돌)에 충돌 프리셋 감쇠·정지·벽 규칙(웹 소스의 상수를 읽어 확인)을 60 Hz로 적용한 7가지(웹 시작, 같은 질량 e = 1·고무, 점토·금속, 나무, 1 m/s 미만, 따라잡기): 모델 위치·속도·운동량(6스텝마다)·첫 충돌 값·충돌 횟수 = TS(1e-9, 측정 7e-15). 엔진 공 중심 = TS(≤ 1e-4 m, 측정 2.4e-7), 매 스텝 엔진 = 모델(위치 3.8e-7 m, 스텝 속도 2.8e-5 m/s), 패널 = TS, 운동량 보존·에너지 비증가, 같은 질량 e = 1 속도 교환, 재질별 e·1 m/s 미만 e = 0. 조건 변경, 아트는 보이는 것만(공은 엔진에서 아무것도 안 닿음, 바디는 돌지 않음), 3D 노드 16개 이하(14), 처음 연 화면의 첫 충돌(TS 94스텝), 부호 있는 운동량 그래프, 리뷰 반영(부호 그래프 눈금 +max/0/−max, 벽에 붙은 B의 미세 재접촉은 연출 반복 없음, 10초 넘는 29초 실행에서 엔진 위치·스텝 속도·운동량 = 공식, 느린 공 화살표 최소 길이, 화면 열기·상태 복원 때 재시작 1회, 최대 bump에서 공 바닥이 레일 아래로 안 내려감, 화살표 캐시 윗면 색, 손잡이 공용 생성(던지기의 손잡이)), 실제 입력 경로(2026-10-28: 공 A를 새총처럼 당겨 0.5 m/s 눈금·화살표·당김 점선·큰 글씨·슬라이더 동기화, 놓으면 B 쪽으로 출발, 그 뒤 충돌 = 공식, `출발` = 마지막 값, 탭은 출발하지 않음), 측정 데모. 돌연변이 7종(감쇠 끔, 밀어내기 끔, 충돌 결과 0.1% 변경, 벽 반발 무시, 구동 한 스텝 늦음, 손잡이 눈금 0.25 m/s, 엔진 접촉 켬) 실패 확인 |
 | 용수철·부력·궤도 실험 (Task 4d) | `tools/{spring,buoyancy,orbit}-lab-vectors.test.ts` → `tests/*_lab_vectors.json`, `tests/{spring,buoyancy,orbit}_lab_checks.gd`(`run_tests.gd`가 부름) | TS 코어(`AnchoredSpringLaw`, `BuoyancyRegionLaw`, `PointGravityField`, `OrbitChallenge`)로 만든 사례(용수철 6·부력 7·궤도 8)와 모델·엔진 바디·패널을 스텝 단위로 대조(모델 ≤ 4e-15 상대, 엔진 ≤ 5e-7 m, 스텝 속도 ≤ 5.2e-5 m/s, 60초 실행 포함), 용수철 주기 2π√(m/k)·에너지 보존, 부력 ρ/ρ물 깊이·바닥·중성, 궤도 케플러 주기·에너지·탈출 속력·충돌 위치, 조작·끌기 뒤 출발 |
@@ -844,18 +835,18 @@ npm test                           # 루트: TS 테스트 + apps/lab3d/tools/{in
 
 ### 테스트와 CI
 
-`.github/workflows/ci.yml`이 모든 PR과 dev·main push에서 돌고, 수동 실행(workflow_dispatch)도 된다(Pages 배포 `pages.yml`은 따로). checkout은 토큰을 남기지 않는다(`persist-credentials: false`). Jolt 조사용 `spikes/jolt-probes/`는 CI에 넣지 않았고 `run.sh`로 수동 실행한다.
+`.github/workflows/ci.yml`이 모든 PR과 dev·main push에서 돌고, 수동 실행(workflow_dispatch)도 된다. checkout은 토큰을 남기지 않는다(`persist-credentials: false`). Jolt 조사용 `spikes/jolt-probes/`는 CI에 넣지 않았고 `run.sh`로 수동 실행한다.
 
 | 잡 | 단계 |
 |---|---|
-| `node` | `npm ci` → `npm test`(웹·공식 코어·3D 벡터) → `npm run test:spikes` → `npm run build` |
+| `node` | `npm ci` → `npm test`(공식 코어·3D 벡터) → `npm run test:spikes` → `npm run typecheck` |
 | `godot` | 공식 릴리스 `Godot_v4.7.2-stable_linux.x86_64.zip`을 `.github/scripts/install-godot.sh`로 내려받아 SHA-512(릴리스 `SHA512-SUMS.txt` 값, 스크립트에 고정)를 검증·압축 해제 → `apps/lab3d/tools/build.sh test` → `spikes/godot/tools/build.sh test`. zip만 `actions/cache`에 두고 매번 다시 검증한다. 실패하면 두 `exports/test.log`를 아티팩트로 올린다 |
 
 로컬에서 같은 단계를 재현한다(작업 트리를 건드리지 않게 깨끗한 사본에서):
 
 ```bash
 mkdir -p /tmp/ci-ws && git archive HEAD | tar -x -C /tmp/ci-ws && cd /tmp/ci-ws
-npm ci && npm test && npm run test:spikes && npm run build
+npm ci && npm test && npm run test:spikes && npm run typecheck
 export GODOT=$(.github/scripts/install-godot.sh "$PWD/.godot-bin")
 apps/lab3d/tools/build.sh test && spikes/godot/tools/build.sh test
 ```
@@ -880,8 +871,8 @@ python3 -I apps/lab3d/tools/device_gesture.py orbit  # orbit | pinch | pinch-fix
 
 ## 5. 실험 추가
 
-1. `content/experiments/<id>.json`을 만든다. 필드는 `incline-friction.json`을 따른다. 문구는 `content`에 공유 실험 id를 적어 `content/mechanics-labs.json`에서 가져온다(웹 2D 실험이면 `labs`의 그 항목에 3D 조작 안내 `app.tip`을 더하고, 3D 전용이면 `app_labs`에 더한다, 1절 "콘텐츠 공유"). 합친 정의에서 `ExperimentRegistry.validate()`가 검사하는 필수 필드는 `id`, `title`, `category`, `question`, `steps`, `observe`, `law`, `scene`, `camera`, `controls`, `actions`, `observations`, `key_observations`, `graph`다. 나머지(`icon`, `terms`, `tip`)는 선택이다.
-   - 문구(공유 파일): `title`, `category`, `icon`, `question`, `steps`(3개), `observe`, `terms`, `law`(`title`·`description`·`equation`), `app.tip`
+1. `content/experiments/<id>.json`을 만든다. 필드는 `incline-friction.json`을 따르고, 문구도 이 파일에 쓴다(1절 "실험 문구"). `ExperimentRegistry.validate()`가 검사하는 필수 필드는 `id`, `title`, `category`, `question`, `steps`, `observe`, `law`, `scene`, `camera`, `controls`, `actions`, `observations`, `key_observations`, `graph`다. 나머지(`icon`, `terms`, `tip`)는 선택이다.
+   - 문구: `title`, `category`, `icon`, `question`, `steps`(3개), `observe`, `terms`, `law`(`title`·`description`·`equation`), `tip`, `tip_short`
    - `scene`: 실험 스크립트 경로, `bench_id`: OPBENCH 장면 이름
    - `camera`: `target`, `distance`, `distance_range`, `yaw_range_deg`, `pitch_range_deg`, `pan_radius`, `default_mode`(안내형 실험은 `front`), `views`(front·three_quarter·top·side·follow의 `yaw_deg`·`pitch_deg`, 선택 `distance`·`target`). 정면 시점에서 장치가 핵심 카드(왼쪽 위)·액션 버튼(오른쪽 아래)에 가리지 않는지 폰 가로(2340×1080)·태블릿 가로(1920×1200)에서 확인한다
    - `controls`: `slider`(`min`·`max`·`step`·`default`·`unit`·`digits`) 또는 `choice`(`options`·`default`). `options` 항목은 `id`·`label`이고, 재질 선택처럼 실험이 쓰는 계수(`mu_s`·`mu_k`)를 함께 둘 수 있다

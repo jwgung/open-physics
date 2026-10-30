@@ -1,21 +1,13 @@
 ## Loads experiment content from content/experiments/index.json and validates each definition
 ## against the shell's interface. index.json `experiments` are listed on the list screen; `hidden`
 ## ones (development scenes) are only opened by id (--experiment=<id>).
-## Task 4a: the texts of the guided labs (title, question, steps, observe, terms, law, tip) live in
-## one file shared with the web 2D app, content/mechanics-labs.json. An experiment file names its
-## lab with `"content": "<lab id>"` and keeps only the 3D fields (scene, camera, controls, actions,
-## observations, graph, manipulation); resolve() merges the two. A file without `content` (the
-## development scene) writes its texts itself.
+## Each experiment file holds all of its definition, texts included (title, question, steps, observe,
+## terms, law, tip, tip_short). Until 2026-10-30 the texts lived in content/mechanics-labs.json, shared
+## with the web 2D app (deprecated and removed, docs/adr/0002-drop-web-2d.md).
 class_name ExperimentRegistry
 extends RefCounted
 
 const INDEX_PATH := "res://content/experiments/index.json"
-const SHARED_CONTENT_PATH := "res://content/mechanics-labs.json"
-## Text fields an experiment takes from its shared lab (content/mechanics-labs.json); `tip` comes
-## from the lab's `app.tip` (the web has its own interaction tip). `app.steps` / `app.observe` replace
-## the shared `steps` / `observe` for the 3D app when its motion differs from the web's (Task 4e).
-const SHARED_KEYS := ["title", "category", "icon", "question", "steps", "observe", "terms", "law"]
-const APP_OVERRIDES := ["steps", "observe", "question"]
 const CAMERA_MODES := CameraRig.MODES
 const REQUIRED_KEYS := ["id", "title", "category", "question", "steps", "observe", "law", "scene",
 	"camera", "controls", "actions", "observations", "key_observations", "graph"]
@@ -28,8 +20,6 @@ const KEY_OBSERVATIONS_MAX := 3
 static var _cache: Array[Dictionary] = []
 static var _hidden: Array[Dictionary] = []
 static var _loaded := false
-static var _shared: Dictionary = {}   # lab id -> shared lab content (labs + app_labs)
-static var _shared_loaded := false    # read once, also when the file is missing (one error, then {})
 
 
 ## All valid definitions in index order (read from disk once; treat as read-only). Invalid ones
@@ -67,66 +57,12 @@ static func _load_files(files: Array, into: Array[Dictionary]) -> void:
 		if not raw is Dictionary:
 			push_error("ExperimentRegistry: cannot read %s" % path)
 			continue
-		var resolved := resolve(raw)
-		var definition: Dictionary = resolved[0]
-		var problems: PackedStringArray = resolved[1]
-		problems.append_array(validate(definition))
+		var definition: Dictionary = raw
+		var problems := validate(definition)
 		if not problems.is_empty():
 			push_error("ExperimentRegistry: %s is invalid: %s" % [path, "; ".join(problems)])
 			continue
 		into.append(definition)
-
-
-## The shared lab content by lab id (content/mechanics-labs.json `labs` + `app_labs`; read once:
-## an unreadable file is reported once and then stays {}).
-static func shared_labs() -> Dictionary:
-	if _shared_loaded:
-		return _shared
-	_shared_loaded = true
-	var file: Variant = _read_json(SHARED_CONTENT_PATH)
-	if not file is Dictionary:
-		push_error("ExperimentRegistry: cannot read %s" % SHARED_CONTENT_PATH)
-		return _shared
-	for lab in file.get("labs", []) + file.get("app_labs", []):
-		_shared[lab.id] = lab
-	return _shared
-
-
-## [definition, problems]: an experiment file with `content` gets the texts of that shared lab
-## (SHARED_KEYS, and `tip` / `tip_short` from the lab's app.tip / app.tip_short); it must not write them itself. Files without
-## `content` are returned as they are. A lab's `app.steps` (three texts), `app.observe` or `app.question` replaces
-## the shared text in the 3D app only; the web never reads `app`.
-static func resolve(raw: Dictionary) -> Array:
-	var problems := PackedStringArray()
-	if not raw.has("content"):
-		return [raw, problems]
-	var lab: Dictionary = shared_labs().get(str(raw.content), {})
-	if lab.is_empty():
-		problems.append("content %s not in %s" % [raw.content, SHARED_CONTENT_PATH])
-		return [raw, problems]
-	var definition := raw.duplicate(true)
-	for key in SHARED_KEYS + ["tip", "tip_short"]:
-		if raw.has(key):
-			problems.append("%s duplicates the shared content (%s)" % [key, raw.content])
-	for key in SHARED_KEYS:
-		if lab.has(key):
-			definition[key] = lab[key].duplicate(true) if lab[key] is Dictionary or lab[key] is Array else lab[key]
-	var app: Dictionary = lab.get("app", {})
-	var tip: String = app.get("tip", "")
-	if tip != "":
-		definition["tip"] = tip
-	var tip_short: String = app.get("tip_short", "")
-	if tip_short != "":
-		definition["tip_short"] = tip_short
-	for key in APP_OVERRIDES:
-		if not app.has(key):
-			continue
-		var text: Variant = app[key]
-		if (key == "steps" and not (text is Array and text.size() == 3)) or (key != "steps" and not (text is String and text != "")):
-			problems.append("app.%s of %s is not valid (steps: three texts, observe / question: a text)" % [key, raw.content])
-		else:
-			definition[key] = text.duplicate(true) if text is Array else text
-	return [definition, problems]
 
 
 ## Returns a list of problems (empty = valid).
@@ -196,9 +132,9 @@ static func validate(definition: Dictionary) -> PackedStringArray:
 
 
 ## The game layer's words for a 7-year-old (`kid`, optional): short everyday sentences without the
-## formula's names. Content shared with the web (content/mechanics-labs.json) keeps its own texts;
-## the 3D experiment file puts the child-facing ones here and the screen shows them in place of the
-## shared ones (the "자세히" sidebar keeps the shared texts and the formula labels):
+## formula's names. The experiment's own texts (title, observe, tip, ...) are for the "자세히" sidebar;
+## the child-facing ones go here and the screen shows them in place of those (the sidebar keeps the
+## full texts and the formula labels):
 ##   "kid": {"title": <the title bar>, "place": <the map's spot name>, "say": <Dugi's dialogue>, "say_face": <its face>,
 ##           "tip": <the short gesture hint>, "card": <the one key observation shown as a card>,
 ##           "cards": {<observation id>: <its key card's caption>},
@@ -206,7 +142,7 @@ static func validate(definition: Dictionary) -> PackedStringArray:
 ##           "minus": {<observation id>: <the word a negative value reads with: "눌려서", "왼쪽으로">},
 ##           "bars": {<observation id>: <the value of a full bar>},
 ##           "picks": {<control id>: [the mission's picture buttons, ConditionPicks]}}
-## Every key is optional; a missing one falls back to the shared text (kid_text, card_label).
+## Every key is optional; a missing one falls back to the full text (kid_text, card_label).
 ## The key cards over the 3D view show a number with one decimal and its unit in words (KID_UNITS:
 ## "1.3초", "1초에 12.5미터"); a game lab's key observations have such a unit (an energy, an
 ## acceleration, a force stays in "자세히"). A force that is the lab's goal (the push that started the
@@ -296,7 +232,7 @@ static func _validate_kid_cards(definition: Dictionary) -> PackedStringArray:
 
 
 ## The child-facing text `key` of the game layer (KID_TEXTS): the definition's kid text, or the
-## shared one it replaces (the tip falls back to the long tip, the place to the title).
+## full one it replaces (the tip falls back to the long tip, the place to the title).
 static func kid_text(definition: Dictionary, key: String) -> String:
 	var kid: Variant = definition.get("kid")
 	if kid is Dictionary and kid.get(key) is String and kid[key] != "":

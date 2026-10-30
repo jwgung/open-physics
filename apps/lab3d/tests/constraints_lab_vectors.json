@@ -1,5 +1,5 @@
 {
-  "source": "src/app/mechanics-scenes.ts PendulumModel (step's angular acceleration, pose), oscillation.ts pendulumPeriod, mechanics.ts centripetalForce / tangentialSpeed",
+  "source": "src/physics/mechanics-scenes.ts PendulumModel (step's angular acceleration, pose), oscillation.ts pendulumPeriod, mechanics.ts centripetalForce / tangentialSpeed",
   "tolerance": 1e-9,
   "step_hz": 60,
   "substeps": 4,

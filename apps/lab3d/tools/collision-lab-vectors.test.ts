@@ -4,11 +4,12 @@
 // (src/physics/simulation.ts = world.ts MultiBodyWorld: explicit Euler integration, then
 // resolveCollisions with the restitution rule min(eA, eB), e = 0 below 48 px/s, penetration push-out)
 // in the web's px units (48 px = 1 m), stepped at the app's 60 Hz, with the collision preset's per
-// frame rules of src/app/physics-playground.ts after each step (advance): applyPresetDamping
+// frame rules of the web playground after each step (advance): applyPresetDamping
 // (v *= exp(-0.15 dt), a body slower than 2 px/s stops) and resolveWorldBounds (a body past a wall
-// is put on it and, moving outwards, reflected with v *= -e of its material). The two rule constants
-// are private in physics-playground.ts; the "web constants" test reads them from its source so a web
-// change breaks this file first. The walls are the 3D rail's (its ends), not the web canvas edges.
+// is put on it and, moving outwards, reflected with v *= -e of its material). The rule constants below
+// are the web playground's as it was removed (2026-10-30, docs/adr/0002-drop-web-2d.md: COLLISION_WORLD_DAMPING,
+// MOTION_SLEEP_SPEED, RESTING_REBOUND_SPEED = PIXELS_PER_METER = 48). The walls are the 3D rail's
+// (its ends), not the web canvas edges.
 // Displayed values: momentum / kineticEnergy (mechanics.ts) and coefficientOfRestitution of the
 // first collision (the first step whose collision resolution changed a velocity: an impulse; the
 // web's own result only counts closings >= 1 m/s, the 3D lab shows slower ones too, with e = 0).
@@ -16,7 +17,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { MATERIALS, type PlaygroundMaterial } from "../../../src/app/physics-playground";
+import { MATERIALS, type PlaygroundMaterial } from "../../../src/physics/materials";
 import type { Body } from "../../../src/physics/world";
 import { coefficientOfRestitution, kineticEnergy, momentum } from "../../../src/physics/laws/mechanics";
 import { PhysicsSimulation } from "../../../src/physics/simulation";
@@ -32,7 +33,6 @@ const SLEEP_PX = 2; // physics-playground MOTION_SLEEP_SPEED (px/s)
 const WALL = 7;
 const RADIUS_A = 0.4;
 const RADIUS_B = 0.5;
-const playgroundPath = fileURLToPath(new URL("../../../src/app/physics-playground.ts", import.meta.url));
 const vectorsPath = fileURLToPath(new URL("../tests/collision_lab_vectors.json", import.meta.url));
 
 type Ball = { x: number; v: number; mass: number; material: PlaygroundMaterial | number };
@@ -138,7 +138,7 @@ function collisionCase(name: string, a: Ball, b: Ball, steps: number, every = 6)
 
 function buildVectors() {
   return {
-    source: "src/physics/simulation.ts PhysicsSimulation (world.ts resolveCollisions), src/app/physics-playground.ts collision preset damping / bounds, src/physics/laws/mechanics.ts",
+    source: "src/physics/simulation.ts PhysicsSimulation (world.ts resolveCollisions), the web playground's collision preset damping / bounds (removed 2026-10-30), src/physics/laws/mechanics.ts",
     tolerance: 1e-9,
     step_hz: STEP_HZ,
     threshold: THRESHOLD_PX / PX,
@@ -165,15 +165,6 @@ function buildVectors() {
 }
 
 describe("collision lab display vectors", () => {
-  it("use the web's collision preset constants", () => {
-    const source = readFileSync(playgroundPath, "utf8");
-    expect(source).toMatch(/const COLLISION_WORLD_DAMPING = 0\.15;/);
-    expect(source).toMatch(/const MOTION_SLEEP_SPEED = 2;/);
-    expect(source).toMatch(/const RESTING_REBOUND_SPEED = PIXELS_PER_METER;/);
-    expect(source).toMatch(/const PIXELS_PER_METER = 48;/);
-    expect(source).toMatch(/body\.state\.velocity\.x \*= -restitution;/);
-  });
-
   it("match the committed JSON generated from the TS core", () => {
     const vectors = buildVectors();
     if (process.env.UPDATE_COLLISION_VECTORS === "1") {

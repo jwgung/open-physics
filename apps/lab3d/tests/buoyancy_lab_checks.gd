@@ -2,7 +2,7 @@
 ## TS-core vectors in tests/buoyancy_lab_vectors.json (tools/buoyancy-lab-vectors.test.ts: the web's
 ## BuoyancyRegionLaw and UniformGravity on the 3D drum, 4 semi-implicit Euler substeps at 60 Hz, the
 ## web's floor rule). Physics first: the engine drum is checked step by step, not only the panel.
-## 1. definition: valid, listed, shared texts and app tip; the start = the TS start case; tank and
+## 1. definition: valid, listed, texts and app tip; the start = the TS start case; tank and
 ##    drum sizes = the vectors.
 ## 2. model = TS (no engine): height, velocity, fraction, depth, forces at every sample step, floor
 ##    hits and water entries, density ratio, floating depth and judgement, 7 cases (rel 1e-9).
@@ -173,10 +173,9 @@ func check_definition() -> void:
 	var definition := ExperimentRegistry.find("buoyancy")
 	var problems := ExperimentRegistry.validate(definition) if not definition.is_empty() else PackedStringArray(["missing"])
 	var listed := ExperimentRegistry.load_all().map(func(d: Dictionary) -> String: return d.id)
-	var shared: Dictionary = ExperimentRegistry.shared_labs().get("buoyancy", {})
-	expect.call(problems.is_empty() and listed.has("buoyancy") and definition.get("title") == shared.get("title")
-		and definition.get("tip", "") == shared.get("app", {}).get("tip", "") and definition.tip.contains("부력"),
-		"buoyancy: definition valid, listed, texts and the app tip from the shared content", ", ".join(problems))
+	expect.call(problems.is_empty() and listed.has("buoyancy") and definition.get("title", "") != ""
+		and definition.get("tip", "") != "" and definition.tip.contains("부력"),
+		"buoyancy: definition valid, listed, its texts and the app tip in the experiment file", ", ".join(problems))
 	var start := _case("start")
 	var small := _case("small same density")
 	var defaults := {}

@@ -2,7 +2,7 @@
 ## TS-core vectors in tests/rotation_lab_vectors.json (tools/rotation-lab-vectors.test.ts: the web's
 ## LeverChallenge, its force cap and lift angle, rotation.ts torque).
 ## Physics first: the engine beam and load are checked step by step, not only the panel.
-## 1. definition: valid, listed, shared texts and app tip; the defaults = the TS start case (20 kg,
+## 1. definition: valid, listed, texts and app tip; the defaults = the TS start case (20 kg,
 ##    the middle point, fulcrum -0.5 m, load -2.5 m); geometry, lift angle; the effort end is a press
 ##    and hold (2026-10-28; the TS vectors still press in 5 N cells: hand = cells x 5 N).
 ## 2. model = TS (no engine): required force, advantage, weight, torques, and for every press the
@@ -161,10 +161,9 @@ func check_definition() -> void:
 	var definition := ExperimentRegistry.find("rotation")
 	var problems := ExperimentRegistry.validate(definition) if not definition.is_empty() else PackedStringArray(["missing"])
 	var listed := ExperimentRegistry.load_all().map(func(d: Dictionary) -> String: return d.id)
-	var shared: Dictionary = ExperimentRegistry.shared_labs().get("rotation", {})
-	expect.call(problems.is_empty() and listed.has("rotation") and definition.get("title") == shared.get("title")
-		and definition.get("tip", "") == shared.get("app", {}).get("tip", "") and definition.tip.contains("힘점") and not definition.tip.contains("손잡이"),
-		"rotation: definition valid, listed, texts and the app tip from the shared content", ", ".join(problems))
+	expect.call(problems.is_empty() and listed.has("rotation") and definition.get("title", "") != ""
+		and definition.get("tip", "") != "" and definition.tip.contains("힘점") and not definition.tip.contains("손잡이"),
+		"rotation: definition valid, listed, its texts and the app tip in the experiment file", ", ".join(problems))
 	var start := _case("start")
 	var consts: Dictionary = (load(definition.scene) as GDScript).get_script_constant_map()
 	var defaults := {}

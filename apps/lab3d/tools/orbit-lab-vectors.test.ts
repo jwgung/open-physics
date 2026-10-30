@@ -14,7 +14,7 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { vectorMismatch } from "./ts-oracle";
-import { OrbitChallenge } from "../../../src/app/mechanics-challenges";
+import { OrbitChallenge } from "../../../src/physics/mechanics-challenges";
 import { PointGravityField } from "../../../src/physics/fields";
 import type { BodyState } from "../../../src/physics/core";
 import { circularOrbitPeriod, circularOrbitSpeed, escapeSpeed } from "../../../src/physics/laws/orbit";
@@ -27,7 +27,6 @@ const MASS = 1;
 const CRASH = 1.2;
 const FAR = 12;
 const vectorsPath = fileURLToPath(new URL("../tests/orbit_lab_vectors.json", import.meta.url));
-const playgroundPath = fileURLToPath(new URL("../../../src/app/physics-playground.ts", import.meta.url));
 const field = new PointGravityField({ x: 0, y: 0 }, MU, 1);
 
 /** a = F / m of the TS field at (x, z) (core.ts accelerationFromForce scales by 1 / m). */
@@ -171,7 +170,7 @@ function webIntegrator() {
 
 function buildVectors() {
   return {
-    source: "src/physics/fields.ts PointGravityField, core.ts accelerationFromForce, orbit.ts circularOrbitSpeed / circularOrbitPeriod / escapeSpeed, src/app/mechanics-challenges.ts OrbitChallenge",
+    source: "src/physics/fields.ts PointGravityField, core.ts accelerationFromForce, orbit.ts circularOrbitSpeed / circularOrbitPeriod / escapeSpeed, src/physics/mechanics-challenges.ts OrbitChallenge",
     tolerance: 1e-9,
     step_hz: STEP_HZ,
     substeps: SUBSTEPS,
@@ -202,12 +201,6 @@ function buildVectors() {
 }
 
 describe("orbit lab vectors", () => {
-  it("follow the web's orbit preset (point gravity field, OrbitChallenge with the collision radius)", () => {
-    const source = readFileSync(playgroundPath, "utf8");
-    expect(source).toMatch(/new PointGravityField\(center, 1, orbitalSpeed \*\* 2 \* radius\)/);
-    expect(source).toMatch(/collisionRadius: 38 \+ 21,/);
-  });
-
   it("match the committed JSON generated from the TS core", () => {
     const vectors = buildVectors();
     if (process.env.UPDATE_ORBIT_VECTORS === "1") {

@@ -973,90 +973,28 @@ func _check_content() -> Dictionary:
 				if set.id == option.id:
 					ok = ok and absf(float(set.mu_s) - float(option.mu_s)) < 1e-9 and absf(float(set.mu_k) - float(option.mu_k)) < 1e-9
 	_expect(ok, "content materials = TS MATERIALS", "")
-	_check_shared_content(definition)
+	_check_own_texts(definition)
 	return definition
 
 
-## Task 4a: lab texts come from content/mechanics-labs.json (shared with the web 2D app); the
-## experiment files keep only the 3D fields.
-func _check_shared_content(incline: Dictionary) -> void:
-	var shared := ExperimentRegistry.shared_labs()
-	var file: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(ExperimentRegistry.SHARED_CONTENT_PATH))
-	_expect(file.labs.size() == 10 and shared.size() == file.labs.size() + file.app_labs.size(),
-		"shared content: 10 web labs + the app-only labs", "%d labs, %d app-only" % [file.labs.size(), file.app_labs.size()])
-	var same := true
-	var raw_texts := false
+## Each listed experiment writes its own texts (since 2026-10-30, ADR 0002; before, they came from the
+## web-shared content/mechanics-labs.json): no `content` key is left, no shared file, and the incline's
+## panel texts are as they were.
+func _check_own_texts(incline: Dictionary) -> void:
+	var own := true
 	for definition in ExperimentRegistry.load_all():
-		var path := ExperimentRegistry.INDEX_PATH.get_base_dir().path_join("%s.json" % definition.id)
-		var raw: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(path))
-		if not raw.has("content"):
-			continue
-		var lab: Dictionary = shared[raw.content]
-		for key in ExperimentRegistry.SHARED_KEYS:
-			var shown: Variant = lab.get("app", {}).get(key, lab[key]) if key in ExperimentRegistry.APP_OVERRIDES else lab[key]
-			same = same and str(definition[key]) == str(shown)
-			raw_texts = raw_texts or raw.has(key)
-		same = same and definition.get("tip", "") == lab.get("app", {}).get("tip", "") \
-			and definition.get("tip_short", "") == lab.get("app", {}).get("tip_short", "")
-		raw_texts = raw_texts or raw.has("tip") or raw.has("tip_short")
-	_expect(same and not raw_texts, "listed experiments take every text from the shared lab content (none written in the experiment file)", "")
-	# The incline's panel texts are unchanged by the move (values as they were in incline-friction.json).
+		own = own and not definition.has("content") and str(definition.get("title", "")) != "" \
+			and (definition.steps as Array).size() == 3 and str(definition.get("observe", "")) != "" \
+			and str(definition.get("tip", "")) != "" and (definition.get("law", {}) as Dictionary).has("equation")
+	_expect(own and not FileAccess.file_exists("res://content/mechanics-labs.json"),
+		"every listed experiment writes its texts itself (title, three steps, observe, tip, law); no shared file", "")
+	var stray := incline.duplicate(true)
+	stray["content"] = "incline-friction"
+	var refused := ExperimentRegistry.validate(stray)
+	_expect(refused.size() == 1 and "content" in refused[0], "registry rejects a leftover `content` key (the old shared texts)", ", ".join(refused))
 	_expect(incline.title == "빗면을 얼마나 기울이면 미끄러질까?" and incline.steps.size() == 3 and incline.terms.size() == 4
 		and incline.law.equation == "mg sinθ > μs·mg cosθ · a = g(sinθ − μk cosθ)" and incline.tip.begins_with("상자를 한 손가락으로 끌어"),
-		"incline texts unchanged after moving to the shared content", incline.title)
-	var raw_incline: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(ExperimentRegistry.INDEX_PATH.get_base_dir().path_join("incline-friction.json")))
-	var duplicated := raw_incline.duplicate(true)
-	duplicated.title = "다른 제목"
-	var unknown := raw_incline.duplicate(true)
-	unknown.content = "no-such-lab"
-	var problems: PackedStringArray = ExperimentRegistry.resolve(duplicated)[1]
-	problems.append_array(ExperimentRegistry.resolve(unknown)[1])
-	_expect(problems.size() == 2 and "duplicates" in problems[0] and "not in" in problems[1],
-		"registry rejects texts written next to `content` and an unknown lab id", ", ".join(problems))
-	# tip and tip_short come from the shared lab's app block only: a file writing either is rejected too.
-	var written := PackedStringArray()
-	for key in ["tip", "tip_short"]:
-		var with_text := raw_incline.duplicate(true)
-		with_text[key] = "직접 쓴 안내"
-		var found: PackedStringArray = ExperimentRegistry.resolve(with_text)[1]
-		written.append("%s:%d" % [key, found.size()])
-		if found.size() != 1 or key not in found[0]:
-			written.append("BAD")
-	_expect("BAD" not in written, "registry rejects `tip` and `tip_short` written next to `content`", ", ".join(written))
-	_check_app_overrides(file)
-
-
-## The 3D app's own steps / observe (lab.app.steps / app.observe): only for the labs that have them,
-## the web fields stay in the shared lab, malformed overrides are rejected.
-func _check_app_overrides(file: Dictionary) -> void:
-	var overridden := {}
-	for lab in file.labs:
-		for key in ExperimentRegistry.APP_OVERRIDES:
-			if lab.get("app", {}).has(key):
-				overridden[lab.id] = true
-	var shown_ok := true
-	for id in overridden:
-		var definition := ExperimentRegistry.find(id)
-		var lab: Dictionary = ExperimentRegistry.shared_labs()[id]
-		var changed := false
-		for key in ExperimentRegistry.APP_OVERRIDES:
-			if lab.app.has(key):
-				shown_ok = shown_ok and str(definition[key]) == str(lab.app[key]) and str(definition[key]) != str(lab[key])
-				changed = true
-		shown_ok = shown_ok and changed and definition.steps.size() == 3
-	var raw: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(ExperimentRegistry.INDEX_PATH.get_base_dir().path_join("rotation.json")))
-	var saved: Dictionary = ExperimentRegistry.shared_labs()["rotation"]
-	var original: Dictionary = saved.app.duplicate(true)
-	saved.app["steps"] = ["a", "b"]
-	saved.app["observe"] = ""
-	var bad: PackedStringArray = ExperimentRegistry.resolve(raw)[1]
-	saved.app["steps"] = ["a", "b", "c"]
-	saved.app["observe"] = "d"
-	var good: Array = ExperimentRegistry.resolve(raw)
-	saved.app = original
-	_expect(shown_ok and overridden.has("pulley") and overridden.has("rotation") and bad.size() == 2 and good[1].is_empty()
-		and good[0].steps == ["a", "b", "c"] and good[0].observe == "d",
-		"app.steps / app.observe replace the shared texts in the 3D app only (pulley, rotation); malformed ones are rejected", "%s; %s" % [str(overridden.keys()), ", ".join(bad)])
+		"incline texts unchanged", incline.title)
 
 
 func _check_fonts() -> void:

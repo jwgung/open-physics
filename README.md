@@ -4,7 +4,7 @@
 
 **Version 0.1.2**
 
-> **Project status (2026-10-30).** The product in this repository is the 3D app **Bread Cat Science Island** (빵고양이 과학섬) in [`apps/lab3d`](apps/lab3d/README.md). The 2D web physics labs (`src/app`, the Vite site) are **deprecated**: no new work, and GitHub Pages no longer deploys on push (`pages.yml` is manual only). `src/physics` stays: it is the reference formulas the 3D app's parity tests compare against.
+> **Project status (2026-10-30).** The product in this repository is the 3D app **Bread Cat Science Island** (빵고양이 과학섬) in [`apps/lab3d`](apps/lab3d/README.md). The 2D web physics labs (`src/app`, the Vite site) were removed on 2026-10-30 ([ADR 0002](docs/adr/0002-drop-web-2d.md)). `src/physics` stays: it is the reference formulas the 3D app's parity tests compare against ([`src/README.md`](src/README.md)).
 
 > AI agents working from this repository should read [`AGENTS.md`](AGENTS.md) first.
 

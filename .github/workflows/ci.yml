@@ -1,7 +1,7 @@
 name: CI
 
-# Node tests and build + Godot headless tests (3D app and spike) on every PR and on pushes to dev
-# and main. Pages deployment stays in pages.yml.
+# Node tests (the TS formula oracle and the 3D app's parity vectors) and type check + Godot headless
+# tests (3D app and spike) on every PR and on pushes to dev and main.
 on:
   pull_request:
   push:
@@ -17,7 +17,7 @@ concurrency:
 
 jobs:
   node:
-    name: Node tests and build
+    name: Node tests and type check
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -32,12 +32,12 @@ jobs:
           cache: npm
       - name: Install dependencies
         run: npm ci
-      - name: Test (web app, formula core, 3D app parity vectors)
+      - name: Test (formula core, 3D app parity vectors)
         run: npm test
       - name: Test (spike parity vectors)
         run: npm run test:spikes
-      - name: Build
-        run: npm run build
+      - name: Type check
+        run: npm run typecheck
 
   godot:
     name: Godot headless tests

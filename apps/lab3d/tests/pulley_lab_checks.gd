@@ -2,7 +2,7 @@
 ## TS-core vectors in tests/pulley_lab_vectors.json (tools/pulley-lab-vectors.test.ts: the web's
 ## PulleyAdvantageChallenge, strokes of 5 cm cells, the 2.4 m top; mechanics.ts work and energy).
 ## Physics first: the engine load is checked step by step, not only the panel.
-## 1. definition: valid, listed, shared texts and app tip; the defaults = the TS start case (one
+## 1. definition: valid, listed, texts and app tip; the defaults = the TS start case (one
 ##    strand, 20 kg); the 5 cm grid, the top, n per option.
 ## 2. model = TS (no engine): required force, rope per metre, and at every sample the pulled rope,
 ##    the lift, the stroke limit and the work / energy (5 cases, rel 1e-9).
@@ -150,10 +150,9 @@ func check_definition() -> void:
 	var definition := ExperimentRegistry.find("pulley")
 	var problems := ExperimentRegistry.validate(definition) if not definition.is_empty() else PackedStringArray(["missing"])
 	var listed := ExperimentRegistry.load_all().map(func(d: Dictionary) -> String: return d.id)
-	var shared: Dictionary = ExperimentRegistry.shared_labs().get("pulley", {})
-	expect.call(problems.is_empty() and listed.has("pulley") and definition.get("title") == shared.get("title")
-		and definition.get("tip", "") == shared.get("app", {}).get("tip", "") and definition.tip.contains("1/n"),
-		"pulley: definition valid, listed, texts and the app tip from the shared content", ", ".join(problems))
+	expect.call(problems.is_empty() and listed.has("pulley") and definition.get("title", "") != ""
+		and definition.get("tip", "") != "" and definition.tip.contains("1/n"),
+		"pulley: definition valid, listed, its texts and the app tip in the experiment file", ", ".join(problems))
 	var start := _case("one")
 	var defaults := {}
 	var ns := []

@@ -1,6 +1,6 @@
 // Generates and guards the vectors of the string / rod pendulum lab (Phase 1 Task 4e, web preset
 // "constraints", "줄과 막대는 움직임을 어떻게 제한할까?"), consumed by apps/lab3d/tests/constraints_lab_checks.gd.
-// The law is the web's: PendulumModel (src/app/mechanics-scenes.ts), angular acceleration
+// The law is the web's: PendulumModel (src/physics/mechanics-scenes.ts), angular acceleration
 // alpha = -(g / L) sin(angle) - damping * omega, a bob at anchor + L (sin angle, cos angle) (fixed length).
 // The web preset hangs a rope bob (0.62 rad, damping 0.06 /s) and a rod bob (-0.5 rad, 0.03 /s) of
 // the same length. The lab steps that equation (the acceleration is read from the TS PendulumModel
@@ -12,7 +12,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { PendulumModel } from "../../../src/app/mechanics-scenes";
+import { PendulumModel } from "../../../src/physics/mechanics-scenes";
 import { centripetalForce, tangentialSpeed } from "../../../src/physics/laws/mechanics";
 import { pendulumPeriod } from "../../../src/physics/laws/oscillation";
 
@@ -23,7 +23,6 @@ const BOB_MASS = 1; // physics-playground constraints preset: both bobs 1 kg
 const WEB_ROPE = { angle: 0.62, damping: 0.06 };
 const WEB_ROD = { angle: -0.5, damping: 0.03 };
 const vectorsPath = fileURLToPath(new URL("../tests/constraints_lab_vectors.json", import.meta.url));
-const playgroundPath = fileURLToPath(new URL("../../../src/app/physics-playground.ts", import.meta.url));
 
 /** alpha of the TS PendulumModel at (angle, omega): one step of 0 s computes it without moving. */
 function tsAcceleration(length: number, damping: number, g: number, angle: number, omega: number): number {
@@ -155,7 +154,7 @@ const deg = (d: number) => (d * Math.PI) / 180;
 
 function buildVectors() {
   return {
-    source: "src/app/mechanics-scenes.ts PendulumModel (step's angular acceleration, pose), oscillation.ts pendulumPeriod, mechanics.ts centripetalForce / tangentialSpeed",
+    source: "src/physics/mechanics-scenes.ts PendulumModel (step's angular acceleration, pose), oscillation.ts pendulumPeriod, mechanics.ts centripetalForce / tangentialSpeed",
     tolerance: 1e-9,
     step_hz: STEP_HZ,
     substeps: SUBSTEPS,
@@ -179,14 +178,6 @@ function buildVectors() {
 }
 
 describe("constraints lab vectors", () => {
-  it("use the web's two pendulums (angles, damping, 1 kg bobs)", () => {
-    const source = readFileSync(playgroundPath, "utf8");
-    expect(source).toMatch(/const rope = new PendulumModel\([^;]*, length, 0\.62, 0\.06\);/);
-    expect(source).toMatch(/const rod = new PendulumModel\([^;]*, length, -0\.5, 0\.03\);/);
-    expect(source).toMatch(/label: "줄 추",[^}]*mass: 1,/);
-    expect(source).toMatch(/label: "막대 추",[^}]*mass: 1,/);
-  });
-
   it("match the committed JSON generated from the TS core", () => {
     const vectors = buildVectors();
     if (process.env.UPDATE_CONSTRAINTS_VECTORS === "1") {

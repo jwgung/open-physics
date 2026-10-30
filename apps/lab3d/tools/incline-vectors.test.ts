@@ -11,7 +11,7 @@
 import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { MATERIALS, type PlaygroundMaterial } from "../../../src/app/physics-playground";
+import { MATERIALS, type PlaygroundMaterial } from "../../../src/physics/materials";
 import { constantAccelerationDisplacement } from "../../../src/physics/laws/mechanics";
 import { SurfaceContactFrictionModifier } from "../../../src/physics/laws/world-mechanics";
 import type { Body } from "../../../src/physics/world";
@@ -96,7 +96,7 @@ function runVector(material: PlaygroundMaterial, thetaDeg: number, runLength: nu
 
 function buildVectors() {
   return {
-    source: "src/physics/laws (SurfaceContactFrictionModifier, constantAccelerationDisplacement), src/app/physics-playground.ts MATERIALS",
+    source: "src/physics/laws (SurfaceContactFrictionModifier, constantAccelerationDisplacement), src/physics/materials.ts MATERIALS",
     g: G,
     mass: MASS,
     dt: DT,

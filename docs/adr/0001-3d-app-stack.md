@@ -1,6 +1,6 @@
 # ADR 0001: 3D 앱 스택 — Godot 4 + Jolt
 
-> **Status:** 채택됨
+> **Status:** 채택됨 (웹 버전 유지 전제는 [ADR 0002](0002-drop-web-2d.md)로 대체)
 > **Date:** 2026-10-21
 > **Context docs:** [측정 기준](../3d-phase0/benchmark-spec.md) · [후보 조사](../research/3d-stack-candidates.md) · [실측 결과](../../spikes/bench/results/README.md) · [WebGPU 누수 조사](../../spikes/bench/leak-repro/README.md)
 

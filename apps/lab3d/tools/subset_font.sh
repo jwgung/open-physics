@@ -4,7 +4,7 @@
 # content/**/*.json, so every build (Android, later Web) renders Korean without system fonts.
 # Same approach as spikes/godot/tools/subset_font.sh. Run again whenever UI text changes;
 # tests/run_tests.gd fails when a used character is missing from the subset.
-# Symbols Noto Sans CJK lacks (subscripts such as x₀ in the shared lab texts, ⚖ ⌁ ▰ list icons) come
+# Symbols Noto Sans CJK lacks (subscripts such as x₀ in the experiment texts, ⚖ ⌁ ▰ list icons) come
 # from a DejaVu Sans subset (Bitstream Vera licence, assets/fonts/DejaVu-LICENSE.txt) that UiTheme
 # sets as the fallback of both faces; it holds the same character list (Hangul is not in DejaVu).
 # Needs: pyftsubset (fonttools; falls back to `uvx --from fonttools pyftsubset`), fonts-noto-cjk

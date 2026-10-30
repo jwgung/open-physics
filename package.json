@@ -4,15 +4,12 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "tsc --noEmit && vite build",
-    "preview": "vite preview",
     "test": "vitest run",
+    "typecheck": "tsc --noEmit",
     "test:spikes": "vitest run --config /dev/null --root . spikes/godot/tools/s3-vectors.test.ts"
   },
   "devDependencies": {
     "typescript": "^5.8.0",
-    "vite": "^7.0.0",
     "vitest": "^3.2.0"
   }
 }

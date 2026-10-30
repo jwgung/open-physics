@@ -1,5 +1,5 @@
 {
-  "source": "src/physics/laws (SurfaceContactFrictionModifier, constantAccelerationDisplacement), src/app/physics-playground.ts MATERIALS",
+  "source": "src/physics/laws (SurfaceContactFrictionModifier, constantAccelerationDisplacement), src/physics/materials.ts MATERIALS",
   "g": 9.81,
   "mass": 1,
   "dt": 0.016666666666666666,

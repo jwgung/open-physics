@@ -1,4 +1,4 @@
-import type { Vector2 } from "../physics/core";
+import type { Vector2 } from "./core";
 
 export interface KinematicPose {
   position: Vector2;

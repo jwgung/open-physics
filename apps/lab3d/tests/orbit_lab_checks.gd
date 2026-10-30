@@ -2,7 +2,7 @@
 ## TS-core vectors in tests/orbit_lab_vectors.json (tools/orbit-lab-vectors.test.ts: the web's
 ## PointGravityField on a 1 kg planet, 8 velocity Verlet substeps at 60 Hz, and the web's
 ## OrbitChallenge prediction). Physics first: the engine planet is checked step by step.
-## 1. definition: valid, listed, shared texts and app tip; the start = the TS circular case; GM, the
+## 1. definition: valid, listed, texts and app tip; the start = the TS circular case; GM, the
 ##    collision and far radii and the substeps = the vectors.
 ## 2. model = TS (no engine): position, velocity, radius, speeds, circular period, swept angle at every
 ##    sample step, outcome, first lap time and the OrbitChallenge prediction, 8 cases (rel 1e-9).
@@ -158,10 +158,9 @@ func check_definition() -> void:
 	var definition := ExperimentRegistry.find("orbit")
 	var problems := ExperimentRegistry.validate(definition) if not definition.is_empty() else PackedStringArray(["missing"])
 	var listed := ExperimentRegistry.load_all().map(func(d: Dictionary) -> String: return d.id)
-	var shared: Dictionary = ExperimentRegistry.shared_labs().get("orbit", {})
-	expect.call(problems.is_empty() and listed.has("orbit") and definition.get("title") == shared.get("title")
-		and definition.get("tip", "") == shared.get("app", {}).get("tip", "") and definition.tip.contains("행성") and not definition.tip.contains("손잡이"),
-		"orbit: definition valid, listed, texts and the app tip from the shared content", ", ".join(problems))
+	expect.call(problems.is_empty() and listed.has("orbit") and definition.get("title", "") != ""
+		and definition.get("tip", "") != "" and definition.tip.contains("행성") and not definition.tip.contains("손잡이"),
+		"orbit: definition valid, listed, its texts and the app tip in the experiment file", ", ".join(problems))
 	var start := _case("circular")
 	var defaults := {}
 	for control in definition.controls:

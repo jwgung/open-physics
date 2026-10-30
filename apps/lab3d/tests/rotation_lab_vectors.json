@@ -1,5 +1,5 @@
 {
-  "source": "src/app/mechanics-challenges.ts LeverChallenge, src/physics/laws/rotation.ts torque, gravity.ts UniformGravity; physics-playground.ts LEVER_LIFT_ANGLE",
+  "source": "src/physics/mechanics-challenges.ts LeverChallenge, src/physics/laws/rotation.ts torque, gravity.ts UniformGravity; physics-playground.ts LEVER_LIFT_ANGLE",
   "tolerance": 1e-9,
   "g": 9.81,
   "beam_half": 3,

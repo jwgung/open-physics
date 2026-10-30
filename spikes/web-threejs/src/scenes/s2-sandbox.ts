@@ -24,7 +24,7 @@ import {
   Vector3,
   type Material,
 } from "three/webgpu";
-import { MATERIALS, type PlaygroundMaterial } from "../../../../src/app/physics-playground";
+import { MATERIALS, type PlaygroundMaterial } from "../../../../src/physics/materials";
 import { CameraRig, GestureInput } from "../render/camera-rig";
 import { applyRoomEnvironment } from "../render/environment";
 import { seededRandom } from "../random";

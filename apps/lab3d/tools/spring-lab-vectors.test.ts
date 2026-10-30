@@ -31,7 +31,6 @@ const STIFFNESS = 5; // physics-playground connectSpring stiffness (N/m; px unit
 const WEB_DAMPING = 0.45; // physics-playground connectSpring damping
 const REST = 3; // the 3D rod: rest length (m)
 const vectorsPath = fileURLToPath(new URL("../tests/spring_lab_vectors.json", import.meta.url));
-const playgroundPath = fileURLToPath(new URL("../../../src/app/physics-playground.ts", import.meta.url));
 const context: PhysicsContext = { time: 0, dt: DT };
 
 const law = (damping: number) => new AnchoredSpringLaw({ bodyId: "ball", anchor: { x: 0, y: 0 }, restLength: REST, stiffness: STIFFNESS, damping });
@@ -150,11 +149,6 @@ function buildVectors() {
 }
 
 describe("spring lab vectors", () => {
-  it("use the web's spring constants", () => {
-    const source = readFileSync(playgroundPath, "utf8");
-    expect(source).toMatch(/stiffness: 5,\n\s+damping: 0\.45,/);
-  });
-
   it("match the committed JSON generated from the TS core", () => {
     const vectors = buildVectors();
     if (process.env.UPDATE_SPRING_VECTORS === "1") {

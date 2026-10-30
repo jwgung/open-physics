@@ -1,5 +1,5 @@
 ## Formula model of one pendulum of the constraints lab (Phase 1 Task 4e; web preset "constraints"):
-## the web's PendulumModel (src/app/mechanics-scenes.ts) - angular acceleration
+## the web's PendulumModel (src/physics/mechanics-scenes.ts) - angular acceleration
 ## alpha = -(g / L) sin(angle) - damping * omega (PhysicsLaws.pendulum_angular_acceleration), the
 ## bob at anchor + L (sin angle along +x, cos angle down): the anchor-bob distance is L by
 ## construction, for the string and for the rod alike (the web models both the same way).

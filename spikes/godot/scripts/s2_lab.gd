@@ -1,5 +1,5 @@
 ## S2 mechanics sandbox: floor, 30 deg incline, 3 fixed blocks, 50 bodies (25 boxes, 25 balls)
-## in rubber / wood / steel (MATERIALS in src/app/physics-playground.ts), one shadowed directional
+## in rubber / wood / steel (MATERIALS in src/physics/materials.ts), one shadowed directional
 ## light. Fixed-seed drop from 3-6 m, 10 bodies re-dropped every 20 s. Single pointer drags a body
 ## on the surface plane under it with 0.25 m snapping; two fingers orbit / pinch-zoom the camera.
 ## Quality (autoload) decides the shadow mode and procedural sky vs flat background.
@@ -13,7 +13,7 @@ const SNAP := 0.25
 const BOX_SIZE := 0.5
 const BALL_RADIUS := 0.25
 
-## src/app/physics-playground.ts MATERIALS (rubber, wood, steel). Density is spike-only.
+## src/physics/materials.ts MATERIALS (rubber, wood, steel). Density is spike-only.
 const MATERIALS := {
 	"rubber": {"restitution": 0.88, "friction": 0.42, "color": Color(0.80, 0.18, 0.15), "metallic": 0.0, "roughness": 0.9, "density": 1100.0},
 	"wood": {"restitution": 0.5, "friction": 0.22, "color": Color(0.62, 0.42, 0.24), "metallic": 0.0, "roughness": 0.7, "density": 700.0},

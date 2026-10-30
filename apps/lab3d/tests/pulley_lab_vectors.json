@@ -1,5 +1,5 @@
 {
-  "source": "src/app/mechanics-challenges.ts PulleyAdvantageChallenge, src/physics/laws/mechanics.ts work / gravitationalPotentialEnergy",
+  "source": "src/physics/mechanics-challenges.ts PulleyAdvantageChallenge, src/physics/laws/mechanics.ts work / gravitationalPotentialEnergy",
   "tolerance": 1e-9,
   "g": 9.81,
   "cells_per_m": 20,

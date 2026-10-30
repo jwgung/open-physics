@@ -1,5 +1,5 @@
 ## Formula model of the pulley lab (Phase 1 Task 4e; web preset "pulley"): the web's
-## PulleyAdvantageChallenge (src/app/mechanics-challenges.ts) - n = 1, 2 or 4 supporting strands,
+## PulleyAdvantageChallenge (src/physics/mechanics-challenges.ts) - n = 1, 2 or 4 supporting strands,
 ## required force F = m g / n, the load rises d_pull / n for d_pull of rope pulled (up to max_lift).
 ## The rope is pulled hand over hand in strokes on a 5 cm grid (cells, CELLS_PER_M per metre);
 ## letting go keeps the rope (a ratchet at the guide wheel holds the load) and the next stroke adds

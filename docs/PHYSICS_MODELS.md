@@ -1,5 +1,7 @@
 # Open Physics — Physics Model Catalog
 
+> **2026-10-30:** 웹 2D 앱을 지웠다([ADR 0002](adr/0002-drop-web-2d.md)). 이 문서는 공식 설명으로 남긴다. 공식의 코드는 정답 기준인 [`src/physics`](../src/README.md)에 있고, 3D 앱은 그 공식을 GDScript로 옮겨 쓴다. 아래의 "client-side simulation engine"은 지운 웹 엔진을 가리킨다.
+
 > **Status:** Foundational physics specification
 > **Purpose:** Define the equation-based physical models that the client-side simulation engine may implement.
 

@@ -1,5 +1,5 @@
 ## GDScript port of the TS formula core (src/physics/laws, plus the guided-lab models in
-## src/app/mechanics-scenes.ts and mechanics-challenges.ts). Started from
+## src/physics/mechanics-scenes.ts and mechanics-challenges.ts). Started from
 ## spikes/godot/scripts/physics_laws.gd; Task 3 added the laws of the 10 guided mechanics
 ## experiments. Only the formulas the experiments need are ported. Each function names its TS
 ## source. Scalars only (GDScript float is 64-bit; Vector2/Vector3 are 32-bit), so a port matches

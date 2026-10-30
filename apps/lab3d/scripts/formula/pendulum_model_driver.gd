@@ -10,7 +10,7 @@ var side := Vector3.RIGHT          # swing plane: side and up
 var length := 2.0
 var angle := 0.0                   # rad, 0 = hanging straight down
 var angular_velocity := 0.0
-var damping := 0.08                # 1/s, TS PendulumModel default (src/app/mechanics-scenes.ts)
+var damping := 0.08                # 1/s, TS PendulumModel default (src/physics/mechanics-scenes.ts)
 var g := 9.81
 
 

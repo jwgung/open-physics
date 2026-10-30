@@ -1,5 +1,5 @@
 ## Formula model of the lever lab (Phase 1 Task 4e; web preset "rotation"): the web's LeverChallenge
-## (src/app/mechanics-challenges.ts) on a 6 m beam. The fulcrum sits under the beam at pivot_x, the
+## (src/physics/mechanics-challenges.ts) on a 6 m beam. The fulcrum sits under the beam at pivot_x, the
 ## load at load_x (both dragged on a 0.25 m grid; the beam's centre stays at x = 0), and the effort
 ## point is one of the web's three points, a fraction 0.35 / 0.6 / 0.9 of the way from the fulcrum
 ## to the beam's right end. The hand force `hand` (N) is the lab's input: since 2026-10-28 the child

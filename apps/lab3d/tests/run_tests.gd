@@ -1187,6 +1187,24 @@ func _check_gestures(definition: Dictionary) -> void:
 	_touch(view, 0, Vector2(500, 300), false)
 	_expect(view.rig.goal_yaw == yaw and view.rig.goal_distance == distance and pointer_events.has("move"),
 		"one finger does not turn the camera", "events %s" % ",".join(pointer_events))
+	# With one_finger_pan (the labs): a finger starting on an empty spot moves the view; one that
+	# lands where claims_press says something is picked leaves the camera alone.
+	view.one_finger_pan = true
+	view.claims_press = func(p: Vector2) -> bool: return p.x < 100.0
+	var one_pan_before: Vector3 = view.rig.pan
+	_touch(view, 0, Vector2(300, 300), true)
+	for i in 10:
+		_drag(view, 0, Vector2(300 + i * 20, 300))
+	_touch(view, 0, Vector2(500, 300), false)
+	var panned: Vector3 = view.rig.pan
+	_expect(panned != one_pan_before and view.rig.goal_yaw == yaw, "one finger on an empty spot moves the view (no turn)", "pan %s -> %s" % [str(one_pan_before), str(panned)])
+	_touch(view, 0, Vector2(50, 300), true)
+	for i in 10:
+		_drag(view, 0, Vector2(50 + i * 20, 300))
+	_touch(view, 0, Vector2(250, 300), false)
+	_expect(view.rig.pan == panned, "one finger that picks something does not move the view", "pan %s" % str(view.rig.pan))
+	view.one_finger_pan = false
+	view.claims_press = Callable()
 	# Two fingers moving together: orbit.
 	_touch(view, 0, Vector2(300, 300), true)
 	_touch(view, 1, Vector2(400, 300), true)

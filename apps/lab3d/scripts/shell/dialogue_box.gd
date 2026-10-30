@@ -114,8 +114,7 @@ func _init(own_words: String) -> void:
 static func wrap_lines(words: String, font: Font, size: int, width: float) -> Array:
 	var out := []
 	var line := ""
-	var tokens := words.split(" ")
-	for t in tokens:
+	for t: String in _glue_short(words.split(" ")):
 		var candidate := t if line == "" else line + " " + t
 		if line != "" and font.get_string_size(candidate, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x > width:
 			out.append([line, " "])
@@ -131,6 +130,23 @@ static func wrap_lines(words: String, font: Font, size: int, width: float) -> Ar
 			line = line.substr(cut)
 	if line != "":
 		out.append([line, ""])
+	return out
+
+
+## One-syllable words ("첫", "한", "두", "더"...) stay with the word after them, so a line never ends in
+## "첫 / 번째": the pair breaks (or not) as one word.
+static func _glue_short(tokens: PackedStringArray) -> Array:
+	var out := []
+	var carry := ""
+	for t in tokens:
+		var word := t if carry == "" else carry + " " + t
+		if t.length() == 1 and t.unicode_at(0) >= 0xAC00 and t.unicode_at(0) <= 0xD7A3:
+			carry = word   # "들 수 있어요": a run of short words goes on until a longer one closes it
+			continue
+		carry = ""
+		out.append(word)
+	if carry != "":
+		out.append(carry)
 	return out
 
 

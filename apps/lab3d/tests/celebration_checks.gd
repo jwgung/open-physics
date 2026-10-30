@@ -88,7 +88,7 @@ func check_stamp_slam() -> void:
 
 ## The last stamp of a round earned in this visit: confetti, the three cheer, then the card (stamps
 ## and two buttons, no words) over a dim that stops every touch; 더 해 보기 closes it (the lab takes
-## touches again), 지도로 goes back to the map. A reopened finished lab shows none of it.
+## touches again), 다음으로 goes back to the map. A reopened finished lab shows none of it.
 func check_round_done() -> void:
 	DirAccess.remove_absolute(ProgressStore.path)
 	var root_size := tree.root.size
@@ -131,7 +131,7 @@ func check_round_done() -> void:
 	var buttons: Array = card.find_children("*", "Button", true, false) if card != null else []
 	expect.call(card != null and card.get_parent() == screen.view and card.get_index() == screen.view.get_child_count() - 1
 		and card.dim.mouse_filter == Control.MOUSE_FILTER_STOP and card.dim.get_rect().encloses(Rect2(Vector2.ZERO, screen.view.size))
-		and labels.is_empty() and buttons.size() == 2 and card.map_button.text == "지도로" and card.stay_button.text == "더 해 보기"
+		and labels.is_empty() and buttons.size() == 2 and card.map_button.text == "다음으로" and card.map_button.theme_type_variation == "PrimaryButton" and card.stay_button.get_index() < card.map_button.get_index() and card.stay_button.text == "더 해 보기"
 		and card.stamps == 3 and not screen.dialogue.active,
 		"round done: the card shows the stamps and two buttons only (no words), over a dim that covers the view",
 		"labels %d buttons %d" % [labels.size(), buttons.size()])
@@ -161,11 +161,11 @@ func check_round_done() -> void:
 	var free_again: bool = screen.manipulator.mode == "slingshot"
 	await _real_touch(ball, false, true)
 	expect.call(free_again and not is_instance_valid(card), "round done: after 더 해 보기 the next touch reaches the ball", screen.manipulator.mode)
-	# 지도로: back to the map, like ← 지도.
+	# 다음으로: back to the map, like ← 지도.
 	screen._show_done_card()
 	var card2: RoundDoneCard = screen._done_card
 	card2.map_button.pressed.emit()
-	expect.call(backs[0] == 1 and screen._done_card == null, "round done: 지도로 goes back to the map", "back %d" % backs[0])
+	expect.call(backs[0] == 1 and screen._done_card == null, "round done: 다음으로 goes back to the map", "back %d" % backs[0])
 	# Android back with the card up closes it (the lab stays).
 	screen._show_done_card()
 	expect.call(screen.handle_back() and screen._done_card == null and backs[0] == 1, "round done: back closes the card first", "")

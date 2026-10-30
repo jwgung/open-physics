@@ -316,7 +316,8 @@ func check_empty_space(id: String) -> void:
 	if empty == Vector2.INF:
 		problems.append("no empty point")
 	else:
-		var before := [str(lab.observations()), lab.status(), screen.view.rig.get_state()]
+		var before := [str(lab.observations()), lab.status()]
+		var pan_before: Vector3 = screen.view.rig.pan
 		_touch(screen, empty, true)
 		for i in range(1, 7):
 			_drag(screen, empty + Vector2(30.0 * i, 12.0 * i))
@@ -326,10 +327,13 @@ func check_empty_space(id: String) -> void:
 				break
 		_touch(screen, empty + Vector2(180.0, 72.0), false)
 		await tree.physics_frame
-		var after := [str(lab.observations()), lab.status(), screen.view.rig.get_state()]
+		var after := [str(lab.observations()), lab.status()]
 		if after != before:
-			problems.append("changed: %s -> %s" % [str(before.slice(0, 2)), str(after.slice(0, 2))])
-	expect.call(problems.is_empty(), "empty space (%s): a one-finger drag on the empty sky does nothing (no gesture, panel, status and camera the same)" % id, "; ".join(problems))
+			problems.append("changed: %s -> %s" % [str(before), str(after)])
+		# The finger on an empty spot moves the camera (2026-10-30) and nothing else.
+		if screen.view.rig.pan == pan_before:
+			problems.append("the view did not follow the finger")
+	expect.call(problems.is_empty(), "empty space (%s): a one-finger drag on the empty sky moves the camera only (no manipulation, panel or status change)" % id, "; ".join(problems))
 	await _close(screen)
 
 

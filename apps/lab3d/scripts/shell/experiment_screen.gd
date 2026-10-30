@@ -225,6 +225,7 @@ func _ready() -> void:
 			or Quality.cmdline_value("demo-celebrate") != ""):
 		ProgressStore.path = ProgressStore.BENCH_PATH   # a measurement's throws never earn the child's stamps
 	view = View3D.new()
+	view.one_finger_pan = true   # an empty spot under one finger moves the camera (objects and handles stay the finger's)
 	# The lab's own World3D (2026-10-29): its bodies never meet another screen's (a lab left in the
 	# shared root world by an aborted test, or the map during a screen change). A free-fall screen left
 	# behind made the incline's box land differently at step 268 (tests/lab_mission_checks.gd).
@@ -258,6 +259,7 @@ func _ready() -> void:
 		view.viewport.add_child(manipulator)
 		manipulator.setup(view, experiment)
 		view.single_pointer.connect(manipulator.handle_pointer)
+		view.claims_press = manipulator.claims
 		manipulator.changed.connect(_on_manipulator_changed)
 		if cast != null:
 			manipulator.changed.connect(cast.rearm)
@@ -776,8 +778,7 @@ func _make_mission_strip() -> void:
 	_mission_strip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	view.add_child(_mission_strip)
 	for i in MissionTracker.missions(definition).get("stages", []).size():
-		var stamp := Ui.label("○", "KeyValueLabel")   # no wrap: a wrapping label has no width in the row
-		stamp.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var stamp := StampSlot.new()   # no wrap: a wrapping label has no width in the row
 		_mission_strip.add_child(stamp)
 		_stamp_labels.append(stamp)
 	_mission_text = Ui.label("", "KeyValueLabel", true)
@@ -822,10 +823,7 @@ func _show_stamps(count: int) -> void:
 	var stages: Array = MissionTracker.missions(definition).get("stages", [])
 	var filled := mini(count, _stamps_landed)   # a stamp still flying (StampSlam) fills its slot when it lands
 	for i in _stamp_labels.size():
-		var stamp := _stamp_labels[i] as Label
-		stamp.text = "●" if i < filled else "○"
-		stamp.add_theme_color_override("font_color",
-			StampSlam.GREEN if i < filled else StampSlam.EMPTY)
+		(_stamp_labels[i] as StampSlot).set_filled(i < filled)
 	if _mission_text == null:
 		return
 	if count >= stages.size():
@@ -1120,6 +1118,10 @@ func _fit_result_bubble() -> void:
 	if dialogue != null and dialogue.active and dialogue.visible:
 		for r in dialogue.rects():
 			avoid.append((r as Rect2).grow(4.0))
+	# The stamp landing in the middle (StampSlam) for its first second: the bubble stays off its disc.
+	if _slam != null and is_instance_valid(_slam):
+		var reach := Vector2.ONE * StampSlam.RADIUS * 1.3
+		avoid.append(Rect2(_slam.start - reach, reach * 2.0))
 	var gap := ResultBubble.TAIL + 6.0
 	var tries := [
 		Vector2(anchor.x - bubble_size.x * 0.5, anchor.y - gap - bubble_size.y),
@@ -1195,6 +1197,7 @@ func _mission_progress(_id: String, stamps: int) -> void:
 	_slam.start = view.size * Vector2(0.5, 0.46)
 	_slam.landed.connect(_on_stamp_landed.bind(stamps))
 	view.add_child(_slam)
+	_fit_result_bubble()   # the bubble (shown just above) moves off the landing stamp
 	var cat := lab_cat()
 	if cat != null:
 		cat.cheer(cat.mode == "free")
@@ -1211,7 +1214,7 @@ func _stamp_slot_center(i: int) -> Vector2:
 func _stamp_slot_radius(i: int) -> float:
 	if i >= _stamp_labels.size():
 		return 14.0
-	return maxf(8.0, (_stamp_labels[i] as Label).size.y * 0.32)
+	return (_stamp_labels[i] as StampSlot).stamp_radius()
 
 
 ## A flying stamp is in its slot: the slot fills; the last one starts the round's celebration.
@@ -1341,7 +1344,7 @@ func lab_cat() -> CatActor:
 	return null
 
 
-## Shows the round-done card (the stamps, 지도로, 더 해 보기); everything behind it waits.
+## Shows the round-done card (the stamps, 더 해 보기, 다음으로); everything behind it waits.
 func _show_done_card() -> void:
 	if _done_card != null:
 		return

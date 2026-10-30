@@ -21,11 +21,17 @@ signal gesture_used
 
 const GESTURE_SLOP := 14.0
 const TWIST_THRESHOLD_DEG := 8.0
+const ONE_FINGER_PAN_SLOP := 8.0   # units a finger on an empty spot must travel before the view follows it
 
 var rig: CameraRig
 ## Two fingers moving together turn the view (the labs); true makes them move it instead (the
 ## island map, where one finger already turns it).
 var two_finger_pan := false
+## One finger (or the left mouse button) that starts on an empty spot moves the view (the labs).
+## `claims_press(position) -> bool` says a press picks something (an object, a handle): that
+## finger belongs to the manipulation, not to the camera. Unset = nothing is ever picked.
+var one_finger_pan := false
+var claims_press := Callable()
 var viewport: SubViewport
 
 var _display: TextureRect
@@ -39,6 +45,8 @@ var _twist_total := 0.0            # signed twist (rad) since the gesture refere
 var _mouse_mode := ""              # "", "orbit", "pan"
 var _mouse_drag := false           # left button held (the mouse is acting as the single pointer)
 var _mouse_position := Vector2.ZERO
+var _single_pans := false          # the finger / button now down moves the view
+var _single_travel := 0.0          # units it has moved since it went down
 
 
 func _init() -> void:
@@ -144,10 +152,12 @@ func _on_touch(event: InputEventScreenTouch) -> void:
 			if _gesture == "" and not event.pressed:
 				single_pointer.emit("cancel" if event.canceled else "release", event.position)
 			_gesture = ""
+			_single_pans = false
 		1:
 			if _gesture != "":
 				_gesture = "ended"  # lifting one of two fingers ends the gesture; the other never becomes a drag
 			elif event.pressed:
+				_begin_single_pan(event.position)
 				single_pointer.emit("press", event.position)
 		2:
 			if event.pressed:
@@ -169,13 +179,32 @@ func _on_touch(event: InputEventScreenTouch) -> void:
 			_twist_total = 0.0
 
 
+## A single pointer went down at `position`: it moves the view if it landed on an empty spot.
+func _begin_single_pan(position: Vector2) -> void:
+	_single_travel = 0.0
+	_single_pans = one_finger_pan and rig != null and not (claims_press.is_valid() and claims_press.call(position))
+
+
+## The single pointer moved by `delta`: once past the slop, the view follows it.
+func _single_pan(delta: Vector2) -> void:
+	if not _single_pans:
+		return
+	_single_travel += delta.length()
+	if _single_travel < ONE_FINGER_PAN_SLOP:
+		return
+	rig.pan_by(delta)
+	gesture_used.emit()
+
+
 func _on_drag(event: InputEventScreenDrag) -> void:
 	if not _touches.has(event.index):
 		return
 	if _touches.size() == 1:
+		var last: Vector2 = _touches[event.index]
 		_touches[event.index] = event.position
 		if _gesture == "":
 			single_pointer.emit("move", event.position)
+			_single_pan(event.position - last)
 		return
 	var before := _pair()
 	_touches[event.index] = event.position
@@ -251,6 +280,10 @@ func _on_mouse_button(event: InputEventMouseButton) -> void:
 		MOUSE_BUTTON_LEFT:
 			_mouse_drag = event.pressed
 			_mouse_position = event.position
+			if event.pressed:
+				_begin_single_pan(event.position)
+			else:
+				_single_pans = false
 			single_pointer.emit("press" if event.pressed else "release", event.position)
 
 
@@ -270,3 +303,4 @@ func _on_mouse_motion(event: InputEventMouseMotion) -> void:
 			if event.button_mask & MOUSE_BUTTON_MASK_LEFT:
 				_mouse_position = event.position
 				single_pointer.emit("move", event.position)
+				_single_pan(event.relative)

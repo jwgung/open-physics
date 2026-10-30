@@ -286,6 +286,14 @@ func _press(position: Vector2) -> void:
 	_begin(id, "drag", position)
 
 
+## A press here would pick something (an object, its height knob, the launch point after a run):
+## that finger belongs to the manipulation; any other press is on an empty spot (the camera's).
+func claims(position: Vector2) -> bool:
+	if selected_id != "" and _knob.visible and _screen_distance(_knob.global_position, position) <= HANDLE_RADIUS:
+		return true
+	return _pick(position) != "" or _near_launch(position)
+
+
 ## The selected object is the slingshot's and the press is nearer to it than to its height knob
 ## (the knob sits close beside the ball: a press on the ball pulls, one on the knob raises).
 func _nearer_slingshot(position: Vector2) -> bool:

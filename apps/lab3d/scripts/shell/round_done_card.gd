@@ -1,6 +1,6 @@
 ## The round-done card (2026-10-28): when the child finishes a spot's last stage in this visit, a
-## card in the middle of the view shows the round's stamps, big, and two big buttons: [지도로] (back
-## to the map, like ← 지도) and [더 해 보기] (the card goes, the lab stays). Pictures only (2026-10-28
+## card in the middle of the view shows the round's stamps, big, and two big buttons: [더 해 보기] (the card
+## goes, the lab stays) and [다음으로] (blue; back to the map, like ← 지도). Pictures only (2026-10-28
 ## user decision: no headline or caption). While it is up nothing behind it takes a touch: a dim
 ## over the whole view stops every press (the QuestionShield pattern), and it lets go of input in the
 ## frame it closes (MOUSE_FILTER_IGNORE before queue_free).
@@ -62,16 +62,18 @@ func _init(stamp_count: int, with_piece := false) -> void:
 	var buttons := Ui.hbox(16)
 	buttons.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	stack.add_child(buttons)
-	map_button = Ui.button("지도로", "ChoiceButton", 84)
-	map_button.name = "ToMap"
-	map_button.custom_minimum_size.x = 190
-	map_button.pressed.connect(func() -> void: _close(to_map))
-	buttons.add_child(map_button)
+	# [더 해 보기] first and quiet (the card goes, the lab stays); [다음으로] last and blue, the way on
+	# (back to the map, like ← 지도): the two no longer look alike.
 	stay_button = Ui.button("더 해 보기", "ChoiceButton", 84)
 	stay_button.name = "Stay"
 	stay_button.custom_minimum_size.x = 190
 	stay_button.pressed.connect(func() -> void: _close(stay))
 	buttons.add_child(stay_button)
+	map_button = Ui.button("다음으로", "PrimaryButton", 84)
+	map_button.name = "ToMap"
+	map_button.custom_minimum_size.x = 190
+	map_button.pressed.connect(func() -> void: _close(to_map))
+	buttons.add_child(map_button)
 	for b: Button in [map_button, stay_button]:
 		b.add_theme_font_size_override("font_size", 26)
 

@@ -112,19 +112,19 @@ func _draw() -> void:
 static func draw_stamp(canvas: CanvasItem, center: Vector2, r: float, filled := true, alpha := 1.0) -> void:
 	var line := Color(ArtPalette.OUTLINE, alpha)
 	if not filled:
-		canvas.draw_circle(center, r, Color(PAPER, 0.9 * alpha))
+		canvas.draw_circle(center, r, Color(PAPER, 0.9 * alpha), true, -1.0, true)
 		canvas.draw_arc(center, r * 0.86, 0.0, TAU, 40, Color(EMPTY, alpha), maxf(2.0, r * 0.12), true)
 		return
-	canvas.draw_circle(center, r, line)
-	canvas.draw_circle(center, r * 0.9, Color(GREEN, alpha))
+	canvas.draw_circle(center, r, line, true, -1.0, true)
+	canvas.draw_circle(center, r * 0.9, Color(GREEN, alpha), true, -1.0, true)
 	canvas.draw_arc(center, r * 0.74, 0.0, TAU, 40, Color(PAPER, alpha), maxf(1.5, r * 0.07), true)
 	var paw := Color(PAPER, alpha)
-	canvas.draw_circle(center + Vector2(0.0, r * 0.16), r * 0.27, paw)
-	canvas.draw_circle(center + Vector2(-r * 0.22, r * 0.3), r * 0.15, paw)
-	canvas.draw_circle(center + Vector2(r * 0.22, r * 0.3), r * 0.15, paw)
+	canvas.draw_circle(center + Vector2(0.0, r * 0.16), r * 0.27, paw, true, -1.0, true)
+	canvas.draw_circle(center + Vector2(-r * 0.22, r * 0.3), r * 0.15, paw, true, -1.0, true)
+	canvas.draw_circle(center + Vector2(r * 0.22, r * 0.3), r * 0.15, paw, true, -1.0, true)
 	for i in 4:
 		var a := deg_to_rad(-150.0 + 40.0 * i)
-		canvas.draw_circle(center + Vector2(cos(a), sin(a)) * r * 0.4 + Vector2(0.0, r * 0.1), r * 0.11, paw)
+		canvas.draw_circle(center + Vector2(cos(a), sin(a)) * r * 0.4 + Vector2(0.0, r * 0.1), r * 0.11, paw, true, -1.0, true)
 
 
 ## A five-point star (a drawing, no glyph) at `center`, outer radius `r`, turned `turn` rad.

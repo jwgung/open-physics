@@ -12,7 +12,7 @@
 
 ## 결정
 
-1. 웹 2D 화면을 지운다: `src/app`, `index.html`, `public/`, `vite.config.ts`, `.github/workflows/pages.yml`, Vite 의존성과 빌드 스크립트, 웹 화면 전용 문서(`docs/DEVELOPMENT.md`, `docs/LAB_IMPLEMENTATION_GUIDELINES.md`, `docs/index.html`). CI의 웹 빌드는 TS 타입 검사로 바꾼다.
+1. 웹 2D 화면을 지운다: `src/app`, `index.html`, `public/`, `vite.config.ts`, `.github/workflows/pages.yml`, Vite 의존성과 빌드 스크립트, 웹 화면 전용 문서(`docs/DEVELOPMENT.md`, `docs/LAB_IMPLEMENTATION_GUIDELINES.md`, `docs/index.html`). CI의 웹 빌드는 TS 타입 검사로 바꾼다(`tsconfig.json`은 브라우저 타입 `DOM`을 빼고 `src/**`·`vitest.config.ts`만 본다).
 2. 정답 기준은 남기고 `src/physics` 한곳에 모은다. `mechanics-challenges.ts`, `mechanics-scenes.ts`와 그 시험을 옮기고, 4,031줄의 웹 놀이터(`physics-playground.ts`)에서는 정답 표가 쓰는 재질 표만 `src/physics/materials.ts`로 빼낸다.
 3. 실험 문구는 각 `content/experiments/<id>.json`에 둔다. `resolve()`가 합친 결과(앱 덮어쓰기 반영)를 그대로 옮기고, `mechanics-labs.json`, `resolve()`, `SHARED_KEYS`, `APP_OVERRIDES`를 지운다.
 

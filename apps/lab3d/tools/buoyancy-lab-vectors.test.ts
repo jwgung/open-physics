@@ -19,6 +19,7 @@ import { floatingSubmergedFraction } from "../../../src/physics/laws/fluid";
 import { UniformGravity } from "../../../src/physics/laws/gravity";
 import { BuoyancyRegionLaw } from "../../../src/physics/laws/world-mechanics";
 import type { Body } from "../../../src/physics/world";
+import { MATERIALS } from "../../../src/physics/materials";
 
 const STEP_HZ = 60;
 const DT = 1 / STEP_HZ;
@@ -28,7 +29,7 @@ const WATER = 1000; // kg/m^3
 const DRAG = 1.8; // BuoyancyRegionLaw default (1/s)
 const WATERLINE = 1.5; // the 3D tank (m, up)
 const FLOOR = 0.2;
-const RESTITUTION = 0.5; // physics-playground buoyancy ball material "wood"
+const RESTITUTION = MATERIALS.wood.restitution; // the buoyancy ball's material (the web preset's "wood")
 const REBOUND_MIN = 1; // physics-playground RESTING_REBOUND_SPEED = 48 px/s
 const HIT_SPEED = 0.05; // m/s: a floor contact faster than this is a hit (resting on the floor is not)
 const BIG = { volume: 0.1, height: 0.5 }; // 100 L drum
@@ -193,6 +194,10 @@ function buildVectors() {
 }
 
 describe("buoyancy lab vectors", () => {
+  it("use the TS core's buoyancy drag default (the 3D model's drag, buoyancy_model.gd)", () => {
+    expect(new BuoyancyRegionLaw({ bodyId: "b", waterline: 0, displacedMass: 1 }).drag).toBe(DRAG);
+  });
+
   it("match the committed JSON generated from the TS core", () => {
     const vectors = buildVectors();
     if (process.env.UPDATE_BUOYANCY_VECTORS === "1") {

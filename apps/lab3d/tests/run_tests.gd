@@ -988,6 +988,10 @@ func _check_own_texts(incline: Dictionary) -> void:
 			and str(definition.get("tip", "")) != "" and (definition.get("law", {}) as Dictionary).has("equation")
 	_expect(own and not FileAccess.file_exists("res://content/mechanics-labs.json"),
 		"every listed experiment writes its texts itself (title, three steps, observe, tip, law); no shared file", "")
+	var stray := incline.duplicate(true)
+	stray["content"] = "incline-friction"
+	var refused := ExperimentRegistry.validate(stray)
+	_expect(refused.size() == 1 and "content" in refused[0], "registry rejects a leftover `content` key (the old shared texts)", ", ".join(refused))
 	_expect(incline.title == "빗면을 얼마나 기울이면 미끄러질까?" and incline.steps.size() == 3 and incline.terms.size() == 4
 		and incline.law.equation == "mg sinθ > μs·mg cosθ · a = g(sinθ − μk cosθ)" and incline.tip.begins_with("상자를 한 손가락으로 끌어"),
 		"incline texts unchanged", incline.title)

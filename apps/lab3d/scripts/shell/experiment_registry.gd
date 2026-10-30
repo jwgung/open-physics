@@ -71,6 +71,8 @@ static func validate(definition: Dictionary) -> PackedStringArray:
 	for key in REQUIRED_KEYS:
 		if not definition.has(key):
 			problems.append("missing %s" % key)
+	if definition.has("content"):
+		problems.append("content is no longer read: the texts belong in the experiment file (docs/adr/0002-drop-web-2d.md)")
 	if not problems.is_empty():
 		return problems
 	if not ResourceLoader.exists(definition.scene):

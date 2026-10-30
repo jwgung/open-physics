@@ -339,10 +339,10 @@ func check_conditions() -> void:
 		"collision: mass, material and velocity change the conditions and put the balls back; unknown ids are ignored", str(shown2.p_before))
 	# Every panel value is the formula model's: no "simulation" reading of the posed engine balls.
 	var ids: Array = []
-	for item in lab.definition.get("observations", []):
+	for item in lab.definition.raw.get("observations", []):
 		ids.append(item.id)
 	var labels_ok := true
-	for item in lab.definition.get("observations", []):
+	for item in lab.definition.raw.get("observations", []):
 		labels_ok = labels_ok and not str(item.label).contains("시뮬레이션")
 	expect.call(labels_ok and not shown2.has("measured") and ids.size() == shown2.size() and ids.all(func(id): return shown2.has(id)),
 		"collision: the panel shows only formula-model values (no 'simulation' reading of the posed engine balls)", "%d values" % ids.size())
@@ -504,7 +504,7 @@ func check_demo() -> void:
 func check_review() -> void:
 	# Signed graph: the grid lines are +max, 0, -max and so are the labels; unsigned: max, max/2, 0.
 	var lab: Experiment = await _lab()
-	var graph_spec: Dictionary = lab.definition.graph
+	var graph_spec: Dictionary = lab.definition.raw.graph
 	var top := GraphView.y_top(graph_spec, {"p": PackedVector2Array([Vector2(1.0, -7.3)])})
 	expect.call(graph_spec.y.get("signed", false) and GraphView.y_tick_values(top, true) == [top, 0.0, -top] and top >= 7.3
 		and GraphView.y_tick_values(8.0, false) == [8.0, 4.0, 0.0],
@@ -617,7 +617,7 @@ func check_review() -> void:
 func check_auto_conditions() -> void:
 	var screen: Control = await _open()
 	var lab: Experiment = screen.experiment
-	var stages: Array = MissionRound.missions(screen.definition).stages
+	var stages: Array = MissionRound.missions(screen.definition.raw).stages
 	var want := [[1.0, 1.0], [3.0, 1.0], [3.0, 2.0]]
 	var problems := []
 	var cleared := [6.5, 8.0, 7.5]   # the slingshot speeds that beat each stage (6.72, 12.2, 18.4 N·s)

@@ -46,7 +46,9 @@ const ASK_CAPTION := "이 실험의 조건과 숫자로 질문을 만들어, 고
 ## ...) apply to this screen only (a rebuilt screen with a saved state restores that state instead).
 var apply_launch_args := false
 
-var definition: Dictionary
+## The experiment's definition (ExperimentDefinition). Blocks with their own owner (missions, kid,
+## story, note, cast) are handed to it as `definition.raw`.
+var definition: ExperimentDefinition
 var experiment: Experiment
 var view: View3D
 ## One-finger object manipulation (null when the experiment declares no `manipulation`).
@@ -181,8 +183,8 @@ const PULSE_TINT := Color(1.0, 0.93, 0.55)
 
 ## `state` (optional): capture_state() of a previous screen of the same experiment (conditions
 ## and camera are restored instead of the defaults / launch args).
-func setup(new_definition: Dictionary, state := {}, launch_args := false) -> void:
-	definition = new_definition
+func setup(new_definition: Variant, state := {}, launch_args := false) -> void:
+	definition = ExperimentDefinition.of(new_definition)
 	_state = state
 	apply_launch_args = launch_args
 
@@ -190,7 +192,7 @@ func setup(new_definition: Dictionary, state := {}, launch_args := false) -> voi
 ## Conditions (control values), camera and sidebar of this screen, for a rebuild with the same experiment.
 func capture_state() -> Dictionary:
 	var controls := {}
-	for control in definition.controls:
+	for control in definition.controls():
 		controls[control.id] = experiment.control_value(control.id)
 	return {"controls": controls, "camera": view.rig.get_state(), "camera_home": _camera_home,
 		"placements": experiment.placements(), "sidebar": is_sidebar_open()}
@@ -211,9 +213,9 @@ func _ready() -> void:
 	_build_view_overlays()
 	_build_sidebar()
 	experiment = ExperimentRegistry.instantiate(definition)
-	experiment.time_scale = float(definition.get("time_scale", 1.0))   # the orbit's faster playback (2026-10-29)
+	experiment.time_scale = definition.time_scale()   # the orbit's faster playback (2026-10-29)
 	# A game round draws no answer preview before the run (Experiment.answer_preview: visual only).
-	experiment.answer_preview = MissionRound.missions(definition).is_empty()
+	experiment.answer_preview = MissionRound.missions(definition.raw).is_empty()
 	experiment.state_changed.connect(_on_state_changed)
 	experiment.impact.connect(view.rig.nudge)
 	experiment.close_up.connect(func(spec: Dictionary) -> void: view.rig.focus(spec))
@@ -221,7 +223,7 @@ func _ready() -> void:
 	experiment.close_up_cut.connect(view.rig.cut_focus)
 	view.set_world(experiment)
 	if show_cast:
-		cast = IslandCast.create(definition, experiment)
+		cast = IslandCast.create(definition.raw, experiment)
 	if cast != null:
 		view.viewport.add_child(cast)
 	sounds = LabSounds.create(experiment)
@@ -230,7 +232,7 @@ func _ready() -> void:
 		dialogue = DialogueBox.new(cast.text)
 		view.add_child(dialogue)
 		dialogue.closed.connect(func() -> void: cast.dugi.stop())
-	if definition.has("manipulation"):
+	if definition.has_manipulation():
 		manipulator = Manipulator.new()
 		manipulator.name = "Manipulator"
 		view.viewport.add_child(manipulator)
@@ -248,7 +250,7 @@ func _ready() -> void:
 				_run_measured_action("reset"))
 	_make_round()
 	view.rig.follow_source = experiment
-	view.rig.configure(definition.camera)
+	view.rig.configure(definition.camera())
 	view.gesture_used.connect(_hide_tip)
 	resized.connect(_layout)
 	_layout()
@@ -262,7 +264,7 @@ func _ready() -> void:
 	_refresh()
 	_setup_slingshot()   # after the state: a restored launch point is the pull's origin
 	_setup_game()        # after the state: the stamp count and the question belong to the saved run
-	Bench.reset(definition.get("bench_id", definition.id))
+	Bench.reset(definition.bench_id())
 
 
 func _restore_state() -> void:
@@ -287,7 +289,7 @@ func _restore_state() -> void:
 ## --sidebar=open (open the sidebar), --scroll-to=<law|numbers|conditions|graph|more|...> (open the
 ## sidebar at that section; "observations" = numbers, "explanation" = more, opened).
 func _apply_launch_args() -> void:
-	for control in definition.controls:
+	for control in definition.controls():
 		var text := Quality.cmdline_value("ctl-" + control.id)
 		if text != "":
 			_set_control(control.id, float(text) if control.type == "slider" else text)
@@ -438,7 +440,7 @@ func explain_say() -> Array:
 	var say: Array = mission_round.stage_say() if mission_round != null else []
 	if not say.is_empty():
 		return say
-	var kid: Variant = definition.get("kid")
+	var kid: Variant = definition.raw.get("kid")
 	return [cast.text if cast != null else "", Story.face_or_default(kid.get("say_face") if kid is Dictionary else null)]
 
 
@@ -637,9 +639,9 @@ func _on_slingshot(state: String, value: Variant) -> void:
 			_updating = true
 			experiment.change_from_input(func() -> void:
 				experiment.begin_batch()
-				experiment.set_control(_slingshot_controls[0], on_grid(definition, _slingshot_controls[0], v.x))
+				experiment.set_control(_slingshot_controls[0], definition.on_grid(_slingshot_controls[0], v.x))
 				if _slingshot_controls.size() > 1:
-					experiment.set_control(_slingshot_controls[1], on_grid(definition, _slingshot_controls[1], v.y))
+					experiment.set_control(_slingshot_controls[1], definition.on_grid(_slingshot_controls[1], v.y))
 				experiment.end_batch())
 			for id in _slingshot_controls:
 				_sync_control(id)
@@ -650,29 +652,12 @@ func _on_slingshot(state: String, value: Variant) -> void:
 			_refresh()
 
 
-## `value` (a pull's value, a 32-bit Vector2 component) on the slider `id`'s grid in 64 bit: whole
-## steps counted from 0 (0.1 m/s: 23 / 10.0 = 2.3, not 2.29999995). A value off the grid (a pull's
-## finer grid than the slider's) or a control without a step stays as it is.
-static func on_grid(lab_definition: Dictionary, id: String, value: float) -> float:
-	for control in lab_definition.get("controls", []):
-		if control.id != id or float(control.get("step", 0.0)) <= 0.0:
-			continue
-		var step := float(control.step)
-		if step >= 1.0:
-			var whole := roundf(value / step) * step
-			return whole if absf(whole - value) < 1e-4 else value
-		var cells := roundf(1.0 / step)
-		var snapped := roundi(value * cells) / cells
-		return snapped if absf(snapped - value) < 1e-4 else value
-	return value
-
-
 # --- game: the mission round (Plan G4) -----------------------------------------------------------
 
 ## The mission round (MissionRound), when the experiment has missions; it starts from the saved
 ## stamps. The screen draws what it says.
 func _make_round() -> void:
-	mission_round = MissionRound.create(definition, experiment)
+	mission_round = MissionRound.create(definition.raw, experiment)
 	if mission_round == null:
 		return
 	mission_round.question_ended.connect(_on_question_ended)
@@ -1266,7 +1251,7 @@ func _build_picks(stage: int) -> void:
 		_picks_row.queue_free()
 		_picks_row = null
 	_picks.clear()
-	var groups := ConditionPicks.groups(definition, stage)
+	var groups := ConditionPicks.groups(definition.raw, stage)
 	if groups.is_empty():
 		_fit_overlays()
 		return
@@ -1462,7 +1447,7 @@ func _build_view_overlays() -> void:
 	back.pressed.connect(_on_back_pressed)
 	title_row.add_child(back)
 	_back_button = back
-	var title := Ui.label(ExperimentRegistry.kid_text(definition, "title"), "HeadingLabel")
+	var title := Ui.label(ExperimentRegistry.kid_text(definition.raw, "title"), "HeadingLabel")
 	_title_label = title
 	title.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	title.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -1475,7 +1460,7 @@ func _build_view_overlays() -> void:
 	_top_buttons.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	view.add_child(_top_buttons)
 	# Settings live on the island map (Plan G2). The game's labs keep their sliders behind "자세히".
-	var game := not MissionRound.missions(definition).is_empty()
+	var game := not MissionRound.missions(definition.raw).is_empty()
 	_sidebar_button = Ui.button("자세히" if game else "설명·조건", "PrimaryButton", 56)
 	_sidebar_button.pressed.connect(open_sidebar.bind(true))
 	_top_buttons.add_child(_sidebar_button)
@@ -1491,7 +1476,7 @@ func _build_view_overlays() -> void:
 	# A game lab has one button (2026-10-29 user: no action buttons): "reset" as a small "다시". Every
 	# run starts from the hand on the object (a slingshot's release, a let-go drag, a press); the lab's
 	# run actions stay its API (run_action: the slingshot's launch, --auto-release, experiment_action).
-	for action in definition.actions:
+	for action in definition.actions():
 		if game and action.id != "reset":
 			continue
 		var small: bool = game and action.id == "reset"
@@ -1506,10 +1491,10 @@ func _build_view_overlays() -> void:
 	if game and _action_row.get_child_count() > 1:
 		_action_row.move_child(_action_buttons.reset, 0)   # the small one on the left, the main action at the right edge
 
-	_tip = Ui.label(ExperimentRegistry.kid_text(definition, "tip"), "HintLabel", true)
+	_tip = Ui.label(ExperimentRegistry.kid_text(definition.raw, "tip"), "HintLabel", true)
 	_tip.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	view.add_child(_tip)
-	_tip.visible = _tip.text != "" and not _tips_shown.has(definition.id)   # recorded in _hide_tip(), once it was seen
+	_tip.visible = _tip.text != "" and not _tips_shown.has(definition.id())   # recorded in _hide_tip(), once it was seen
 	view.resized.connect(_fit_overlays)
 	# Wrapped card texts settle their height after the first layout pass (and change with status texts).
 	_key_row.minimum_size_changed.connect(_fit_overlays)
@@ -1519,7 +1504,7 @@ func _build_view_overlays() -> void:
 ## again only when the stage shows other cards (the spring's first stage: how far it was pulled).
 ## A card is a caption and its value in a child's words, or a bar (kid.bars) for a force.
 func _build_key_cards(stage: int) -> void:
-	var ids := ExperimentRegistry.shown_cards(definition, stage)
+	var ids := ExperimentRegistry.shown_cards(definition.raw, stage)
 	if ids == _key_ids:
 		return
 	_key_ids = ids.duplicate()
@@ -1537,13 +1522,13 @@ func _build_key_cards(stage: int) -> void:
 		var stack := Ui.vbox(4)
 		stack.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		card.add_child(stack)
-		var caption := Ui.label(ExperimentRegistry.card_label(definition, id), "KeyLabel", true)
+		var caption := Ui.label(ExperimentRegistry.card_label(definition.raw, id), "KeyLabel", true)
 		caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		stack.add_child(caption)
 		var value := Ui.label("—", "KeyValueLabel", true)   # a status text may take two lines
 		value.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		stack.add_child(value)
-		if ExperimentRegistry.card_bar(definition, id) > 0.0:
+		if ExperimentRegistry.card_bar(definition.raw, id) > 0.0:
 			var bar := KidBar.new()
 			bar.name = "KidBar"
 			bar.visible = false
@@ -1559,10 +1544,7 @@ func key_card_ids() -> Array:
 
 
 func _observation(id: String) -> Dictionary:
-	for observation in definition.observations:
-		if observation.id == id:
-			return observation
-	return {}
+	return definition.observation(id)
 
 
 ## Overlays are placed by hand at their minimum sizes: title bar top-left, settings and the
@@ -1672,8 +1654,8 @@ func _build_sidebar() -> void:
 	header_pad.add_child(header)
 	var heading := Ui.vbox(6)
 	heading.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	heading.add_child(Ui.label(definition.category, "EyebrowLabel"))
-	heading.add_child(Ui.label(definition.question, "MutedLabel", true))
+	heading.add_child(Ui.label(definition.text("category"), "EyebrowLabel"))
+	heading.add_child(Ui.label(definition.text("question"), "MutedLabel", true))
 	header.add_child(heading)
 	close_button = Ui.button("닫기", "", 56)
 	close_button.name = "CloseSheet"
@@ -1690,7 +1672,7 @@ func _build_sidebar() -> void:
 	var column := Ui.vbox(16)
 	pad.add_child(column)
 
-	var note := ExperimentRegistry.note(definition)
+	var note := ExperimentRegistry.note(definition.raw)
 	_sections = {
 		"law": _build_law(note),
 		"numbers": _build_numbers(note),
@@ -1717,7 +1699,7 @@ func _build_sidebar() -> void:
 	for row in note.get("numbers", []):
 		for id in row.get("ids", []):
 			shown[id] = true
-	var rest: Array = definition.observations.filter(func(o: Dictionary) -> bool: return not shown.has(o.id))
+	var rest: Array = definition.observations().filter(func(o: Dictionary) -> bool: return not shown.has(o.id))
 	if not rest.is_empty():
 		_sections["more_observations"] = _build_observations(rest)
 		_more.add_child(_sections.more_observations)
@@ -1797,7 +1779,7 @@ func _build_law(note: Dictionary) -> Control:
 	formula.name = "Formula"
 	formula.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	body.add_child(formula)
-	var pace := float(definition.get("time_scale", 1.0))
+	var pace := definition.time_scale()
 	if not is_equal_approx(pace, 1.0):
 		var paced := Ui.label(TIME_SCALE_NOTE % Ui.number(pace, 1), "MutedLabel", true)
 		paced.name = "TimeScaleNote"
@@ -1840,7 +1822,7 @@ func _section(title: String) -> Array:
 func _build_conditions() -> Control:
 	var parts := _section("조건 바꾸기")
 	var body: VBoxContainer = parts[1]
-	for control in definition.controls:
+	for control in definition.controls():
 		var row := Ui.hbox(8)
 		var caption := Ui.label(control.label, "", true)   # long captions wrap inside the sidebar width
 		row.add_child(caption)
@@ -1961,9 +1943,8 @@ func _on_manipulator_changed() -> void:
 func _sync_control(id: String) -> void:
 	var widgets: Dictionary = _control_widgets.get(id, {})
 	var value: Variant = experiment.control_value(id)
-	for control in definition.controls:
-		if control.id != id:
-			continue
+	var control := definition.control(id)
+	if not control.is_empty():
 		if control.type == "slider":
 			widgets.slider.set_value_no_signal(value)
 			widgets.value.text = Ui.number(value, int(control.get("digits", 1))) + control.get("unit", "")
@@ -2000,7 +1981,7 @@ func _build_observations(observations: Array) -> Control:
 
 
 func _build_graph() -> Control:
-	var spec: Dictionary = definition.graph
+	var spec := definition.graph()
 	var parts := _section(spec.get("title", "그래프"))
 	_graph = GraphView.new()
 	_graph.spec = spec
@@ -2027,17 +2008,17 @@ func _build_graph() -> Control:
 func _build_explanation() -> Control:
 	var parts := _section("설명")
 	var body: VBoxContainer = parts[1]
-	body.add_child(Ui.label(definition.title, "HeadingLabel", true))
-	if definition.get("tip", "") != "":
+	body.add_child(Ui.label(definition.text("title"), "HeadingLabel", true))
+	if definition.text("tip") != "":
 		var how := Ui.panel("SoftCard")
 		var how_body := Ui.vbox(6)
 		how.add_child(how_body)
 		how_body.add_child(Ui.label("조작 방법", "SectionLabel"))
-		how_body.add_child(Ui.label(definition.tip, "MutedLabel", true))
+		how_body.add_child(Ui.label(definition.text("tip"), "MutedLabel", true))
 		body.add_child(how)
 	var steps := Ui.vbox(10)
 	var number := 1
-	for step in definition.steps:
+	for step in definition.steps():
 		var row := Ui.hbox(10)
 		var badge := Ui.label(str(number), "StepNumberLabel")
 		badge.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
@@ -2050,9 +2031,9 @@ func _build_explanation() -> Control:
 	var observe_body := Ui.vbox(4)
 	observe.add_child(observe_body)
 	observe_body.add_child(Ui.label("관찰 포인트", "ObserveTitleLabel"))
-	observe_body.add_child(Ui.label(definition.observe, "ObserveLabel", true))
+	observe_body.add_child(Ui.label(definition.text("observe"), "ObserveLabel", true))
 	body.add_child(observe)
-	var law: Dictionary = definition.law
+	var law := definition.law()
 	var law_card := Ui.panel("SoftCard")
 	var law_body := Ui.vbox(6)
 	law_card.add_child(law_body)
@@ -2061,7 +2042,7 @@ func _build_explanation() -> Control:
 	var equation := Ui.label(law.equation, "EquationLabel", true)
 	law_body.add_child(equation)
 	body.add_child(law_card)
-	for term in definition.get("terms", []):
+	for term in definition.terms():
 		var term_box := Ui.vbox(2)
 		term_box.add_child(Ui.label(term.name, "SectionLabel"))
 		term_box.add_child(Ui.label(term.description, "MutedLabel", true))
@@ -2076,7 +2057,7 @@ func _refresh() -> void:
 	refresh_count += 1
 	if experiment == null or not experiment.is_inside_tree():
 		return
-	for control in definition.controls:
+	for control in definition.controls():
 		_sync_control(control.id)
 	_update_readouts(true)
 
@@ -2160,7 +2141,7 @@ static func bar_fraction(definition: Dictionary, id: String, value: Variant) -> 
 func _update_readouts(force_graph: bool) -> void:
 	var values := experiment.observations()
 	var hidden := _hidden_answers(values)
-	for observation in definition.observations:
+	for observation in definition.observations():
 		var text := format_observation(observation, values.get(observation.id))
 		if hidden.has(observation.id):
 			text = hidden_observation(observation)
@@ -2170,7 +2151,7 @@ func _update_readouts(force_graph: bool) -> void:
 		var key: Label = _key_labels.get(observation.id)
 		if key == null:
 			continue
-		var card := card_text(definition, observation, values.get(observation.id), hidden.has(observation.id))
+		var card := card_text(definition.raw, observation, values.get(observation.id), hidden.has(observation.id))
 		if key.text != card:
 			key.text = card
 		var bar: KidBar = _key_bars.get(observation.id)
@@ -2178,7 +2159,7 @@ func _update_readouts(force_graph: bool) -> void:
 			var value: Variant = values.get(observation.id)
 			bar.visible = not hidden.has(observation.id) and (value is float or value is int)
 			key.visible = not bar.visible
-			bar.fraction = bar_fraction(definition, observation.id, value)
+			bar.fraction = bar_fraction(definition.raw, observation.id, value)
 	var revision := experiment.graph_revision()
 	var series_hidden := mission_round != null and not mission_round.answer_shown(values)
 	if force_graph or revision < 0 or revision != _graph_revision or series_hidden != _series_hidden:
@@ -2200,7 +2181,7 @@ func _update_readouts(force_graph: bool) -> void:
 func _hide_tip() -> void:
 	if _tip == null or not _tip.visible or _tip_tween != null:
 		return
-	_tips_shown[definition.id] = true
+	_tips_shown[definition.id()] = true
 	if not is_inside_tree():
 		_tip.visible = false
 		return

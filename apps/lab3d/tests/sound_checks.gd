@@ -401,7 +401,7 @@ func _stand_in(id: String) -> Node3D:
 		+ "func status() -> String:\n\treturn s\n"
 	script.reload()
 	var lab: Experiment = script.new()
-	lab.definition = {"id": id}
+	lab.definition = ExperimentDefinition.new({"id": id})
 	return lab
 
 

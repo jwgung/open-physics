@@ -267,7 +267,7 @@ static func make_environment() -> WorldEnvironment:
 static func add_world(parent: Node3D, center: Vector3, blob_at: Variant = null, blob_radius := 0.0, edge_x := INF) -> void:
 	parent.add_child(make_environment())
 	var definition: Variant = parent.get("definition")
-	var id: String = definition.get("id", "") if definition is Dictionary else ""
+	var id: String = definition.id() if definition is ExperimentDefinition else ""
 	if blob_at == null:
 		build_island(parent, center, Callable(), id, edge_x)
 		return

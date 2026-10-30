@@ -55,20 +55,20 @@ var _placed := {}                 # ids put down by hand (kept across a screen r
 func _ready() -> void:
 	model.g = engine_g   # the weight m g uses the engine's gravity (the project setting, the web's 9.81)
 	_build_world()
-	for control in definition.get("controls", []):
+	for control in definition.controls():
 		set_control(control.id, control.default)
 
 
 func set_control(id: String, value: Variant) -> void:
 	match id:
 		"mass":
-			var clamped := _clamp_to_control(id, float(value))
+			var clamped := definition.clamp_value(id, float(value))
 			if is_nan(clamped):
 				return
 			model.mass = clamped
 			props.set_look(look_factor())
 		"effort":
-			var option := _find_option(id, str(value))
+			var option := definition.option(id, str(value))
 			if option.is_empty():
 				push_warning("rotation: unknown effort point %s" % value)
 				return
@@ -183,7 +183,7 @@ func _show() -> void:
 func _show_markers() -> void:
 	var points: Array[float] = []
 	var chosen := 0
-	for option in _find_control("effort").get("options", []):
+	for option in definition.control("effort").get("options", []):
 		if option.id == effort_id:
 			chosen = points.size()
 		points.append(model.effort_x_at(float(option.fraction)))
@@ -301,9 +301,9 @@ func manipulation_surface(surface_id: String) -> ManipSurface:
 	match surface_id:
 		"beam_top":
 			surface = ManipSurface.new(Transform3D(Basis(), Vector3(0.0, PIVOT_Y + BEAM_THICK * 0.5, 0.0)),
-				Vector2(LOAD_MIN, 0.0), Vector2(model.pivot_x - LOAD_GAP, 0.0), Vector2(_grid_step("load"), 0.0))
+				Vector2(LOAD_MIN, 0.0), Vector2(model.pivot_x - LOAD_GAP, 0.0), Vector2(definition.grid_step("load"), 0.0))
 		"floor_line":
-			surface = ManipSurface.new(Transform3D.IDENTITY, Vector2(PIVOT_MIN, 0.0), Vector2(PIVOT_MAX, 0.0), Vector2(_grid_step("fulcrum"), 0.0))
+			surface = ManipSurface.new(Transform3D.IDENTITY, Vector2(PIVOT_MIN, 0.0), Vector2(PIVOT_MAX, 0.0), Vector2(definition.grid_step("fulcrum"), 0.0))
 		_:
 			return null
 	surface.exclude = [_floor.get_rid(), beam.get_rid(), load_body.get_rid(), stand.get_rid()]

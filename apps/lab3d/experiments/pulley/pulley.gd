@@ -51,18 +51,18 @@ func _ready() -> void:
 	model.g = engine_g   # the weight m g uses the engine's gravity (the project setting, the web's 9.81)
 	model.max_lift = MAX_LIFT
 	hand = HoldRamp.new(PULL_RATE, PULL_MAX)
-	var snap := _grid_step("rope")   # the one source of the cell size: the definition's rope grid
+	var snap := definition.grid_step("rope")   # the one source of the cell size: the definition's rope grid
 	if snap > 0.0:
 		model.cells_per_m = roundi(1.0 / snap)
 	_build_world()
-	for control in definition.get("controls", []):
+	for control in definition.controls():
 		set_control(control.id, control.default)
 
 
 func set_control(id: String, value: Variant) -> void:
 	match id:
 		"strands":
-			var option := _find_option(id, str(value))
+			var option := definition.option(id, str(value))
 			if option.is_empty():
 				push_warning("pulley: unknown strands %s" % value)
 				return
@@ -71,7 +71,7 @@ func set_control(id: String, value: Variant) -> void:
 			_restart()             # the web starts the pull again when the strands change (reset_run, once per batch)
 			return
 		"mass":
-			var clamped := _clamp_to_control(id, float(value))
+			var clamped := definition.clamp_value(id, float(value))
 			if is_nan(clamped):
 				return
 			model.mass = clamped

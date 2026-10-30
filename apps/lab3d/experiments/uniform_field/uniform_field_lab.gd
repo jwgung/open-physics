@@ -47,7 +47,7 @@ var _graph_revision := 0
 
 func _ready() -> void:
 	_build_world()
-	for control in definition.get("controls", []):
+	for control in definition.controls():
 		set_control(control.id, control.default)
 
 
@@ -197,12 +197,12 @@ static func snapped_height(bottom_y: float) -> float:
 
 ## Selects a gravity option ({id, g} in the "gravity" control). False for an unknown id.
 func set_gravity(option_id: String) -> bool:
-	var option := _find_option("gravity", option_id)
+	var option := definition.option("gravity", option_id)
 	if not option.is_empty():
 		g = float(option.g)
 		gravity_id = option_id
 		return true
-	push_warning("%s: unknown gravity %s" % [definition.get("id", "?"), option_id])
+	push_warning("%s: unknown gravity %s" % [definition.id(), option_id])
 	return false
 
 
@@ -219,7 +219,7 @@ func step_dt() -> float:
 
 ## Graph window (s) from the definition.
 func graph_x_max() -> float:
-	return float(definition.get("graph", {}).get("x", {}).get("max", 3.0))
+	return float(definition.graph_x_max())
 
 
 ## Collision floor: the island's top surface at y = 0 (the island mesh is ArtKit's, no collision).

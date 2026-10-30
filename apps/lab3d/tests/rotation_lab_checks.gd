@@ -174,7 +174,7 @@ func check_definition() -> void:
 		if control.id == "effort":
 			for option in control.options:
 				fractions.append(float(option.fraction))
-	var rule: Dictionary = Manipulator.parse_rules(definition).effort
+	var rule: Dictionary = ExperimentDefinition.new(definition).manipulation_rules().effort
 	expect.call(float(defaults.mass) == float(start.mass) and defaults.effort == _effort_id(float(start.fraction)) and fractions == [0.35, 0.6, 0.9]
 		and float(consts.DEFAULT_PIVOT) == float(start.pivot) and float(consts.DEFAULT_LOAD) == float(start.load_x)
 		and float(consts.BEAM_HALF) == float(vectors.beam_half) and float(consts.PIVOT_Y) == float(vectors.pivot_y)
@@ -283,7 +283,7 @@ func check_conditions() -> void:
 	var labels_ok := true
 	var ids := []
 	var shown: Dictionary = lab.observations()
-	for item in lab.definition.observations:
+	for item in lab.definition.raw.observations:
 		labels_ok = labels_ok and not str(item.label).contains("시뮬레이션")
 		ids.append(item.id)
 	expect.call(labels_ok and ids.all(func(id): return shown.has(id)) and ids.size() == shown.size(),

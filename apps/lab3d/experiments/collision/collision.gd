@@ -65,27 +65,27 @@ func _init() -> void:
 func set_control(id: String, value: Variant) -> void:
 	match id:
 		"mass_a":
-			var clamped := _clamp_to_control(id, float(value))
+			var clamped := definition.clamp_value(id, float(value))
 			if is_nan(clamped):
 				return
 			mass_a = clamped
 		"mass_b":
-			var clamped := _clamp_to_control(id, float(value))
+			var clamped := definition.clamp_value(id, float(value))
 			if is_nan(clamped):
 				return
 			mass_b = clamped
 		"velocity_a":
-			var clamped := _clamp_to_control(id, float(value))
+			var clamped := definition.clamp_value(id, float(value))
 			if is_nan(clamped):
 				return
 			velocity_a = clamped
 		"velocity_b":
-			var clamped := _clamp_to_control(id, float(value))
+			var clamped := definition.clamp_value(id, float(value))
 			if is_nan(clamped):
 				return
 			velocity_b = clamped
 		"material_a", "material_b":
-			if _find_option(id, str(value)).is_empty():
+			if definition.option(id, str(value)).is_empty():
 				push_warning("collision: unknown material %s" % value)
 				return
 			if id == "material_a":
@@ -135,8 +135,8 @@ func _load_model() -> void:
 	model.mass_b = mass_b
 	model.radius_a = RADIUS_A
 	model.radius_b = RADIUS_B
-	model.restitution_a = float(_find_option("material_a", material_a).get("e", 1.0))
-	model.restitution_b = float(_find_option("material_b", material_b).get("e", 1.0))
+	model.restitution_a = float(definition.option("material_a", material_a).get("e", 1.0))
+	model.restitution_b = float(definition.option("material_b", material_b).get("e", 1.0))
 	if restitution_override.x >= 0.0:
 		model.restitution_a = restitution_override.x
 		model.restitution_b = restitution_override.y
@@ -389,7 +389,7 @@ func manipulation_juice(id: String) -> ArtJuice:
 ## (pull_velocity, 0) and a release sets "velocity_a" and runs "release" ("출발"). The readout says the
 ## speed in a child's words.
 func slingshot_setup() -> Dictionary:
-	var spec: Dictionary = definition.get("manipulation", {}).get("slingshot", {})
+	var spec: Dictionary = definition.slingshot()
 	if spec.is_empty() or manipulation_body(str(spec.get("object", ""))) == null:
 		return {}
 	return {"object": str(spec.object), "surface": manipulation_surface("pull_a"), "launch": launch_point,

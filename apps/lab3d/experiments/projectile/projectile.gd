@@ -85,7 +85,7 @@ func set_control(id: String, value: Variant) -> void:
 			speed = clampf(float(value), ArrowSurface.SPEED_MIN, ArrowSurface.SPEED_MAX)
 			reset_run()
 		"launch_height":
-			var h := _clamp_to_control(id, float(value))
+			var h := definition.clamp_value(id, float(value))
 			if is_nan(h):
 				return
 			start.y = snapped_height(h)   # the height handle's own rounding (manipulation_placed)
@@ -544,8 +544,7 @@ func _build_world() -> void:
 ## range are the speed slider's) and the controls a pull commits ("angle", "speed"; then the
 ## "release" action throws). The lab turns its preview off (trail_only).
 func slingshot_setup() -> Dictionary:
-	var manipulation: Dictionary = definition.get("manipulation", {})
-	var spec: Dictionary = manipulation.get("slingshot", {})
+	var spec := definition.slingshot()
 	if spec.is_empty() or not manipulation_body(str(spec.get("object", ""))):
 		return {}
 	var surface := ArrowSurface.new(ball_center(), KNOB_SIZE * 0.5)

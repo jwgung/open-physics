@@ -342,10 +342,7 @@ static func card_label(definition: Dictionary, id: String) -> String:
 	var kid: Variant = definition.get("kid")
 	if kid is Dictionary and kid.get("cards") is Dictionary and kid.cards.get(id) is String:
 		return kid.cards[id]
-	for observation in definition.get("observations", []):
-		if observation.get("id") == id:
-			return str(observation.get("label", ""))
-	return ""
+	return str(ExperimentDefinition.new(definition).observation(id).get("label", ""))
 
 
 ## The science note of "자세히" (`note`, optional, 2026-10-28 "세부쪽도 좀 정리가 필요해"): for older
@@ -512,10 +509,11 @@ static func _validate_manipulation(manipulation: Variant, actions: Array = []) -
 
 
 ## Instantiates the experiment scene script with its definition (not yet in the tree).
-static func instantiate(definition: Dictionary) -> Experiment:
-	var script: Script = load(definition.scene)
+static func instantiate(definition: Variant) -> Experiment:
+	var wrapped := ExperimentDefinition.of(definition)
+	var script: Script = load(wrapped.raw.scene)
 	var experiment: Experiment = script.new()
-	experiment.definition = definition
+	experiment.definition = wrapped
 	return experiment
 
 

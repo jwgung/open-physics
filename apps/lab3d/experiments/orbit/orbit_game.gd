@@ -109,7 +109,7 @@ func _jump(stamps: int) -> void:
 func _try_attach(orbit_lab: Variant) -> void:
 	if attached or stage != stages - 1 or piece_state != "held" or orbit_lab.status() != "leaving":
 		return
-	var stages_list: Array = MissionRound.missions(lab.definition).get("stages", [])
+	var stages_list: Array = MissionRound.missions(lab.definition.raw).get("stages", [])
 	if stage < stages_list.size() and not MissionRound.conditions_met(stages_list[stage].get("conditions", {}), lab):
 		return
 	if orbit_lab.planet.global_position.distance_to(piece.global_position) <= ATTACH:

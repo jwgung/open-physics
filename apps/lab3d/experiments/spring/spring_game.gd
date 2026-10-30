@@ -88,7 +88,7 @@ static func SpringLab_ROD_Y() -> float:
 ## Stage `i`'s bell distance d (m on the squeezed side): its threshold + 0.05 (a shown reach of d
 ## beats it, d − 0.1 does not).
 func stage_bell(i: int) -> float:
-	var stages_list: Array = MissionRound.missions(lab.definition).get("stages", []) if lab != null else []
+	var stages_list: Array = MissionRound.missions(lab.definition.raw).get("stages", []) if lab != null else []
 	if i >= 0 and i < stages_list.size():
 		return snappedf(float(stages_list[i].get("threshold", IDLE_BELL - 0.05)) + 0.05, 0.01)
 	return IDLE_BELL

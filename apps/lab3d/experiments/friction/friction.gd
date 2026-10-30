@@ -61,7 +61,7 @@ var start_force := -1.0
 func _ready() -> void:
 	model.g = engine_g   # the formulas use the engine's gravity (the project setting)
 	_build_world()
-	for control in definition.get("controls", []):
+	for control in definition.controls():
 		set_control(control.id, control.default)
 
 
@@ -88,7 +88,7 @@ func run_action(id: String) -> void:
 
 
 func set_material(option_id: String) -> void:
-	var option := _find_option("material", option_id)
+	var option := definition.option("material", option_id)
 	if option.is_empty():
 		push_warning("friction: unknown material %s" % option_id)
 		return
@@ -102,7 +102,7 @@ func set_material(option_id: String) -> void:
 
 
 func set_mass(option_id: String) -> void:
-	var option := _find_option("mass", option_id)
+	var option := definition.option("mass", option_id)
 	if option.is_empty():
 		push_warning("friction: unknown mass %s" % option_id)
 		return
@@ -248,7 +248,7 @@ func _add_graph_sample() -> void:
 
 
 func graph_x_max() -> float:
-	return float(definition.get("graph", {}).get("x", {}).get("max", 10.0))
+	return float(definition.graph_x_max(10.0))
 
 
 func _status_changed(previous: String, current: String) -> void:

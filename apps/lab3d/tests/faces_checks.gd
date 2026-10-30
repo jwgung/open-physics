@@ -215,14 +215,14 @@ func check_lab_faces() -> void:
 		ProgressStore.set_mark(ProgressStore.STORY, "prologue", true)
 		var screen := await _lab("free-fall", PHONE)
 		var box: DialogueBox = screen.dialogue
-		var clue_ok: bool = box.speaker == "puppy" and box.face == Story.clue_face(screen.definition) and box.face == "surprised"
+		var clue_ok: bool = box.speaker == "puppy" and box.face == Story.clue_face(screen.definition.raw) and box.face == "surprised"
 		for k in 6:
 			if box.speaker != "puppy":
 				break
 			box.advance()
 		await tree.process_frame
 		await tree.process_frame
-		var predict := MissionRound.predict(screen.definition)
+		var predict := MissionRound.predict(screen.definition.raw)
 		var question_ok: bool = box.speaker == "dugi" and box.text == str(predict.question) and box.face == "thinking"
 		var answer := str(predict.answer)
 		var other := ""
@@ -253,7 +253,7 @@ func check_lab_faces() -> void:
 		screen.cast.dugi.explain(screen.experiment.explain_point)
 		for k in int(DugiActor.RAISE_S * 60.0) + 4:
 			await tree.process_frame
-		var stage: Dictionary = MissionRound.missions(screen.definition).stages[0]
+		var stage: Dictionary = MissionRound.missions(screen.definition.raw).stages[0]
 		var say_ok: bool = box.active and box.text == str(stage.say) and box.face == str(stage.say_face)
 		expect.call(clue_ok and question_ok and bridge_ok and reason_ok and say_ok,
 			"faces (%s guess): Puppy's clue (surprised), Dugi's question (thinking), his bridge (happy), the reason after the first result (%s), then the stage's say with its face" % [pick, want_face],

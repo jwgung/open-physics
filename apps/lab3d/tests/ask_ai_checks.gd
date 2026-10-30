@@ -78,7 +78,7 @@ func check_lab(definition: Dictionary) -> void:
 	if screen._ask_button == null or screen._ask_button.text != "AI에게 더 물어보기" or not ask.is_ancestor_of(screen._ask_button):
 		problems.append("button %s" % (screen._ask_button.text if screen._ask_button != null else "-"))
 	var hidden: Array = screen._hidden_answers(screen.experiment.observations())
-	var text := ScienceNote.question(definition, screen.experiment, hidden)
+	var text := ScienceNote.question(ExperimentDefinition.new(definition), screen.experiment, hidden)
 	var note := ExperimentRegistry.note(definition)
 	var want := [ScienceNote.ROLE, ScienceNote.ENDING, str(definition.title), str(note.law), str(note.formula),
 		ExperimentRegistry.kid_text(definition, "say")]
@@ -122,7 +122,7 @@ func check_lab(definition: Dictionary) -> void:
 ## The question follows the run: a slider moved is in the next question (and the old value is not).
 func check_follows_run() -> void:
 	var screen := await _open("free-fall")
-	var control: Dictionary = screen.definition.controls.filter(func(c: Dictionary) -> bool: return c.id == "height")[0]
+	var control: Dictionary = screen.definition.raw.controls.filter(func(c: Dictionary) -> bool: return c.id == "height")[0]
 	var before := ScienceNote.question(screen.definition, screen.experiment)
 	screen._set_control("height", 3.0)
 	await tree.process_frame

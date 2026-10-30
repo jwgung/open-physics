@@ -44,12 +44,12 @@ func _init() -> void:
 func set_control(id: String, value: Variant) -> void:
 	match id:
 		"mass":
-			var clamped := _clamp_to_control(id, float(value))
+			var clamped := definition.clamp_value(id, float(value))
 			if is_nan(clamped):
 				return
 			mass = clamped
 		"damping":
-			if _find_option(id, str(value)).is_empty():
+			if definition.option(id, str(value)).is_empty():
 				push_warning("spring: unknown damping %s" % value)
 				return
 			damping_id = str(value)
@@ -79,7 +79,7 @@ func run_action(id: String) -> void:
 
 ## b of the damping option (N s / m).
 func damping() -> float:
-	return float(_find_option("damping", damping_id).get("b", 0.0))
+	return float(definition.option("damping", damping_id).get("b", 0.0))
 
 
 ## The model at rest at the pull (not stepped).
@@ -255,7 +255,7 @@ func manipulation_surface(surface_id: String) -> ManipSurface:
 		return null
 	var rest_x := ANCHOR_X + REST_LENGTH
 	var surface := ManipSurface.new(Transform3D(Basis(), Vector3(0.0, ROD_Y - BALL_RADIUS, 0.0)),
-		Vector2(rest_x + EXT_MIN, 0.0), Vector2(rest_x + EXT_MAX, 0.0), Vector2(_grid_step("ball"), 0.0))
+		Vector2(rest_x + EXT_MIN, 0.0), Vector2(rest_x + EXT_MAX, 0.0), Vector2(definition.grid_step("ball"), 0.0))
 	surface.exclude = [_floor.get_rid(), ball.get_rid()]
 	return surface
 

@@ -23,7 +23,7 @@ apps/lab3d/
                                       IslandCast·DugiActor·PuppyActor(설명하는 두기두기, 깃발 든 퍼피),
                                       MassLook·PlanetSign·SurfaceSkin(조건이 보이는 3D: 무게 = 크기, 중력 팻말, 표면 재질),
                                       ForceGauge(꾹 누르는 힘 막대)·PullDots(새총 당김 점선)
-  scripts/shell/                      Experiment(실험 기반 클래스), ExperimentRegistry, ExperimentScreen,
+  scripts/shell/                      Experiment(실험 기반 클래스), ExperimentDefinition(정의 질의), ExperimentRegistry, ExperimentScreen,
                                       View3D(3D 뷰·제스처), CameraRig(카메라 6모드·보조 시점), GraphView,
                                       Manipulator(물체 조작: 끌기·새총·꾹 누르기), ManipSurface(조작 평면), HoldRamp(꾹 누르는 동안 커지는 힘),
                                       PressHandleLab(지렛대·도르래 공용: 누르는 힘·막대·시계), RollingGraph(누르는 동안만 흐르는 10초 창 그래프), DialogueBox(두기두기 게임식 대화창),
@@ -74,6 +74,8 @@ apps/lab3d/
 | 한 손가락 조작: 집기·끌기·스냅·미리보기·높이 손잡이·취소·보조 시점, 새총 당기기, 꾹 누르기(`Manipulator`) | JSON `manipulation`의 규칙, `manipulation_body`·`manipulation_surface`·`manipulation_juice`·`manipulation_pick_point`, 결과 통보(`manipulation_started`·`_placed`·`_cancelled`, `hold_started`·`hold_ended`), 새총 `slingshot_setup()`, 추가 규칙 `placement_allowed`, 화면 재구성 때 유지할 `placements()` |
 
 콘텐츠(문구·조건·관찰값·그래프·시점)는 JSON 데이터다. 문구는 웹 2D와 같은 파일을 쓴다(아래 "콘텐츠 공유").
+
+실험과 화면은 정의를 `ExperimentDefinition`(`scripts/shell/experiment_definition.gd`)으로 읽는다(2026-10-30). 조건과 선택지(`control`·`option`·`default_value`), 슬라이더 범위와 눈금(`clamp_value`·`on_grid`), 관찰값(`observation`·`digits`), 조작 규칙과 격자 간격(`manipulation_rules`·`grid_step`·`slingshot`), 카메라·그래프·액션·문구를 이름 붙은 질의로 묻고, 기본값도 그 안에서 정한다. 자기 블록을 가진 module은 `raw`에서 그 블록을 읽는다: `missions`·`predict`는 `MissionRound`, `kid`는 `ExperimentRegistry`의 kid 함수와 `ConditionPicks`, `story`는 `Story`, `note`는 `ExperimentRegistry.note`, `cast`는 `IslandCast`. `ExperimentScreen.setup()`과 `ExperimentRegistry.instantiate()`는 Dictionary도 받아 안에서 감싼다.
 
 ### 실험 목록
 
@@ -888,7 +890,7 @@ python3 -I apps/lab3d/tools/device_gesture.py orbit  # orbit | pinch | pinch-fix
    - `graph`: `title`, `x`(`label`·`unit`·`max`), `y`(`label`·`unit`·`min_max`), `series`(`id`·`label`·`color`·`style: line|points`)
    - `cast`(선택, Task 4h): 두기두기·퍼피 자리 `at: [x, z]`, 두기두기가 설명할 상태 `explain_on`과 지연 `delay_s`. 장치 오른쪽(가리킬 것이 그의 오른쪽)·뒤쪽에 두고 `tests/island_cast_checks.gd`의 자리·화면 시험을 통과시킨다([아트 디렉션 12절](docs/art-direction.md#12-두기두기와-퍼피-task-4h)). 가리킬 점이 따라가기 대상과 다르면 `explain_point()`를 재정의한다
 2. `content/experiments/index.json`의 `experiments`에 파일 이름을 더한다. 목록 화면은 이 순서와 `category`로 묶어 보여준다.
-3. `experiments/<이름>/<이름>.gd`에 `extends Experiment` 스크립트를 만든다(공식 모델을 `BodyModelDriver`로 구동하는 안내형 실험은 `extends ModelDrivenLab`: `_ready()`·run 상태·그래프 장부·`release()`를 베이스가 맡고 `_build_world()`·`_load_model()`·`_graph_point()` 등을 채운다. 조건이 바뀌어 run을 다시 시작할 때는 `_restart()`와 `reset_run()`). `_ready()`에서 3D 월드를 만들고 `definition.controls`의 기본값으로 `set_control()`을 부른다. 보이는 소품·환경·연출은 `<이름>_props.gd`로 나눠 [아트 디렉션 9절](docs/art-direction.md#9-새-실험-소품-만드는-법)을 따른다. 바닥·마찰 없는 재질·보정 바디 설정과 상태 변화 알림은 `Experiment` 베이스의 `_add_floor()`·`_frictionless_material()`·`_setup_free_body()`·`_update_status()`(반응은 `_status_changed()`를 재정의)를 쓰고, 공식의 중력은 베이스의 `engine_g`에서 읽는다. 화면 숫자는 공식(`PhysicsLaws`)에서 내고, 엔진 측정값은 따로 표시한다(공식 보정 원칙, [CONTEXT](../../CONTEXT.md)).
+3. `experiments/<이름>/<이름>.gd`에 `extends Experiment` 스크립트를 만든다(공식 모델을 `BodyModelDriver`로 구동하는 안내형 실험은 `extends ModelDrivenLab`: `_ready()`·run 상태·그래프 장부·`release()`를 베이스가 맡고 `_build_world()`·`_load_model()`·`_graph_point()` 등을 채운다. 조건이 바뀌어 run을 다시 시작할 때는 `_restart()`와 `reset_run()`). `_ready()`에서 3D 월드를 만들고 `definition.controls()`의 기본값으로 `set_control()`을 부른다. 조건·선택지·범위·격자는 `definition.control()`·`option()`·`clamp_value()`·`grid_step()`으로 읽는다. 보이는 소품·환경·연출은 `<이름>_props.gd`로 나눠 [아트 디렉션 9절](docs/art-direction.md#9-새-실험-소품-만드는-법)을 따른다. 바닥·마찰 없는 재질·보정 바디 설정과 상태 변화 알림은 `Experiment` 베이스의 `_add_floor()`·`_frictionless_material()`·`_setup_free_body()`·`_update_status()`(반응은 `_status_changed()`를 재정의)를 쓰고, 공식의 중력은 베이스의 `engine_g`에서 읽는다. 화면 숫자는 공식(`PhysicsLaws`)에서 내고, 엔진 측정값은 따로 표시한다(공식 보정 원칙, [CONTEXT](../../CONTEXT.md)).
 4. 움직임은 [공식 보정](docs/formula-correction.md) 4절 표의 방식으로 보정한다(보정기를 붙이고 화면 숫자는 `formula_values()`에서). 새 법칙은 `tools/formula-vectors.test.ts`의 실험 그룹에 TS 사례를 더하고 `PhysicsLaws`에 포트한다(parity는 자동). 문구를 바꿨으면 글꼴 서브셋을 다시 만든다.
 5. `tools/build.sh`로 테스트·APK를 만들고 `bench_device.sh`로 low 60 fps를 확인한다.
 

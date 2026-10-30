@@ -120,7 +120,7 @@ static func body_mesh(lit: int) -> Mesh:
 
 ## The stage's beat (s): its threshold, the period a matching swing has (MissionRound "near").
 func beat() -> float:
-	var stages_list: Array = MissionRound.missions(lab.definition).get("stages", []) if lab != null else []
+	var stages_list: Array = MissionRound.missions(lab.definition.raw).get("stages", []) if lab != null else []
 	if stage < stages_list.size():
 		return float(stages_list[stage].get("threshold", IDLE_BEAT))
 	return IDLE_BEAT

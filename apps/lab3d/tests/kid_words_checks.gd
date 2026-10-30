@@ -215,7 +215,7 @@ func check_spring_card() -> void:
 	screen.mission_round.end_question()
 	screen._poll()
 	var first: Array = screen.key_card_ids()
-	var caption := ExperimentRegistry.card_label(screen.definition, "bell_reach")
+	var caption := ExperimentRegistry.card_label(screen.definition.raw, "bell_reach")
 	var waiting: String = screen._key_labels.bell_reach.text if screen._key_labels.has("bell_reach") else ""
 	var lab: Experiment = screen.experiment
 	lab.manipulation_placed("ball", Transform3D(Basis(), Vector3(lab.ANCHOR_X + lab.REST_LENGTH + 1.5, lab.ROD_Y, 0.0)))

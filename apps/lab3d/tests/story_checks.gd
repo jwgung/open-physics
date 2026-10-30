@@ -237,11 +237,11 @@ func check_clue() -> void:
 	await tree.process_frame
 	await tree.process_frame
 	var asked: bool = box.active and box.speaker == "dugi" and box.name_label.text == "두기두기" and box.hold \
-		and box.text == str(MissionRound.predict(screen.definition).question) and screen._choices.visible
+		and box.text == str(MissionRound.predict(screen.definition.raw).question) and screen._choices.visible
 	expect.call(asked, "clue: then Dugi asks his question with the picture buttons", box.text)
 	await _free(screen)
 	screen = await _lab("projectile")
-	expect.call(screen.dialogue.speaker == "dugi" and screen.dialogue.text == str(MissionRound.predict(screen.definition).question),
+	expect.call(screen.dialogue.speaker == "dugi" and screen.dialogue.text == str(MissionRound.predict(screen.definition.raw).question),
 		"clue: never again in the same lab (Dugi's question at once)", screen.dialogue.text)
 	await _free(screen)
 	Story.enabled = false

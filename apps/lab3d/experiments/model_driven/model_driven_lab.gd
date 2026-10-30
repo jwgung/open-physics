@@ -34,7 +34,7 @@ var _graph_revision := 0
 func _ready() -> void:
 	_build_world()
 	begin_batch()   # the defaults restart the run once, not once per control
-	for control in definition.get("controls", []):
+	for control in definition.controls():
 		set_control(control.id, control.default)
 	end_batch()
 
@@ -147,7 +147,7 @@ func graph_revision() -> int:
 
 
 func graph_x_max() -> float:
-	return float(definition.get("graph", {}).get("x", {}).get("max", GRAPH_X_DEFAULT))
+	return float(definition.graph_x_max(GRAPH_X_DEFAULT))
 
 
 func follow_point() -> Vector3:

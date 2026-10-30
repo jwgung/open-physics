@@ -606,7 +606,7 @@ func _check_juice_rotated_landing() -> void:
 ## near the ground and the post is hidden), its foot fixed.
 func _check_stand_clearance() -> void:
 	var max_angle := 0.0
-	for control in _lab.definition.controls:
+	for control in _lab.definition.raw.controls:
 		if control.id == "angle":
 			max_angle = float(control.max)
 	var post: MeshInstance3D = _lab.get_node("Stand/Post")
@@ -869,7 +869,7 @@ func _check_ramp_shadow_scale() -> void:
 
 
 func _has_material(id: String) -> bool:
-	for control in _lab.definition.controls:
+	for control in _lab.definition.raw.controls:
 		if control.id == "material":
 			for option in control.options:
 				if option.id == id:

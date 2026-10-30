@@ -66,7 +66,7 @@ var _reach := []
 
 func _ready() -> void:
 	_build_world()
-	for control in definition.get("controls", []):
+	for control in definition.controls():
 		set_control(control.id, control.default)
 
 
@@ -105,7 +105,7 @@ func set_angle(degrees: float) -> void:
 
 ## Selects a material option from the "material" control (unknown ids are ignored).
 func set_material(option_id: String) -> void:
-	var option := _find_option("material", option_id)
+	var option := definition.option("material", option_id)
 	if option.is_empty():
 		push_warning("incline: unknown material %s" % option_id)
 		return
@@ -336,7 +336,7 @@ func _physics_process(_delta: float) -> void:
 	# samples[k] is the displacement after k steps; this runs before the box's step (tree order).
 	var steps := corrector.steps - 1
 	if steps > 0 and steps % GRAPH_EVERY_STEPS == 0 and steps < corrector.samples.size():
-		var max_t: float = definition.get("graph", {}).get("x", {}).get("max", 3.0)
+		var max_t: float = definition.graph_x_max()
 		var t := steps / float(Engine.physics_ticks_per_second)
 		if t <= max_t + 0.001 and t > _graph_points[-1].x and status() != "left":
 			_graph_points.append(Vector2(t, corrector.samples[steps]))
@@ -406,7 +406,7 @@ func observations() -> Dictionary:
 
 
 func graph_series() -> Dictionary:
-	var max_t: float = definition.get("graph", {}).get("x", {}).get("max", 3.0)
+	var max_t: float = definition.graph_x_max()
 	var a := formula_acceleration()
 	var limit := run_length()  # the box leaves the incline after this distance
 	var formula := PackedVector2Array()
@@ -476,7 +476,7 @@ func _build_world() -> void:
 	corrector.half_length = INCLINE_LENGTH * 0.5
 	corrector.half_extent = BOX * 0.5
 	# The graph window (+ the sample at its end) is all the app reads from the history.
-	corrector.history_steps = int(definition.get("graph", {}).get("x", {}).get("max", 3.0) * Engine.physics_ticks_per_second) + 2
+	corrector.history_steps = int(definition.graph_x_max() * Engine.physics_ticks_per_second) + 2
 	set_coefficients(mu_s, mu_k)
 	box.corrector = corrector
 
@@ -527,7 +527,7 @@ func manipulation_surface(surface_id: String) -> ManipSurface:
 ## The box's grid step (m) from its manipulation rule as the manipulator reads it (0 = none), also
 ## the tick spacing on the incline.
 func _start_snap() -> float:
-	return Manipulator.parse_rules(definition).get("box", {}).get("snap", 0.0)
+	return definition.grid_step("box")
 
 
 func manipulation_juice(_id: String) -> ArtJuice:

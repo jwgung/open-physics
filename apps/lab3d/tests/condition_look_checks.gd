@@ -470,12 +470,12 @@ func check_planet_signs() -> void:
 		var lab: Experiment = await _lab(id)
 		var sign: PlanetSign = lab.planet_sign
 		var meshes := {}
-		for option in lab._find_control("gravity").options:
+		for option in lab.definition.control("gravity").options:
 			lab.set_control("gravity", option.id)
 			if sign.planet != option.id or sign.mesh != PlanetSign.sign_mesh(option.id):
 				problems.append("%s %s: sign shows %s" % [id, option.id, sign.planet])
 			meshes[sign.mesh] = true
-		if meshes.size() != lab._find_control("gravity").options.size() or not _no_body(sign):
+		if meshes.size() != lab.definition.control("gravity").options.size() or not _no_body(sign):
 			problems.append("%s: %d different globes, a body: %s" % [id, meshes.size(), not _no_body(sign)])
 		await _free(lab)
 	# Each globe's colours are its picture button's (PickPictures): the earth's sea and land, the
@@ -508,7 +508,7 @@ func check_surfaces() -> void:
 		var lab: Experiment = await _lab(id)
 		var node: MeshInstance3D = lab.props.incline_visual if id == "incline-friction" else lab.props.track_visual
 		var meshes := {}
-		for option in lab._find_control("material").options:
+		for option in lab.definition.control("material").options:
 			lab.set_control("material", option.id)
 			var stuff := SurfaceSkin.colour(option.id)
 			if lab.props.surface != option.id or not _has_colour(node.mesh, stuff):
@@ -517,7 +517,7 @@ func check_surfaces() -> void:
 				if other != option.id and _has_colour(node.mesh, SurfaceSkin.colour(other)):
 					problems.append("%s %s: also %s's colour" % [id, option.id, other])
 			meshes[node.mesh] = true
-		if meshes.size() != lab._find_control("material").options.size() or not _no_body(node):
+		if meshes.size() != lab.definition.control("material").options.size() or not _no_body(node):
 			problems.append("%s: %d different surfaces" % [id, meshes.size()])
 		await _free(lab)
 	expect.call(problems.is_empty(),

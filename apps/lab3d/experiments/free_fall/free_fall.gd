@@ -411,7 +411,8 @@ func manipulation_placed(id: String, transform: Transform3D) -> void:
 		# lifted finger drops both balls together (2026-10-29 user: no "공 놓기" button; a new drag after
 		# a drop starts a fresh run, manipulation_started). A restored placement (a batch) only places.
 		var ball_id := id.trim_prefix(DROP)
-		var step := definition.grid_step(id) if definition.grid_step(id) > 0.0 else 1.0
+		var grid := definition.grid_step(id)
+		var step := grid if grid > 0.0 else 1.0
 		var h := definition.clamp_value("height", snappedf(transform.origin.y - BALL_RADIUS, step))
 		if is_nan(h):
 			return

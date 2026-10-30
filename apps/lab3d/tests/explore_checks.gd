@@ -299,7 +299,7 @@ func check_direct_launch() -> void:
 	tree.root.add_child(app)
 	await tree.process_frame
 	var screen: Control = app._screen
-	expect.call(Story.enabled and screen is ExperimentScreen and str(screen.definition.raw.id) == "orbit" and Story.next_spot(ProgressStore.load()) == "free-fall",
+	expect.call(Story.enabled and screen is ExperimentScreen and str(screen.definition.id()) == "orbit" and Story.next_spot(ProgressStore.load()) == "free-fall",
 		"explore: a direct --experiment launch opens the lab even when it is locked on the map", str(screen))
 	app.queue_free()
 	for i in 3:

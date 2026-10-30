@@ -76,7 +76,7 @@ static func question(definition: ExperimentDefinition, experiment: Experiment, h
 ## the science note's text (ExperimentScreen.format_observation) and the question's.
 static func format_observation(observation: Dictionary, value: Variant) -> String:
 	if value is float or value is int:
-		var text := Ui.number(value, int(observation.get("digits", 2)))
+		var text := Ui.number(value, ExperimentDefinition.observation_digits(observation))
 		var unit: String = observation.get("unit", "")
 		if unit != "":
 			text += unit if unit == "°" else " " + unit
@@ -97,7 +97,7 @@ static func condition_text(control: Dictionary, value: Variant) -> String:
 	if control.get("type") == "slider":
 		if not (value is float or value is int):
 			return ""
-		return Ui.number(float(value), int(control.get("digits", 1))) + str(control.get("unit", ""))
+		return Ui.number(float(value), ExperimentDefinition.control_digits(control)) + str(control.get("unit", ""))
 	for option in control.get("options", []):
 		if option.get("id") != value:
 			continue

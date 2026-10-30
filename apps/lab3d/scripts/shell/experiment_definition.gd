@@ -26,6 +26,7 @@ static func of(content: Variant) -> ExperimentDefinition:
 	return ExperimentDefinition.new(content if content is Dictionary else {})
 
 
+## The experiment's id.
 func id() -> String:
 	return str(raw.get("id", ""))
 
@@ -36,11 +37,12 @@ func bench_id() -> String:
 
 
 ## A text of the definition: "title", "category", "question", "observe", "tip", "tip_short", "icon"
-## (`fallback` when it has none).
-func text(key: String, fallback := "") -> String:
-	return str(raw.get(key, fallback))
+## ("" when it has none).
+func text(key: String) -> String:
+	return str(raw.get(key, ""))
 
 
+## The three steps of the experiment's explanation.
 func steps() -> Array:
 	return raw.get("steps", [])
 
@@ -55,10 +57,12 @@ func terms() -> Array:
 	return raw.get("terms", [])
 
 
+## The camera block (CameraRig.configure).
 func camera() -> Dictionary:
 	return raw.get("camera", {})
 
 
+## The graph block (GraphView.spec).
 func graph() -> Dictionary:
 	return raw.get("graph", {})
 
@@ -152,12 +156,17 @@ func observation(observation_id: String) -> Dictionary:
 
 ## The decimals observation `observation_id` is shown with (2 when it names none).
 func digits(observation_id: String) -> int:
-	return int(observation(observation_id).get("digits", 2))
+	return observation_digits(observation(observation_id))
 
 
-## The ids of the key observations (the small cards over the 3D view).
-func key_observations() -> Array:
-	return raw.get("key_observations", [])
+## The decimals an observation entry is shown with (2 when it names none).
+static func observation_digits(entry: Dictionary) -> int:
+	return int(entry.get("digits", 2))
+
+
+## The decimals a slider control's value is shown with (1 when it names none).
+static func control_digits(entry: Dictionary) -> int:
+	return int(entry.get("digits", 1))
 
 
 # --- manipulation -------------------------------------------------------------------------------

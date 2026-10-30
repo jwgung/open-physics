@@ -504,7 +504,7 @@ func check_demo() -> void:
 func check_review() -> void:
 	# Signed graph: the grid lines are +max, 0, -max and so are the labels; unsigned: max, max/2, 0.
 	var lab: Experiment = await _lab()
-	var graph_spec: Dictionary = lab.definition.raw.graph
+	var graph_spec: Dictionary = lab.definition.graph()
 	var top := GraphView.y_top(graph_spec, {"p": PackedVector2Array([Vector2(1.0, -7.3)])})
 	expect.call(graph_spec.y.get("signed", false) and GraphView.y_tick_values(top, true) == [top, 0.0, -top] and top >= 7.3
 		and GraphView.y_tick_values(8.0, false) == [8.0, 4.0, 0.0],

@@ -52,8 +52,9 @@ func check_controls() -> void:
 func check_observations_and_rules() -> void:
 	var d := ExperimentDefinition.new(SAMPLE)
 	expect.call(d.observation("range").get("label") == "거리" and d.observation("nope").is_empty()
-		and d.digits("range") == 1 and d.digits("state") == 2 and d.digits("nope") == 2,
-		"definition: an observation by id; digits default to 2", "")
+		and d.digits("range") == 1 and d.digits("state") == 2 and d.digits("nope") == 2
+		and ExperimentDefinition.control_digits(d.control("speed")) == 1 and ExperimentDefinition.control_digits({"digits": 0}) == 0,
+		"definition: an observation by id; digits default to 2 (a control's to 1)", "")
 	var rules := d.manipulation_rules()
 	expect.call(rules.ball == {"surface": "floor", "snap": 0.25, "height_max": 2.0, "height_step": 0.5, "drag": true, "hold": false}
 		and rules.box == {"surface": "", "snap": 0.0, "height_max": 0.0, "height_step": 0.0, "drag": false, "hold": true},

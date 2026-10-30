@@ -200,7 +200,7 @@ func check_round(id: String) -> void:
 	# Before any run the formula answers read "?" (key cards and the sidebar).
 	screen._update_readouts(false)
 	var hidden_ok := true
-	for observation in lab.definition.raw.observations:
+	for observation in lab.definition.observations():
 		if observation.id in missions.get("hidden_until_end", []):
 			hidden_ok = hidden_ok and screen._observation_labels[observation.id].text == ExperimentScreen.hidden_observation(observation)
 	screen._update_readouts(true)
@@ -232,7 +232,7 @@ func check_round(id: String) -> void:
 				stamped_at = k
 				# The run has its result: the hidden answers show (the panel's own text).
 				screen._update_readouts(false)
-				for observation in lab.definition.raw.observations:
+				for observation in lab.definition.observations():
 					if observation.id in missions.get("hidden_until_end", []) \
 							and screen._observation_labels[observation.id].text == ExperimentScreen.hidden_observation(observation):
 						problems.append("%s: %s still hidden after the stamp" % [attempt[0], observation.id])
@@ -379,7 +379,7 @@ func _record(id: String, missions: bool) -> Array:
 	# The panels once the run has its result (the "?" of a hidden answer is gone by then).
 	screen._update_readouts(true)
 	var panels := []
-	for observation in lab.definition.raw.observations:
+	for observation in lab.definition.observations():
 		panels.append(screen._observation_labels[observation.id].text)
 	var stamps := ProgressStore.stamps(ProgressStore.load(), id)
 	await _free(screen)

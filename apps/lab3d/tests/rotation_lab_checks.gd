@@ -283,7 +283,7 @@ func check_conditions() -> void:
 	var labels_ok := true
 	var ids := []
 	var shown: Dictionary = lab.observations()
-	for item in lab.definition.raw.observations:
+	for item in lab.definition.observations():
 		labels_ok = labels_ok and not str(item.label).contains("시뮬레이션")
 		ids.append(item.id)
 	expect.call(labels_ok and ids.all(func(id): return shown.has(id)) and ids.size() == shown.size(),

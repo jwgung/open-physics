@@ -1947,7 +1947,7 @@ func _sync_control(id: String) -> void:
 	if not control.is_empty():
 		if control.type == "slider":
 			widgets.slider.set_value_no_signal(value)
-			widgets.value.text = Ui.number(value, int(control.get("digits", 1))) + control.get("unit", "")
+			widgets.value.text = Ui.number(value, ExperimentDefinition.control_digits(control)) + control.get("unit", "")
 		else:
 			for option in control.options:
 				widgets.buttons[option.id].set_pressed_no_signal(option.id == value)
@@ -2124,7 +2124,7 @@ static func card_text(definition: Dictionary, observation: Dictionary, value: Va
 	if bar and (value is float or value is int):
 		return ""
 	if value is float or value is int:
-		return kid_value(unit, float(value), int(observation.get("digits", 2)), str(kid.get("minus", {}).get(observation.id, "")))
+		return kid_value(unit, float(value), ExperimentDefinition.observation_digits(observation), str(kid.get("minus", {}).get(observation.id, "")))
 	if value is String:
 		return str(kid.get("states", {}).get(value, value))
 	return "—"

@@ -401,7 +401,7 @@ func check_conditions() -> void:
 		"constraints: without gravity the released bobs stay where they are (no swing, no period, no pull)", str(weightless.small_period))
 	var labels_ok := true
 	var ids := []
-	for item in lab.definition.raw.observations:
+	for item in lab.definition.observations():
 		labels_ok = labels_ok and not str(item.label).contains("시뮬레이션")
 		ids.append(item.id)
 	expect.call(labels_ok and ids.all(func(id): return weightless.has(id)) and ids.size() == weightless.size(),
@@ -487,7 +487,7 @@ func check_first_release_screen() -> void:
 			signs += 1
 	var rod_line: PackedVector2Array = lab.rod_graph()
 	expect.call(series.rope.size() >= 55 and absf(series.rope[0].y - rad_to_deg(0.62)) < 1e-4 and not series.has("rod") and absf(rod_line[0].y - rad_to_deg(-0.5)) < 1e-4
-		and signs >= 3 and GraphView.y_top(lab.definition.raw.graph, series) == 90.0 and lab.definition.raw.graph.y.signed,
+		and signs >= 3 and GraphView.y_top(lab.definition.graph(), series) == 90.0 and lab.definition.graph().y.signed,
 		"constraints: the graph shows the rope pendulum's angle over time on a fixed signed +-90 deg axis, swinging through zero (the rod's, kept for the web's two pendulums, is not drawn)", "%d points, %d sign changes" % [series.rope.size(), signs])
 	await _close(screen)
 

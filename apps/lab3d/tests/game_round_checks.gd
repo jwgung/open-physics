@@ -310,7 +310,7 @@ func _free(screen: Control) -> void:
 
 ## The definition's observation entry with this id.
 func _observation(lab: Experiment, id: String) -> Dictionary:
-	for observation in lab.definition.raw.observations:
+	for observation in lab.definition.observations():
 		if observation.id == id:
 			return observation
 	return {}

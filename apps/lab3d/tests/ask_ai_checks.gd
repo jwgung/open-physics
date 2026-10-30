@@ -122,7 +122,7 @@ func check_lab(definition: Dictionary) -> void:
 ## The question follows the run: a slider moved is in the next question (and the old value is not).
 func check_follows_run() -> void:
 	var screen := await _open("free-fall")
-	var control: Dictionary = screen.definition.raw.controls.filter(func(c: Dictionary) -> bool: return c.id == "height")[0]
+	var control: Dictionary = screen.definition.controls().filter(func(c: Dictionary) -> bool: return c.id == "height")[0]
 	var before := ScienceNote.question(screen.definition, screen.experiment)
 	screen._set_control("height", 3.0)
 	await tree.process_frame

@@ -27,6 +27,8 @@ const SKIN := Color(1.0, 1.0, 1.0, 0.78)
 const LINE := Color(0.18, 0.2, 0.3, 0.7)
 const RING := Color(1.0, 0.85, 0.3, 0.95)
 const TRAIL := Color(1.0, 1.0, 1.0, 0.55)
+## Where a caller's point goes when it cannot be drawn (behind the camera, off the map): far off the view.
+const OFF_VIEW := Vector2(-10000.0, -10000.0)
 
 ## The gesture shown now ("" when none).
 var kind := ""

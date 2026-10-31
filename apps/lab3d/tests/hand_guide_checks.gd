@@ -23,6 +23,8 @@ func _init(scene_tree: SceneTree, expect_fn: Callable) -> void:
 
 
 func run() -> void:
+	var store := ProgressStore.path
+	ProgressStore.path = ProgressStore.TEST_PATH   # the checks delete the store: never the child's
 	check_coach()
 	check_gestures()
 	var root_size := tree.root.size
@@ -32,9 +34,11 @@ func run() -> void:
 	tree.root.size = root_size
 	await check_once_and_idle()
 	await check_slingshot_after_run()
+	await check_first_stays_due()
 	await check_map_tap()
 	await check_map_walk()
 	DirAccess.remove_absolute(ProgressStore.path)
+	ProgressStore.path = store
 
 
 # --- GuideCoach ------------------------------------------------------------------------------------
@@ -281,10 +285,30 @@ func check_slingshot_after_run() -> void:
 		"ready %s launch %s pulled %s (status %s)" % [ready_ok, at_launch, pulled, status])
 
 
+## A first guide with nothing to show (no pull end yet) is not used up: nothing is kept, and it comes
+## as soon as the gesture can be shown.
+func check_first_stays_due() -> void:
+	DirAccess.remove_absolute(ProgressStore.path)
+	var screen := await _open("projectile")
+	var m: Manipulator = screen.manipulator
+	var surface := m.slingshot_surface
+	m.slingshot_surface = null
+	screen.mission_round.end_question()
+	await _seconds(GuideCoach.FIRST_DELAY_S + 0.5)
+	var waited: bool = screen.hand_guide.plays == 0 and not screen._coach.seen and not ProgressStore.mark(ProgressStore.GUIDES, "projectile")
+	m.slingshot_surface = surface
+	await _frames(3)
+	var came: bool = screen.hand_guide.playing() and screen.hand_guide.kind == "pull" and ProgressStore.mark(ProgressStore.GUIDES, "projectile")
+	screen.hand_guide.stop()
+	await _close(screen)
+	expect.call(waited and came, "hand guide: a first guide that cannot be shown stays due (nothing kept) and comes once it can",
+		"waited %s came %s" % [waited, came])
+
+
 # --- the map ---------------------------------------------------------------------------------------
 
 ## The map: after Puppy's first riddle closes, the hand taps the next spot (once on this device), and
-## each time the hint starts to glint.
+## again when the hint starts to glint (once per riddle told).
 func check_map_tap() -> void:
 	var was := Story.enabled
 	Story.enabled = true

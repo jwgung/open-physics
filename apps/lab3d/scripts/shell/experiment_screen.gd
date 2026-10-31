@@ -1251,12 +1251,14 @@ func _run_celebration(delta: float) -> void:
 # --- the hand guide (2026-10-30) -----------------------------------------------------------------
 
 ## The hand guide over the view, when a finger has something to take in this lab (not in a measurement
-## or a device check: their runs and screenshots stay as they were). The first guide comes once per lab
-## (ProgressStore GUIDES); a lab without missions shows only that one. The hand draws over Dugi's box
+## or a device check, the ask button's own check included: their runs and screenshots stay as they
+## were). The first guide comes once per lab (ProgressStore GUIDES); a lab without missions shows only
+## that one. The hand draws over Dugi's box
 ## (a pull may pass over it, the box waiting for a tap) and under every overlay added after it (the
 ## mission strip, the picture buttons, the bubbles, the cards); without a box, right over the 3D.
 func _setup_guide() -> void:
-	if measurement or manipulator == null or manipulator.draggable_ids().is_empty():
+	if measurement or Story.measurement_run(Quality.all_args()) or manipulator == null \
+			or manipulator.draggable_ids().is_empty():
 		return
 	hand_guide = HandGuide.new()
 	view.add_child(hand_guide)
@@ -1297,20 +1299,26 @@ func _run_guide(delta: float) -> void:
 	var was_seen := _coach.seen
 	var stage_open := mission_round != null and mission_round.stage() >= 0
 	var due := _coach.step(delta, _guide_quiet(), touched, stage_open, used)
-	if due != "" and not show_guide() and due == "first":
-		_coach.seen = was_seen   # nothing could be shown (no gesture now): the first guide stays due
+	if due != "":
+		var shown := show_guide()
+		if due == "first" and not shown:
+			_coach.seen = was_seen   # nothing the child could see (no gesture, or its point off the view): still due
 	if _coach.seen and not was_seen:
 		ProgressStore.set_mark(ProgressStore.GUIDES, definition.id(), true)   # shown, or the child used the object
 
 
 ## Shows the lab's gesture now (also tests): the hand on where a finger takes the object (read every
 ## frame: a moving object, the camera), off the view when that point is behind the camera. False when
-## there is no gesture to show now.
+## there is no gesture to show now or its starting point is off the view (nothing the child would see).
 func show_guide() -> bool:
+	if hand_guide == null or manipulator == null:
+		return false
 	var spec := manipulator.guide()
-	if spec.is_empty() or hand_guide == null:
+	if spec.is_empty():
 		return false
 	var id := str(spec.id)
+	if not Rect2(Vector2.ZERO, view.size).has_point(_guide_view_point(manipulator.guide_point(id))):
+		return false
 	var at := func() -> Vector2: return _guide_view_point(manipulator.guide_point(id))
 	match str(spec.kind):
 		"drag", "pull":
@@ -1322,7 +1330,7 @@ func show_guide() -> bool:
 
 
 func _guide_view_point(world: Vector3) -> Vector2:
-	return Vector2(-10000.0, -10000.0) if view.rig.is_position_behind(world) else view_point(world)
+	return HandGuide.OFF_VIEW if view.rig.is_position_behind(world) else view_point(world)
 
 
 # --- game: the condition picture buttons (2026-10-27) ------------------------------------------

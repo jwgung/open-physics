@@ -34,6 +34,8 @@ const FLAGS := "flags"
 const STORY := "story"
 const CLUES := "clues"
 const PIECES := "pieces"
+## The hand guides already shown (a lab id, or "map" for the map's tap): the first guide comes once.
+const GUIDES := "guides"
 ## The map (2026-10-29): [map] last_spot = the spot id the trio last walked to (they stand there when
 ## the map opens again; none: the square).
 const MAP := "map"

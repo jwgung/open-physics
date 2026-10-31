@@ -287,6 +287,11 @@ func _run() -> void:
 	_expect(definition_checks != null and definition_checks.can_instantiate(), "experiment definition checks compile", "")
 	if definition_checks != null and definition_checks.can_instantiate():
 		await definition_checks.new(self, _expect).run()
+	print("== the hand guide (2026-10-30: the gesture on the lab's object, once and after a quiet while; the map's tap) ==")
+	var hand: GDScript = load("res://tests/hand_guide_checks.gd")
+	_expect(hand != null and hand.can_instantiate(), "hand guide checks compile", "")
+	if hand != null and hand.can_instantiate():
+		await hand.new(self, _expect).run()
 	print("== the mission round as a module (MissionRound: clue, question, bridge, stamps, reason, misses, auto conditions) ==")
 	var round_module: GDScript = load("res://tests/mission_round_checks.gd")
 	_expect(round_module != null and round_module.can_instantiate(), "mission round checks compile", "")

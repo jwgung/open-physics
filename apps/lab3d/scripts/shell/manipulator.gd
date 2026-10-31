@@ -840,6 +840,61 @@ func _process(delta: float) -> void:
 		_demo_tick(delta)
 
 
+# --- the hand guide --------------------------------------------------------------------------------
+
+## How far along its free path the hand guide carries a dragged object (0..1 of the way to its far end).
+const GUIDE_REACH := 0.6
+
+## The gesture the hand guide (HandGuide) shows for this lab, read only (nothing is pressed or moved):
+## {"kind": "pull" | "hold" | "drag", "id", "from": world point the finger presses now (guide_point),
+## "to": world point the drag or the pull ends at}, or {} when the lab has no object a finger takes now.
+## The object is the slingshot's, else the first one a finger may pick up. A pull ends where the demo's
+## pull (slingshot_demo) lands on the slingshot's surface, so it stays the throw's direction when the
+## camera turns.
+func guide() -> Dictionary:
+	var id := slingshot_id if slingshot_id != "" and rules.has(slingshot_id) else ""
+	if id == "":
+		var draggable := draggable_ids()
+		if draggable.is_empty():
+			return {}
+		id = draggable[0]
+	if experiment.manipulation_body(id) == null:
+		return {}
+	var from := guide_point(id)
+	if id == slingshot_id:
+		var to: Variant = _pull_end(from)
+		return {"kind": "pull", "id": id, "from": from, "to": to} if to is Vector3 else {}
+	if rules[id].hold:
+		return {"kind": "hold", "id": id, "from": from}
+	var surface := _surface_for(id)
+	if surface == null:
+		return {}
+	var at := surface.to_plane(from)
+	var ends := [surface.nearest_inside(surface.region_min), surface.nearest_inside(surface.region_max)]
+	var far: Vector2 = ends[0] if at.distance_to(ends[0]) > at.distance_to(ends[1]) else ends[1]
+	var goal := at.lerp(far, GUIDE_REACH)
+	return {"kind": "drag", "id": id, "from": from, "to": surface.pose(goal, surface.height_of(from)).origin}
+
+
+## Where a finger takes object `id` now (world): the slingshot's launch point once a run has started
+## (a press there readies the next shot, _near_launch), else the object's pick point (it may be moving).
+func guide_point(id: String) -> Vector3:
+	if id == slingshot_id and slingshot_launch.is_valid() and experiment.status() != "ready":
+		return slingshot_launch.call()
+	return experiment.manipulation_pick_point(id)
+
+
+## The world point a slingshot pull from `from` ends at: the demo's first pull (view units) taken onto
+## the slingshot's surface; null when it cannot be (no surface, the ray misses it).
+func _pull_end(from: Vector3) -> Variant:
+	if slingshot_surface == null or view.rig.is_position_behind(from):
+		return null
+	var start := view.rig.unproject_position(from) / _pixels_per_unit()
+	var ray := _finger_ray(start + slingshot_demo[0])
+	var at: Variant = slingshot_surface.project_ray(ray[0], ray[1], 0.0)
+	return slingshot_surface.pose(at, 0.0).origin if at is Vector2 else null
+
+
 # --- measurement demo -----------------------------------------------------------------------------
 
 ## Drags the first manipulable object back and forth every `every` seconds through the same input

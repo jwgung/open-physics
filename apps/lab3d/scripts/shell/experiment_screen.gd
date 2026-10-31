@@ -1258,6 +1258,7 @@ func _setup_guide() -> void:
 		return
 	hand_guide = HandGuide.new()
 	view.add_child(hand_guide)
+	view.move_child(hand_guide, view.viewport.get_index() + 2)   # over the 3D, under every overlay (dialogue, strip, buttons)
 	_coach = GuideCoach.new(ProgressStore.mark(ProgressStore.GUIDES, definition.id()))
 	view.gesture_used.connect(_poke_guide)
 	view.single_pointer.connect(func(kind: String, _at: Vector2) -> void:
@@ -1270,48 +1271,54 @@ func _poke_guide() -> void:
 	_guide_touched = true
 
 
-## Nothing else wants the child's eyes now: no question or clue, no open dialogue or sidebar, no
-## celebration, piece or card, and the guide is not already showing.
+## Nothing else wants the child's eyes now: no question or clue, no open sidebar, no celebration,
+## piece or card. Dugi's bridge and explanations may stay open (his box waits for a tap that a child who
+## cannot read may never make; it says "try it", which the hand shows). The guide itself not playing.
 func _guide_quiet() -> bool:
-	return not _asking() and not (dialogue != null and dialogue.active) and not is_sidebar_open() \
-		and _done_card == null and _round_wait < 0.0 and _card_left < 0.0 and _piece_wait < 0.0 \
-		and not hand_guide.playing()
+	return not _guide_blocked() and not hand_guide.playing()
+
+
+## Something the hand must not show over: the question or the clue, the sidebar, the celebration, the piece, the card.
+func _guide_blocked() -> bool:
+	return _asking() or is_sidebar_open() or _done_card != null or _round_wait >= 0.0 or _card_left >= 0.0 \
+		or _piece_wait >= 0.0
 
 
 func _run_guide(delta: float) -> void:
 	if _coach == null:
 		return
-	var touched := _guide_touched or (manipulator != null and manipulator.mode != "")
+	var used := manipulator != null and manipulator.mode != ""
+	var touched := _guide_touched or used
 	_guide_touched = false
-	if touched and hand_guide.playing():
+	if (touched or _guide_blocked()) and hand_guide.playing():
 		hand_guide.stop()
 	var was_seen := _coach.seen
 	var stage_open := mission_round != null and mission_round.stage() >= 0
-	var due := _coach.step(delta, _guide_quiet(), touched, stage_open)
+	var due := _coach.step(delta, _guide_quiet(), touched, stage_open, used)
 	if _coach.seen and not was_seen:
-		ProgressStore.set_mark(ProgressStore.GUIDES, definition.id(), true)   # shown, or the child knew
+		ProgressStore.set_mark(ProgressStore.GUIDES, definition.id(), true)   # shown, or the child used the object
 	if due != "":
 		show_guide()
-	elif hand_guide.playing() and (_asking() or is_sidebar_open() or _done_card != null):
-		hand_guide.stop()
 
 
-## Shows the lab's gesture now (also tests): the hand on the object's pick point, following the camera.
+## Shows the lab's gesture now (also tests): the hand on where a finger takes the object (read every
+## frame: a moving object, the camera), off the view when that point is behind the camera.
 func show_guide() -> void:
 	var spec := manipulator.guide()
 	if spec.is_empty() or hand_guide == null:
 		return
-	var from: Vector3 = spec.from
-	var at := func() -> Vector2: return view_point(from)
+	var id := str(spec.id)
+	var at := func() -> Vector2: return _guide_view_point(manipulator.guide_point(id))
 	match str(spec.kind):
-		"drag":
+		"drag", "pull":
 			var to: Vector3 = spec.to
-			hand_guide.play("drag", at, func() -> Vector2: return view_point(to))
-		"pull":
-			var pull: Vector2 = spec.pull
-			hand_guide.play("pull", at, func() -> Vector2: return view_point(from) + pull)
+			hand_guide.play(str(spec.kind), at, func() -> Vector2: return _guide_view_point(to))
 		"hold":
 			hand_guide.play("hold", at)
+
+
+func _guide_view_point(world: Vector3) -> Vector2:
+	return Vector2(-10000.0, -10000.0) if view.rig.is_position_behind(world) else view_point(world)
 
 
 # --- game: the condition picture buttons (2026-10-27) ------------------------------------------

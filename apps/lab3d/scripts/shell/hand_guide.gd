@@ -23,8 +23,8 @@ const SIZE := 1.0             # drawing scale (UI units per unit of the shapes b
 const PRESS_SCALE := 0.88     # the hand a little smaller while pressing (it "goes into" the glass)
 const RING_RADIUS := 26.0
 const ARROW_LENGTH := 70.0
-const SKIN := Color(1.0, 1.0, 1.0, 0.95)
-const LINE := Color(0.18, 0.2, 0.3, 0.9)
+const SKIN := Color(1.0, 1.0, 1.0, 0.78)
+const LINE := Color(0.18, 0.2, 0.3, 0.7)
 const RING := Color(1.0, 0.85, 0.3, 0.95)
 const TRAIL := Color(1.0, 1.0, 1.0, 0.55)
 

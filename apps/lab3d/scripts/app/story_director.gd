@@ -311,32 +311,37 @@ func _hide_hint() -> void:
 		hint.visible = false
 
 
-## The hand taps the next spot (the map's guide): its top on the view, while it is on screen.
-func tap_next_spot() -> void:
-	if next_id == "" or busy() or Story.measurement_run(Quality.all_args()):
-		return
+## The hand taps the next spot (the map's guide): its top on the view, while it is on screen and the
+## trio is not already walking there. True when it plays.
+func tap_next_spot() -> bool:
+	if next_id == "" or busy() or home._walking or Story.measurement_run(Quality.all_args()):
+		return false
 	var top := Vector3.INF
 	for spot in home._spots:
 		if spot.id == next_id:
 			top = spot.at + Vector3.UP * float(spot.top)
-	if top == Vector3.INF or home._world_to_screen(top) == Vector2.INF:
-		return
+	if top == Vector3.INF or not Rect2(Vector2.ZERO, home.size).has_point(home._world_to_screen(top)):
+		return false
 	if map_guide == null:
 		map_guide = HandGuide.new()
 		home.add_child(map_guide)
 	map_guide.play("tap", func() -> Vector2:
 		var at := home._world_to_screen(top)
 		return at if at != Vector2.INF else Vector2(-1000.0, -1000.0))
+	return true
 
 
-## Puppy's riddle just closed for the first time on this device: the hand shows where to tap.
+## Puppy's riddle just closed for the first time on this device (by a tap or its timer, not because the
+## child is already walking to a spot): the hand shows where to tap; kept only once it really played.
+## The hand goes when a new riddle or line opens, a cinematic starts or the trio walks.
 func _step_map_guide() -> void:
 	var open := riddle != null and riddle.active
-	if _riddle_was_open and not open and not ProgressStore.mark(ProgressStore.GUIDES, "map"):
-		ProgressStore.set_mark(ProgressStore.GUIDES, "map", true)
-		tap_next_spot()
+	if _riddle_was_open and not open and not home._walking and not ProgressStore.mark(ProgressStore.GUIDES, "map"):
+		if tap_next_spot():
+			ProgressStore.set_mark(ProgressStore.GUIDES, "map", true)
+	var opened := open and not _riddle_was_open
 	_riddle_was_open = open
-	if map_guide != null and (open or busy()):
+	if map_guide != null and (opened or busy() or home._walking):
 		map_guide.stop()
 
 

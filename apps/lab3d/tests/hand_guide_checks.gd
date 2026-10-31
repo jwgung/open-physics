@@ -28,7 +28,9 @@ func run() -> void:
 	for id in GESTURES:
 		await check_lab(id)
 	await check_once_and_idle()
+	await check_slingshot_after_run()
 	await check_map_tap()
+	await check_map_walk()
 	DirAccess.remove_absolute(ProgressStore.path)
 
 
@@ -48,12 +50,17 @@ func check_coach() -> void:
 		none.append(noisy.step(0.1, i % 3 != 0, false, true))
 	expect.call(none.all(func(s: String) -> bool: return s == ""), "hand guide timing: anything else on screen restarts the wait", str(none))
 	var knew := GuideCoach.new()
-	knew.step(0.1, true, true, true)
+	knew.step(0.1, true, true, true, true)
 	var after := []
 	for i in 10:
 		after.append(knew.step(0.1, true, false, true))
-	expect.call(knew.seen and after.all(func(s: String) -> bool: return s == ""),
-		"hand guide timing: a child who touches first gets no first guide", str(after))
+	var stray := GuideCoach.new()
+	stray.step(0.1, true, true, true)   # a tap on the view, not on the object
+	var later := []
+	for i in 10:
+		later.append(stray.step(0.1, true, false, true))
+	expect.call(knew.seen and after.all(func(s: String) -> bool: return s == "") and "first" in later,
+		"hand guide timing: a child who used the object first gets no first guide; a stray tap only restarts the wait", str(later))
 	var idle := GuideCoach.new(true)
 	var at := -1.0
 	var t := 0.0
@@ -145,11 +152,17 @@ func check_lab(id: String) -> void:
 	await _frames(60)
 	if guide.playing() or guide.plays > 0:
 		problems.append("shown while Dugi asks")
-	screen.mission_round.end_question()   # the child answers (the round is not under test here)
+	# The child answers with a picture button; Dugi's bridge box opens and waits for a tap that a child
+	# who cannot read may never make: the hand comes anyway.
+	screen._predict_pick_choice(str(MissionRound.predict(screen.definition.raw).get("answer", "")))
 	var lab: Experiment = screen.experiment
 	var bodies := _bodies(lab)
 	var status := lab.status()
+	var controls: Array = screen.definition.controls().map(func(c: Dictionary) -> Variant: return lab.control_value(c.id))
+	var stamps: int = screen.mission_round.stamps
 	await _frames(int(GuideCoach.FIRST_DELAY_S * 60.0) + 20)
+	if screen.dialogue != null and screen.mission_round.bridge_line() == "" and not screen.dialogue.active and str(MissionRound.predict(screen.definition.raw).get("bridge", "")) != "":
+		problems.append("the bridge box is not open (the test's premise)")
 	var spec: Dictionary = screen.manipulator.guide()
 	if not guide.playing():
 		problems.append("no guide after the question")
@@ -169,12 +182,20 @@ func check_lab(id: String) -> void:
 		problems.append("the hand does not start on the object (%s vs %s)" % [str(tip_seen[0]), str(pick)])
 	if not ProgressStore.mark(ProgressStore.GUIDES, id):
 		problems.append("the first guide is not kept")
-	if _bodies(lab) != bodies or lab.status() != status or screen.manipulator.mode != "":
+	var now: Array = screen.definition.controls().map(func(c: Dictionary) -> Variant: return lab.control_value(c.id))
+	if _bodies(lab) != bodies or lab.status() != status or screen.manipulator.mode != "" or now != controls \
+			or screen.mission_round.stamps != stamps:
 		problems.append("the lab moved under the guide")
-	screen._poke_guide()
+	# A real press on the object (through the view, under the hand): the object is taken, the hand goes.
+	var press := InputEventMouseButton.new()
+	press.button_index = MOUSE_BUTTON_LEFT
+	press.pressed = true
+	press.position = screen.view_point(screen.manipulator.guide_point(str(spec.id)))
+	screen.view._gui_input(press)
 	await _frames(2)
-	if guide.playing():
-		problems.append("a touch does not stop it")
+	if guide.playing() or screen.manipulator.mode == "":
+		problems.append("a press under the hand does not take the object and stop the hand (mode '%s')" % screen.manipulator.mode)
+	screen.manipulator.cancel()   # put it back before the screen goes
 	expect.call(problems.is_empty(), "hand guide (%s): after the question a %s on the lab's object, a picture only, a touch stops it, kept once" % [id, GESTURES[id]],
 		"; ".join(problems))
 	await _close(screen)
@@ -186,7 +207,7 @@ func check_once_and_idle() -> void:
 	DirAccess.remove_absolute(ProgressStore.path)
 	ProgressStore.set_mark(ProgressStore.GUIDES, "spring", true)
 	var screen := await _open("spring")
-	screen.mission_round.end_question()
+	screen._predict_pick_choice(str(MissionRound.predict(screen.definition.raw).get("answer", "")))
 	var guide: HandGuide = screen.hand_guide
 	await _frames(int(GuideCoach.FIRST_DELAY_S * 60.0) + 20)
 	var no_first := not guide.playing() and guide.plays == 0
@@ -213,6 +234,31 @@ func check_once_and_idle() -> void:
 	expect.call(no_first and again and dev_first and dev_once and none,
 		"hand guide: once per lab, again after %d quiet seconds in a stage, a lab without missions only once, none in a measurement" % int(GuideCoach.IDLE_S),
 		"no first %s again %s dev %s/%s measurement none %s" % [no_first, again, dev_first, dev_once, none])
+
+
+## After a throw the slingshot's guide presses the launch point (a press there readies the next shot),
+## not the landed ball; the pull ends on the slingshot's surface (a world point).
+func check_slingshot_after_run() -> void:
+	DirAccess.remove_absolute(ProgressStore.path)
+	var screen := await _open("projectile")
+	screen.mission_round.end_question()
+	var lab: Experiment = screen.experiment
+	var m: Manipulator = screen.manipulator
+	var ready_at: Vector3 = m.guide_point("ball")
+	var ready_ok := ready_at.is_equal_approx(lab.manipulation_pick_point("ball"))
+	lab.change_from_input(lab.release)
+	for i in 240:
+		await tree.physics_frame
+	var spec: Dictionary = m.guide()
+	var launch: Vector3 = m.slingshot_launch.call()
+	var at_launch: bool = lab.status() != "ready" and (spec.from as Vector3).is_equal_approx(launch) \
+		and not lab.manipulation_pick_point("ball").is_equal_approx(launch)
+	var pulled: bool = spec.get("to") is Vector3 and (spec.to as Vector3).distance_to(launch) > 0.1
+	var status := lab.status()
+	await _close(screen)
+	expect.call(ready_ok and at_launch and pulled,
+		"hand guide (slingshot): before a throw the hand is on the ball; after it on the launch point; the pull ends on the slingshot's surface",
+		"ready %s launch %s pulled %s (status %s)" % [ready_ok, at_launch, pulled, status])
 
 
 # --- the map ---------------------------------------------------------------------------------------
@@ -250,14 +296,45 @@ func check_map_tap() -> void:
 	story.say_riddle()
 	story.advance(0.05)
 	var stopped: bool = guide != null and not guide.playing()
-	story.riddle.close(true)
-	story.advance(0.05)
-	var once: bool = guide != null and not guide.playing()
+	# The riddle stays open (no tap): the hint's tap still plays over the open box.
 	story.advance(StoryDirector.HINT_DELAY_S + 0.1)
-	var hint_tap: bool = guide != null and guide.playing() and story.hinting()
+	var hint_tap: bool = guide != null and guide.playing() and story.hinting() and story.riddle.active
+	story.riddle.close(true)
+	story.advance(3.0)
+	story.advance(0.05)
+	var once: bool = guide != null and guide.plays == 2
 	Story.enabled = was
 	host.queue_free()
 	await _frames(3)
-	expect.call(told and tapping and on_spot and kept and stopped and once and hint_tap,
+	expect.call(told and tapping and on_spot and kept and stopped and hint_tap and once,
 		"hand guide (map): after Puppy's first riddle the hand taps the next spot, once on this device; again with the hint",
 		"told %s tapping %s on %s kept %s stopped %s once %s hint %s" % [told, tapping, on_spot, kept, stopped, once, hint_tap])
+
+
+## The first riddle closes because the child already walks to a spot (hush): no hand, and the map's
+## once is not used up.
+func check_map_walk() -> void:
+	var was := Story.enabled
+	Story.enabled = true
+	DirAccess.remove_absolute(ProgressStore.path)
+	ProgressStore.set_mark(ProgressStore.STORY, "prologue", true)
+	var host := Control.new()
+	host.theme = load(UI_THEME).build()
+	host.size = TABLET
+	tree.root.add_child(host)
+	var home: IslandHomeScreen = load(HOME_SCREEN).new()
+	host.add_child(home)
+	await _frames(4)
+	var story: StoryDirector = home.story
+	story.advance(0.6)
+	home._walking = true
+	story.hush()
+	story.advance(0.05)
+	var none: bool = story.map_guide == null or not story.map_guide.playing()
+	var kept_free := not ProgressStore.mark(ProgressStore.GUIDES, "map")
+	home._walking = false
+	Story.enabled = was
+	host.queue_free()
+	await _frames(3)
+	expect.call(none and kept_free, "hand guide (map): a riddle closed by walking to a spot shows no hand and keeps the once",
+		"none %s kept free %s" % [none, kept_free])

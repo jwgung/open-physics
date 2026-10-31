@@ -179,6 +179,11 @@ var _pulse_t := -1.0
 const PULSE_S := 0.9
 const PULSE_GROW := 0.14
 const PULSE_TINT := Color(1.0, 0.93, 0.55)
+## The hand guide (2026-10-30, HandGuide + GuideCoach): the gesture on the lab's own object, the first
+## time a child is at this lab and again after a quiet while; a touch anywhere stops it. Pictures only.
+var hand_guide: HandGuide = null
+var _coach: GuideCoach = null
+var _guide_touched := false             # a finger or a control acted since the last step
 
 
 ## `state` (optional): capture_state() of a previous screen of the same experiment (conditions
@@ -264,6 +269,7 @@ func _ready() -> void:
 	_refresh()
 	_setup_slingshot()   # after the state: a restored launch point is the pull's origin
 	_setup_game()        # after the state: the stamp count and the question belong to the saved run
+	_setup_guide()       # after the slingshot: its pull is the guide's gesture
 	Bench.reset(definition.bench_id())
 
 
@@ -341,6 +347,7 @@ func _process(delta: float) -> void:
 	_run_result_bubble(delta)
 	_run_strip_pulse(delta)
 	_sync_clue_glow()
+	_run_guide(delta)
 
 
 ## While Puppy tells the lab's clue the game object holding the piece faintly glows (2026-10-29 user
@@ -771,8 +778,10 @@ func _apply_auto_conditions() -> void:
 	if mission_round == null or experiment == null or not experiment.is_inside_tree():
 		return
 	var values := mission_round.take_conditions()
+	var touched := _guide_touched
 	for id in values:
 		_set_control(id, values[id])
+	_guide_touched = touched   # the screen set them, not the child: the hand guide still waits
 
 
 ## Dugi asks (Plan G4): his dialogue box with the question (portrait and name tag, held open until
@@ -1237,6 +1246,72 @@ func _run_celebration(delta: float) -> void:
 			_demo_stamps += 1
 			mission_round.demo_stamp(_demo_stamps)   # in memory only: the strip's text
 			_demo_left = DEMO_STAMP_EVERY_S if _demo_stamps < mission_round.stage_count() else -1.0
+
+
+# --- the hand guide (2026-10-30) -----------------------------------------------------------------
+
+## The hand guide over the view, when a finger has something to take in this lab (not in a measurement
+## or a device check: their runs and screenshots stay as they were). The first guide comes once per lab
+## (ProgressStore GUIDES); a lab without missions shows only that one.
+func _setup_guide() -> void:
+	if measurement or manipulator == null or manipulator.guide().is_empty():
+		return
+	hand_guide = HandGuide.new()
+	view.add_child(hand_guide)
+	_coach = GuideCoach.new(ProgressStore.mark(ProgressStore.GUIDES, definition.id()))
+	view.gesture_used.connect(_poke_guide)
+	view.single_pointer.connect(func(kind: String, _at: Vector2) -> void:
+		if kind == "press":
+			_poke_guide())
+
+
+## The child did something (a touch, a gesture, a control, an action): the guide goes and the wait starts over.
+func _poke_guide() -> void:
+	_guide_touched = true
+
+
+## Nothing else wants the child's eyes now: no question or clue, no open dialogue or sidebar, no
+## celebration, piece or card, and the guide is not already showing.
+func _guide_quiet() -> bool:
+	return not _asking() and not (dialogue != null and dialogue.active) and not is_sidebar_open() \
+		and _done_card == null and _round_wait < 0.0 and _card_left < 0.0 and _piece_wait < 0.0 \
+		and not hand_guide.playing()
+
+
+func _run_guide(delta: float) -> void:
+	if _coach == null:
+		return
+	var touched := _guide_touched or (manipulator != null and manipulator.mode != "")
+	_guide_touched = false
+	if touched and hand_guide.playing():
+		hand_guide.stop()
+	var was_seen := _coach.seen
+	var stage_open := mission_round != null and mission_round.stage() >= 0
+	var due := _coach.step(delta, _guide_quiet(), touched, stage_open)
+	if _coach.seen and not was_seen:
+		ProgressStore.set_mark(ProgressStore.GUIDES, definition.id(), true)   # shown, or the child knew
+	if due != "":
+		show_guide()
+	elif hand_guide.playing() and (_asking() or is_sidebar_open() or _done_card != null):
+		hand_guide.stop()
+
+
+## Shows the lab's gesture now (also tests): the hand on the object's pick point, following the camera.
+func show_guide() -> void:
+	var spec := manipulator.guide()
+	if spec.is_empty() or hand_guide == null:
+		return
+	var from: Vector3 = spec.from
+	var at := func() -> Vector2: return view_point(from)
+	match str(spec.kind):
+		"drag":
+			var to: Vector3 = spec.to
+			hand_guide.play("drag", at, func() -> Vector2: return view_point(to))
+		"pull":
+			var pull: Vector2 = spec.pull
+			hand_guide.play("pull", at, func() -> Vector2: return view_point(from) + pull)
+		"hold":
+			hand_guide.play("hold", at)
 
 
 # --- game: the condition picture buttons (2026-10-27) ------------------------------------------
@@ -1877,6 +1952,7 @@ func _run_measured_action(id: String) -> void:
 
 
 func experiment_action(id: String) -> void:
+	_poke_guide()
 	_drop_held_object()
 	if mission_round != null:
 		mission_round.acted(id == "reset")   # a run action (tests, --auto-release): an attempt like a let-go hand
@@ -1901,6 +1977,7 @@ func _snap_camera_home() -> void:
 
 
 func _set_control(id: String, value: Variant) -> void:
+	_poke_guide()
 	_drop_held_object()
 	if mission_round != null:
 		mission_round.condition_changed()

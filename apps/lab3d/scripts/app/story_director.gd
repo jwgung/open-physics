@@ -118,6 +118,10 @@ var wrongs_told := 0               # (tests)
 var hint: Node3D                   # the next spot's glint (null until the first hint)
 var _riddle_due := false           # say the riddle as soon as the map is free
 var _hint_t := 0.0                 # seconds since the riddle was last said
+## The hand guide's tap on the next spot (HandGuide, 2026-10-30): once after Puppy's first riddle
+## closes (ProgressStore GUIDES "map"), and each time the hint starts to glint.
+var map_guide: HandGuide = null
+var _riddle_was_open := false
 ## While Puppy's riddle is in his box the next spot's stage faintly glows (2026-10-29 user "해당
 ## 포인트를 희미하게 강조": a soft warm ring, slowly pulsing; ClueGlow), fading out when the box closes.
 ## Subtle on purpose: it does not name the spot (the 20 s hint glint stays the loud help).
@@ -207,6 +211,8 @@ func say_riddle() -> void:
 	_riddle_due = false
 	_hint_t = 0.0
 	_hide_hint()
+	if map_guide != null:
+		map_guide.stop()
 	var spot := ExperimentRegistry.find(next_id)
 	_say(Story.map_clue(spot), Story.map_clue_face(spot))
 	_riddle_open = true
@@ -226,6 +232,8 @@ func say_wrong() -> void:
 ## The child is on the way to a spot: Puppy's box closes.
 func hush() -> void:
 	_riddle_due = false
+	if map_guide != null:
+		map_guide.stop()
 	if riddle != null and riddle.active:
 		riddle.close(true)
 	_step_spot_glow(0.0)
@@ -281,6 +289,8 @@ func _step_hint(delta: float) -> void:
 	_hint_t += delta
 	if _hint_t < HINT_DELAY_S:
 		return
+	if _hint_t - delta < HINT_DELAY_S:
+		tap_next_spot()   # the hint starts: the hand taps the spot too
 	if hint == null:
 		hint = StarArt.make(false, HINT_SIZE)
 		hint.name = "HintGlint"
@@ -299,6 +309,35 @@ func _step_hint(delta: float) -> void:
 func _hide_hint() -> void:
 	if hint != null:
 		hint.visible = false
+
+
+## The hand taps the next spot (the map's guide): its top on the view, while it is on screen.
+func tap_next_spot() -> void:
+	if next_id == "" or busy() or Story.measurement_run(Quality.all_args()):
+		return
+	var top := Vector3.INF
+	for spot in home._spots:
+		if spot.id == next_id:
+			top = spot.at + Vector3.UP * float(spot.top)
+	if top == Vector3.INF or home._world_to_screen(top) == Vector2.INF:
+		return
+	if map_guide == null:
+		map_guide = HandGuide.new()
+		home.add_child(map_guide)
+	map_guide.play("tap", func() -> Vector2:
+		var at := home._world_to_screen(top)
+		return at if at != Vector2.INF else Vector2(-1000.0, -1000.0))
+
+
+## Puppy's riddle just closed for the first time on this device: the hand shows where to tap.
+func _step_map_guide() -> void:
+	var open := riddle != null and riddle.active
+	if _riddle_was_open and not open and not ProgressStore.mark(ProgressStore.GUIDES, "map"):
+		ProgressStore.set_mark(ProgressStore.GUIDES, "map", true)
+		tap_next_spot()
+	_riddle_was_open = open
+	if map_guide != null and (open or busy()):
+		map_guide.stop()
 
 
 ## The hint glints now (tests).
@@ -541,6 +580,7 @@ func advance(delta: float) -> void:
 			say_riddle()
 	_step_hint(delta)
 	_step_spot_glow(delta)
+	_step_map_guide()
 	for b in _beats.duplicate():
 		b[0] -= delta
 		if b[0] <= 0.0:

@@ -840,6 +840,40 @@ func _process(delta: float) -> void:
 		_demo_tick(delta)
 
 
+# --- the hand guide --------------------------------------------------------------------------------
+
+## How far along its free path the hand guide carries a dragged object (0..1 of the way to its far end).
+const GUIDE_REACH := 0.6
+
+## The gesture the hand guide (HandGuide) shows for this lab, read only (nothing is pressed or moved):
+## {"kind": "pull" | "hold" | "drag", "id", "from": world point the finger presses (the object's pick
+## point), "to": world point a drag ends at (drag only), "pull": the slingshot pull (UI units, pull only)},
+## or {} when the lab has no object a finger takes now. The object is the slingshot's, else the first
+## one a finger may pick up.
+func guide() -> Dictionary:
+	var id := slingshot_id if slingshot_id != "" and rules.has(slingshot_id) else ""
+	if id == "":
+		var draggable := draggable_ids()
+		if draggable.is_empty():
+			return {}
+		id = draggable[0]
+	if experiment.manipulation_body(id) == null:
+		return {}
+	var from := experiment.manipulation_pick_point(id)
+	if id == slingshot_id:
+		return {"kind": "pull", "id": id, "from": from, "pull": slingshot_demo[0]}
+	if rules[id].hold:
+		return {"kind": "hold", "id": id, "from": from}
+	var surface := _surface_for(id)
+	if surface == null:
+		return {}
+	var at := surface.to_plane(from)
+	var ends := [surface.nearest_inside(surface.region_min), surface.nearest_inside(surface.region_max)]
+	var far: Vector2 = ends[0] if at.distance_to(ends[0]) > at.distance_to(ends[1]) else ends[1]
+	var goal := at.lerp(far, GUIDE_REACH)
+	return {"kind": "drag", "id": id, "from": from, "to": surface.pose(goal, surface.height_of(from)).origin}
+
+
 # --- measurement demo -----------------------------------------------------------------------------
 
 ## Drags the first manipulable object back and forth every `every` seconds through the same input

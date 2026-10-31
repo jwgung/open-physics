@@ -1,0 +1,263 @@
+## The hand guide (2026-10-30 user request: young children need a guide to the controls): GuideCoach's timing
+## through its own interface, HandGuide's gestures, and on every lab's screen: after the question the
+## hand shows that lab's gesture on its own object (a pull, a hold or a drag), a touch stops it, it
+## comes once per lab and again after a quiet while during a stage, and it is a picture only (the lab's
+## bodies and status do not move). On the map the hand taps the next spot after Puppy's first riddle.
+extends RefCounted
+
+var tree: SceneTree
+var expect: Callable
+const UI_THEME := "res://scripts/app/ui_theme.gd"
+const EXPERIMENT_SCREEN := "res://scripts/shell/experiment_screen.gd"
+const HOME_SCREEN := "res://scripts/app/island_home_screen.gd"
+const TABLET := Vector2(1152, 720)
+## The gesture each lab's guide shows (its slingshot, its hold, else a drag).
+const GESTURES := {"projectile": "pull", "collision": "pull", "orbit": "pull", "friction": "hold",
+	"rotation": "hold", "pulley": "hold", "free-fall": "drag", "spring": "drag", "constraints": "drag",
+	"buoyancy": "drag", "incline-friction": "drag"}
+
+
+func _init(scene_tree: SceneTree, expect_fn: Callable) -> void:
+	tree = scene_tree
+	expect = expect_fn
+
+
+func run() -> void:
+	check_coach()
+	check_gestures()
+	for id in GESTURES:
+		await check_lab(id)
+	await check_once_and_idle()
+	await check_map_tap()
+	DirAccess.remove_absolute(ProgressStore.path)
+
+
+# --- GuideCoach ------------------------------------------------------------------------------------
+
+func check_coach() -> void:
+	var coach := GuideCoach.new()
+	var seen := []
+	for i in 5:
+		seen.append(coach.step(0.1, true, false, true))
+	seen.append(coach.step(0.15, true, false, true))
+	expect.call(seen.slice(0, 5).all(func(s: String) -> bool: return s == "") and seen[5] == "first" and coach.seen,
+		"hand guide timing: the first guide after FIRST_DELAY_S of quiet", str(seen))
+	var noisy := GuideCoach.new()
+	var none := []
+	for i in 20:
+		none.append(noisy.step(0.1, i % 3 != 0, false, true))
+	expect.call(none.all(func(s: String) -> bool: return s == ""), "hand guide timing: anything else on screen restarts the wait", str(none))
+	var knew := GuideCoach.new()
+	knew.step(0.1, true, true, true)
+	var after := []
+	for i in 10:
+		after.append(knew.step(0.1, true, false, true))
+	expect.call(knew.seen and after.all(func(s: String) -> bool: return s == ""),
+		"hand guide timing: a child who touches first gets no first guide", str(after))
+	var idle := GuideCoach.new(true)
+	var at := -1.0
+	var t := 0.0
+	for i in 200:
+		t += 0.05
+		if idle.step(0.05, true, false, true) == "idle" and at < 0.0:
+			at = t
+	var closed := GuideCoach.new(true)
+	var shut := []
+	for i in 200:
+		shut.append(closed.step(0.05, true, false, false))
+	expect.call(absf(at - GuideCoach.IDLE_S) < 0.06 and shut.all(func(s: String) -> bool: return s == ""),
+		"hand guide timing: again after IDLE_S quiet seconds during a stage, never without a stage", "at %.2f" % at)
+
+
+# --- HandGuide -------------------------------------------------------------------------------------
+
+func check_gestures() -> void:
+	var hand := HandGuide.new()
+	var from := Vector2(100.0, 200.0)
+	var to := Vector2(300.0, 200.0)
+	hand.play("drag", func() -> Vector2: return from, func() -> Vector2: return to, 1)
+	var cycle := hand.cycle_s()
+	var tips := []
+	var t := 0.0
+	while hand.playing() and t < 10.0:
+		hand.step(0.05)
+		t += 0.05
+		tips.append(hand.tip)
+	var reached := tips.any(func(p: Vector2) -> bool: return p.distance_to(to) < 1.0)
+	var started := tips.slice(0, 6).all(func(p: Vector2) -> bool: return p.distance_to(from) < 12.0)
+	expect.call(started and reached and not hand.playing() and absf(t - cycle) < 0.11,
+		"hand guide: a drag presses on the object, carries it to the goal, and one cycle ends the play", "t %.2f" % t)
+	hand.play("hold", func() -> Vector2: return from)
+	var still := true
+	for i in 40:
+		hand.step(0.05)
+		still = still and hand.tip.distance_to(from) < 12.0
+	hand.play("swipe", func() -> Vector2: return from)
+	var refused := hand.kind == "hold"
+	hand.play("drag", func() -> Vector2: return from)
+	refused = refused and hand.kind == "hold"
+	expect.call(still and refused and hand.mouse_filter == Control.MOUSE_FILTER_IGNORE,
+		"hand guide: a hold stays on the object; an unknown gesture or a drag without a goal is ignored; it takes no touch", "")
+	hand.stop()
+	hand.free()
+
+
+# --- the lab screens --------------------------------------------------------------------------------
+
+func _open(id: String) -> Control:
+	var host := Control.new()
+	host.theme = load(UI_THEME).build()
+	host.size = TABLET
+	tree.root.add_child(host)
+	var screen: Control = load(EXPERIMENT_SCREEN).new()
+	screen.setup(ExperimentRegistry.find(id))
+	host.add_child(screen)
+	for i in 4:
+		await tree.process_frame
+	return screen
+
+
+func _close(screen: Control) -> void:
+	screen.get_parent().queue_free()
+	await tree.process_frame
+
+
+func _frames(n: int) -> void:
+	for i in n:
+		await tree.process_frame
+
+
+func _bodies(lab: Experiment) -> Array:
+	return lab.find_children("*", "PhysicsBody3D", true, false).map(func(b: Node3D) -> Vector3: return b.global_position)
+
+
+## The first visit: no hand while Dugi asks; after the answer the lab's gesture on its object, the
+## lab untouched by it; a touch stops it; the visit is kept.
+func check_lab(id: String) -> void:
+	DirAccess.remove_absolute(ProgressStore.path)
+	var screen := await _open(id)
+	var guide: HandGuide = screen.hand_guide
+	var problems := []
+	if guide == null:
+		expect.call(false, "hand guide (%s): the screen has a hand guide" % id, "")
+		await _close(screen)
+		return
+	await _frames(60)
+	if guide.playing() or guide.plays > 0:
+		problems.append("shown while Dugi asks")
+	screen.mission_round.end_question()   # the child answers (the round is not under test here)
+	var lab: Experiment = screen.experiment
+	var bodies := _bodies(lab)
+	var status := lab.status()
+	await _frames(int(GuideCoach.FIRST_DELAY_S * 60.0) + 20)
+	var spec: Dictionary = screen.manipulator.guide()
+	if not guide.playing():
+		problems.append("no guide after the question")
+	elif guide.kind != GESTURES[id] or spec.get("kind") != GESTURES[id]:
+		problems.append("gesture %s, want %s" % [guide.kind, GESTURES[id]])
+	var pick: Vector2 = screen.view_point(spec.get("from", Vector3.ZERO))
+	var view_rect := Rect2(Vector2.ZERO, screen.view.size)
+	if not view_rect.has_point(pick):
+		problems.append("the object's pick point is off the view: %s" % str(pick))
+	var near := true
+	var tip_seen := []
+	for i in 30:
+		await tree.process_frame
+		tip_seen.append(guide.tip)
+	near = tip_seen.slice(0, 10).any(func(p: Vector2) -> bool: return p.distance_to(pick) < 14.0)
+	if not near:
+		problems.append("the hand does not start on the object (%s vs %s)" % [str(tip_seen[0]), str(pick)])
+	if not ProgressStore.mark(ProgressStore.GUIDES, id):
+		problems.append("the first guide is not kept")
+	if _bodies(lab) != bodies or lab.status() != status or screen.manipulator.mode != "":
+		problems.append("the lab moved under the guide")
+	screen._poke_guide()
+	await _frames(2)
+	if guide.playing():
+		problems.append("a touch does not stop it")
+	expect.call(problems.is_empty(), "hand guide (%s): after the question a %s on the lab's object, a picture only, a touch stops it, kept once" % [id, GESTURES[id]],
+		"; ".join(problems))
+	await _close(screen)
+
+
+## A second visit has no first guide; a quiet stage brings it back after IDLE_S; a lab without missions
+## (the development scene) shows only the first one; a measurement shows none.
+func check_once_and_idle() -> void:
+	DirAccess.remove_absolute(ProgressStore.path)
+	ProgressStore.set_mark(ProgressStore.GUIDES, "spring", true)
+	var screen := await _open("spring")
+	screen.mission_round.end_question()
+	var guide: HandGuide = screen.hand_guide
+	await _frames(int(GuideCoach.FIRST_DELAY_S * 60.0) + 20)
+	var no_first := not guide.playing() and guide.plays == 0
+	await _frames(int(GuideCoach.IDLE_S * 60.0) + 10)
+	var again := guide.playing() and guide.kind == "drag"
+	await _close(screen)
+	var dev := await _open("manipulation-dev")
+	await _frames(int(GuideCoach.FIRST_DELAY_S * 60.0) + 20)
+	var dev_first: bool = dev.hand_guide != null and dev.hand_guide.plays == 1
+	await _frames(int((GuideCoach.IDLE_S + 4.0) * 60.0))
+	var dev_once: bool = dev.hand_guide != null and dev.hand_guide.plays == 1
+	await _close(dev)
+	var host := Control.new()
+	host.theme = load(UI_THEME).build()
+	host.size = TABLET
+	tree.root.add_child(host)
+	var measured: Control = load(EXPERIMENT_SCREEN).new()
+	measured.measurement = true
+	measured.setup(ExperimentRegistry.find("spring"))
+	host.add_child(measured)
+	await _frames(4)
+	var none: bool = measured.hand_guide == null
+	await _close(measured)
+	expect.call(no_first and again and dev_first and dev_once and none,
+		"hand guide: once per lab, again after %d quiet seconds in a stage, a lab without missions only once, none in a measurement" % int(GuideCoach.IDLE_S),
+		"no first %s again %s dev %s/%s measurement none %s" % [no_first, again, dev_first, dev_once, none])
+
+
+# --- the map ---------------------------------------------------------------------------------------
+
+## The map: after Puppy's first riddle closes, the hand taps the next spot (once on this device), and
+## each time the hint starts to glint.
+func check_map_tap() -> void:
+	var was := Story.enabled
+	Story.enabled = true
+	DirAccess.remove_absolute(ProgressStore.path)
+	ProgressStore.set_mark(ProgressStore.STORY, "prologue", true)
+	var host := Control.new()
+	host.theme = load(UI_THEME).build()
+	host.size = TABLET
+	tree.root.add_child(host)
+	var home: IslandHomeScreen = load(HOME_SCREEN).new()
+	host.add_child(home)
+	await _frames(4)
+	var story: StoryDirector = home.story
+	story.advance(0.6)
+	var told: bool = story.riddle != null and story.riddle.active and story.map_guide == null
+	story.riddle.close(true)
+	story.advance(0.05)
+	var guide: HandGuide = story.map_guide
+	var tapping: bool = guide != null and guide.playing() and guide.kind == "tap"
+	var spot: Dictionary = {}
+	for s in home._spots:
+		if s.id == story.next_id:
+			spot = s
+	var on_spot := false
+	if guide != null and not spot.is_empty():
+		guide.step(0.3)
+		on_spot = guide.tip.distance_to(home._world_to_screen(spot.at + Vector3.UP * float(spot.top))) < 14.0
+	var kept := ProgressStore.mark(ProgressStore.GUIDES, "map")
+	story.say_riddle()
+	story.advance(0.05)
+	var stopped: bool = guide != null and not guide.playing()
+	story.riddle.close(true)
+	story.advance(0.05)
+	var once: bool = guide != null and not guide.playing()
+	story.advance(StoryDirector.HINT_DELAY_S + 0.1)
+	var hint_tap: bool = guide != null and guide.playing() and story.hinting()
+	Story.enabled = was
+	host.queue_free()
+	await _frames(3)
+	expect.call(told and tapping and on_spot and kept and stopped and once and hint_tap,
+		"hand guide (map): after Puppy's first riddle the hand taps the next spot, once on this device; again with the hint",
+		"told %s tapping %s on %s kept %s stopped %s once %s hint %s" % [told, tapping, on_spot, kept, stopped, once, hint_tap])

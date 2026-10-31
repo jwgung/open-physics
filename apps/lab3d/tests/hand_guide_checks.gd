@@ -25,8 +25,11 @@ func _init(scene_tree: SceneTree, expect_fn: Callable) -> void:
 func run() -> void:
 	check_coach()
 	check_gestures()
+	var root_size := tree.root.size
+	tree.root.size = Vector2i(TABLET)   # the real press in check_lab goes through the window
 	for id in GESTURES:
 		await check_lab(id)
+	tree.root.size = root_size
 	await check_once_and_idle()
 	await check_slingshot_after_run()
 	await check_map_tap()
@@ -134,6 +137,14 @@ func _frames(n: int) -> void:
 		await tree.process_frame
 
 
+## Waits `s` seconds of the screen's own clock (process delta): headless frames do not come at 60 Hz.
+func _seconds(s: float) -> void:
+	var left := s
+	while left > 0.0:
+		await tree.process_frame
+		left -= tree.root.get_process_delta_time()
+
+
 func _bodies(lab: Experiment) -> Array:
 	return lab.find_children("*", "PhysicsBody3D", true, false).map(func(b: Node3D) -> Vector3: return b.global_position)
 
@@ -160,9 +171,14 @@ func check_lab(id: String) -> void:
 	var status := lab.status()
 	var controls: Array = screen.definition.controls().map(func(c: Dictionary) -> Variant: return lab.control_value(c.id))
 	var stamps: int = screen.mission_round.stamps
-	await _frames(int(GuideCoach.FIRST_DELAY_S * 60.0) + 20)
-	if screen.dialogue != null and screen.mission_round.bridge_line() == "" and not screen.dialogue.active and str(MissionRound.predict(screen.definition.raw).get("bridge", "")) != "":
-		problems.append("the bridge box is not open (the test's premise)")
+	await _seconds(GuideCoach.FIRST_DELAY_S + 0.3)
+	if not (screen.dialogue != null and screen.dialogue.active):
+		problems.append("Dugi's bridge box is not open with the hand (the case under test)")
+	var order: Array = [guide.get_index(), screen.dialogue.get_index() if screen.dialogue != null else -1, screen._tip.get_index()]
+	if not (order[0] > order[1] and order[1] > order[2]):
+		problems.append("overlay order hand %d / box %d / tip %d: the hand over the box, the box over the tip" % order)
+	if screen._mission_pill != null and guide.get_index() > screen._mission_pill.get_index():
+		problems.append("the hand draws over the mission strip")
 	var spec: Dictionary = screen.manipulator.guide()
 	if not guide.playing():
 		problems.append("no guide after the question")
@@ -187,14 +203,18 @@ func check_lab(id: String) -> void:
 			or screen.mission_round.stamps != stamps:
 		problems.append("the lab moved under the guide")
 	# A real press on the object (through the view, under the hand): the object is taken, the hand goes.
-	var press := InputEventMouseButton.new()
-	press.button_index = MOUSE_BUTTON_LEFT
+	var press := InputEventScreenTouch.new()
+	press.position = screen.view.global_position + screen.view_point(screen.manipulator.guide_point(str(spec.id)))
 	press.pressed = true
-	press.position = screen.view_point(screen.manipulator.guide_point(str(spec.id)))
-	screen.view._gui_input(press)
+	tree.root.push_input(press)   # through the GUI: nothing over the object may take it
 	await _frames(2)
 	if guide.playing() or screen.manipulator.mode == "":
 		problems.append("a press under the hand does not take the object and stop the hand (mode '%s')" % screen.manipulator.mode)
+	var lift := InputEventScreenTouch.new()
+	lift.position = press.position
+	lift.canceled = true
+	tree.root.push_input(lift)
+	await tree.process_frame
 	screen.manipulator.cancel()   # put it back before the screen goes
 	expect.call(problems.is_empty(), "hand guide (%s): after the question a %s on the lab's object, a picture only, a touch stops it, kept once" % [id, GESTURES[id]],
 		"; ".join(problems))
@@ -209,15 +229,15 @@ func check_once_and_idle() -> void:
 	var screen := await _open("spring")
 	screen._predict_pick_choice(str(MissionRound.predict(screen.definition.raw).get("answer", "")))
 	var guide: HandGuide = screen.hand_guide
-	await _frames(int(GuideCoach.FIRST_DELAY_S * 60.0) + 20)
+	await _seconds(GuideCoach.FIRST_DELAY_S + 0.3)
 	var no_first := not guide.playing() and guide.plays == 0
-	await _frames(int(GuideCoach.IDLE_S * 60.0) + 10)
+	await _seconds(GuideCoach.IDLE_S + 0.2)
 	var again := guide.playing() and guide.kind == "drag"
 	await _close(screen)
 	var dev := await _open("manipulation-dev")
-	await _frames(int(GuideCoach.FIRST_DELAY_S * 60.0) + 20)
+	await _seconds(GuideCoach.FIRST_DELAY_S + 0.3)
 	var dev_first: bool = dev.hand_guide != null and dev.hand_guide.plays == 1
-	await _frames(int((GuideCoach.IDLE_S + 4.0) * 60.0))
+	await _seconds(GuideCoach.IDLE_S + 4.0)
 	var dev_once: bool = dev.hand_guide != null and dev.hand_guide.plays == 1
 	await _close(dev)
 	var host := Control.new()
@@ -299,6 +319,7 @@ func check_map_tap() -> void:
 	# The riddle stays open (no tap): the hint's tap still plays over the open box.
 	story.advance(StoryDirector.HINT_DELAY_S + 0.1)
 	var hint_tap: bool = guide != null and guide.playing() and story.hinting() and story.riddle.active
+	var under_riddle: bool = guide != null and guide.get_index() < story.riddle.get_index()   # his words stay readable
 	story.riddle.close(true)
 	story.advance(3.0)
 	story.advance(0.05)
@@ -306,9 +327,9 @@ func check_map_tap() -> void:
 	Story.enabled = was
 	host.queue_free()
 	await _frames(3)
-	expect.call(told and tapping and on_spot and kept and stopped and hint_tap and once,
-		"hand guide (map): after Puppy's first riddle the hand taps the next spot, once on this device; again with the hint",
-		"told %s tapping %s on %s kept %s stopped %s once %s hint %s" % [told, tapping, on_spot, kept, stopped, once, hint_tap])
+	expect.call(told and tapping and on_spot and kept and stopped and hint_tap and under_riddle and once,
+		"hand guide (map): after Puppy's first riddle the hand taps the next spot, once on this device; again with the hint, under his box",
+		"told %s tapping %s on %s kept %s stopped %s once %s hint %s under %s" % [told, tapping, on_spot, kept, stopped, once, hint_tap, under_riddle])
 
 
 ## The first riddle closes because the child already walks to a spot (hush): no hand, and the map's

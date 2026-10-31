@@ -268,8 +268,8 @@ func _ready() -> void:
 		_camera_home = view.rig.get_state()   # a measurement's --camera is the view it opens with
 	_refresh()
 	_setup_slingshot()   # after the state: a restored launch point is the pull's origin
+	_setup_guide()       # after the slingshot (its pull is the gesture), before the question (overlay order)
 	_setup_game()        # after the state: the stamp count and the question belong to the saved run
-	_setup_guide()       # after the slingshot: its pull is the guide's gesture
 	Bench.reset(definition.bench_id())
 
 
@@ -1252,13 +1252,15 @@ func _run_celebration(delta: float) -> void:
 
 ## The hand guide over the view, when a finger has something to take in this lab (not in a measurement
 ## or a device check: their runs and screenshots stay as they were). The first guide comes once per lab
-## (ProgressStore GUIDES); a lab without missions shows only that one.
+## (ProgressStore GUIDES); a lab without missions shows only that one. The hand draws over Dugi's box
+## (a pull may pass over it, the box waiting for a tap) and under every overlay added after it (the
+## mission strip, the picture buttons, the bubbles, the cards); without a box, right over the 3D.
 func _setup_guide() -> void:
-	if measurement or manipulator == null or manipulator.guide().is_empty():
+	if measurement or manipulator == null or manipulator.draggable_ids().is_empty():
 		return
 	hand_guide = HandGuide.new()
 	view.add_child(hand_guide)
-	view.move_child(hand_guide, view.viewport.get_index() + 2)   # over the 3D, under every overlay (dialogue, strip, buttons)
+	view.move_child(hand_guide, dialogue.get_index() + 1 if dialogue != null else view.overlay_floor())
 	_coach = GuideCoach.new(ProgressStore.mark(ProgressStore.GUIDES, definition.id()))
 	view.gesture_used.connect(_poke_guide)
 	view.single_pointer.connect(func(kind: String, _at: Vector2) -> void:
@@ -1295,18 +1297,19 @@ func _run_guide(delta: float) -> void:
 	var was_seen := _coach.seen
 	var stage_open := mission_round != null and mission_round.stage() >= 0
 	var due := _coach.step(delta, _guide_quiet(), touched, stage_open, used)
+	if due != "" and not show_guide() and due == "first":
+		_coach.seen = was_seen   # nothing could be shown (no gesture now): the first guide stays due
 	if _coach.seen and not was_seen:
 		ProgressStore.set_mark(ProgressStore.GUIDES, definition.id(), true)   # shown, or the child used the object
-	if due != "":
-		show_guide()
 
 
 ## Shows the lab's gesture now (also tests): the hand on where a finger takes the object (read every
-## frame: a moving object, the camera), off the view when that point is behind the camera.
-func show_guide() -> void:
+## frame: a moving object, the camera), off the view when that point is behind the camera. False when
+## there is no gesture to show now.
+func show_guide() -> bool:
 	var spec := manipulator.guide()
 	if spec.is_empty() or hand_guide == null:
-		return
+		return false
 	var id := str(spec.id)
 	var at := func() -> Vector2: return _guide_view_point(manipulator.guide_point(id))
 	match str(spec.kind):
@@ -1315,6 +1318,7 @@ func show_guide() -> void:
 			hand_guide.play(str(spec.kind), at, func() -> Vector2: return _guide_view_point(to))
 		"hold":
 			hand_guide.play("hold", at)
+	return hand_guide.playing()
 
 
 func _guide_view_point(world: Vector3) -> Vector2:

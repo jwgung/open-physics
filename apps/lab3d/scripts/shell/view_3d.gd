@@ -96,6 +96,12 @@ func reset_input() -> void:
 	_mouse_mode = ""
 
 
+## The child index right above the 3D picture: a node moved there draws over the 3D view and under
+## every overlay the screen added (the hand guide when there is no dialogue box).
+func overlay_floor() -> int:
+	return _display.get_index() + 1
+
+
 func _ready() -> void:
 	Quality.configure_view(viewport)
 	resized.connect(update_resolution)

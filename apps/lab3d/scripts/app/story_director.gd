@@ -325,6 +325,8 @@ func tap_next_spot() -> bool:
 	if map_guide == null:
 		map_guide = HandGuide.new()
 		home.add_child(map_guide)
+	if riddle != null and map_guide.get_index() > riddle.get_index():
+		home.move_child(map_guide, riddle.get_index())   # under Puppy's box: his words stay readable
 	map_guide.play("tap", func() -> Vector2:
 		var at := home._world_to_screen(top)
 		return at if at != Vector2.INF else Vector2(-1000.0, -1000.0))

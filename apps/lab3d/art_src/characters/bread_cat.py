@@ -1,4 +1,4 @@
-"""Bread Cat (빵고양이) — the Open Physics 3D main character, generated entirely in Blender Python.
+"""Bread Cat (빵고양이) — the Puppy Land 3D main character, generated entirely in Blender Python.
 
 Run (headless):
     blender -b --factory-startup -P apps/lab3d/art_src/characters/bread_cat.py -- \

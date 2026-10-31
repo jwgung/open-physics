@@ -21,7 +21,7 @@ func _ready() -> void:
 	var row := Ui.hbox(12)
 	bar.add_child(row)
 	var brand := Ui.vbox(0)
-	brand.add_child(Ui.label("Open Physics 3D", "HeadingLabel"))
+	brand.add_child(Ui.label("Puppy Land 3D", "HeadingLabel"))
 	brand.add_child(Ui.label("역학 실험실", "EyebrowLabel"))
 	row.add_child(brand)
 	var settings := Ui.button("설정", "", 60)

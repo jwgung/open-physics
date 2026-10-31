@@ -28,7 +28,7 @@ seconds=${3:-90}
 rest=${4:-60}
 here=$(cd "$(dirname "$0")" && pwd)
 repo=$(cd "$here/../../.." && pwd)
-package=org.openphysics.lab3d
+package=org.puppyland.lab3d
 # Task 2b: every 4 s the box is dragged to a new start through the finger input path (1 s drag,
 # put down) and released 0.4 s later. Task 2a/2c measured OPBENCH_PLAY=--auto-release=4 (re-release only).
 play=${OPBENCH_PLAY:---auto-drag=4}

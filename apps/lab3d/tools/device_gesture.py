@@ -20,7 +20,7 @@ import re
 import subprocess
 import tempfile
 
-VIRTUAL_NAME = "Open Physics test touch"   # the HID screen registered below
+VIRTUAL_NAME = "Puppy Land test touch"   # the HID screen registered below
 NATURAL = (1200, 1920)   # SM-P200 natural (portrait) panel size in pixels
 STEPS = 24
 FRAME_MS = 16

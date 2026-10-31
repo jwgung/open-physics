@@ -28,7 +28,7 @@ apps/lab3d/
                                       Manipulator(물체 조작: 끌기·새총·꾹 누르기), ManipSurface(조작 평면), HoldRamp(꾹 누르는 동안 커지는 힘),
                                       PressHandleLab(지렛대·도르래 공용: 누르는 힘·막대·시계), RollingGraph(누르는 동안만 흐르는 10초 창 그래프), DialogueBox(두기두기 게임식 대화창),
                                       StampSlam·Confetti·RoundDoneCard(도장 쾅, 색종이, 다 깼을 때 카드: 아래 "축하"), ResultBubble(퍼피의 결과 한 줄),
-                                      HandGuide·GuideCoach(손 안내: 물체 위에서 손짓을 보여 주는 손 그림과 그 시점, 아래 "손 안내"),
+                                      HandGuide·GuideCoach(손 안내: 물체 위에서 손짓을 보여 주는 빵고양이 앞발 그림과 그 시점, 아래 "손 안내"),
                                       LabSounds(실험의 상태·충격을 읽어 소리를 고름: 아래 "소리")
   experiments/incline_friction/       빗면 마찰 실험(장면, InclineFrictionCorrector = 접촉 힘 보정 설정, InclineProps 소품)
   experiments/uniform_field/          균일장 실험 공용 기반 UniformFieldLab(중력 선택, 공, 바닥, 보정기 연결, 실행 상태·그래프 샘플·release/reset 공통)
@@ -46,6 +46,7 @@ apps/lab3d/
   content/experiments/                실험 정의 JSON(index.json + 실험별 파일: 문구와 3D 필드)
   assets/characters/                  빵고양이·두기두기·퍼피 glb + 텍스처 아틀라스(소스: art_src/characters/bread_cat.py, dugi.py, puppy.py, Blender 스크립트), 두기두기 대화창 초상화 portraits/(모델 렌더, dugi_portrait.py)
   assets/props/                       털실 공·택배 박스 glb + 텍스처(소스: art_src/props/yarn_ball.py, parcel_box.py)
+  assets/ui/                          손 안내의 빵고양이 앞발 그림 guide_paw.png(소스: tools/render_guide_paw.gd, 빵고양이 모델을 게임 재질로 렌더하고 젤리를 칠함)
   art_src/                            캐릭터·소품 생성 Blender 스크립트(외부 .blend 없음)
   assets/fonts/                       Noto Sans CJK KR 서브셋(Regular·Bold, SIL OFL 1.1), 기호 대체 글꼴
   audio/sfx/, audio/music/            효과음 15개·배경 음악 1개(모두 CC0 ogg, 출처: audio/CREDITS.md)
@@ -287,7 +288,7 @@ Android 뒤로가기 한 번이 두 번 오는 문제(2026-10-29, SM-X115 Androi
 
 ### 손 안내 (2026-10-30)
 
-사용자 요청 "어린애들이니까 조작 가이드가 좀 필요할 거 같다". 글을 읽지 않아도 되게, 반투명한 손 그림(갈색 테두리의 흰 장갑, `assets/ui/hand_point.svg` 한 장을 불투명도 85%로 그림)이 실제 물체 위에서 그 실험의 손짓을 보여 준다([용어](GLOSSARY.md#조작-안내)). 그림일 뿐 물체를 누르거나 옮기지 않는다(시험: 손이 도는 동안 바디 위치·상태 불변).
+사용자 요청 "어린애들이니까 조작 가이드가 좀 필요할 거 같다". 글을 읽지 않아도 되게, 빵고양이 앞발 그림(분홍 젤리가 있는 발, `assets/ui/guide_paw.png` 한 장을 불투명도 85%로 그림. 2026-10-31 사용자 선택: 손 대신 고양이 발)이 실제 물체 위에서 그 실험의 손짓을 보여 준다([용어](GLOSSARY.md#조작-안내)). 그림일 뿐 물체를 누르거나 옮기지 않는다(시험: 손이 도는 동안 바디 위치·상태 불변).
 
 - **손짓**(`Manipulator.guide()`가 실험의 조작 규칙에서 고름): 새총이 있는 실험(던지기·충돌·궤도)은 `pull`(물체를 누르고 뒤로 당긴 뒤 날아갈 방향 화살표), 꾹 누르는 실험(마찰 밀기·지렛대·도르래)은 `hold`(누른 채 고리가 참), 나머지는 `drag`(물체를 집어 자유 구간의 60%까지 끌고 놓음). 손끝은 손가락이 물체를 잡는 점(`Manipulator.guide_point`: 물체의 집는 점, 새총은 한 번 던진 뒤엔 다음 발을 준비하는 발사 자리)에 있고, 매 프레임 다시 읽어 움직이는 물체와 카메라를 따라간다. 새총의 당김 끝은 새총 평면 위의 점이라 카메라를 돌려도 실제 당기는 방향이다. 손은 3D와 두기두기 대화창, 그보다 먼저 놓인 제목줄·값 카드·실행 단추·힌트 글 위에, 그 뒤에 놓인 오버레이(미션 띠·그림 단추·말풍선·카드) 아래에 그려지고 터치를 받지 않는다(창 위를 지나는 당김도 보이게. 기본 시점의 11개 실험에서 손이 겹치는 것은 대화창뿐). 손 아래를 실제로 누르면 물체가 잡힌다. 손짓이 없거나 손이 시작할 점이 화면 밖(카메라를 크게 돌렸을 때)이면 첫 안내는 보여 주지 않고 다음 조용한 때로 남긴다.
 - **언제**(`GuideCoach`): 그 실험을 처음 열었을 때, 퍼피 단서와 두기두기 질문이 끝나고 화면이 조용해진 0.6초 뒤 한 번(2번 반복). 처음 봤는지는 `ProgressStore` `[guides]`에 남는다(`처음부터 다시 하기`로 지워짐). 미션 단계를 하는 중 8초 동안 아무것도 안 하면 다시. 조용함 = 질문·단서·사이드바·축하·조각·끝 카드가 없고 손이 이미 돌고 있지 않음. 두기두기의 다리 말·설명 창은 열려 있어도 된다(창은 탭할 때까지 열려 있고, 글을 못 읽는 아이는 탭하지 않을 수 있다. 창의 "직접 해 봐요"를 손이 보여 준다). 손가락이 물체·화면에 닿거나 조건·실행 단추를 누르면 손이 바로 사라지고 기다림이 처음부터. 미션 단계가 자동으로 바꾸는 조건(충돌의 공 무게)은 닿은 것으로 치지 않는다. 손보다 먼저 아이가 물체를 실제로 집거나 당기거나 누르면 첫 안내는 생략한다(빈 곳을 한 번 건드린 것은 아님).

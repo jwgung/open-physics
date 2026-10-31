@@ -1,6 +1,7 @@
-## The hand guide (2026-10-30 user request: young children need a guide to the controls): a soft white hand
-## over the 3D view shows the gesture the child should make on the real object, so no reading is
-## needed. It is a picture only: it never presses, moves a body or changes a control.
+## The hand guide (2026-10-30 user request: young children need a guide to the controls): the bread cat's
+## front paw (2026-10-31 user choice, instead of a hand) over the 3D view shows the gesture the child
+## should make on the real object, so no reading is needed. "Finger" below means the paw's pad.
+## It is a picture only: it never presses, moves a body or changes a control.
 ##
 ## Gestures (play()):
 ## - "drag": the finger presses on `from`, carries it to `to` and lifts (끌었다 놓기),
@@ -19,14 +20,15 @@ const MOVE_S := 1.0
 const HOLD_S := 1.4
 const LIFT_S := 0.25
 const REST_S := 0.35
-## The glove picture (one image, so its see-through is even) and where its index fingertip is.
-const HAND_TEXTURE: Texture2D = preload("res://assets/ui/hand_point.svg")
-const HAND_SIZE := Vector2(63.0, 86.6)    # UI units (the picture's 96 x 132 view box at 0.656)
-const HAND_TIP := Vector2(22.3, 3.9)      # the fingertip in that box (view box point 34, 6)
+## The picture: the bread cat's front paw with its beans (tools/render_guide_paw.gd makes it from the
+## cat's model), one image so its see-through is even. PAW_TIP is the touch point in it: the pad.
+const PAW_TEXTURE: Texture2D = preload("res://assets/ui/guide_paw.png")
+const PAW_SIZE := Vector2(54.8, 70.0)       # UI units (the 188 x 240 px picture)
+const PAW_TIP := PAW_SIZE * Vector2(0.5, 0.355)
 const PRESS_SCALE := 0.88     # the hand a little smaller while pressing (it "goes into" the glass)
 const RING_RADIUS := 26.0
 const ARROW_LENGTH := 70.0
-const SKIN := Color(1.0, 1.0, 1.0, 0.85)   # the glove's see-through
+const PAW_TINT := Color(1.0, 1.0, 1.0, 0.85)   # white: the picture's own colours, at 85 % (the object shows through)
 const RING := Color(1.0, 0.85, 0.3, 0.95)
 const TRAIL := Color(1.0, 1.0, 1.0, 0.55)
 ## Where a caller's point goes when it cannot be drawn (behind the camera, off the map): far off the view.
@@ -154,9 +156,9 @@ func _draw() -> void:
 	_hand(pose[0], lerpf(1.0, PRESS_SCALE, pressed))
 
 
-## The glove with its index fingertip at `at` (the touch point), a little smaller while pressing.
+## The paw with its pad at `at` (the touch point), a little smaller while pressing.
 func _hand(at: Vector2, scale_k: float) -> void:
-	draw_texture_rect(HAND_TEXTURE, Rect2(at - HAND_TIP * scale_k, HAND_SIZE * scale_k), false, SKIN)
+	draw_texture_rect(PAW_TEXTURE, Rect2(at - PAW_TIP * scale_k, PAW_SIZE * scale_k), false, PAW_TINT)
 
 
 func _dotted(a: Vector2, b: Vector2, color: Color) -> void:

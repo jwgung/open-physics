@@ -19,12 +19,14 @@ const MOVE_S := 1.0
 const HOLD_S := 1.4
 const LIFT_S := 0.25
 const REST_S := 0.35
-const SIZE := 1.0             # drawing scale (UI units per unit of the shapes below)
+## The glove picture (one image, so its see-through is even) and where its index fingertip is.
+const HAND_TEXTURE: Texture2D = preload("res://assets/ui/hand_point.svg")
+const HAND_SIZE := Vector2(63.0, 86.6)    # UI units (the picture's 96 x 132 view box at 0.656)
+const HAND_TIP := Vector2(22.3, 3.9)      # the fingertip in that box (view box point 34, 6)
 const PRESS_SCALE := 0.88     # the hand a little smaller while pressing (it "goes into" the glass)
 const RING_RADIUS := 26.0
 const ARROW_LENGTH := 70.0
-const SKIN := Color(1.0, 1.0, 1.0, 0.78)
-const LINE := Color(0.18, 0.2, 0.3, 0.7)
+const SKIN := Color(1.0, 1.0, 1.0, 0.85)   # the glove's see-through
 const RING := Color(1.0, 0.85, 0.3, 0.95)
 const TRAIL := Color(1.0, 1.0, 1.0, 0.55)
 ## Where a caller's point goes when it cannot be drawn (behind the camera, off the map): far off the view.
@@ -152,26 +154,9 @@ func _draw() -> void:
 	_hand(pose[0], lerpf(1.0, PRESS_SCALE, pressed))
 
 
-## A pointing hand with its index fingertip at `at` (the touch point), drawn with an outline.
+## The glove with its index fingertip at `at` (the touch point), a little smaller while pressing.
 func _hand(at: Vector2, scale_k: float) -> void:
-	var s := SIZE * scale_k
-	draw_set_transform(at, 0.0, Vector2.ONE * s)
-	for pass_i in 2:
-		var grow := 3.0 if pass_i == 0 else 0.0
-		var color := LINE if pass_i == 0 else SKIN
-		_capsule(Vector2(0.0, 2.0), Vector2(0.0, 30.0), 7.5 + grow, color)       # index finger
-		_capsule(Vector2(12.0, 26.0), Vector2(12.0, 40.0), 6.5 + grow, color)    # middle finger (folded)
-		_capsule(Vector2(22.0, 30.0), Vector2(22.0, 42.0), 6.0 + grow, color)    # ring finger
-		_capsule(Vector2(-11.0, 40.0), Vector2(-4.0, 52.0), 6.5 + grow, color)   # thumb
-		draw_rect(Rect2(Vector2(-8.0 - grow, 30.0 - grow), Vector2(36.0 + grow * 2.0, 30.0 + grow * 2.0)), color)
-		draw_circle(Vector2(10.0, 60.0), 18.0 + grow, color)                     # palm
-	draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-
-
-func _capsule(a: Vector2, b: Vector2, radius: float, color: Color) -> void:
-	draw_line(a, b, color, radius * 2.0)
-	draw_circle(a, radius, color)
-	draw_circle(b, radius, color)
+	draw_texture_rect(HAND_TEXTURE, Rect2(at - HAND_TIP * scale_k, HAND_SIZE * scale_k), false, SKIN)
 
 
 func _dotted(a: Vector2, b: Vector2, color: Color) -> void:

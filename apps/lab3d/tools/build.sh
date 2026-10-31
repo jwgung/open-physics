@@ -30,6 +30,6 @@ if [[ $what == android || $what == all ]]; then
   GODOT_ANDROID_KEYSTORE_RELEASE_PATH=${GODOT_ANDROID_KEYSTORE_RELEASE_PATH:-$HOME/.android/debug.keystore} \
   GODOT_ANDROID_KEYSTORE_RELEASE_USER=${GODOT_ANDROID_KEYSTORE_RELEASE_USER:-androiddebugkey} \
   GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD=${GODOT_ANDROID_KEYSTORE_RELEASE_PASSWORD:-android} \
-    "$GODOT" --headless --path . --export-release Android exports/android/open-physics-lab3d.apk
-  ls -l exports/android/open-physics-lab3d.apk
+    "$GODOT" --headless --path . --export-release Android exports/android/puppy-land.apk
+  ls -l exports/android/puppy-land.apk
 fi

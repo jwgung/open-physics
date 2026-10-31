@@ -3,8 +3,8 @@ config_version=5
 
 [application]
 
-config/name="Open Physics 3D"
-config/description="Open Physics 3D lab app (Phase 1): guided mechanics experiments on Godot 4 + Jolt"
+config/name="Puppy Land 3D"
+config/description="Puppy Land 3D lab app (Phase 1): guided mechanics experiments on Godot 4 + Jolt"
 config/icon="res://assets/icon/icon.png"
 boot_splash/bg_color=Color(0.38431373, 0.7529412, 1, 1)
 boot_splash/image="res://assets/icon/splash.png"

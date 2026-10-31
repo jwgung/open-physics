@@ -1,8 +1,8 @@
-# Open Physics
+# Puppy Land
 
 > **Deprecated (2026-10-30):** 웹 2D 물리 실험(`src/app`)은 지웠다([ADR 0002](docs/adr/0002-drop-web-2d.md)). 제품은 3D 앱 빵고양이 과학섬(`apps/lab3d`)이다. 아래 용어는 웹 2D 시절에 정했고, 3D 앱의 용어는 `apps/lab3d/GLOSSARY.md`를 따른다.
 
-Open Physics가 시각적 실험에서 사용하는 핵심 제품 용어를 정의한다.
+Puppy Land(퍼피랜드, 저장소 `puppy-land`)가 시각적 실험에서 사용하는 핵심 제품 용어를 정의한다.
 
 ## Language
 
